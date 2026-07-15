@@ -161,7 +161,7 @@ export async function getStockActivityReportExportStatus(jobId: string): Promise
 }
 
 export async function getStockValuationReport(filters: {
-    locationId: string;
+    locationId?: string;
     startDate?: string;
     endDate?: string;
     summaryOnly?: boolean;
@@ -175,7 +175,7 @@ export async function getStockValuationReport(filters: {
 }) {
     try {
         const queryParams = new URLSearchParams();
-        queryParams.append("locationId", filters.locationId);
+        if (filters.locationId) queryParams.append("locationId", filters.locationId);
         if (filters.startDate) queryParams.append("startDate", filters.startDate);
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
         if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
@@ -199,7 +199,7 @@ export async function getStockValuationReport(filters: {
 }
 
 export async function queueStockValuationReportExport(filters: {
-    locationId: string;
+    locationId?: string;
     startDate?: string;
     endDate?: string;
     format: "xlsx" | "pdf";
@@ -218,7 +218,7 @@ export async function queueStockValuationReportExport(filters: {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                locationId: filters.locationId,
+                ...(filters.locationId ? { locationId: filters.locationId } : {}),
                 startDate: filters.startDate,
                 endDate: filters.endDate,
                 format: filters.format,

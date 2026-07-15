@@ -7,7 +7,6 @@ import {
     queueStockValuationReportExport,
     getStockValuationReportExportStatus
 } from "@/lib/actions/stock-ledger";
-import { getLocations } from "@/lib/actions/location";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
@@ -35,8 +34,6 @@ import { cn, COMPANY_NAME, getApiBaseUrl } from "@/lib/utils";
 
 export default function PosStockValuationReportPage() {
     const { user } = useAuth();
-    const [locations, setLocations] = useState<any[]>([]);
-    const [selectedLocationId, setSelectedLocationId] = useState<string>("");
 
     const [dateRange, setDateRange] = useState<DateRange>({
         from: startOfMonth(new Date()),
@@ -69,20 +66,10 @@ export default function PosStockValuationReportPage() {
 
     const summaryOnly = !groupingLevels.variant;
 
-    // Fetch locations on mount
-    useEffect(() => {
-        getLocations().then(res => {
-            if (res && res.status !== false) {
-                setLocations(res.data || res);
-            }
-        });
-    }, []);
-
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
         startTransition(async () => {
             const result = await getStockValuationReport({
-                locationId: selectedLocationId || undefined as any,
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
                 summaryOnly,
@@ -100,11 +87,11 @@ export default function PosStockValuationReportPage() {
                 toast.error("Failed to load valuation report data");
             }
         });
-    }, [selectedLocationId, dateRange, groupingLevels, summaryOnly]);
+    }, [dateRange, groupingLevels, summaryOnly]);
 
     useEffect(() => {
         fetchReport();
-    }, [selectedLocationId, groupingLevels]);
+    }, [groupingLevels]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -190,7 +177,6 @@ export default function PosStockValuationReportPage() {
         setExportState("queueing");
         try {
             const res = await queueStockValuationReportExport({
-                locationId: selectedLocationId || undefined as any,
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "xlsx",
@@ -240,7 +226,6 @@ export default function PosStockValuationReportPage() {
         setPdfExportState("queueing");
         try {
             const res = await queueStockValuationReportExport({
-                locationId: selectedLocationId || undefined as any,
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "pdf",
@@ -453,8 +438,8 @@ export default function PosStockValuationReportPage() {
                         Stock Valuation Report
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5 font-medium">
-                        <Store className="h-4 w-4 text-primary/70" />
-                        Valuation and Cost Analysis for <span className="text-foreground font-semibold">{selectedLocationId ? locations.find(l => l.id === selectedLocationId)?.name || "Store" : "All Locations Combined"}</span>
+                        <Layers className="h-4 w-4 text-primary/70" />
+                        Company-Wide Stock Valuation & Cost Analysis — All Locations
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -500,7 +485,7 @@ export default function PosStockValuationReportPage() {
             {/* Print Header (Visible only when printed) */}
             <div className="hidden print:block mb-6 border-b pb-4">
                 <h1 className="text-2xl font-bold text-center text-slate-900">Stock Valuation Report</h1>
-                <p className="text-sm text-center text-slate-600 mt-1">Outlet: {selectedLocationId ? locations.find(l => l.id === selectedLocationId)?.name || "Store" : "All Locations Combined"}</p>
+                <p className="text-sm text-center text-slate-600 mt-1">Company-Wide Stock Valuation</p>
                 <p className="text-xs text-center text-slate-500">
                     Period: {dateRange.from ? format(dateRange.from, "dd MMM yyyy") : "Start"} to{" "}
                     {dateRange.to ? format(dateRange.to, "dd MMM yyyy") : "End"}
@@ -511,29 +496,12 @@ export default function PosStockValuationReportPage() {
             <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
                 <div className="flex flex-wrap items-center gap-3">
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        <Store className="h-3.5 w-3.5" />
-                        Location:
-                    </span>
-                    <select
-                        value={selectedLocationId}
-                        onChange={(e) => setSelectedLocationId(e.target.value)}
-                        className="text-xs border rounded px-2.5 py-1.5 bg-background font-semibold"
-                    >
-                        <option value="">All Locations Combined</option>
-                        {locations.map((loc: any) => (
-                            <option key={loc.id} value={loc.id}>
-                                {loc.name}
-                            </option>
-                        ))}
-                    </select>
-
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1 ml-2">
                         <Calendar className="h-3.5 w-3.5" />
                         Date Period:
-                      </span>
-                      <DateRangePicker
-                          initialDateFrom={dateRange.from}
-                          initialDateTo={dateRange.to}
+                    </span>
+                    <DateRangePicker
+                        initialDateFrom={dateRange.from}
+                        initialDateTo={dateRange.to}
                         onUpdate={({ range }: { range: DateRange }) => {
                             if (range) {
                                 setDateRange(range);
