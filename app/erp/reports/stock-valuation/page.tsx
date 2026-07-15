@@ -758,31 +758,31 @@ export default function PosStockValuationReportPage() {
                             <th className="p-2 border-r bg-slate-800">SKU</th>
                             <th className="p-2 border-r text-center bg-slate-800">Size</th>
                             
-                            <th className="p-2 text-right bg-slate-700/20">Unit</th>
+                            <th className="p-2 text-right bg-slate-700/20">Qty</th>
                             <th className="p-2 text-right bg-slate-700/20">Cost</th>
                             <th className="p-2 border-r text-right bg-slate-700/20">Value</th>
                             
-                            <th className="p-2 text-right bg-emerald-900/10">Unit</th>
+                            <th className="p-2 text-right bg-emerald-900/10">Qty</th>
                             <th className="p-2 text-right bg-emerald-900/10">Cost</th>
                             <th className="p-2 border-r text-right bg-emerald-900/10">Value</th>
                             
-                            <th className="p-2 text-right bg-rose-900/10">Unit</th>
+                            <th className="p-2 text-right bg-rose-900/10">Qty</th>
                             <th className="p-2 text-right bg-rose-900/10">Cost</th>
                             <th className="p-2 border-r text-right bg-rose-900/10">Value</th>
                             
-                            <th className="p-2 text-right bg-blue-900/10">Unit</th>
+                            <th className="p-2 text-right bg-blue-900/10">Qty</th>
                             <th className="p-2 text-right bg-blue-900/10">Cost</th>
                             <th className="p-2 border-r text-right bg-blue-900/10">Value</th>
                             
-                            <th className="p-2 text-right bg-violet-900/10">Unit</th>
+                            <th className="p-2 text-right bg-violet-900/10">Qty</th>
                             <th className="p-2 text-right bg-violet-900/10">Cost</th>
                             <th className="p-2 border-r text-right bg-violet-900/10">Value</th>
                             
-                            <th className="p-2 text-right bg-slate-700/20">Unit</th>
+                            <th className="p-2 text-right bg-slate-700/20">Qty</th>
                             <th className="p-2 text-right bg-slate-700/20">Cost</th>
                             <th className="p-2 border-r text-right bg-slate-700/20">Value</th>
                             
-                            <th className="p-2 text-right bg-slate-850">Unit</th>
+                            <th className="p-2 text-right bg-slate-850">Qty</th>
                             <th className="p-2 text-right bg-slate-850">Cost</th>
                             <th className="p-2 text-right bg-slate-850">Value</th>
                         </tr>
@@ -829,22 +829,7 @@ export default function PosStockValuationReportPage() {
                                     const isDivision = row.type === 'division';
                                     const isArticle = row.type === 'article';
                                     const isVariant = row.type === 'variant';
-
-                                    let conceptVal = '';
-                                    let divisionVal = '';
-                                    let itemNameVal = '';
-                                    let skuVal = '';
-                                    let sizeVal = '';
-
-                                    if (isBrand) conceptVal = row.label;
-                                    else if (isDivision) divisionVal = row.label;
-                                    else if (isArticle) {
-                                        skuVal = row.sku;
-                                        itemNameVal = row.label;
-                                    } else if (isVariant) {
-                                        itemNameVal = 'Variant Details';
-                                        sizeVal = row.size;
-                                    }
+                                    const isGroup = !isArticle && !isVariant;
 
                                     const totals = row.totals || {
                                         openingQty: 0, openingCost: 0, openingValue: 0,
@@ -858,61 +843,70 @@ export default function PosStockValuationReportPage() {
 
                                     return (
                                         <tr key={row.id} className={style.className}>
-                                            <td className={cn("p-2 border-r font-bold", style.indentClass)}>{conceptVal}</td>
-                                            <td className="p-2 border-r">{divisionVal}</td>
-                                            <td className={cn("p-2 border-r truncate max-w-[240px]", isArticle && "flex flex-col font-bold text-slate-700 dark:text-slate-350")}>
-                                                {isArticle ? (
-                                                    <>
-                                                        <span className="text-[9px] text-primary">SKU: {row.sku}</span>
-                                                        <span>{row.label}</span>
-                                                    </>
-                                                ) : isVariant ? (
-                                                    <span className="italic text-muted-foreground">&mdash; Variant Details</span>
-                                                ) : itemNameVal}
-                                            </td>
-                                            <td className="p-2 border-r">{skuVal}</td>
-                                            <td className="p-2 border-r text-center">
-                                                {isArticle ? (
-                                                    <span className="text-[9px] text-muted-foreground uppercase font-bold bg-slate-50/20 px-1 py-0.5 rounded">All Sizes</span>
-                                                ) : isVariant ? (
-                                                    <span className="font-semibold text-slate-750 dark:text-slate-350">{sizeVal}</span>
-                                                ) : sizeVal}
-                                            </td>
+                                            {!isArticle && !isVariant ? (
+                                                <td colSpan={5} className={cn("p-2 border-r font-bold uppercase tracking-wider text-xs align-middle", style.indentClass)}>
+                                                    {row.type.toUpperCase()}: {row.label}
+                                                </td>
+                                            ) : (
+                                                <>
+                                                    <td className="p-2 border-r"></td>
+                                                    <td className="p-2 border-r"></td>
+                                                    <td className={cn("p-2 border-r truncate max-w-[240px] align-middle", isArticle ? "flex flex-col font-bold text-slate-700 dark:text-slate-350" : "italic text-muted-foreground")}>
+                                                        {isArticle ? (
+                                                            <>
+                                                                <span className="text-[9px] text-primary">SKU: {row.sku}</span>
+                                                                <span>{row.label}</span>
+                                                            </>
+                                                        ) : (
+                                                            `Variant: ${row.color || 'Default'}`
+                                                        )}
+                                                    </td>
+                                                    <td className="p-2 border-r align-middle font-medium text-slate-600 dark:text-slate-400">{isArticle ? row.sku : ""}</td>
+                                                    <td className="p-2 border-r align-middle text-center">
+                                                        {isArticle ? (
+                                                            <span className="text-[9px] text-muted-foreground uppercase font-bold bg-slate-50/20 px-1 py-0.5 rounded">All Sizes</span>
+                                                        ) : (
+                                                            <span className="font-semibold text-slate-750 dark:text-slate-350">{row.size}</span>
+                                                        )}
+                                                    </td>
+                                                </>
+                                            )}
 
                                             {/* Opening Stock */}
                                             <td className="p-2 text-right">{formatQty(totals.openingQty)}</td>
-                                            <td className="p-2 text-right text-muted-foreground">{formatCost(totals.openingCost)}</td>
-                                            <td className="p-2 border-r text-right font-semibold">{formatValue(totals.openingValue)}</td>
+                                            <td className={cn("p-2 text-right", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.openingCost)}</td>
+                                            <td className={cn("p-2 border-r text-right font-semibold", isGroup ? "text-slate-100" : "")}>{formatValue(totals.openingValue)}</td>
 
                                             {/* Purchases */}
-                                            <td className="p-2 text-right bg-emerald-500/5">{formatQty(totals.purchaseQty)}</td>
-                                            <td className="p-2 text-right text-muted-foreground bg-emerald-500/5">{formatCost(totals.purchaseCost)}</td>
-                                            <td className="p-2 border-r text-right font-semibold bg-emerald-500/5 text-emerald-600">{formatValue(totals.purchaseValue)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-emerald-500/5")}>{formatQty(totals.purchaseQty)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-emerald-500/5", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.purchaseCost)}</td>
+                                            <td className={cn("p-2 border-r text-right font-semibold", !isGroup && "bg-emerald-500/5", isGroup ? "text-emerald-300 font-bold" : "text-emerald-600")}>{formatValue(totals.purchaseValue)}</td>
 
                                             {/* Purchases Return */}
-                                            <td className="p-2 text-right bg-rose-500/5">{formatQty(totals.purchaseRetQty)}</td>
-                                            <td className="p-2 text-right text-muted-foreground bg-rose-500/5">{formatCost(totals.purchaseRetCost)}</td>
-                                            <td className="p-2 border-r text-right font-semibold bg-rose-500/5 text-rose-600">{formatValue(totals.purchaseRetValue)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-rose-500/5")}>{formatQty(totals.purchaseRetQty)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-rose-500/5", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.purchaseRetCost)}</td>
+                                            <td className={cn("p-2 border-r text-right font-semibold", !isGroup && "bg-rose-500/5", isGroup ? "text-rose-300 font-bold" : "text-rose-600")}>{formatValue(totals.purchaseRetValue)}</td>
 
                                             {/* Available */}
-                                            <td className="p-2 text-right bg-blue-500/5">{formatQty(totals.availableQty)}</td>
-                                            <td className="p-2 text-right text-muted-foreground bg-blue-500/5">{formatCost(totals.availableCost)}</td>
-                                            <td className="p-2 border-r text-right font-bold bg-blue-500/5 text-blue-600">{formatValue(totals.availableValue)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-blue-500/5")}>{formatQty(totals.availableQty)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-blue-500/5", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.availableCost)}</td>
+                                            <td className={cn("p-2 border-r text-right font-bold", !isGroup && "bg-blue-500/5", isGroup ? "text-blue-300 font-black" : "text-blue-600")}>{formatValue(totals.availableValue)}</td>
 
                                             {/* Net Sale (COGS) */}
-                                            <td className="p-2 text-right bg-violet-500/5">{formatQty(totals.salesQty)}</td>
-                                            <td className="p-2 text-right text-muted-foreground bg-violet-500/5">{formatCost(totals.salesCost)}</td>
-                                            <td className="p-2 border-r text-right font-semibold bg-violet-500/5 text-violet-600">{formatValue(totals.salesValue)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-violet-500/5")}>{formatQty(totals.salesQty)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-violet-500/5", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.salesCost)}</td>
+                                            <td className={cn("p-2 border-r text-right font-semibold", !isGroup && "bg-violet-500/5", isGroup ? "text-violet-300 font-bold" : "text-violet-600")}>{formatValue(totals.salesValue)}</td>
 
                                             {/* Adjustment */}
                                             <td className="p-2 text-right">{formatQty(totals.adjQty)}</td>
-                                            <td className="p-2 text-right text-muted-foreground">{formatCost(totals.adjCost)}</td>
-                                            <td className="p-2 border-r text-right font-semibold">{formatValue(totals.adjValue)}</td>
+                                            <td className={cn("p-2 text-right", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.adjCost)}</td>
+                                            <td className={cn("p-2 border-r text-right font-semibold", isGroup ? "text-slate-100" : "")}>{formatValue(totals.adjValue)}</td>
 
                                             {/* Closing balance */}
-                                            <td className="p-2 text-right bg-slate-500/5 font-semibold">{formatQty(totals.closingQty)}</td>
-                                            <td className="p-2 text-right text-muted-foreground bg-slate-500/5">{formatCost(totals.closingCost)}</td>
-                                            <td className="p-2 text-right bg-slate-500/5 font-bold text-slate-700 dark:text-slate-300">{formatValue(totals.closingValue)}</td>
+                                            <td className={cn("p-2 text-right font-semibold", !isGroup && "bg-slate-500/5")}>{formatQty(totals.closingQty)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-slate-500/5", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.closingCost)}</td>
+                                            <td className={cn("p-2 text-right font-bold", !isGroup && "bg-slate-500/5", isGroup ? "text-slate-100" : "text-slate-700 dark:text-slate-300")}>{formatValue(totals.closingValue)}</td>
+                                        </tr>
                                         </tr>
                                     );
                                 })}
