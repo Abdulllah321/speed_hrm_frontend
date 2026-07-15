@@ -907,7 +907,7 @@ export default function PosStockValuationReportPage() {
                                             <td className={cn("p-2 text-right", !isGroup && "bg-slate-500/5", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.closingCost)}</td>
                                             <td className={cn("p-2 text-right font-bold", !isGroup && "bg-slate-500/5", isGroup ? "text-slate-100" : "text-slate-700 dark:text-slate-300")}>{formatValue(totals.closingValue)}</td>
                                         </tr>
-                                        </tr>
+
                                     );
                                 })}
                                 {paddingBottom > 0 && (
