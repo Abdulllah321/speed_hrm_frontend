@@ -59,6 +59,7 @@ const returnTypeLabels = {
   EXCESS: 'Excess',
   WRONG_ITEM: 'Wrong Item',
   DAMAGED: 'Damaged',
+  SHORTAGE: 'Shortage',
 };
 
 export default function PurchaseReturnDetailPage() {
@@ -391,13 +392,13 @@ export default function PurchaseReturnDetailPage() {
                 <CardContent className="space-y-3">
                   {(() => {
                     const advRate  = Number(purchaseReturn.purchaseInvoice?.advanceTaxRate || 0.5);
-                    const subtotal = Number(purchaseReturn.subtotal || 0);
-                    const salesTax = Number(purchaseReturn.taxAmount || 0);
-                    const total    = Number(purchaseReturn.totalAmount || 0);
                     
                     let totalQty = 0;
+                    let grossSubtotal = 0;
                     let totalDiscount = 0;
+                    let totalSalesTax = 0;
                     let totalAdvTax = 0;
+                    let totalAmount = 0;
                     
                     (purchaseReturn.items || []).forEach((item: any) => {
                       const qty      = Number(item.returnQty      || 0);
@@ -409,14 +410,18 @@ export default function PurchaseReturnDetailPage() {
                       const taxAmt   = valExcl * taxRate / 100;
                       const valIncl  = valExcl + taxAmt;
                       const itemAdv  = valIncl * advRate / 100;
+                      const lineTotal = valIncl + itemAdv;
                       
                       totalQty += qty;
+                      grossSubtotal += qty * unitCost;
                       totalDiscount += discAmt;
+                      totalSalesTax += taxAmt;
                       totalAdvTax += itemAdv;
+                      totalAmount += lineTotal;
                     });
                     
-                    const valExcl = subtotal - totalDiscount;
-                    const valIncl = valExcl + salesTax;
+                    const valExcl = grossSubtotal - totalDiscount;
+                    const valIncl = valExcl + totalSalesTax;
                     
                     return (
                       <>
@@ -426,7 +431,7 @@ export default function PurchaseReturnDetailPage() {
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Subtotal (Gross)</span>
-                          <span className="font-medium tabular-nums">{fmtInt(subtotal)}</span>
+                          <span className="font-medium tabular-nums">{fmtInt(grossSubtotal)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Discount</span>
@@ -438,7 +443,7 @@ export default function PurchaseReturnDetailPage() {
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Sale Tax Amount</span>
-                          <span className="font-medium tabular-nums">{fmtInt(salesTax)}</span>
+                          <span className="font-medium tabular-nums">{fmtInt(totalSalesTax)}</span>
                         </div>
                         <div className="flex justify-between text-sm border-t pt-2">
                           <span className="text-gray-700 font-medium">Value Incl. Sales Tax</span>
@@ -451,7 +456,7 @@ export default function PurchaseReturnDetailPage() {
                         <hr />
                         <div className="flex justify-between font-semibold">
                           <span>Total Return Amount</span>
-                          <span className="tabular-nums font-bold text-lg text-blue-700">{fmtInt(total)}</span>
+                          <span className="tabular-nums font-bold text-lg text-blue-700">{fmtInt(totalAmount)}</span>
                         </div>
                       </>
                     );
@@ -513,8 +518,20 @@ export default function PurchaseReturnDetailPage() {
                            <span>{formatDate(purchaseReturn.returnDate)}</span>
                          </div>
                        </div>
-                       {purchaseReturn.staxEInvoiceNumber && (
+                       {purchaseReturn.purchaseInvoice && (
                           <div className="flex justify-between mt-2 pt-2 border-t border-gray-200">
+                             <span className="font-bold">Source Invoice:</span>
+                             <span>{purchaseReturn.purchaseInvoice.invoiceNumber}</span>
+                          </div>
+                       )}
+                       {(purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber) && (
+                          <div className="flex justify-between mt-1">
+                             <span className="font-bold">GRN Number:</span>
+                             <span>{purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber}</span>
+                          </div>
+                       )}
+                       {purchaseReturn.staxEInvoiceNumber && (
+                          <div className="flex justify-between mt-1">
                              <span className="font-bold">STax e-Inv #:</span>
                              <span>{purchaseReturn.staxEInvoiceNumber}</span>
                           </div>
@@ -542,6 +559,8 @@ export default function PurchaseReturnDetailPage() {
                         <th className="py-1 pr-1 text-left font-bold w-[9%]">SKU</th>
                         <th className="py-1 pr-1 text-left font-bold w-[7%]">HS Code</th>
                         <th className="py-1 pr-1 text-left font-bold w-[16%]">Description</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[6%]">Size</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[6%]">Color</th>
                         <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
                         <th className="py-1 pr-1 text-right font-bold w-[8%]">Unit Cost</th>
                         <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Excl Tax</th>
@@ -578,6 +597,8 @@ export default function PurchaseReturnDetailPage() {
                                 <div>{item.description || item.item?.description || '—'}</div>
                                 {item.reason && <div className="text-[9px] text-gray-500 italic mt-0.5">Reason: {item.reason}</div>}
                               </td>
+                              <td className="py-1 pr-1 text-left">{item.item?.size?.name || item.size || '—'}</td>
+                              <td className="py-1 pr-1 text-left">{item.item?.color?.name || item.color || '—'}</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{qty}</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(unitCost)}</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valExcl)}</td>
@@ -590,7 +611,7 @@ export default function PurchaseReturnDetailPage() {
                         })
                       ) : (
                         <tr>
-                            <td colSpan={11} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                            <td colSpan={13} className="py-4 text-center text-muted-foreground border-b border-gray-300">
                                 No items found for this return
                             </td>
                         </tr>
@@ -600,11 +621,23 @@ export default function PurchaseReturnDetailPage() {
 
                 {/* Totals Section */}
                 <div className="flex border-b border-black pb-4 text-xs sm:text-[13px] justify-between">
-                    <div className="w-[50%] pt-4 flex flex-col justify-end">
+                    <div className="w-[50%] pt-4 flex flex-col justify-end gap-1">
                         <div className="flex gap-2 font-bold mb-1">
                             <span className="whitespace-nowrap">In Words:</span>
                             <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(purchaseReturn.totalAmount || 0))}</span>
                         </div>
+                        {purchaseReturn.reason && (
+                          <div className="text-left text-xs mt-2 border-t pt-2 border-dashed border-gray-300">
+                            <span className="font-bold">Reason for Return: </span>
+                            <span className="text-gray-700">{purchaseReturn.reason}</span>
+                          </div>
+                        )}
+                        {purchaseReturn.notes && (
+                          <div className="text-left text-xs mt-1">
+                            <span className="font-bold">Internal Notes: </span>
+                            <span className="text-gray-700">{purchaseReturn.notes}</span>
+                          </div>
+                        )}
                     </div>
                     <div className="w-[45%] flex flex-col space-y-1 text-right">
                         {(() => {

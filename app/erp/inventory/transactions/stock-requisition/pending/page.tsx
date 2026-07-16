@@ -7,18 +7,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
-import { Input } from '@/components/ui/input';
 import {
   stockRequisitionApi,
 } from '@/lib/api';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
-  ArrowRightLeft,
   Loader2,
   FileText,
-  AlertTriangle,
-  CheckCircle,
   Printer,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -26,14 +22,11 @@ import Link from 'next/link';
 export default function StockRequisitionPendingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(true);
-  const [submitting, setSubmitting] = useState<boolean>(false);
   const [requisitions, setRequisitions] = useState<any[]>([]);
 
   // Detail Sheet State
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState<boolean>(false);
-  const [isConverting, setIsConverting] = useState<boolean>(false);
-  const [stnQuantities, setStnQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadRequisitions();
@@ -57,26 +50,7 @@ export default function StockRequisitionPendingPage() {
 
   const openDetailSheet = (req: any) => {
     setSelectedRequisition(req);
-    // Pre-populate quantities for STN conversion
-    const qtyMap: Record<string, number> = {};
-    req.items.forEach((item: any) => {
-      qtyMap[item.itemId] = Number(item.quantity);
-    });
-    setStnQuantities(qtyMap);
-    setIsConverting(true);
     setDetailSheetOpen(true);
-  };
-
-  const handleStnQtyChange = (itemId: string, val: number, maxQty: number) => {
-    if (val < 0) return;
-    if (val > maxQty) {
-      toast.warning(`Cannot exceed requisition quantity of ${maxQty}`);
-      return;
-    }
-    setStnQuantities((prev) => ({
-      ...prev,
-      [itemId]: val,
-    }));
   };
 
   const handleCancelRequisition = async (id: string) => {
@@ -95,46 +69,6 @@ export default function StockRequisitionPendingPage() {
     }
   };
 
-  const handleConvertToSTN = async () => {
-    if (!selectedRequisition) return;
-
-    // Build items payload
-    const itemsPayload = selectedRequisition.items.map((item: any) => ({
-      itemId: item.itemId,
-      quantity: stnQuantities[item.itemId] ?? Number(item.quantity),
-    })).filter((item: any) => item.quantity > 0);
-
-    if (itemsPayload.length === 0) {
-      toast.error('Please specify transfer quantity for at least one item');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await stockRequisitionApi.convertToSTN(selectedRequisition.id, {
-        items: itemsPayload,
-        notes: `Converted from SRN ${selectedRequisition.requisitionNo}`,
-      });
-
-      if (res.status) {
-        const stnId = res.data?.id;
-        toast.success('Requisition converted to STN successfully! Opening print preview...');
-        setDetailSheetOpen(false);
-        loadRequisitions();
-        // Redirect directly to STN print slip page
-        if (stnId) {
-          router.push(`/erp/inventory/transactions/stock-transfer/slip/${stnId}`);
-        } else {
-          router.push('/erp/inventory/transactions/stock-transfer');
-        }
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to convert requisition to STN');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     return <Badge className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold">Pending</Badge>;
   };
@@ -148,7 +82,7 @@ export default function StockRequisitionPendingPage() {
             Warehouse Pending Requisitions
           </h1>
           <p className="text-muted-foreground mt-1">
-            Pick, adjust, and convert pending Outlet Stock Requisition Notes (SRN) into Stock Transfer Notes (STN).
+            View and manage pending Outlet Stock Requisition Notes (SRN).
           </p>
         </div>
         <div className="flex gap-2">
@@ -203,15 +137,6 @@ export default function StockRequisitionPendingPage() {
                           onClick={() => openDetailSheet(req)}
                         >
                           View Detail
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="bg-indigo-600 hover:bg-indigo-700 font-bold"
-                          onClick={() => {
-                            router.push(`/erp/inventory/transactions/stock-transfer?requisitionId=${req.id}`);
-                          }}
-                        >
-                          <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Convert to STN
                         </Button>
                       </div>
                     </TableCell>
@@ -275,11 +200,6 @@ export default function StockRequisitionPendingPage() {
                     <FileText className="h-5 w-5 text-indigo-600" />
                     Items Requisitioned
                   </h3>
-                  {isConverting && (
-                    <Badge variant="outline" className="border-amber-300 text-amber-700 bg-amber-50 flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" /> WH Picking mode (Quantities can only be decreased)
-                    </Badge>
-                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -288,9 +208,6 @@ export default function StockRequisitionPendingPage() {
                   </Badge>
                   <Badge variant="outline" className="font-bold">
                     Total Req Qty: {selectedRequisition.items.reduce((sum: number, item: any) => sum + Number(item.quantity), 0)}
-                  </Badge>
-                  <Badge className="bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold hover:bg-indigo-100/80">
-                    Total Transfer Qty: {selectedRequisition.items.reduce((sum: number, item: any) => sum + (stnQuantities[item.itemId] ?? Number(item.quantity)), 0)}
                   </Badge>
                 </div>
 
@@ -303,17 +220,12 @@ export default function StockRequisitionPendingPage() {
                         <TableHead className="font-bold">Color</TableHead>
                         <TableHead className="font-bold">Size</TableHead>
                         <TableHead className="font-bold w-[100px] text-center">Req Qty</TableHead>
-                        {isConverting && (
-                          <TableHead className="font-bold w-[120px] text-center text-amber-700">
-                            Transfer Qty
-                          </TableHead>
-                        )}
+
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {selectedRequisition.items.map((item: any) => {
                         const originalQty = Number(item.quantity);
-                        const currentStnQty = stnQuantities[item.itemId] ?? originalQty;
 
                         return (
                           <TableRow key={item.id}>
@@ -326,24 +238,6 @@ export default function StockRequisitionPendingPage() {
                               {item.item?.size?.name || <span className="text-muted-foreground/30">—</span>}
                             </TableCell>
                             <TableCell className="text-center font-semibold">{originalQty}</TableCell>
-                            {isConverting && (
-                              <TableCell className="bg-amber-50/40">
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={originalQty}
-                                  value={currentStnQty}
-                                  onChange={(e) =>
-                                    handleStnQtyChange(
-                                      item.itemId,
-                                      parseInt(e.target.value) || 0,
-                                      originalQty,
-                                    )
-                                  }
-                                  className="w-20 text-center mx-auto border-amber-300 focus-visible:ring-amber-500 font-bold"
-                                />
-                              </TableCell>
-                            )}
                           </TableRow>
                         );
                       })}
@@ -374,21 +268,6 @@ export default function StockRequisitionPendingPage() {
                     </Button>
                     <Button variant="outline" onClick={() => setDetailSheetOpen(false)}>
                       Close
-                    </Button>
-                    <Button
-                      className="bg-indigo-600 hover:bg-indigo-700 font-bold"
-                      disabled={submitting}
-                      onClick={handleConvertToSTN}
-                    >
-                      {submitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Converting...
-                        </>
-                      ) : (
-                        <>
-                          <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Convert to STN
-                        </>
-                      )}
                     </Button>
                   </div>
                 </div>

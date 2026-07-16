@@ -709,7 +709,7 @@ export interface PurchaseReturn {
   supplierId: string;
   warehouseId: string;
   returnDate: string;
-  returnType: 'DEFECTIVE' | 'EXCESS' | 'WRONG_ITEM' | 'DAMAGED';
+  returnType: 'DEFECTIVE' | 'EXCESS' | 'WRONG_ITEM' | 'DAMAGED' | 'SHORTAGE';
   reason?: string;
   status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
   subtotal: number;
@@ -752,7 +752,7 @@ export interface CreatePurchaseReturnDto {
   purchaseInvoiceId?: string;
   supplierId: string;
   warehouseId: string;
-  returnType: 'DEFECTIVE' | 'EXCESS' | 'WRONG_ITEM' | 'DAMAGED';
+  returnType: 'DEFECTIVE' | 'EXCESS' | 'WRONG_ITEM' | 'DAMAGED' | 'SHORTAGE';
   reason?: string;
   notes?: string;
   staxEInvoiceNumber?: string;
@@ -774,7 +774,15 @@ export interface UpdatePurchaseReturnDto extends Partial<CreatePurchaseReturnDto
 
 export const purchaseReturnApi = {
   list: (params?: { status?: string }) => {
-    const query = new URLSearchParams(params as any).toString();
+    const cleanParams: Record<string, string> = {};
+    if (params) {
+      Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          cleanParams[key] = val;
+        }
+      });
+    }
+    const query = new URLSearchParams(cleanParams).toString();
     return fetchApi<PurchaseReturn[]>(`/purchase/purchase-returns?${query}`);
   },
   create: (data: CreatePurchaseReturnDto) =>

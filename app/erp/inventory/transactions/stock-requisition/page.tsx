@@ -1205,14 +1205,6 @@ export default function StockRequisitionPage() {
                       <Button variant="outline" onClick={() => setDetailSheetOpen(false)}>
                         Close
                       </Button>
-                      {selectedRequisition.status === 'PENDING' && (
-                        <Button
-                          className="bg-indigo-600 hover:bg-indigo-700 font-bold"
-                          onClick={() => setIsConverting(true)}
-                        >
-                          Convert to STN
-                        </Button>
-                      )}
                     </div>
                   </div>
                 )}

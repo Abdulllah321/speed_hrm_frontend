@@ -165,6 +165,7 @@ export default function EditPurchaseReturnPage() {
                     <SelectItem value="EXCESS">Excess</SelectItem>
                     <SelectItem value="WRONG_ITEM">Wrong Item</SelectItem>
                     <SelectItem value="DAMAGED">Damaged</SelectItem>
+                    <SelectItem value="SHORTAGE">Shortage</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -229,7 +230,7 @@ export default function EditPurchaseReturnPage() {
                           step="0.01"
                           value={item.returnQty}
                           onChange={(e) => handleItemChange(index, 'returnQty', parseFloat(e.target.value) || 0)}
-                          className="w-24"
+                          className="w-24 text-center bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-0 focus:outline-none transition-all mx-auto"
                         />
                       </td>
                       <td className="p-3">{formatCurrency(item.unitPrice)}</td>
@@ -239,7 +240,7 @@ export default function EditPurchaseReturnPage() {
                           value={item.reason || ''}
                           onChange={(e) => handleItemChange(index, 'reason', e.target.value)}
                           placeholder="Item reason..."
-                          className="w-32"
+                          className="w-32 bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-0 focus:outline-none transition-all"
                         />
                       </td>
                       <td className="p-3">

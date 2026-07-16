@@ -289,11 +289,14 @@ export default function CreatePurchaseReturnPage() {
                         <SelectValue placeholder="Select Purchase Invoice" />
                       </SelectTrigger>
                       <SelectContent>
-                        {eligibleDocs.map((doc) => (
-                          <SelectItem key={doc.id} value={doc.id}>
-                            {doc.invoiceNumber} - {doc.supplier?.name || 'Unknown Supplier'}
-                          </SelectItem>
-                        ))}
+                        {eligibleDocs.map((doc) => {
+                          const grnNo = doc.grn?.grnNumber || doc.landedCost?.grn?.grnNumber;
+                          return (
+                            <SelectItem key={doc.id} value={doc.id}>
+                              {doc.invoiceNumber} {grnNo ? `(GRN: ${grnNo})` : ''} - {doc.supplier?.name || 'Unknown Supplier'}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -329,7 +332,7 @@ export default function CreatePurchaseReturnPage() {
                         <CardTitle>Return Details</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-4 gap-4">
                           <div className="space-y-2">
                             <Label>Return Type</Label>
                             <Select
@@ -344,12 +347,17 @@ export default function CreatePurchaseReturnPage() {
                                 <SelectItem value="EXCESS">Excess</SelectItem>
                                 <SelectItem value="WRONG_ITEM">Wrong Item</SelectItem>
                                 <SelectItem value="DAMAGED">Damaged</SelectItem>
+                                <SelectItem value="SHORTAGE">Shortage</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
                             <Label>Supplier</Label>
                             <Input value={selectedDoc.supplier?.name || 'Unknown Supplier'} disabled />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>GRN Number</Label>
+                            <Input value={selectedDoc.grn?.grnNumber || selectedDoc.landedCost?.grn?.grnNumber || '—'} disabled />
                           </div>
                           <div className="space-y-2">
                             <Label>STax e-Inv #</Label>
@@ -461,7 +469,7 @@ export default function CreatePurchaseReturnPage() {
                                   <div className="text-xs text-gray-400 mt-2">
                                     <Input
                                       placeholder="Reason (optional)"
-                                      className="h-8 text-xs py-1"
+                                      className="h-8 text-xs py-1 bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-0 focus:outline-none transition-all"
                                       value={item.reason || ''}
                                       onChange={(e) => handleItemChange(index, 'reason', e.target.value)}
                                     />
@@ -475,7 +483,7 @@ export default function CreatePurchaseReturnPage() {
                                     type="number"
                                     min="0"
                                     max={item.quantity}
-                                    className="h-9 text-center border-blue-300 focus:border-blue-500 bg-blue-50/50"
+                                    className="h-9 text-center bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:bg-white focus:ring-0 focus:outline-none w-20 mx-auto transition-all"
                                     value={item.returnQty}
                                     onChange={(e) => {
                                       const val = Number(e.target.value);
@@ -550,8 +558,20 @@ export default function CreatePurchaseReturnPage() {
                             <span>{formatDate(new Date())}</span>
                           </div>
                        </div>
-                       {formData.staxEInvoiceNumber && (
+                       {selectedDoc && (
                           <div className="flex justify-between mt-2 pt-2 border-t border-gray-200">
+                             <span className="font-bold">Source Invoice:</span>
+                             <span>{selectedDoc.invoiceNumber}</span>
+                          </div>
+                       )}
+                       {(selectedDoc?.grn?.grnNumber || selectedDoc?.landedCost?.grn?.grnNumber) && (
+                          <div className="flex justify-between mt-1">
+                             <span className="font-bold">GRN Number:</span>
+                             <span>{selectedDoc.grn?.grnNumber || selectedDoc.landedCost?.grn?.grnNumber}</span>
+                          </div>
+                       )}
+                       {formData.staxEInvoiceNumber && (
+                          <div className="flex justify-between mt-1">
                              <span className="font-bold">STax e-Inv #:</span>
                              <span>{formData.staxEInvoiceNumber}</span>
                           </div>
@@ -582,6 +602,8 @@ export default function CreatePurchaseReturnPage() {
                         <th className="py-1 pr-1 text-left font-bold w-[9%]">SKU</th>
                         <th className="py-1 pr-1 text-left font-bold w-[7%]">HS Code</th>
                         <th className="py-1 pr-1 text-left font-bold w-[16%]">Description</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[6%]">Size</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[6%]">Color</th>
                         <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
                         <th className="py-1 pr-1 text-right font-bold w-[8%]">Unit Cost</th>
                         <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Excl Tax</th>
@@ -620,6 +642,8 @@ export default function CreatePurchaseReturnPage() {
                                   <div>{item.description || '—'}</div>
                                   {item.reason && <div className="text-[9px] text-gray-500 italic mt-0.5">Reason: {item.reason}</div>}
                                 </td>
+                                <td className="py-1 pr-1 text-left">{item.size || '—'}</td>
+                                <td className="py-1 pr-1 text-left">{item.color || '—'}</td>
                                 <td className="py-1 pr-1 text-right tabular-nums">{qty}</td>
                                 <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(unitCost)}</td>
                                 <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valExcl)}</td>
@@ -633,7 +657,7 @@ export default function CreatePurchaseReturnPage() {
                         } else {
                           return (
                             <tr>
-                                <td colSpan={11} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                                <td colSpan={13} className="py-4 text-center text-muted-foreground border-b border-gray-300">
                                     No items to return selected
                                 </td>
                             </tr>
@@ -645,11 +669,23 @@ export default function CreatePurchaseReturnPage() {
 
                 {/* Totals Section */}
                 <div className="flex border-b border-black pb-4 text-xs sm:text-[13px] justify-between">
-                    <div className="w-[50%] pt-4 flex flex-col justify-end">
+                    <div className="w-[50%] pt-4 flex flex-col justify-end gap-1">
                         <div className="flex gap-2 font-bold mb-1">
                             <span className="whitespace-nowrap">In Words:</span>
                             <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(calculateTotal())}</span>
                         </div>
+                        {formData.reason && (
+                          <div className="text-left text-xs mt-2 border-t pt-2 border-dashed border-gray-300">
+                            <span className="font-bold">Reason for Return: </span>
+                            <span className="text-gray-700">{formData.reason}</span>
+                          </div>
+                        )}
+                        {formData.notes && (
+                          <div className="text-left text-xs mt-1">
+                            <span className="font-bold">Internal Notes: </span>
+                            <span className="text-gray-700">{formData.notes}</span>
+                          </div>
+                        )}
                     </div>
                     <div className="w-[45%] flex flex-col space-y-1 text-right">
                         {(() => {

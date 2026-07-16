@@ -21,7 +21,13 @@ import { format } from "date-fns";
 interface TransferItem {
     id: string;
     quantity: number;
-    item?: { sku: string; description: string };
+    item?: {
+        sku: string;
+        description: string;
+        unitPrice?: number;
+        color?: { name: string };
+        size?: { name: string };
+    };
 }
 
 interface Transfer {
@@ -254,17 +260,25 @@ export default function StockReceiptPage() {
                                         <>
                                             <Separator />
                                             <div className="px-4 py-3 bg-muted/10">
-                                                <div className="grid grid-cols-[1fr_auto] gap-2 mb-2">
+                                                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 mb-2 pb-2 border-b border-border/60">
                                                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Item</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Size</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Price</span>
                                                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-right">Qty</span>
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     {transfer.items.map((item) => (
-                                                        <div key={item.id} className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                                                            <div>
-                                                                <span className="font-mono text-[10px] text-muted-foreground">{item.item?.sku}</span>
-                                                                <p className="text-sm font-medium truncate">{item.item?.description}</p>
+                                                        <div key={item.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center border-b border-border/40 last:border-0 py-2 last:pb-0">
+                                                            <div className="min-w-0">
+                                                                <span className="font-mono text-[10px] text-muted-foreground block">{item.item?.sku || "—"}</span>
+                                                                <p className="text-sm font-medium truncate" title={item.item?.description}>{item.item?.description || "—"}</p>
                                                             </div>
+                                                            <span className="text-xs text-muted-foreground">{item.item?.color?.name || "—"}</span>
+                                                            <span className="text-xs text-muted-foreground">{item.item?.size?.name || "—"}</span>
+                                                            <span className="text-xs font-semibold text-muted-foreground">
+                                                                {item.item?.unitPrice !== undefined && item.item?.unitPrice !== null ? `Rs. ${item.item.unitPrice.toLocaleString()}` : "—"}
+                                                            </span>
                                                             <span className="font-bold font-mono text-sm text-right">{item.quantity}</span>
                                                         </div>
                                                     ))}
@@ -293,17 +307,26 @@ export default function StockReceiptPage() {
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th>SKU</th>
-                                                <th>Description</th>
+                                                <th style={{ width: "30%" }}>Item Details</th>
+                                                <th>Color</th>
+                                                <th>Size</th>
+                                                <th>Price</th>
                                                 <th style={{ textAlign: "right" }}>Qty</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {transfer.items.map((item) => (
-                                                <tr key={item.id}>
-                                                    <td style={{ fontSize: 10 }}>{item.item?.sku || "—"}</td>
-                                                    <td>{item.item?.description || "Item"}</td>
-                                                    <td style={{ textAlign: "right", fontWeight: "bold" }}>{item.quantity}</td>
+                                                <tr key={item.id} style={{ borderBottom: "1px dashed #eee" }}>
+                                                    <td style={{ padding: "4px 0" }}>
+                                                        <span style={{ fontSize: 10, fontWeight: "bold" }}>{item.item?.sku || "—"}</span>
+                                                        <div style={{ fontSize: 11 }}>{item.item?.description || "Item"}</div>
+                                                    </td>
+                                                    <td style={{ padding: "4px 0", fontSize: 11 }}>{item.item?.color?.name || "—"}</td>
+                                                    <td style={{ padding: "4px 0", fontSize: 11 }}>{item.item?.size?.name || "—"}</td>
+                                                    <td style={{ padding: "4px 0", fontSize: 11 }}>
+                                                        {item.item?.unitPrice !== undefined && item.item?.unitPrice !== null ? `Rs. ${item.item.unitPrice.toLocaleString()}` : "—"}
+                                                    </td>
+                                                    <td style={{ textAlign: "right", fontWeight: "bold", verticalAlign: "middle" }}>{item.quantity}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
