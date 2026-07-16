@@ -47,9 +47,11 @@ function StockTransferContent() {
         color?: string;
         size?: string;
         quantity: number;
+        maxQuantity?: number;
         notes: string;
         availableStock: number;
     }>>([]);
+    const [requisitionItemsMap, setRequisitionItemsMap] = useState<Record<string, number>>({});
     const [itemOptions, setItemOptions] = useState<AutocompleteOption[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [globalNotes, setGlobalNotes] = useState('');
@@ -234,15 +236,32 @@ function StockTransferContent() {
             };
 
             const existingIndex = selectedItems.findIndex(i => i.id === itemData.id);
+            
+            if (activeRequisitionId) {
+                if (!requisitionItemsMap[itemData.id]) {
+                    if (soundEnabled) playScanErrorBuzz();
+                    toast.error(`Item ${itemData.sku} is not part of the active Stock Requisition Note (SRN).`);
+                    return;
+                }
+            }
+
             if (existingIndex > -1) {
                 if (autoIncrement) {
                     const newQty = selectedItems[existingIndex].quantity + bulkQty;
+                    if (activeRequisitionId) {
+                        const maxQty = requisitionItemsMap[itemData.id];
+                        if (maxQty !== undefined && newQty > maxQty) {
+                            if (soundEnabled) playScanErrorBuzz();
+                            toast.error(`Quantity cannot exceed the requested requisition quantity of ${maxQty}`);
+                            return;
+                        }
+                    }
                     if (newQty > itemData.availableStock) {
                         toast.warning(`Quantity exceeds available stock (${itemData.availableStock})`);
                     }
                     setSelectedItems(prev => prev.map((item, idx) => 
                         idx === existingIndex 
-                            ? { ...item, quantity: item.quantity + bulkQty }
+                            ? { ...item, quantity: newQty }
                             : item
                     ));
                     if (soundEnabled) playScanSuccessBeep();
@@ -256,6 +275,14 @@ function StockTransferContent() {
                     });
                 }
             } else {
+                if (activeRequisitionId) {
+                    const maxQty = requisitionItemsMap[itemData.id];
+                    if (maxQty !== undefined && bulkQty > maxQty) {
+                        if (soundEnabled) playScanErrorBuzz();
+                        toast.error(`Quantity cannot exceed the requested requisition quantity of ${maxQty}`);
+                        return;
+                    }
+                }
                 if (bulkQty > itemData.availableStock) {
                     toast.warning(`Quantity exceeds available stock (${itemData.availableStock})`);
                 }
@@ -266,6 +293,7 @@ function StockTransferContent() {
                     color: itemData.color,
                     size: itemData.size,
                     quantity: bulkQty,
+                    maxQuantity: activeRequisitionId ? requisitionItemsMap[itemData.id] : undefined,
                     notes: '',
                     availableStock: itemData.availableStock,
                 }]);
@@ -385,6 +413,7 @@ function StockTransferContent() {
                     color: item.item?.color?.name,
                     size: item.item?.size?.name,
                     quantity: Number(item.quantity),
+                    maxQuantity: Number(item.quantity),
                     notes: `From Requisition ${requisition.requisitionNo}`,
                     availableStock: availableStock,
                 };
@@ -402,6 +431,12 @@ function StockTransferContent() {
         setIsRequisitionsSheetOpen(false);
         setActiveRequisitionId(req.id);
         setActiveRequisitionNo(req.requisitionNo);
+
+        const qtyMap: Record<string, number> = {};
+        req.items.forEach((item: any) => {
+            qtyMap[item.itemId] = Number(item.quantity);
+        });
+        setRequisitionItemsMap(qtyMap);
 
         setTransferMode('WAREHOUSE_TO_OUTLET');
 
@@ -559,6 +594,18 @@ function StockTransferContent() {
                 return;
             }
 
+            if (activeRequisitionId) {
+                if (!requisitionItemsMap[itemData.id]) {
+                    toast.error(`Item ${itemData.sku || itemData.itemId} is not part of the active Stock Requisition Note (SRN).`);
+                    return;
+                }
+                const maxQty = requisitionItemsMap[itemData.id];
+                if (maxQty !== undefined && bulkQty > maxQty) {
+                    toast.error(`Quantity cannot exceed the requested requisition quantity of ${maxQty}`);
+                    return;
+                }
+            }
+
             if (bulkQty > itemData.availableStock) {
                 toast.warning(`Quantity exceeds available stock (${itemData.availableStock})`);
             }
@@ -570,6 +617,7 @@ function StockTransferContent() {
                 color: itemData.color?.name,
                 size: itemData.size?.name,
                 quantity: bulkQty,
+                maxQuantity: activeRequisitionId ? requisitionItemsMap[itemData.id] : undefined,
                 notes: '',
                 availableStock: itemData.availableStock
             }]);
@@ -577,9 +625,16 @@ function StockTransferContent() {
     };
 
     const updateItemQuantity = (id: string, qty: number) => {
-        setSelectedItems(prev => prev.map(item =>
-            item.id === id ? { ...item, quantity: qty } : item
-        ));
+        setSelectedItems(prev => prev.map(item => {
+            if (item.id === id) {
+                if (activeRequisitionId && item.maxQuantity !== undefined && qty > item.maxQuantity) {
+                    toast.error(`Quantity cannot exceed the requested requisition quantity of ${item.maxQuantity}`);
+                    return { ...item, quantity: item.maxQuantity };
+                }
+                return { ...item, quantity: qty };
+            }
+            return item;
+        }));
     };
 
     const updateItemNotes = (id: string, notes: string) => {
@@ -669,6 +724,7 @@ function StockTransferContent() {
             setGlobalNotes('');
             setActiveRequisitionId(null);
             setActiveRequisitionNo(null);
+            setRequisitionItemsMap({});
 
             if (stnId) {
                 router.push(`/erp/inventory/transactions/stock-transfer/slip/${stnId}`);
@@ -791,6 +847,7 @@ function StockTransferContent() {
                                     onClick={() => {
                                         setActiveRequisitionId(null);
                                         setActiveRequisitionNo(null);
+                                        setRequisitionItemsMap({});
                                         setSelectedItems([]);
                                         setGlobalNotes('');
                                     }}
@@ -1500,6 +1557,7 @@ function StockTransferContent() {
                                                     <Input
                                                         type="number"
                                                         min="1"
+                                                        max={activeRequisitionId && item.maxQuantity !== undefined ? item.maxQuantity : undefined}
                                                         value={item.quantity}
                                                         onChange={(e) => updateItemQuantity(item.id, Number(e.target.value))}
                                                         className="h-8 focus-visible:ring-primary shadow-none bg-transparent group-hover:bg-background transition-colors"

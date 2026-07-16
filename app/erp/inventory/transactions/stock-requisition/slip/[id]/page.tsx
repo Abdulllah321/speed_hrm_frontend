@@ -77,6 +77,22 @@ export default function StockRequisitionSlipPage() {
     window.print();
   };
 
+  const handleBackNavigation = () => {
+    try {
+      // Check if there's history to go back to
+      if (window.history.length > 1) {
+        router.back();
+      } else {
+        // Fallback to stock requisition list page
+        router.push('/erp/inventory/transactions/stock-requisition');
+      }
+    } catch (error) {
+      console.error('Navigation error:', error);
+      // Ultimate fallback
+      router.push('/erp/inventory/transactions/stock-requisition');
+    }
+  };
+
   // Safe Date formatter
   const formatRequisitionDate = (dateStr: any) => {
     if (!dateStr) return '';
@@ -213,7 +229,7 @@ export default function StockRequisitionSlipPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
         <p className="text-rose-500 font-bold">Requisition Slip Not Found</p>
-        <Button onClick={() => router.back()}>Go Back</Button>
+        <Button onClick={() => handleBackNavigation()}>Go Back</Button>
       </div>
     );
   }
@@ -233,7 +249,7 @@ export default function StockRequisitionSlipPage() {
     <div className="min-h-screen bg-gray-50 print:bg-white text-black py-6">
       {/* Top action bar (hidden on print) */}
       <div className="print:hidden bg-white border p-4 flex justify-between items-center shadow-sm max-w-4xl mx-auto rounded-md mb-6">
-        <Button variant="outline" className="font-bold border-2" onClick={() => router.back()}>
+        <Button variant="outline" className="font-bold border-2" onClick={() => handleBackNavigation()}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
         <Button className="bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={printSlip}>

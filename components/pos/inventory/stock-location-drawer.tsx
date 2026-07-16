@@ -18,6 +18,7 @@ import { DirectTransferModal } from "@/components/pos/inventory/direct-transfer-
 import { useAuth } from "@/components/providers/auth-provider";
 import { inventoryApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface StockLocation {
     id: string;
@@ -53,6 +54,7 @@ export function StockLocationDrawer({
     onClose,
 }: StockLocationDrawerProps) {
     const { user } = useAuth();
+    const router = useRouter();
     const [locations, setLocations] = useState<StockLocation[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<StockLocation | null>(null);
@@ -145,10 +147,15 @@ export function StockLocationDrawer({
                                     size="sm"
                                     disabled={currentOutletStock <= 0}
                                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 shadow-sm"
-                                    onClick={() => setIsDirectModalOpen(true)}
+                                    onClick={() => {
+                                        if (item) {
+                                            const url = `/pos/inventory/direct-transfer-out?itemId=${item.id}&sku=${encodeURIComponent(item.sku)}&description=${encodeURIComponent(item.description)}&size=${encodeURIComponent(item.size || "")}&color=${encodeURIComponent(item.color || "")}&availableStock=${currentOutletStock}`;
+                                            router.push(url);
+                                        }
+                                    }}
                                 >
                                     <ArrowLeftRight className="w-3.5 h-3.5" />
-                                    Transfer Out
+                                    Direct Transfer Out
                                 </Button>
                             </div>
                         )}

@@ -63,7 +63,7 @@ export default function StockRequisitionPendingPage() {
       qtyMap[item.itemId] = Number(item.quantity);
     });
     setStnQuantities(qtyMap);
-    setIsConverting(false);
+    setIsConverting(true);
     setDetailSheetOpen(true);
   };
 
@@ -282,13 +282,27 @@ export default function StockRequisitionPendingPage() {
                   )}
                 </div>
 
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="font-bold">
+                    Total Items: {selectedRequisition.items.length}
+                  </Badge>
+                  <Badge variant="outline" className="font-bold">
+                    Total Req Qty: {selectedRequisition.items.reduce((sum: number, item: any) => sum + Number(item.quantity), 0)}
+                  </Badge>
+                  <Badge className="bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold hover:bg-indigo-100/80">
+                    Total Transfer Qty: {selectedRequisition.items.reduce((sum: number, item: any) => sum + (stnQuantities[item.itemId] ?? Number(item.quantity)), 0)}
+                  </Badge>
+                </div>
+
                 <div className="border rounded-md overflow-hidden">
                   <Table>
                     <TableHeader className="bg-gray-100/60">
                       <TableRow>
                         <TableHead className="font-bold">SKU</TableHead>
                         <TableHead className="font-bold">Description</TableHead>
-                        <TableHead className="font-bold w-[120px] text-center">Req Qty</TableHead>
+                        <TableHead className="font-bold">Color</TableHead>
+                        <TableHead className="font-bold">Size</TableHead>
+                        <TableHead className="font-bold w-[100px] text-center">Req Qty</TableHead>
                         {isConverting && (
                           <TableHead className="font-bold w-[120px] text-center text-amber-700">
                             Transfer Qty
@@ -305,6 +319,12 @@ export default function StockRequisitionPendingPage() {
                           <TableRow key={item.id}>
                             <TableCell className="font-semibold">{item.item?.sku}</TableCell>
                             <TableCell className="max-w-[200px] truncate">{item.item?.description}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground font-semibold">
+                              {item.item?.color?.name || <span className="text-muted-foreground/30">—</span>}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground font-semibold">
+                              {item.item?.size?.name || <span className="text-muted-foreground/30">—</span>}
+                            </TableCell>
                             <TableCell className="text-center font-semibold">{originalQty}</TableCell>
                             {isConverting && (
                               <TableCell className="bg-amber-50/40">
@@ -357,12 +377,18 @@ export default function StockRequisitionPendingPage() {
                     </Button>
                     <Button
                       className="bg-indigo-600 hover:bg-indigo-700 font-bold"
-                      onClick={() => {
-                        setDetailSheetOpen(false);
-                        router.push(`/erp/inventory/transactions/stock-transfer?requisitionId=${selectedRequisition.id}`);
-                      }}
+                      disabled={submitting}
+                      onClick={handleConvertToSTN}
                     >
-                      <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Convert to STN
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Converting...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Convert to STN
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
