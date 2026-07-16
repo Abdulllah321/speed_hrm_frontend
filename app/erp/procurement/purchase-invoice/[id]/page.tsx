@@ -912,6 +912,16 @@ export default function PurchaseInvoiceDetailPage() {
                       </label>
                       <p className="font-medium">{invoice.invoiceNumber}</p>
                     </div>
+                    {(invoice.grn?.grnNumber || invoice.landedCost?.grn?.grnNumber) && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          GRN Number
+                        </label>
+                        <p className="font-medium">
+                          {invoice.grn?.grnNumber || invoice.landedCost?.grn?.grnNumber}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <label className="text-sm font-medium text-gray-500">
                         Invoice Date
@@ -1259,6 +1269,14 @@ export default function PurchaseInvoiceDetailPage() {
                   <span className="font-bold">Invoice Number:</span>
                   <span className="font-bold">{invoice.invoiceNumber}</span>
                 </div>
+                {(invoice.grn?.grnNumber || invoice.landedCost?.grn?.grnNumber) && (
+                  <div className="flex justify-between mb-2">
+                    <span className="font-bold">GRN Number:</span>
+                    <span className="font-bold">
+                      {invoice.grn?.grnNumber || invoice.landedCost?.grn?.grnNumber}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <div className="flex gap-2">
                     <span className="font-bold">Date:</span>

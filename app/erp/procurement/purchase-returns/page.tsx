@@ -23,6 +23,7 @@ const returnTypeLabels = {
   EXCESS: 'Excess',
   WRONG_ITEM: 'Wrong Item',
   DAMAGED: 'Damaged',
+  SHORTAGE: 'Shortage',
 };
 
 export default function PurchaseReturnsPage() {
@@ -129,6 +130,8 @@ export default function PurchaseReturnsPage() {
                     <tr className="border-b">
                       <th className="text-left p-3">Return #</th>
                       <th className="text-left p-3">Source</th>
+                      <th className="text-left p-3">GRN #</th>
+                      <th className="text-left p-3">Brand</th>
                       <th className="text-left p-3">Supplier</th>
                       <th className="text-left p-3">Type</th>
                       <th className="text-left p-3">Amount</th>
@@ -138,27 +141,38 @@ export default function PurchaseReturnsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {returns.map((returnItem) => (
-                      <tr key={returnItem.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3 font-medium">{returnItem.returnNumber}</td>
-                        <td className="p-3">
-                          <Badge variant="outline">
-                            {returnItem.sourceType === 'INVOICE' 
-                              ? 'Purchase Invoice' 
-                              : returnItem.sourceType === 'GRN' 
-                                ? 'GRN' 
-                                : 'Landed Cost'}
-                          </Badge>
-                        </td>
-                        <td className="p-3">{returnItem.supplier?.name || 'N/A'}</td>
-                        <td className="p-3">{returnTypeLabels[returnItem.returnType]}</td>
-                        <td className="p-3">{formatCurrency(returnItem.totalAmount)}</td>
-                        <td className="p-3">
-                          <Badge className={statusColors[returnItem.status]}>
-                            {returnItem.status}
-                          </Badge>
-                        </td>
-                        <td className="p-3">{formatDate(returnItem.returnDate)}</td>
+                    {returns.map((returnItem) => {
+                      const grnNumber = returnItem.grn?.grnNumber || returnItem.purchaseInvoice?.grn?.grnNumber || returnItem.landedCost?.grn?.grnNumber || '—';
+                      const brandNames = Array.from(
+                        new Set(
+                          (returnItem.items || [])
+                            .map((i: any) => i.item?.brand?.name)
+                            .filter(Boolean)
+                        )
+                      ).join(', ') || '—';
+                      return (
+                        <tr key={returnItem.id} className="border-b hover:bg-gray-50">
+                          <td className="p-3 font-medium">{returnItem.returnNumber}</td>
+                          <td className="p-3">
+                            <Badge variant="outline">
+                              {returnItem.sourceType === 'INVOICE' 
+                                ? 'Purchase Invoice' 
+                                : returnItem.sourceType === 'GRN' 
+                                  ? 'GRN' 
+                                  : 'Landed Cost'}
+                            </Badge>
+                          </td>
+                          <td className="p-3 font-mono text-xs">{grnNumber}</td>
+                          <td className="p-3 font-medium">{brandNames}</td>
+                          <td className="p-3">{returnItem.supplier?.name || 'N/A'}</td>
+                          <td className="p-3">{returnTypeLabels[returnItem.returnType]}</td>
+                          <td className="p-3">{formatCurrency(returnItem.totalAmount)}</td>
+                          <td className="p-3">
+                            <Badge className={statusColors[returnItem.status]}>
+                              {returnItem.status}
+                            </Badge>
+                          </td>
+                          <td className="p-3">{formatDate(returnItem.returnDate)}</td>
                         <td className="p-3">
                           <div className="flex gap-2">
                             <Link href={`/erp/procurement/purchase-returns/${returnItem.id}`} transitionTypes={["nav-forward"]}>
@@ -211,7 +225,8 @@ export default function PurchaseReturnsPage() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
