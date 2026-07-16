@@ -333,3 +333,80 @@ export async function getStockTransactionDetailReportExportStatus(jobId: string)
     }
 }
 
+export async function getAvailableStockSummaryReport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        queryParams.append("locationId", filters.locationId);
+        if (filters.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
+        if (filters.showBrand !== undefined) queryParams.append("showBrand", String(filters.showBrand));
+        if (filters.showDivision !== undefined) queryParams.append("showDivision", String(filters.showDivision));
+        if (filters.showCategory !== undefined) queryParams.append("showCategory", String(filters.showCategory));
+        if (filters.showGender !== undefined) queryParams.append("showGender", String(filters.showGender));
+        if (filters.showSilhouette !== undefined) queryParams.append("showSilhouette", String(filters.showSilhouette));
+        if (filters.showArticle !== undefined) queryParams.append("showArticle", String(filters.showArticle));
+        if (filters.showVariant !== undefined) queryParams.append("showVariant", String(filters.showVariant));
+
+        const queryString = queryParams.toString();
+        const url = `/stock-ledger/available-stock-summary${queryString ? `?${queryString}` : ""}`;
+
+        const response = await authFetch(url, { method: "GET" });
+        return response.data;
+    } catch (error) {
+        console.error("Get available stock summary report error:", error);
+        return { status: false, data: [], message: "Failed to fetch available stock summary report" };
+    }
+}
+
+export async function queueAvailableStockSummaryReportExport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    format: "xlsx" | "pdf";
+    summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const url = `/stock-ledger/available-stock-summary/export/queue`;
+        const response = await authFetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Queue available stock summary report export error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getAvailableStockSummaryReportExportStatus(jobId: string): Promise<{ status: boolean; data?: { state: string; progress: number }; message?: string }> {
+    try {
+        const url = `/stock-ledger/available-stock-summary/export/${jobId}/status`;
+        const response = await authFetch(url, { method: "GET" });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Get available stock summary report status error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
