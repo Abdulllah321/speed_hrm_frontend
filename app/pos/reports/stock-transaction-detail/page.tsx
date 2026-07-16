@@ -475,7 +475,7 @@ export default function StockTransactionDetailReportPage() {
             }
 
             if (node.transactions) {
-                // 1. Product header row (GPC, Category, SKU, Product Name, Size | Color)
+                // 1. Product header row (GPC, Category, SKU, Product Name, Size, Color)
                 rows.push({
                     id: `ph-${currentPath}`,
                     type: 'product-header',
@@ -1070,7 +1070,8 @@ export default function StockTransactionDetailReportPage() {
                                                 <th className="border-r border-slate-200 dark:border-slate-800 pl-2 text-slate-700 dark:text-slate-300">Category</th>
                                                 <th className="border-r border-slate-200 dark:border-slate-800 pl-2 text-slate-700 dark:text-slate-300">SKU</th>
                                                 <th className="border-r border-slate-200 dark:border-slate-800 pl-2 text-slate-700 dark:text-slate-300">Product Name</th>
-                                                <th colSpan={3} className="text-center text-slate-700 dark:text-slate-300">Size | Color</th>
+                                                <th className="border-r border-slate-200 dark:border-slate-800 pl-2 text-slate-700 dark:text-slate-300">Size</th>
+                                                <th colSpan={2} className="pl-2 text-slate-700 dark:text-slate-300">Color</th>
                                             </tr>
                                         );
                                     }
@@ -1082,8 +1083,11 @@ export default function StockTransactionDetailReportPage() {
                                                 <td className="border-r border-slate-200 dark:border-slate-800 pl-2">{row.category || "-"}</td>
                                                 <td className="border-r border-slate-200 dark:border-slate-800 pl-2">{row.sku || "-"}</td>
                                                 <td className="border-r border-slate-200 dark:border-slate-800 pl-2 truncate max-w-[300px]">{row.label || "-"}</td>
-                                                <td colSpan={3} className="text-center font-bold">
-                                                    {showVariant ? `${row.size || "Default"} \/ ${row.color || "Default"}` : "All Sizes \/ All Colors"}
+                                                <td className="border-r border-slate-200 dark:border-slate-800 pl-2">
+                                                    {showVariant ? (row.size || "Default") : "All Sizes"}
+                                                </td>
+                                                <td colSpan={2} className="pl-2">
+                                                    {showVariant ? (row.color || "Default") : "All Colors"}
                                                 </td>
                                             </tr>
                                         );
