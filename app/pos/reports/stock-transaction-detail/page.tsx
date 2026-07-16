@@ -437,7 +437,17 @@ export default function StockTransactionDetailReportPage() {
     const flatRows = useMemo(() => {
         const rows: any[] = [];
         
-        const visit = (node: any, path: string = "", ancestorBrand = "", ancestorDivision = "", ancestorGender = "", ancestorSilhouette = "", ancestorCategory = "") => {
+        const visit = (
+            node: any, 
+            path: string = "", 
+            ancestorBrand = "", 
+            ancestorDivision = "", 
+            ancestorGender = "", 
+            ancestorSilhouette = "", 
+            ancestorCategory = "",
+            ancestorSku = "",
+            ancestorArticleName = ""
+        ) => {
             if (!node) return;
             const currentPath = path ? `${path}-${node.level}-${node.value}` : `${node.level}-${node.value}`;
             
@@ -446,6 +456,8 @@ export default function StockTransactionDetailReportPage() {
             const gender = node.level === 'gender' ? node.value : ancestorGender;
             const silhouette = node.level === 'silhouette' ? node.value : ancestorSilhouette;
             const category = node.level === 'category' ? node.value : ancestorCategory;
+            const sku = node.level === 'article' ? node.sku : ancestorSku;
+            const articleName = node.level === 'article' ? node.articleName : ancestorArticleName;
 
             const isLeaf = !node.children || node.children.length === 0;
 
@@ -467,7 +479,7 @@ export default function StockTransactionDetailReportPage() {
                 rows.push({
                     id: `ph-${currentPath}`,
                     type: 'product-header',
-                    sku: node.sku || node.value,
+                    sku: sku,
                     brand, division, gender, silhouette, category,
                 });
 
@@ -475,8 +487,8 @@ export default function StockTransactionDetailReportPage() {
                 rows.push({
                     id: `pd-${currentPath}`,
                     type: 'product-data',
-                    label: node.level === 'article' ? node.articleName : node.value,
-                    sku: node.sku || node.value,
+                    label: articleName,
+                    sku: sku,
                     color: node.color,
                     size: node.size,
                     brand, division, gender, silhouette, category,
@@ -486,7 +498,7 @@ export default function StockTransactionDetailReportPage() {
                 rows.push({
                     id: `hdr-${currentPath}`,
                     type: 'ledger-header',
-                    sku: node.sku || node.value,
+                    sku: sku,
                     brand, division, gender, silhouette, category,
                 });
 
@@ -496,7 +508,7 @@ export default function StockTransactionDetailReportPage() {
                     type: 'opening-balance',
                     date: dateRange.from,
                     balance: node.openingBalance,
-                    sku: node.sku || node.value,
+                    sku: sku,
                     brand, division, gender, silhouette, category,
                 });
 
@@ -515,7 +527,7 @@ export default function StockTransactionDetailReportPage() {
                         outQty: t.outQty,
                         balance: t.balance,
                         isInTransit: t.isInTransit,
-                        sku: node.sku || node.value,
+                        sku: sku,
                         brand, division, gender, silhouette, category,
                     });
                 }
@@ -526,14 +538,22 @@ export default function StockTransactionDetailReportPage() {
                     type: 'closing-balance',
                     date: dateRange.to,
                     balance: node.closingBalance,
-                    sku: node.sku || node.value,
+                    sku: sku,
+                    brand, division, gender, silhouette, category,
+                });
+
+                // 7. Divider/Spacer row
+                rows.push({
+                    id: `div-${currentPath}`,
+                    type: 'divider',
+                    sku: sku,
                     brand, division, gender, silhouette, category,
                 });
             }
             
             if (node.children && node.children.length > 0) {
                 for (const child of node.children) {
-                    visit(child, currentPath, brand, division, gender, silhouette, category);
+                    visit(child, currentPath, brand, division, gender, silhouette, category, sku, articleName);
                 }
             }
         };
@@ -1107,6 +1127,14 @@ export default function StockTransactionDetailReportPage() {
                                                 <td className="text-right pr-4">-</td>
                                                 <td className="text-right pr-4">-</td>
                                                 <td className="text-right pr-4 text-primary font-black">{row.balance}</td>
+                                            </tr>
+                                        );
+                                    }
+
+                                    if (row.type === 'divider') {
+                                        return (
+                                            <tr key={row.id} className="h-6 bg-slate-50/30 dark:bg-slate-900/5 select-none no-print">
+                                                <td colSpan={7} className="border-b border-slate-200 dark:border-slate-800" />
                                             </tr>
                                         );
                                     }
