@@ -447,52 +447,60 @@ export default function StockTransactionDetailReportPage() {
             const silhouette = node.level === 'silhouette' ? node.value : ancestorSilhouette;
             const category = node.level === 'category' ? node.value : ancestorCategory;
 
-            if (node.level === 'article') {
-                rows.push({
-                    id: `art-${node.sku}`,
-                    type: 'article',
-                    label: node.articleName,
-                    sku: node.sku,
-                    totals: node.totals,
-                    brand, division, gender, silhouette, category,
-                });
-            } else if (node.level === 'variant') {
-                rows.push({
-                    id: `var-${currentPath}`,
-                    type: 'variant',
-                    color: node.color,
-                    size: node.size,
-                    totals: node.totals,
-                    brand, division, gender, silhouette, category,
-                });
-            } else {
+            const isLeaf = !node.children || node.children.length === 0;
+
+            if (!isLeaf) {
                 rows.push({
                     id: `${node.level}-${currentPath}`,
                     type: node.level,
-                    label: `${node.value.toUpperCase()}`,
+                    label: node.level === 'article' ? node.articleName : node.value.toUpperCase(),
+                    sku: node.sku,
+                    color: node.color,
+                    size: node.size,
                     totals: node.totals,
                     brand, division, gender, silhouette, category,
                 });
             }
 
             if (node.transactions) {
-                // Table header spacer
+                // 1. Product header row (GPC, Category, SKU, Product Name, Size | Color)
                 rows.push({
-                    id: `hdr-${currentPath}`,
-                    type: 'ledger-header',
+                    id: `ph-${currentPath}`,
+                    type: 'product-header',
+                    sku: node.sku || node.value,
                     brand, division, gender, silhouette, category,
                 });
 
-                // Opening balance row
+                // 2. Product data values row
+                rows.push({
+                    id: `pd-${currentPath}`,
+                    type: 'product-data',
+                    label: node.level === 'article' ? node.articleName : node.value,
+                    sku: node.sku || node.value,
+                    color: node.color,
+                    size: node.size,
+                    brand, division, gender, silhouette, category,
+                });
+
+                // 3. Ledger columns header
+                rows.push({
+                    id: `hdr-${currentPath}`,
+                    type: 'ledger-header',
+                    sku: node.sku || node.value,
+                    brand, division, gender, silhouette, category,
+                });
+
+                // 4. Opening balance row
                 rows.push({
                     id: `op-${currentPath}`,
                     type: 'opening-balance',
                     date: dateRange.from,
                     balance: node.openingBalance,
+                    sku: node.sku || node.value,
                     brand, division, gender, silhouette, category,
                 });
 
-                // Ledger transactions
+                // 5. Ledger transactions
                 for (const t of node.transactions) {
                     rows.push({
                         id: `tx-${t.id}`,
@@ -507,16 +515,18 @@ export default function StockTransactionDetailReportPage() {
                         outQty: t.outQty,
                         balance: t.balance,
                         isInTransit: t.isInTransit,
+                        sku: node.sku || node.value,
                         brand, division, gender, silhouette, category,
                     });
                 }
 
-                // Closing balance row
+                // 6. Closing balance row
                 rows.push({
                     id: `cl-${currentPath}`,
                     type: 'closing-balance',
                     date: dateRange.to,
                     balance: node.closingBalance,
+                    sku: node.sku || node.value,
                     brand, division, gender, silhouette, category,
                 });
             }
@@ -541,10 +551,10 @@ export default function StockTransactionDetailReportPage() {
 
         const q = searchText.trim().toLowerCase();
 
-        // 1. Gather all matching article IDs
-        const matchingArticleIds = new Set<string>();
+        // 1. Gather all matching SKUs
+        const matchingSkus = new Set<string>();
         for (const row of flatRows) {
-            if (row.type !== 'article') continue;
+            if (row.type !== 'product-data') continue;
             const textMatch = !q || (row.label || "").toLowerCase().includes(q) || (row.sku || "").toLowerCase().includes(q);
             const brandMatch = filterBrands.size === 0 || filterBrands.has(row.brand);
             const divMatch = filterDivisions.size === 0 || filterDivisions.has(row.division);
@@ -552,21 +562,18 @@ export default function StockTransactionDetailReportPage() {
             const silMatch = filterSilhouettes.size === 0 || filterSilhouettes.has(row.silhouette);
             const catMatch = filterCategories.size === 0 || filterCategories.has(row.category);
             if (textMatch && brandMatch && divMatch && genderMatch && silMatch && catMatch) {
-                matchingArticleIds.add(row.id);
+                matchingSkus.add(row.sku);
             }
         }
 
-        // 2. Filter rows, retaining groups, headers, and transaction details only for matching items
+        // 2. Filter rows, retaining group and detail rows matching these SKUs
         const result: any[] = [];
-        let keepDetails = false;
         for (const row of flatRows) {
-            if (row.type === 'article') {
-                keepDetails = matchingArticleIds.has(row.id);
-                if (keepDetails) result.push({ ...row, _highlight: searchText.trim() });
-            } else if (['variant', 'ledger-header', 'opening-balance', 'transaction', 'closing-balance'].includes(row.type)) {
-                if (keepDetails) result.push(row);
+            if (row.sku) {
+                if (matchingSkus.has(row.sku)) {
+                    result.push(row);
+                }
             } else {
-                // Group rows (brand, division, category, etc.)
                 result.push({ ...row, _pendingGroup: true });
             }
         }
@@ -985,7 +992,7 @@ export default function StockTransactionDetailReportPage() {
                         </p>
                     </div>
                 ) : (
-                    <div ref={parentRef} className="overflow-auto max-h-[750px]">
+                    <div ref={parentRef} className="overflow-auto max-h-[750px] min-h-[500px]">
                         <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
                             <colgroup>
                                 <col style={{ width: "12%" }} />
@@ -1004,6 +1011,7 @@ export default function StockTransactionDetailReportPage() {
                                 )}
                                 {virtualItems.map((virtualRow) => {
                                     const row = filteredRows[virtualRow.index];
+                                    if (!row) return null;
                                     const isGroup = ['brand', 'division', 'category', 'gender', 'silhouette', 'article', 'variant'].includes(row.type);
 
                                     if (isGroup) {
@@ -1029,7 +1037,33 @@ export default function StockTransactionDetailReportPage() {
                                                     {row._highlight ? highlight(labelText, row._highlight) : labelText}
                                                 </td>
                                                 <td colSpan={2} className="pr-4 text-right text-[10px] font-bold text-muted-foreground">
-                                                    Open: {row.totals.openingBalance} &bull; Close: {row.totals.closingBalance} &bull; Transit: {row.totals.inTransitQty}
+                                                    Open: {row.totals?.openingBalance ?? 0} &bull; Close: {row.totals?.closingBalance ?? 0} &bull; Transit: {row.totals?.inTransitQty ?? 0}
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+
+                                    if (row.type === 'product-header') {
+                                        return (
+                                            <tr key={row.id} className="bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-350 dark:border-slate-800 text-[10px] uppercase font-bold h-7.5 text-left select-none">
+                                                <th className="border-r border-slate-200 dark:border-slate-800 pl-4 text-slate-700 dark:text-slate-300">GPC</th>
+                                                <th className="border-r border-slate-200 dark:border-slate-800 pl-2 text-slate-700 dark:text-slate-300">Category</th>
+                                                <th className="border-r border-slate-200 dark:border-slate-800 pl-2 text-slate-700 dark:text-slate-300">SKU</th>
+                                                <th className="border-r border-slate-200 dark:border-slate-800 pl-2 text-slate-700 dark:text-slate-300">Product Name</th>
+                                                <th colSpan={3} className="text-center text-slate-700 dark:text-slate-300">Size | Color</th>
+                                            </tr>
+                                        );
+                                    }
+
+                                    if (row.type === 'product-data') {
+                                        return (
+                                            <tr key={row.id} className="bg-white dark:bg-slate-950 border-b border-slate-300 dark:border-slate-800 text-[11px] h-8.5 text-left font-bold select-none text-blue-800 dark:text-blue-450">
+                                                <td className="border-r border-slate-200 dark:border-slate-800 pl-4">{row.division || "-"}</td>
+                                                <td className="border-r border-slate-200 dark:border-slate-800 pl-2">{row.category || "-"}</td>
+                                                <td className="border-r border-slate-200 dark:border-slate-800 pl-2">{row.sku || "-"}</td>
+                                                <td className="border-r border-slate-200 dark:border-slate-800 pl-2 truncate max-w-[300px]">{row.label || "-"}</td>
+                                                <td colSpan={3} className="text-center font-bold">
+                                                    {showVariant ? `${row.size || "Default"} \/ ${row.color || "Default"}` : "All Sizes \/ All Colors"}
                                                 </td>
                                             </tr>
                                         );
@@ -1037,14 +1071,14 @@ export default function StockTransactionDetailReportPage() {
 
                                     if (row.type === 'ledger-header') {
                                         return (
-                                            <tr key={row.id} className="bg-slate-800 text-slate-100 text-[10px] font-bold h-7 uppercase tracking-wider select-none">
-                                                <th className="text-left pl-4">Date</th>
-                                                <th className="text-left pl-2">Doc Type</th>
-                                                <th className="text-left pl-2">Doc Ref</th>
-                                                <th className="text-left pl-2">Narration</th>
-                                                <th className="text-right pr-4">In</th>
-                                                <th className="text-right pr-4">Out</th>
-                                                <th className="text-right pr-4">Balance</th>
+                                            <tr key={row.id} className="bg-slate-800 text-slate-100 text-[10px] font-bold h-7.5 uppercase tracking-wider select-none">
+                                                <th className="text-left pl-4 border-b border-slate-650">Doc Type</th>
+                                                <th className="text-left pl-2 border-b border-slate-650">Doc Ref</th>
+                                                <th className="text-left pl-2 border-b border-slate-650">Date</th>
+                                                <th className="text-left pl-2 border-b border-slate-650">Remarks</th>
+                                                <th className="text-right pr-4 border-b border-slate-650">In</th>
+                                                <th className="text-right pr-4 border-b border-slate-650">Out</th>
+                                                <th className="text-right pr-4 border-b border-slate-650">Balance</th>
                                             </tr>
                                         );
                                     }
@@ -1052,9 +1086,9 @@ export default function StockTransactionDetailReportPage() {
                                     if (row.type === 'opening-balance') {
                                         return (
                                             <tr key={row.id} className="bg-slate-50/40 dark:bg-slate-900/10 text-slate-500 text-[11px] h-8 border-b border-border/40 select-none">
-                                                <td className="pl-4">{row.date ? format(new Date(row.date), "dd/MM/yyyy") : "-"}</td>
-                                                <td className="pl-2 font-semibold text-slate-700 dark:text-slate-400">Opening Balance</td>
+                                                <td className="pl-4 font-semibold text-slate-700 dark:text-slate-400">Opening Balance</td>
                                                 <td className="pl-2">-</td>
+                                                <td className="pl-2">{row.date ? format(new Date(row.date), "dd/MM/yyyy") : "-"}</td>
                                                 <td className="pl-2">Opening Balance B/F</td>
                                                 <td className="text-right pr-4">-</td>
                                                 <td className="text-right pr-4">-</td>
@@ -1066,9 +1100,9 @@ export default function StockTransactionDetailReportPage() {
                                     if (row.type === 'closing-balance') {
                                         return (
                                             <tr key={row.id} className="bg-slate-50/80 dark:bg-slate-900/20 text-slate-800 dark:text-slate-200 text-[11px] font-bold h-8 border-b border-border/80 border-t border-border/50 select-none">
-                                                <td className="pl-4">{row.date ? format(new Date(row.date), "dd/MM/yyyy") : "-"}</td>
-                                                <td className="pl-2 uppercase">Closing Balance</td>
+                                                <td className="pl-4 uppercase">Closing Balance</td>
                                                 <td className="pl-2">-</td>
+                                                <td className="pl-2">{row.date ? format(new Date(row.date), "dd/MM/yyyy") : "-"}</td>
                                                 <td className="pl-2">Closing Balance C/F</td>
                                                 <td className="text-right pr-4">-</td>
                                                 <td className="text-right pr-4">-</td>
@@ -1088,10 +1122,7 @@ export default function StockTransactionDetailReportPage() {
                                                 row.isInTransit && "bg-amber-500/5 hover:bg-amber-500/10 text-amber-850 dark:text-amber-400 font-medium"
                                             )}
                                         >
-                                            <td className="pl-4 text-slate-550 dark:text-slate-450">
-                                                {row.date ? format(new Date(row.date), "dd/MM/yyyy") : "-"}
-                                            </td>
-                                            <td className="pl-2 font-semibold">
+                                            <td className="pl-4 font-semibold">
                                                 {row.docType}
                                                 {row.isInTransit && <span className="ml-1 text-[9px] bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 px-1 py-0.2 rounded-full font-bold uppercase">Transit</span>}
                                             </td>
@@ -1104,6 +1135,9 @@ export default function StockTransactionDetailReportPage() {
                                                 ) : (
                                                     <span className="font-semibold">{row.docRef}</span>
                                                 )}
+                                            </td>
+                                            <td className="pl-2 text-slate-550 dark:text-slate-450">
+                                                {row.date ? format(new Date(row.date), "dd/MM/yyyy") : "-"}
                                             </td>
                                             <td className="pl-2 text-muted-foreground truncate" title={row.remarks}>{row.remarks}</td>
                                             <td className="text-right pr-4 text-emerald-650 dark:text-emerald-450 font-bold">{formatQty(row.inQty)}</td>
