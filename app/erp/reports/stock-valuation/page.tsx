@@ -32,6 +32,122 @@ import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { cn, COMPANY_NAME, getApiBaseUrl } from "@/lib/utils";
 
+// ─── Highlight helper ──────────────────────────────────────────────────────────
+function highlight(text: string, query: string) {
+    if (!query.trim()) return <>{text}</>;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return <>{text}</>;
+    return (
+        <>
+            {text.slice(0, idx)}
+            <mark className="bg-amber-200 dark:bg-amber-700/60 text-inherit rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
+            {text.slice(idx + query.length)}
+        </>
+    );
+}
+
+// ─── Autocomplete multi-select ─────────────────────────────────────────────────
+function AutocompleteMultiSelect({
+    label, options, selected, onToggle, searchable = true,
+}: {
+    label: string;
+    options: string[];
+    selected: Set<string>;
+    onToggle: (val: string) => void;
+    searchable?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    const filtered = useMemo(() =>
+        options.filter(o => o.toLowerCase().includes(search.toLowerCase())),
+        [options, search]
+    );
+
+    const selectedCount = selected.size;
+
+    return (
+        <div ref={ref} className="relative">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all",
+                    selectedCount > 0
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                )}
+            >
+                <span>{label}</span>
+                {selectedCount > 0 && (
+                    <span className="bg-white/20 text-inherit px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none">{selectedCount}</span>
+                )}
+                <svg className={cn("h-3 w-3 transition-transform", open && "rotate-180")} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            {open && (
+                <div className="absolute z-50 top-full mt-1.5 left-0 min-w-[200px] max-w-[280px] bg-background border border-border rounded-xl shadow-xl overflow-hidden">
+                    {searchable && (
+                        <div className="p-2 border-b border-border">
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder={`Search ${label}...`}
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-border bg-muted/40 outline-none focus:border-primary"
+                            />
+                        </div>
+                    )}
+                    <div className="max-h-56 overflow-y-auto py-1">
+                        {filtered.length === 0 && (
+                            <p className="text-xs text-muted-foreground px-3 py-2 text-center">No results</p>
+                        )}
+                        {filtered.map(opt => (
+                            <label
+                                key={opt}
+                                className="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-muted/60 transition-colors"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={selected.has(opt)}
+                                    onChange={() => onToggle(opt)}
+                                    className="h-3.5 w-3.5 accent-primary cursor-pointer"
+                                />
+                                <span className="text-xs font-medium text-foreground">
+                                    {highlight(opt, search)}
+                                </span>
+                            </label>
+                        ))}
+                    </div>
+                    {selectedCount > 0 && (
+                        <div className="px-3 py-2 border-t border-border">
+                            <button
+                                type="button"
+                                onClick={() => filtered.forEach(o => selected.has(o) && onToggle(o))}
+                                className="text-[11px] text-muted-foreground hover:text-destructive font-semibold transition-colors"
+                            >
+                                Clear all
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function PosStockValuationReportPage() {
     const { user } = useAuth();
 
@@ -65,6 +181,39 @@ export default function PosStockValuationReportPage() {
     const [pdfExportProgress, setPdfExportProgress] = useState<number>(0);
 
     const summaryOnly = !groupingLevels.variant;
+
+    // ─── Frontend Filter State ───────────────────────────────────────────────────
+    const [searchText, setSearchText] = useState("");
+    const [filterBrands, setFilterBrands] = useState<Set<string>>(new Set());
+    const [filterDivisions, setFilterDivisions] = useState<Set<string>>(new Set());
+    const [filterGenders, setFilterGenders] = useState<Set<string>>(new Set());
+    const [filterSilhouettes, setFilterSilhouettes] = useState<Set<string>>(new Set());
+    const [filterCategories, setFilterCategories] = useState<Set<string>>(new Set());
+
+    const toggleFilter = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, val: string) => {
+        setter(prev => {
+            const next = new Set(prev);
+            if (next.has(val)) next.delete(val); else next.add(val);
+            return next;
+        });
+    };
+
+    const hasActiveFilters =
+        searchText.trim() !== "" ||
+        filterBrands.size > 0 ||
+        filterDivisions.size > 0 ||
+        filterGenders.size > 0 ||
+        filterSilhouettes.size > 0 ||
+        filterCategories.size > 0;
+
+    const clearAllFilters = () => {
+        setSearchText("");
+        setFilterBrands(new Set());
+        setFilterDivisions(new Set());
+        setFilterGenders(new Set());
+        setFilterSilhouettes(new Set());
+        setFilterCategories(new Set());
+    };
 
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
@@ -318,14 +467,48 @@ export default function PosStockValuationReportPage() {
         return t;
     }, [reportData]);
 
+    // ─── Extract unique filter options from loaded data ────────────────────────
+    const filterOptions = useMemo(() => {
+        const brands = new Set<string>();
+        const divisions = new Set<string>();
+        const genders = new Set<string>();
+        const silhouettes = new Set<string>();
+        const categories = new Set<string>();
+
+        const walk = (node: any) => {
+            if (!node) return;
+            if (node.level === 'brand') brands.add(node.value);
+            if (node.level === 'division') divisions.add(node.value);
+            if (node.level === 'gender') genders.add(node.value);
+            if (node.level === 'silhouette') silhouettes.add(node.value);
+            if (node.level === 'category') categories.add(node.value);
+            if (node.children) node.children.forEach(walk);
+        };
+        reportData.forEach(walk);
+
+        return {
+            brands: [...brands].sort(),
+            divisions: [...divisions].sort(),
+            genders: [...genders].sort(),
+            silhouettes: [...silhouettes].sort(),
+            categories: [...categories].sort(),
+        };
+    }, [reportData]);
+
     // Flatten nested tree for TanStack Virtual list virtualization
     const flatRows = useMemo(() => {
         const rows: any[] = [];
         
-        const visit = (node: any, path: string = "") => {
+        const visit = (node: any, path: string = "", ancestorBrand = "", ancestorDivision = "", ancestorGender = "", ancestorSilhouette = "", ancestorCategory = "") => {
             if (!node) return;
             const currentPath = path ? `${path}-${node.level}-${node.value}` : `${node.level}-${node.value}`;
             
+            const brand = node.level === 'brand' ? node.value : ancestorBrand;
+            const division = node.level === 'division' ? node.value : ancestorDivision;
+            const gender = node.level === 'gender' ? node.value : ancestorGender;
+            const silhouette = node.level === 'silhouette' ? node.value : ancestorSilhouette;
+            const category = node.level === 'category' ? node.value : ancestorCategory;
+
             if (node.level === 'article') {
                 rows.push({
                     id: `art-${node.sku}`,
@@ -333,6 +516,7 @@ export default function PosStockValuationReportPage() {
                     label: node.articleName,
                     sku: node.sku,
                     totals: node.totals,
+                    brand, division, gender, silhouette, category,
                 });
             } else if (node.level === 'variant') {
                 rows.push({
@@ -341,6 +525,7 @@ export default function PosStockValuationReportPage() {
                     color: node.color,
                     size: node.size,
                     totals: node.totals,
+                    brand, division, gender, silhouette, category,
                 });
             } else {
                 rows.push({
@@ -348,12 +533,13 @@ export default function PosStockValuationReportPage() {
                     type: node.level,
                     label: `${node.value.toUpperCase()}`,
                     totals: node.totals,
+                    brand, division, gender, silhouette, category,
                 });
             }
             
             if (node.children && node.children.length > 0) {
                 for (const child of node.children) {
-                    visit(child, currentPath);
+                    visit(child, currentPath, brand, division, gender, silhouette, category);
                 }
             }
         };
@@ -364,6 +550,58 @@ export default function PosStockValuationReportPage() {
         
         return rows;
     }, [reportData]);
+
+    // ─── Apply frontend filters ────────────────────────────────────────────────
+    const filteredRows = useMemo(() => {
+        if (!hasActiveFilters) return flatRows;
+
+        const q = searchText.trim().toLowerCase();
+
+        // Collect matching article ids first
+        const matchingArticleIds = new Set<string>();
+        for (const row of flatRows) {
+            if (row.type !== 'article') continue;
+            const textMatch = !q || (row.label || "").toLowerCase().includes(q) || (row.sku || "").toLowerCase().includes(q);
+            const brandMatch = filterBrands.size === 0 || filterBrands.has(row.brand);
+            const divMatch = filterDivisions.size === 0 || filterDivisions.has(row.division);
+            const genderMatch = filterGenders.size === 0 || filterGenders.has(row.gender);
+            const silMatch = filterSilhouettes.size === 0 || filterSilhouettes.has(row.silhouette);
+            const catMatch = filterCategories.size === 0 || filterCategories.has(row.category);
+            if (textMatch && brandMatch && divMatch && genderMatch && silMatch && catMatch) {
+                matchingArticleIds.add(row.id);
+            }
+        }
+
+        // Keep group rows only if they have at least one matching descendant
+        const result: any[] = [];
+        let keepVariants = false;
+        for (const row of flatRows) {
+            if (row.type === 'article') {
+                keepVariants = matchingArticleIds.has(row.id);
+                if (keepVariants) result.push({ ...row, _highlight: searchText.trim() });
+            } else if (row.type === 'variant') {
+                if (keepVariants) result.push(row);
+            } else {
+                // Group row: include if any article within its scope matches
+                // We do a simple lookahead: include every non-article row that precedes a matching article
+                result.push({ ...row, _pendingGroup: true });
+            }
+        }
+
+        // Second pass: strip group rows that have no article following them
+        const final: any[] = [];
+        for (let i = 0; i < result.length; i++) {
+            if (!result[i]._pendingGroup) { final.push(result[i]); continue; }
+            // Find next non-group row
+            let hasArticle = false;
+            for (let j = i + 1; j < result.length; j++) {
+                if (!result[j]._pendingGroup) { hasArticle = true; break; }
+            }
+            if (hasArticle) final.push(result[i]);
+        }
+
+        return final;
+    }, [flatRows, hasActiveFilters, searchText, filterBrands, filterDivisions, filterGenders, filterSilhouettes, filterCategories]);
 
     const handleToggleLevel = (level: keyof typeof groupingLevels, checked: boolean) => {
         setGroupingLevels(prev => {
@@ -381,7 +619,7 @@ export default function PosStockValuationReportPage() {
     // Setup TanStack Virtualizer
     const parentRef = useRef<HTMLDivElement>(null);
     const rowVirtualizer = useVirtualizer({
-        count: flatRows.length,
+        count: filteredRows.length,
         getScrollElement: () => parentRef.current,
         estimateSize: () => 40,
         overscan: 12,
@@ -523,6 +761,137 @@ export default function PosStockValuationReportPage() {
                     <Folder className="h-4 w-4 text-primary" />
                     <span>{COMPANY_NAME} &bull; Virtualized High-Performance Scroll</span>
                 </div>
+            </div>
+
+            {/* ── Frontend Search & Filter Panel ── */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3 no-print">
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Text search */}
+                    <div className="relative flex-1 min-w-[200px] max-w-xs">
+                        <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>
+                        <input
+                            type="text"
+                            placeholder="Search article name or SKU..."
+                            value={searchText}
+                            onChange={e => setSearchText(e.target.value)}
+                            className="w-full text-xs pl-7 pr-3 py-1.5 rounded-lg border border-border bg-muted/30 outline-none focus:border-primary transition-colors"
+                        />
+                        {searchText && (
+                            <button onClick={() => setSearchText("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="h-5 w-px bg-border hidden sm:block" />
+
+                    {/* Autocomplete dropdowns */}
+                    {filterOptions.brands.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Brand"
+                            options={filterOptions.brands}
+                            selected={filterBrands}
+                            onToggle={v => toggleFilter(setFilterBrands, v)}
+                        />
+                    )}
+                    {filterOptions.divisions.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Division"
+                            options={filterOptions.divisions}
+                            selected={filterDivisions}
+                            onToggle={v => toggleFilter(setFilterDivisions, v)}
+                        />
+                    )}
+                    {filterOptions.genders.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Gender"
+                            options={filterOptions.genders}
+                            selected={filterGenders}
+                            onToggle={v => toggleFilter(setFilterGenders, v)}
+                        />
+                    )}
+                    {filterOptions.silhouettes.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Silhouette"
+                            options={filterOptions.silhouettes}
+                            selected={filterSilhouettes}
+                            onToggle={v => toggleFilter(setFilterSilhouettes, v)}
+                        />
+                    )}
+                    {filterOptions.categories.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Category"
+                            options={filterOptions.categories}
+                            selected={filterCategories}
+                            onToggle={v => toggleFilter(setFilterCategories, v)}
+                        />
+                    )}
+
+                    {hasActiveFilters && (
+                        <>
+                            <div className="h-5 w-px bg-border hidden sm:block" />
+                            <button
+                                onClick={clearAllFilters}
+                                className="flex items-center gap-1 text-[11px] font-bold text-destructive hover:text-destructive/80 transition-colors"
+                            >
+                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                Clear Filters
+                            </button>
+                        </>
+                    )}
+
+                    <div className="ml-auto text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                        {hasActiveFilters ? (
+                            <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                {filteredRows.filter(r => r.type === 'article').length} / {flatRows.filter(r => r.type === 'article').length} articles
+                            </span>
+                        ) : (
+                            <span>{flatRows.filter(r => r.type === 'article').length} articles loaded</span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Active filter chips */}
+                {hasActiveFilters && (
+                    <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border">
+                        {searchText.trim() && (
+                            <span className="inline-flex items-center gap-1 text-[11px] bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-semibold">
+                                Search: &ldquo;{searchText}&rdquo;
+                                <button onClick={() => setSearchText("")} className="hover:text-amber-600"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            </span>
+                        )}
+                        {[...filterBrands].map(v => (
+                            <span key={v} className="inline-flex items-center gap-1 text-[11px] bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full font-semibold">
+                                Brand: {v}
+                                <button onClick={() => toggleFilter(setFilterBrands, v)} className="hover:text-indigo-600"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            </span>
+                        ))}
+                        {[...filterDivisions].map(v => (
+                            <span key={v} className="inline-flex items-center gap-1 text-[11px] bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full font-semibold">
+                                Division: {v}
+                                <button onClick={() => toggleFilter(setFilterDivisions, v)} className="hover:text-blue-600"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            </span>
+                        ))}
+                        {[...filterGenders].map(v => (
+                            <span key={v} className="inline-flex items-center gap-1 text-[11px] bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 px-2 py-0.5 rounded-full font-semibold">
+                                Gender: {v}
+                                <button onClick={() => toggleFilter(setFilterGenders, v)} className="hover:text-rose-600"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            </span>
+                        ))}
+                        {[...filterSilhouettes].map(v => (
+                            <span key={v} className="inline-flex items-center gap-1 text-[11px] bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-semibold">
+                                Silhouette: {v}
+                                <button onClick={() => toggleFilter(setFilterSilhouettes, v)} className="hover:text-amber-600"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            </span>
+                        ))}
+                        {[...filterCategories].map(v => (
+                            <span key={v} className="inline-flex items-center gap-1 text-[11px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-semibold">
+                                Category: {v}
+                                <button onClick={() => toggleFilter(setFilterCategories, v)} className="hover:text-emerald-600"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Report Hierarchy Configuration */}
@@ -792,7 +1161,17 @@ export default function PosStockValuationReportPage() {
                                     </div>
                                 </td>
                             </tr>
-                        ) : flatRows.length === 0 ? (
+                        ) : filteredRows.length === 0 && flatRows.length > 0 ? (
+                            <tr>
+                                <td colSpan={26} className="p-8 text-center font-medium">
+                                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                        <svg className="h-8 w-8 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" /></svg>
+                                        <span className="text-sm font-semibold">No results match your filters</span>
+                                        <button onClick={clearAllFilters} className="text-xs text-primary underline font-bold mt-1">Clear all filters</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : filteredRows.length === 0 ? (
                             <tr>
                                 <td colSpan={26} className="p-8 text-center text-muted-foreground font-medium">
                                     No stock valuation data or movements found for this location and period.
@@ -806,7 +1185,8 @@ export default function PosStockValuationReportPage() {
                                     </tr>
                                 )}
                                 {virtualItems.map((virtualRow) => {
-                                    const row = flatRows[virtualRow.index];
+                                    const row = filteredRows[virtualRow.index];
+                                    const hlQuery = row?._highlight || "";
                                     
                                     const LEVEL_UI_STYLES: Record<string, { className: string; indentClass: string }> = {
                                         brand: { className: "bg-slate-900 text-slate-100 font-black border-b h-[40px]", indentClass: "pl-3 text-slate-100" },
@@ -849,8 +1229,8 @@ export default function PosStockValuationReportPage() {
                                                     <td className={cn("p-2 border-r truncate max-w-[240px] align-middle", isArticle ? "flex flex-col font-bold text-slate-700 dark:text-slate-350" : "italic text-muted-foreground")}>
                                                         {isArticle ? (
                                                             <>
-                                                                <span className="text-[9px] text-primary">SKU: {row.sku}</span>
-                                                                <span>{row.label}</span>
+                                                                <span className="text-[9px] text-primary">{highlight('SKU: ' + (row.sku || ''), hlQuery)}</span>
+                                                                <span>{highlight(row.label || '', hlQuery)}</span>
                                                             </>
                                                         ) : (
                                                             `Variant: ${row.color || 'Default'}`
