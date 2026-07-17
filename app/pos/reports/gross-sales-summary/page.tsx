@@ -885,7 +885,6 @@ export default function GrossSalesSummaryReport() {
                             <th className="p-3 w-[120px] border-r text-right bg-slate-800 text-white font-extrabold">Excluding Tax</th>
                             <th className="p-3 w-[80px] border-r text-center bg-slate-900 text-slate-100">Sales Tax %</th>
                             <th className="p-3 w-[110px] border-r text-right bg-slate-900 text-slate-100">Sales Tax</th>
-                            <th className="p-3 w-[110px] border-r text-right bg-slate-900 text-slate-100">Further Tax</th>
                             <th className="p-3 w-[100px] border-r text-right bg-slate-900 text-slate-100">Total Tax</th>
                             <th className="p-3 w-[130px] border-r text-right bg-slate-800 text-sky-300 font-extrabold">Including Tax</th>
                             <th className="p-3 w-[150px] bg-slate-900 text-slate-100">Sales Person</th>
@@ -894,7 +893,7 @@ export default function GrossSalesSummaryReport() {
                     <tbody className="divide-y text-xs">
                         {isPending ? (
                             <tr>
-                                <td colSpan={14} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={13} className="p-8 text-center text-muted-foreground font-medium">
                                     <div className="flex items-center justify-center gap-2">
                                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                         Compiling Gross Sales hierarchical nodes...
@@ -903,7 +902,7 @@ export default function GrossSalesSummaryReport() {
                             </tr>
                         ) : flatRows.length === 0 ? (
                             <tr>
-                                <td colSpan={14} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={13} className="p-8 text-center text-muted-foreground font-medium">
                                     No sales records found matching search or period filters.
                                 </td>
                             </tr>
@@ -911,7 +910,7 @@ export default function GrossSalesSummaryReport() {
                             <>
                                 {paddingTop > 0 && (
                                     <tr>
-                                        <td colSpan={14} style={{ height: `${paddingTop}px` }} />
+                                        <td colSpan={13} style={{ height: `${paddingTop}px` }} />
                                     </tr>
                                 )}
                                 {virtualItems.map((virtualRow) => {
@@ -991,7 +990,7 @@ export default function GrossSalesSummaryReport() {
 
                                             {/* Tax Rate % */}
                                             <td className="p-2 border-r text-center">
-                                                {(row.type === "variant" || row.type === "invoice") ? `${row.salesTaxPercent}%` : "-"}
+                                                {(row.type === "variant" || row.type === "invoice") && row.salesTaxPercent != null ? `${row.salesTaxPercent}%` : "-"}
                                             </td>
 
                                             {/* Tax Amt */}
@@ -999,10 +998,6 @@ export default function GrossSalesSummaryReport() {
                                                 {formatPriceVal(row.salesTaxAmount)}
                                             </td>
 
-                                            {/* Further Tax */}
-                                            <td className="p-2 border-r text-right">
-                                                {formatPriceVal(row.furtherTaxAmount)}
-                                            </td>
 
                                             {/* Total Tax */}
                                             <td className="p-2 border-r text-right">
@@ -1023,7 +1018,7 @@ export default function GrossSalesSummaryReport() {
                                 })}
                                 {paddingBottom > 0 && (
                                     <tr>
-                                        <td colSpan={14} style={{ height: `${paddingBottom}px` }} />
+                                        <td colSpan={13} style={{ height: `${paddingBottom}px` }} />
                                     </tr>
                                 )}
                             </>
