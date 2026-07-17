@@ -84,6 +84,7 @@ export default function CreatePurchaseReturnPage() {
   const [eligibleDocs, setEligibleDocs] = useState<SourceDocument[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<SourceDocument | null>(null);
   const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [nextReturnNumber, setNextReturnNumber] = useState<string>('');
   
   const [formData, setFormData] = useState<CreatePurchaseReturnDto>({
     sourceType: 'INVOICE',
@@ -99,7 +100,17 @@ export default function CreatePurchaseReturnPage() {
   useEffect(() => {
     loadEligibleDocuments();
     loadWarehouses();
+    fetchNextReturnNumber();
   }, []);
+
+  const fetchNextReturnNumber = async () => {
+    try {
+      const response = await purchaseReturnApi.getNextReturnNumber();
+      setNextReturnNumber(response.nextReturnNumber);
+    } catch (error) {
+      console.error('Error fetching next return number:', error);
+    }
+  };
 
   const loadWarehouses = async () => {
     try {
@@ -332,7 +343,11 @@ export default function CreatePurchaseReturnPage() {
                         <CardTitle>Return Details</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                          <div className="space-y-2">
+                            <Label>Return Number</Label>
+                            <Input value={nextReturnNumber || 'Auto-generating...'} disabled className="font-medium" />
+                          </div>
                           <div className="space-y-2">
                             <Label>Return Type</Label>
                             <Select
@@ -550,7 +565,7 @@ export default function CreatePurchaseReturnPage() {
                     <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
                        <div className="flex justify-between mb-2">
                           <span className="font-bold">Return Number:</span>
-                          <span className="font-bold">DRAFT</span>
+                          <span className="font-bold">{nextReturnNumber || 'DRAFT'}</span>
                        </div>
                        <div className="flex justify-between">
                           <div className="flex gap-2">
