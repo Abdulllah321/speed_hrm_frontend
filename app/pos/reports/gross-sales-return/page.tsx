@@ -44,9 +44,9 @@ import { toast } from "sonner";
 import { format, subDays } from "date-fns";
 
 export default function GrossSalesReturnReport() {
-    const { getActiveLocationName, getActiveLocationId } = useAuth();
-    const defaultLocationId = getActiveLocationId();
-    const defaultLocationName = getActiveLocationName();
+    const { user } = useAuth();
+    const defaultLocationId = user?.terminal?.location?.id || user?.locationId;
+    const defaultLocationName = user?.terminal?.location?.name || "Store";
 
     const [isPending, startTransition] = useTransition();
 
@@ -461,9 +461,13 @@ export default function GrossSalesReturnReport() {
                             Return Period
                         </span>
                         <DateRangePicker
-                            date={dateRange}
-                            setDate={setDateRange}
-                            className="bg-background border-slate-200 dark:border-slate-800"
+                            initialDateFrom={dateRange.from}
+                            initialDateTo={dateRange.to}
+                            onUpdate={({ range }: { range: DateRange }) => {
+                                if (range) {
+                                    setDateRange(range);
+                                }
+                            }}
                         />
                     </div>
 
@@ -602,7 +606,7 @@ export default function GrossSalesReturnReport() {
                             </h3>
                         </div>
                         <div className="rounded-lg p-2 bg-red-50 dark:bg-red-950/20 text-red-600">
-                            <TrendingUp className="h-5 w-5" />
+                            <TrendingDown className="h-5 w-5" />
                         </div>
                     </CardContent>
                 </Card>
