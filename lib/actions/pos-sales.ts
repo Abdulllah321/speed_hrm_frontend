@@ -397,6 +397,14 @@ export async function getGrossSalesSummaryReport(filters: {
     minAmount?: number;
     maxAmount?: number;
     fbrOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+    showInvoices?: boolean;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -409,6 +417,14 @@ export async function getGrossSalesSummaryReport(filters: {
         if (filters.minAmount !== undefined) queryParams.append("minAmount", String(filters.minAmount));
         if (filters.maxAmount !== undefined) queryParams.append("maxAmount", String(filters.maxAmount));
         if (filters.fbrOnly !== undefined) queryParams.append("fbrOnly", String(filters.fbrOnly));
+        if (filters.showBrand !== undefined) queryParams.append("showBrand", String(filters.showBrand));
+        if (filters.showDivision !== undefined) queryParams.append("showDivision", String(filters.showDivision));
+        if (filters.showCategory !== undefined) queryParams.append("showCategory", String(filters.showCategory));
+        if (filters.showGender !== undefined) queryParams.append("showGender", String(filters.showGender));
+        if (filters.showSilhouette !== undefined) queryParams.append("showSilhouette", String(filters.showSilhouette));
+        if (filters.showArticle !== undefined) queryParams.append("showArticle", String(filters.showArticle));
+        if (filters.showVariant !== undefined) queryParams.append("showVariant", String(filters.showVariant));
+        if (filters.showInvoices !== undefined) queryParams.append("showInvoices", String(filters.showInvoices));
 
         const res = await authFetch(`/pos-sales/reports/gross-sales-summary?${queryParams.toString()}`, { method: "GET" });
         return res.data;
@@ -429,6 +445,14 @@ export async function queueGrossSalesSummaryReportExport(filters: {
     minAmount?: number;
     maxAmount?: number;
     fbrOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+    showInvoices?: boolean;
 }) {
     try {
         const res = await authFetch(`/pos-sales/reports/gross-sales-summary/export/queue`, {
@@ -453,6 +477,14 @@ export async function getGrossSalesReturnReport(filters: {
     minAmount?: number;
     maxAmount?: number;
     fbrOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+    showInvoices?: boolean;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -465,6 +497,14 @@ export async function getGrossSalesReturnReport(filters: {
         if (filters.minAmount !== undefined) queryParams.append("minAmount", String(filters.minAmount));
         if (filters.maxAmount !== undefined) queryParams.append("maxAmount", String(filters.maxAmount));
         if (filters.fbrOnly !== undefined) queryParams.append("fbrOnly", String(filters.fbrOnly));
+        if (filters.showBrand !== undefined) queryParams.append("showBrand", String(filters.showBrand));
+        if (filters.showDivision !== undefined) queryParams.append("showDivision", String(filters.showDivision));
+        if (filters.showCategory !== undefined) queryParams.append("showCategory", String(filters.showCategory));
+        if (filters.showGender !== undefined) queryParams.append("showGender", String(filters.showGender));
+        if (filters.showSilhouette !== undefined) queryParams.append("showSilhouette", String(filters.showSilhouette));
+        if (filters.showArticle !== undefined) queryParams.append("showArticle", String(filters.showArticle));
+        if (filters.showVariant !== undefined) queryParams.append("showVariant", String(filters.showVariant));
+        if (filters.showInvoices !== undefined) queryParams.append("showInvoices", String(filters.showInvoices));
 
         const res = await authFetch(`/pos-sales/reports/gross-sales-return?${queryParams.toString()}`, { method: "GET" });
         return res.data;
@@ -485,6 +525,14 @@ export async function queueGrossSalesReturnReportExport(filters: {
     minAmount?: number;
     maxAmount?: number;
     fbrOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+    showInvoices?: boolean;
 }) {
     try {
         const res = await authFetch(`/pos-sales/reports/gross-sales-return/export/queue`, {

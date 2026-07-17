@@ -38,6 +38,11 @@ import {
     ChevronDown,
     ChevronRight,
     TrendingUp,
+    Layers,
+    Folder,
+    ShoppingCart,
+    Inbox,
+    Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -69,6 +74,25 @@ export default function GrossSalesSummaryReport() {
 
     // Tree Expansion state (tracks labels/keys that are collapsed)
     const [collapsedNodes, setCollapsedNodes] = useState<Record<string, boolean>>({});
+
+    // Report Hierarchy Configuration State
+    const [groupingLevels, setGroupingLevels] = useState({
+        brand: true,
+        division: true,
+        category: true,
+        gender: true,
+        silhouette: true,
+        article: true,
+        variant: true,
+        invoices: false,
+    });
+
+    const handleToggleLevel = (level: string, checked: boolean) => {
+        setGroupingLevels(prev => ({
+            ...prev,
+            [level]: checked,
+        }));
+    };
 
     // Raw report data from backend
     const [rawReportData, setRawReportData] = useState<any[]>([]);
@@ -120,6 +144,14 @@ export default function GrossSalesSummaryReport() {
                 minAmount: minAmount.trim() ? Number(minAmount) : undefined,
                 maxAmount: maxAmount.trim() ? Number(maxAmount) : undefined,
                 fbrOnly: fbrFilter === "YES" ? true : undefined,
+                showBrand: groupingLevels.brand,
+                showDivision: groupingLevels.division,
+                showCategory: groupingLevels.category,
+                showGender: groupingLevels.gender,
+                showSilhouette: groupingLevels.silhouette,
+                showArticle: groupingLevels.article,
+                showVariant: groupingLevels.variant,
+                showInvoices: groupingLevels.invoices,
             });
 
             if (result && result.status !== false) {
@@ -131,11 +163,31 @@ export default function GrossSalesSummaryReport() {
                 toast.error("Failed to load Gross Sales Summary report");
             }
         });
-    }, [selectedLocationId, defaultLocationId, dateRange, searchQuery, selectedCashierId, paymentModeGroup, minAmount, maxAmount, fbrFilter]);
+    }, [
+        selectedLocationId,
+        defaultLocationId,
+        dateRange,
+        searchQuery,
+        selectedCashierId,
+        paymentModeGroup,
+        minAmount,
+        maxAmount,
+        fbrFilter,
+        groupingLevels,
+    ]);
 
     useEffect(() => {
         fetchReport();
-    }, [selectedLocationId, defaultLocationId, dateRange, selectedCashierId, paymentModeGroup, fbrFilter, fetchReport]);
+    }, [
+        selectedLocationId,
+        defaultLocationId,
+        dateRange,
+        selectedCashierId,
+        paymentModeGroup,
+        fbrFilter,
+        groupingLevels,
+        fetchReport,
+    ]);
 
     // Build hierarchical filtered/expanded row list client-side
     // This allows collapse/expansion of nodes dynamically!
@@ -184,7 +236,7 @@ export default function GrossSalesSummaryReport() {
 
         // Calculate only from the raw leaf rows to prevent double-counting groups
         for (const r of rawReportData) {
-            if (r.type === "variant") {
+            if (r.depth === 1) {
                 totals.qty += r.qty || 0;
                 totals.totalPriceWost += r.totalPriceWost || 0;
                 totals.discountAmount += r.discountAmount || 0;
@@ -192,9 +244,9 @@ export default function GrossSalesSummaryReport() {
                 totals.salesTaxAmount += r.salesTaxAmount || 0;
                 totals.totalTax += r.totalTax || 0;
                 totals.includingSalesTax += r.includingSalesTax || 0;
-                if (r.invoiceNo) {
-                    uniqueInvoices.add(r.invoiceNo);
-                }
+            }
+            if (r.invoiceNo) {
+                uniqueInvoices.add(r.invoiceNo);
             }
         }
         totals.invoicesCount = uniqueInvoices.size;
@@ -216,7 +268,7 @@ export default function GrossSalesSummaryReport() {
         getScrollElement: () => parentRef.current,
         estimateSize: (index) => {
             const r = flatRows[index];
-            if (r.type === "variant") return 36;
+            if (r.type === "variant" || r.type === "invoice") return 36;
             return 40;
         },
         overscan: 25,
@@ -245,6 +297,14 @@ export default function GrossSalesSummaryReport() {
                 minAmount: minAmount.trim() ? Number(minAmount) : undefined,
                 maxAmount: maxAmount.trim() ? Number(maxAmount) : undefined,
                 fbrOnly: fbrFilter === "YES" ? true : undefined,
+                showBrand: groupingLevels.brand,
+                showDivision: groupingLevels.division,
+                showCategory: groupingLevels.category,
+                showGender: groupingLevels.gender,
+                showSilhouette: groupingLevels.silhouette,
+                showArticle: groupingLevels.article,
+                showVariant: groupingLevels.variant,
+                showInvoices: groupingLevels.invoices,
                 format: "xlsx",
             });
 
@@ -281,6 +341,14 @@ export default function GrossSalesSummaryReport() {
                 minAmount: minAmount.trim() ? Number(minAmount) : undefined,
                 maxAmount: maxAmount.trim() ? Number(maxAmount) : undefined,
                 fbrOnly: fbrFilter === "YES" ? true : undefined,
+                showBrand: groupingLevels.brand,
+                showDivision: groupingLevels.division,
+                showCategory: groupingLevels.category,
+                showGender: groupingLevels.gender,
+                showSilhouette: groupingLevels.silhouette,
+                showArticle: groupingLevels.article,
+                showVariant: groupingLevels.variant,
+                showInvoices: groupingLevels.invoices,
                 format: "pdf",
             });
 
@@ -572,12 +640,160 @@ export default function GrossSalesSummaryReport() {
                             setMinAmount("");
                             setMaxAmount("");
                             setFbrFilter("ALL");
+                            setGroupingLevels({
+                                brand: true,
+                                division: true,
+                                category: true,
+                                gender: true,
+                                silhouette: true,
+                                article: true,
+                                variant: true,
+                                invoices: false,
+                            });
                             toast.info("Filters cleared");
                         }}
                         className="text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                         Reset Filters
                     </Button>
+                </div>
+            </div>
+
+            {/* Hierarchy Configuration */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4 no-print">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <SlidersHorizontal className="h-4 w-4 text-primary" />
+                            Report Hierarchy Configuration
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Customize the nesting structure. Check the levels you want to group and report by.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4 pt-2">
+                    {/* Brand */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-brand"
+                            checked={groupingLevels.brand}
+                            onChange={(e) => handleToggleLevel('brand', e.target.checked)}
+                            disabled={groupingLevels.division}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer disabled:opacity-50"
+                        />
+                        <label htmlFor="group-brand" className={cn("text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5", groupingLevels.division && "opacity-60 cursor-not-allowed")}>
+                            <Layers className="h-3.5 w-3.5 text-indigo-500" />
+                            Brand
+                        </label>
+                    </div>
+
+                    {/* Division */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-division"
+                            checked={groupingLevels.division}
+                            onChange={(e) => handleToggleLevel('division', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-division" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Folder className="h-3.5 w-3.5 text-blue-500" />
+                            Division
+                        </label>
+                    </div>
+
+                    {/* Category */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-category"
+                            checked={groupingLevels.category}
+                            onChange={(e) => handleToggleLevel('category', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-category" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <ShoppingCart className="h-3.5 w-3.5 text-emerald-500" />
+                            Category
+                        </label>
+                    </div>
+
+                    {/* Gender */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-gender"
+                            checked={groupingLevels.gender}
+                            onChange={(e) => handleToggleLevel('gender', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-gender" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Store className="h-3.5 w-3.5 text-rose-500" />
+                            Gender
+                        </label>
+                    </div>
+
+                    {/* Silhouette */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-silhouette"
+                            checked={groupingLevels.silhouette}
+                            onChange={(e) => handleToggleLevel('silhouette', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-silhouette" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <TrendingUp className="h-3.5 w-3.5 text-amber-500" />
+                            Silhouette
+                        </label>
+                    </div>
+
+                    {/* Article */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-article"
+                            checked={groupingLevels.article}
+                            onChange={(e) => handleToggleLevel('article', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-article" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Inbox className="h-3.5 w-3.5 text-cyan-500" />
+                            Article
+                        </label>
+                    </div>
+
+                    {/* Variant */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-variant"
+                            checked={groupingLevels.variant}
+                            onChange={(e) => handleToggleLevel('variant', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-variant" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Printer className="h-3.5 w-3.5 text-fuchsia-500" />
+                            Variant (Sizes)
+                        </label>
+                    </div>
+
+                    {/* Invoices */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-invoices"
+                            checked={groupingLevels.invoices}
+                            onChange={(e) => handleToggleLevel('invoices', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-invoices" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5 text-violet-500" />
+                            Invoice Details
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -700,7 +916,7 @@ export default function GrossSalesSummaryReport() {
                                 )}
                                 {virtualItems.map((virtualRow) => {
                                     const row = flatRows[virtualRow.index];
-                                    const isGroup = row.type !== "variant";
+                                    const isGroup = row.type !== "variant" && row.type !== "invoice";
 
                                     const LEVEL_UI_STYLES: Record<string, { className: string; indentClass: string }> = {
                                         brand: { className: "bg-slate-900 text-white font-black border-b h-[40px] sticky left-0 z-2", indentClass: "pl-3 text-white uppercase tracking-wider" },
@@ -709,6 +925,7 @@ export default function GrossSalesSummaryReport() {
                                         silhouette: { className: "bg-slate-600 text-slate-100 font-semibold border-b h-[40px]", indentClass: "pl-12 text-slate-100" },
                                         product: { className: "bg-slate-100 dark:bg-slate-900/40 text-slate-900 dark:text-slate-100 font-bold border-b h-[42px]", indentClass: "pl-16 font-semibold" },
                                         variant: { className: "hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors h-[36px]", indentClass: "pl-20 font-mono text-[11px]" },
+                                        invoice: { className: "hover:bg-slate-100/20 dark:hover:bg-slate-900/20 text-slate-500 dark:text-slate-500 bg-background transition-colors h-[34px] border-b border-dotted", indentClass: "pl-24 font-mono text-[10px] text-muted-foreground" },
                                     };
 
                                     const styles = LEVEL_UI_STYLES[row.type] || LEVEL_UI_STYLES.variant;
@@ -730,18 +947,21 @@ export default function GrossSalesSummaryReport() {
                                                             )}
                                                         </button>
                                                     )}
+                                                    {row.type === "invoice" && (
+                                                        <FileText className="h-3 w-3 text-muted-foreground/65 shrink-0" />
+                                                    )}
                                                     <span>{row.label}</span>
                                                 </div>
                                             </td>
 
                                             {/* Size */}
                                             <td className="p-2 border-r text-center font-semibold">
-                                                {row.type === "variant" ? row.size : "-"}
+                                                {(row.type === "variant" || row.type === "invoice") ? row.size : "-"}
                                             </td>
 
                                             {/* Color */}
                                             <td className="p-2 border-r text-center">
-                                                {row.type === "variant" ? row.color : "-"}
+                                                {(row.type === "variant" || row.type === "invoice") ? row.color : "-"}
                                             </td>
 
                                             {/* Qty */}
@@ -751,7 +971,7 @@ export default function GrossSalesSummaryReport() {
 
                                             {/* Retail Price */}
                                             <td className="p-2 border-r text-right">
-                                                {row.type === "variant" ? formatPriceVal(row.retailPrice) : "-"}
+                                                {(row.type === "variant" || row.type === "invoice") ? formatPriceVal(row.retailPrice) : "-"}
                                             </td>
 
                                             {/* Price WOST */}
@@ -771,7 +991,7 @@ export default function GrossSalesSummaryReport() {
 
                                             {/* Tax Rate % */}
                                             <td className="p-2 border-r text-center">
-                                                {row.type === "variant" ? `${row.salesTaxPercent}%` : "-"}
+                                                {(row.type === "variant" || row.type === "invoice") ? `${row.salesTaxPercent}%` : "-"}
                                             </td>
 
                                             {/* Tax Amt */}
@@ -795,8 +1015,8 @@ export default function GrossSalesSummaryReport() {
                                             </td>
 
                                             {/* Sales Person */}
-                                            <td className="p-2 font-semibold">
-                                                {row.type === "variant" ? row.salesPerson : ""}
+                                            <td className="p-2 font-semibold bg-slate-50/50 dark:bg-slate-900/30">
+                                                {(row.type === "variant" || row.type === "invoice") ? row.salesPerson : ""}
                                             </td>
                                         </tr>
                                     );
