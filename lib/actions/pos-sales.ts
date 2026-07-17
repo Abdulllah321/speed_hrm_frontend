@@ -557,5 +557,62 @@ export async function getGrossSalesExportStatus(jobId: string) {
     }
 }
 
+// ─── Alliance Register Report Actions ──────────────────────────────────────
+
+export async function getAllianceRegisterReport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    search?: string;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        queryParams.append("locationId", filters.locationId);
+        if (filters.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.cashierUserId) queryParams.append("cashierUserId", filters.cashierUserId);
+        if (filters.search) queryParams.append("search", filters.search);
+
+        const res = await authFetch(`/pos-sales/reports/alliance-register?${queryParams.toString()}`, { method: "GET" });
+        return res.data;
+    } catch (error) {
+        console.error("getAllianceRegisterReport error:", error);
+        return { status: false, data: [], message: "Failed to fetch Alliance Register Report" };
+    }
+}
+
+export async function queueAllianceRegisterReportExport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    format: "xlsx" | "pdf";
+    search?: string;
+}) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/alliance-register/export/queue`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("queueAllianceRegisterReportExport error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getAllianceRegisterReportExportStatus(jobId: string) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/alliance-register/export/${jobId}/status`, { method: "GET" });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("getAllianceRegisterReportExportStatus error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+
 
 
