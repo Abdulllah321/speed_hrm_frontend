@@ -545,27 +545,15 @@ export default function AvailableStockSummaryReportPage() {
             {/* Filters Row */}
             <div className="flex flex-wrap items-end justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
                 <div className="flex flex-wrap items-end gap-4 flex-1">
-                    {/* Location selector */}
+                    {/* Location selector (Read Only in POS) */}
                     <div className="flex flex-col gap-1.5 min-w-[200px]">
                         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
                             <Store className="h-3.5 w-3.5 text-primary" />
                             Outlet / Store
                         </span>
-                        <Select
-                            value={selectedLocationId}
-                            onValueChange={(val) => setSelectedLocationId(val)}
-                        >
-                            <SelectTrigger className="h-10 text-sm font-medium bg-background border-slate-200">
-                                <SelectValue placeholder="Select Outlet" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {locations.map(loc => (
-                                    <SelectItem key={loc.id} value={loc.id}>
-                                        {loc.name} ({loc.code})
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <div className="h-10 px-3 flex items-center text-sm font-medium bg-slate-100 dark:bg-slate-800 border border-slate-200 rounded-md text-slate-700 dark:text-slate-350 select-none">
+                            {getActiveLocationName()}
+                        </div>
                     </div>
 
                     {/* Date period picker */}
