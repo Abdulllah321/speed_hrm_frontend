@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,19 +14,32 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Package, Send, AlertCircle, CheckCircle2, Printer, Loader2, ArrowLeft, AlertTriangle } from "lucide-react";
+import { Package, Send, AlertCircle, CheckCircle2, Printer, Loader2, ArrowLeft, Trash2, ScanBarcode, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { createTransferRequest } from "@/lib/actions/transfer-request";
 import { getLocations, Location } from "@/lib/actions/location";
 import { useAuth } from "@/components/providers/auth-provider";
 import { format } from "date-fns";
+import { authFetch } from "@/lib/auth";
+import { cn, formatCurrency } from "@/lib/utils";
+import { DirectTransferBulkUploadModal, DirectTransferImportItem } from "@/components/pos/inventory/direct-transfer-bulk-upload-modal";
+
+interface TransferItem {
+    id: string;
+    sku: string;
+    description: string;
+    size?: string;
+    color?: string;
+    availableStock: number;
+    quantity: number;
+}
 
 function DirectTransferForm() {
     const { user } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Retrieve item details from query parameters
+    // Initial item details from query parameters
     const itemId = searchParams?.get("itemId") || "";
     const sku = searchParams?.get("sku") || "";
     const description = searchParams?.get("description") || "";
@@ -34,7 +47,7 @@ function DirectTransferForm() {
     const color = searchParams?.get("color") || "";
     const availableStock = parseFloat(searchParams?.get("availableStock") || "0");
 
-    const [quantity, setQuantity] = useState("1");
+    const [items, setItems] = useState<TransferItem[]>([]);
     const [notes, setNotes] = useState("");
     const [destinations, setDestinations] = useState<Location[]>([]);
     const [selectedDestId, setSelectedDestId] = useState<string>("");
@@ -42,14 +55,63 @@ function DirectTransferForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [createdRequest, setCreatedRequest] = useState<any>(null);
+    const [csvImportOpen, setCsvImportOpen] = useState(false);
+
+    const handleCsvImportComplete = useCallback((importedItems: DirectTransferImportItem[]) => {
+        setItems((prev) => {
+            const updated = [...prev];
+            importedItems.forEach((newItem) => {
+                const existingIndex = updated.findIndex((i) => i.id === newItem.id);
+                if (existingIndex > -1) {
+                    const newQty = updated[existingIndex].quantity + newItem.quantity;
+                    updated[existingIndex].quantity = Math.min(newQty, newItem.availableStock);
+                } else {
+                    updated.push({
+                        id: newItem.id,
+                        sku: newItem.sku,
+                        description: newItem.description,
+                        size: newItem.size,
+                        color: newItem.color,
+                        availableStock: newItem.availableStock,
+                        quantity: newItem.quantity,
+                    });
+                }
+            });
+            return updated;
+        });
+        toast.success(`${importedItems.length} item(s) imported from CSV/Excel.`);
+    }, []);
+
+    // Search bar states
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [activeIndex, setActiveIndex] = useState<number>(-1);
 
     const fromLocationId = user?.terminal?.location?.id || user?.locationId;
 
+    // Load initial item if present in search params
     useEffect(() => {
-        if (itemId && fromLocationId) {
+        if (itemId) {
+            setItems([
+                {
+                    id: itemId,
+                    sku: sku,
+                    description: description,
+                    size: size,
+                    color: color,
+                    availableStock: availableStock,
+                    quantity: 1,
+                }
+            ]);
+        }
+    }, [itemId, sku, description, size, color, availableStock]);
+
+    useEffect(() => {
+        if (fromLocationId) {
             fetchDestinations();
         }
-    }, [itemId, fromLocationId]);
+    }, [fromLocationId]);
 
     async function fetchDestinations() {
         setIsLoadingDestinations(true);
@@ -72,24 +134,158 @@ function DirectTransferForm() {
         }
     }
 
+    // Debounced Live Search
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (searchQuery.trim().length >= 2) {
+                setIsSearching(true);
+                try {
+                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: searchQuery.trim() } });
+                    if (res.ok && res.data?.status && res.data.data) {
+                        setSearchResults(res.data.data);
+                    } else {
+                        setSearchResults([]);
+                    }
+                } catch {
+                    setSearchResults([]);
+                } finally {
+                    setIsSearching(false);
+                }
+            } else {
+                setSearchResults([]);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Reset active index when search results change
+    useEffect(() => {
+        setActiveIndex(-1);
+    }, [searchResults, searchQuery]);
+
+    const handleSelectProduct = (product: any) => {
+        const prodSize = typeof product.size === "object" ? product.size?.name : product.size;
+        const prodColor = typeof product.color === "object" ? product.color?.name : product.color;
+        const prodStock = Number(product.stockQty) || 0;
+
+        if (prodStock <= 0) {
+            toast.warning(`Item ${product.sku || product.barCode} has no available stock in your outlet.`);
+        }
+
+        setItems((prev) => {
+            const existingIndex = prev.findIndex((i) => i.id === product.id);
+            if (existingIndex > -1) {
+                const existing = prev[existingIndex];
+                if (existing.quantity + 1 > prodStock) {
+                    toast.error(`Only ${prodStock} units available in stock`);
+                    return prev;
+                }
+                return prev.map((item, idx) =>
+                    idx === existingIndex ? { ...item, quantity: item.quantity + 1 } : item
+                );
+            }
+            return [
+                ...prev,
+                {
+                    id: product.id,
+                    sku: product.sku || product.barCode || "-",
+                    description: product.description || "Unknown Item",
+                    size: prodSize || "",
+                    color: prodColor || "",
+                    availableStock: prodStock,
+                    quantity: 1,
+                },
+            ];
+        });
+
+        setSearchQuery("");
+        setSearchResults([]);
+    };
+
+    const handleSearchSubmit = async () => {
+        if (!searchQuery.trim()) return;
+        try {
+            const res = await authFetch(`/pos-sales/scan`, { params: { barcode: searchQuery.trim() } });
+            if (res.ok && res.data?.status && res.data.data) {
+                handleSelectProduct(res.data.data);
+            } else {
+                toast.error(res.data?.message || "Item not found");
+            }
+        } catch {
+            toast.error("Failed to scan item. Check connection.");
+        }
+        setSearchQuery("");
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (searchResults.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActiveIndex((prev) => (prev + 1) % searchResults.length);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActiveIndex((prev) => (prev - 1 + searchResults.length) % searchResults.length);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (activeIndex >= 0 && activeIndex < searchResults.length) {
+                handleSelectProduct(searchResults[activeIndex]);
+                setActiveIndex(-1);
+            } else {
+                handleSearchSubmit();
+            }
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            setSearchQuery("");
+            setActiveIndex(-1);
+        }
+    };
+
+    const handleQtyChange = (id: string, qty: string) => {
+        const val = parseFloat(qty);
+        setItems((prev) =>
+            prev.map((item) => {
+                if (item.id !== id) return item;
+                if (isNaN(val) || val <= 0) {
+                    return { ...item, quantity: 0 };
+                }
+                if (val > item.availableStock) {
+                    toast.error(`Cannot transfer more than available stock (${item.availableStock} units)`);
+                    return { ...item, quantity: item.availableStock };
+                }
+                return { ...item, quantity: val };
+            })
+        );
+    };
+
+    const handleRemoveItem = (id: string) => {
+        setItems((prev) => prev.filter((item) => item.id !== id));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!itemId || !fromLocationId) return;
+        if (!fromLocationId) return;
+
+        if (items.length === 0) {
+            toast.error("Please add at least one item to transfer");
+            return;
+        }
 
         if (!selectedDestId) {
             toast.error("Please select a destination outlet");
             return;
         }
 
-        const qty = parseFloat(quantity);
-        if (isNaN(qty) || qty <= 0) {
-            toast.error("Please enter a valid quantity");
-            return;
-        }
-
-        if (qty > availableStock) {
-            toast.error(`Cannot transfer more than available stock (${availableStock} units)`);
-            return;
+        // Validate quantities
+        for (const item of items) {
+            if (item.quantity <= 0) {
+                toast.error(`Please enter a valid quantity for item ${item.sku}`);
+                return;
+            }
+            if (item.quantity > item.availableStock) {
+                toast.error(`Quantity for ${item.sku} exceeds available stock (${item.availableStock} units)`);
+                return;
+            }
         }
 
         setIsSubmitting(true);
@@ -99,12 +295,10 @@ function DirectTransferForm() {
                 toLocationId: selectedDestId,
                 transferType: "OUTLET_TO_OUTLET",
                 isDirectTransfer: true,
-                items: [
-                    {
-                        itemId: itemId,
-                        quantity: qty,
-                    },
-                ],
+                items: items.map((item) => ({
+                    itemId: item.id,
+                    quantity: item.quantity,
+                })),
                 notes,
             });
 
@@ -137,6 +331,17 @@ function DirectTransferForm() {
         const companyName = "Speed Limit";
         const sourceLoc = user?.terminal?.location?.name || "This Outlet";
         const destLoc = destinations.find((d) => d.id === selectedDestId)?.name || "Destination Outlet";
+
+        const itemsHtml = items.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td class="font-bold">${item.sku || "—"}</td>
+                <td>${item.description || "Item"}</td>
+                <td>${item.size || "—"}</td>
+                <td>${item.color || "—"}</td>
+                <td class="text-right font-bold">${item.quantity}</td>
+            </tr>
+        `).join("");
 
         win.document.write(`
             <html><head><title>Transfer Out - ${refNo}</title>
@@ -214,14 +419,7 @@ function DirectTransferForm() {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>1</td>
-                            <td class="font-bold">${sku || "—"}</td>
-                            <td>${description || "Item"}</td>
-                            <td>${size || "—"}</td>
-                            <td>${color || "—"}</td>
-                            <td class="text-right font-bold">${quantity}</td>
-                        </tr>
+                        ${itemsHtml}
                     </tbody>
                 </table>
                 
@@ -246,30 +444,12 @@ function DirectTransferForm() {
     };
 
     const handleClose = () => {
-        // Since it's a page, we go back or close the tab
         if (window.opener) {
             window.close();
         } else {
             router.push("/pos/inventory/view");
         }
     };
-
-    if (!itemId) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center">
-                <div className="max-w-md p-6 bg-card border rounded-2xl shadow-xl space-y-4">
-                    <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto" />
-                    <h3 className="text-xl font-bold text-foreground">No Item Selected</h3>
-                    <p className="text-muted-foreground text-sm">
-                        Please go to the Outlet Request inventory page and select an item to initiate a direct transfer.
-                    </p>
-                    <Button onClick={() => router.push("/pos/inventory/view")} className="w-full">
-                        Go to Outlet Request
-                    </Button>
-                </div>
-            </div>
-        );
-    }
 
     if (!fromLocationId) {
         return (
@@ -286,206 +466,343 @@ function DirectTransferForm() {
     }
 
     return (
-        <div className="max-w-xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <div className="mb-6 flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={handleClose} className="rounded-full">
-                    <ArrowLeft className="w-5 h-5" />
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Direct Transfer Out</h1>
-                    <p className="text-sm text-muted-foreground">Outlet to Outlet direct transfer</p>
-                </div>
-            </div>
-
-            <Card className="border border-border/80 shadow-2xl overflow-hidden rounded-2xl bg-card">
-                <CardHeader className="bg-muted/10 border-b border-border/50">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 rounded-lg">
-                            <Package className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-lg font-bold tracking-tight">{sku}</CardTitle>
-                            <CardDescription className="text-sm text-muted-foreground/90 font-medium mt-0.5">
-                                {description}
-                            </CardDescription>
-                        </div>
+        <div className="flex flex-col h-full">
+            {/* Header */}
+            <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
+                <div className="flex items-center gap-4 max-w-5xl mx-auto w-full">
+                    <Button variant="ghost" size="icon" onClick={handleClose} className="rounded-full">
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <div className="flex-1">
+                        <h1 className="text-2xl font-bold tracking-tight">Direct Transfer Out</h1>
+                        <p className="text-sm text-muted-foreground">Outlet to Outlet direct transfer</p>
                     </div>
-                    {(size || color) && (
-                        <div className="flex gap-2 mt-3 flex-wrap">
-                            {size && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 ring-1 ring-inset ring-indigo-700/10 dark:ring-indigo-300/20">
-                                    Size: {size}
-                                </span>
-                            )}
-                            {color && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 ring-1 ring-inset ring-pink-700/10 dark:ring-pink-300/20">
-                                    Color: {color}
-                                </span>
-                            )}
-                        </div>
-                    )}
-                </CardHeader>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setCsvImportOpen(true)} className="gap-2 h-10">
+                            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                            Bulk Upload
+                        </Button>
+                    </div>
+                </div>
+            </header>
 
-                <CardContent className="p-6">
+            {/* Main Content */}
+            <main className="flex-1 p-4 md:p-6 pb-20 overflow-auto">
+                <div className="max-w-5xl mx-auto w-full">
                     {isSuccess ? (
-                        <div className="py-6 flex flex-col items-center justify-center text-center space-y-6">
-                            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
-                                <CheckCircle2 className="w-10 h-10" />
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className="text-xl font-bold text-foreground">Transfer Sent Out Successfully!</h3>
-                                <p className="text-muted-foreground text-sm max-w-sm">
-                                    Stock has been decremented from your outlet and sent to destination's inbound queue.
-                                </p>
-                            </div>
+                        <div className="max-w-xl mx-auto">
+                            <Card className="border border-border/80 shadow-2xl overflow-hidden rounded-2xl bg-card">
+                                <CardContent className="p-6">
+                                    <div className="py-6 flex flex-col items-center justify-center text-center space-y-6">
+                                        <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
+                                            <CheckCircle2 className="w-10 h-10" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <h3 className="text-xl font-bold text-foreground">Transfer Sent Out Successfully!</h3>
+                                            <p className="text-muted-foreground text-sm max-w-sm">
+                                                Stock has been decremented from your outlet and sent to destination's inbound queue.
+                                            </p>
+                                        </div>
 
-                            {createdRequest && (
-                                <div className="p-4 bg-muted/40 rounded-xl w-full border font-mono text-xs space-y-2 text-left">
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Ref No:</span>
-                                        <span className="font-bold text-foreground">{createdRequest.requestNo || "N/A"}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Item SKU:</span>
-                                        <span className="font-bold text-foreground">{sku}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Qty:</span>
-                                        <span className="font-bold text-foreground">{quantity} Units</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Destination:</span>
-                                        <span className="font-bold text-foreground truncate max-w-[200px]">
-                                            {destinations.find((d) => d.id === selectedDestId)?.name || "N/A"}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Status:</span>
-                                        <span className="font-bold text-emerald-600">SOURCE APPROVED</span>
-                                    </div>
-                                </div>
-                            )}
+                                        {createdRequest && (
+                                            <div className="p-4 bg-muted/40 rounded-xl w-full border font-mono text-xs space-y-3 text-left">
+                                                <div className="flex justify-between border-b pb-2 border-border/50">
+                                                    <span className="text-muted-foreground font-semibold">Ref No:</span>
+                                                    <span className="font-bold text-foreground">{createdRequest.requestNo || "N/A"}</span>
+                                                </div>
+                                                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                                                    <span className="text-muted-foreground font-semibold block mb-1">Transferred Items:</span>
+                                                    {items.map((item) => (
+                                                        <div key={item.id} className="flex justify-between text-[11px]">
+                                                            <span className="truncate max-w-[200px] text-foreground">{item.sku} - {item.description}</span>
+                                                            <span className="font-bold text-foreground flex-none ml-2">{item.quantity} Units</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="flex justify-between border-t pt-2 border-border/50">
+                                                    <span className="text-muted-foreground font-semibold">Destination:</span>
+                                                    <span className="font-bold text-foreground truncate max-w-[200px]">
+                                                        {destinations.find((d) => d.id === selectedDestId)?.name || "N/A"}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground font-semibold">Status:</span>
+                                                    <span className="font-bold text-emerald-600">SOURCE APPROVED</span>
+                                                </div>
+                                            </div>
+                                        )}
 
-                            <div className="flex flex-col gap-2 w-full pt-4">
-                                <Button
-                                    type="button"
-                                    className="w-full h-11 font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    onClick={handlePrintCreatedRequest}
-                                >
-                                    <Printer className="h-4 w-4" /> Print Transfer Slip
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="w-full h-11 font-bold"
-                                    onClick={handleClose}
-                                >
-                                    Close
-                                </Button>
-                            </div>
+                                        <div className="flex flex-col gap-2 w-full pt-4">
+                                            <Button
+                                                type="button"
+                                                className="w-full h-11 font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                onClick={handlePrintCreatedRequest}
+                                            >
+                                                <Printer className="h-4 w-4" /> Print Transfer Slip
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="w-full h-11 font-bold"
+                                                onClick={handleClose}
+                                            >
+                                                Close
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <div className="grid gap-2">
-                                <Label htmlFor="destination" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                                    Select Destination Outlet
-                                </Label>
-                                {isLoadingDestinations ? (
-                                    <div className="flex items-center gap-2 h-11 px-3 border rounded-md bg-muted/20 text-muted-foreground text-sm">
-                                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                                        <span>Loading outlets...</span>
+                        <div className="space-y-6">
+                            {/* Product Search Bar */}
+                            <div className="rounded-xl border border-primary/20 bg-card p-4 shadow-sm relative z-50">
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                                    <div className="flex flex-col gap-1 pr-4 border-r border-border/50 hidden lg:flex">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                            Product Entry
+                                        </span>
+                                        <span className="text-[9px] font-medium text-primary uppercase font-mono">
+                                            Search / Scan Item
+                                        </span>
                                     </div>
-                                ) : (
-                                    <Select value={selectedDestId} onValueChange={setSelectedDestId}>
-                                        <SelectTrigger className="h-11 bg-muted/30">
-                                            <SelectValue placeholder="Choose target outlet..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {destinations.map((dest) => (
-                                                <SelectItem key={dest.id} value={dest.id}>
-                                                    {dest.name} ({dest.code})
-                                                </SelectItem>
-                                            ))}
-                                            {destinations.length === 0 && (
-                                                <SelectItem value="none" disabled>
-                                                    No other active outlets found
-                                                </SelectItem>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            </div>
 
-                            <div className="grid gap-2">
-                                <div className="flex items-center justify-between">
-                                    <Label htmlFor="quantity" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                                        Quantity to Transfer
-                                    </Label>
-                                    <span className="text-xs font-bold text-emerald-600 font-mono bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
-                                        Available in Outlet: {availableStock}
-                                    </span>
+                                    <div className="relative flex-1">
+                                        <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Scan Barcode / Search Product by Name or SKU..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            className="pl-9 bg-muted/30 border-input h-11 w-full text-sm"
+                                        />
+
+                                        {/* Autocomplete Dropdown */}
+                                        {searchQuery.trim().length > 0 && (searchResults.length > 0 || isSearching) && (
+                                            <div className="absolute left-0 right-0 top-13 bg-popover border border-border shadow-md rounded-md overflow-hidden z-[500] max-h-64 overflow-y-auto">
+                                                {isSearching ? (
+                                                    <div className="p-3 text-sm text-muted-foreground flex items-center justify-center">
+                                                        Searching...
+                                                    </div>
+                                                ) : (
+                                                    <ul className="flex flex-col">
+                                                        {searchResults.map((product, idx) => (
+                                                            <li
+                                                                key={product.id}
+                                                                className={cn(
+                                                                    "px-4 py-2 hover:bg-muted cursor-pointer flex items-center justify-between border-b border-border/50 last:border-0 transition-colors",
+                                                                    idx === activeIndex && "bg-primary/10 border-l-4 border-l-primary"
+                                                                )}
+                                                                onClick={() => handleSelectProduct(product)}
+                                                            >
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-sm font-semibold">
+                                                                        {product.description || 'Unknown Product'}
+                                                                        {(typeof product.size === "object" ? product.size?.name : product.size) && (
+                                                                            <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                                Size: {typeof product.size === "object" ? product.size?.name : product.size}
+                                                                            </span>
+                                                                        )}
+                                                                        {(typeof product.color === "object" ? product.color?.name : product.color) && (
+                                                                            <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                                Color: {typeof product.color === "object" ? product.color?.name : product.color}
+                                                                            </span>
+                                                                        )}
+                                                                    </span>
+                                                                    <span className="text-xs text-muted-foreground">SKU: {product.sku || product.barCode || '-'}</span>
+                                                                </div>
+                                                                <div className="flex flex-col items-end gap-1">
+                                                                    <span className="text-sm font-bold">{formatCurrency(product.unitPrice || 0)}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        {product.stockQty !== undefined && (
+                                                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${product.stockQty <= 0 ? 'bg-orange-100 text-orange-700' : 'bg-muted text-muted-foreground'}`}>
+                                                                                Stock: {product.stockQty}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <Input
-                                    id="quantity"
-                                    type="number"
-                                    min="1"
-                                    max={availableStock}
-                                    value={quantity}
-                                    onChange={(e) => setQuantity(e.target.value)}
-                                    className="text-lg py-6 focus-visible:ring-ring font-mono bg-muted/30"
-                                    required
-                                    disabled={availableStock <= 0}
-                                />
                             </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="notes" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                                    Additional Notes (Optional)
-                                </Label>
-                                <Textarea
-                                    id="notes"
-                                    placeholder="e.g. Stock sent for customer booking order"
-                                    className="resize-none focus-visible:ring-ring bg-muted/30 min-h-[80px]"
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                />
-                            </div>
+                            {/* 2-Column Responsive Layout */}
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                                {/* Left Column: Items List */}
+                                <div className="md:col-span-3">
+                                    <Card className="border border-border/80 shadow-lg overflow-hidden rounded-2xl bg-card">
+                                        <CardHeader className="bg-muted/10 border-b border-border/50 p-6 flex flex-row items-center justify-between">
+                                            <div>
+                                                <CardTitle className="text-lg font-bold tracking-tight">Transfer Items</CardTitle>
+                                                <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                                                    Review and edit quantities of items to transfer
+                                                </CardDescription>
+                                            </div>
+                                            <div className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full">
+                                                {items.length} Product(s)
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="p-6">
+                                            {items.length === 0 ? (
+                                                <div className="text-center py-12 text-muted-foreground/60 space-y-3">
+                                                    <Package className="w-12 h-12 mx-auto text-muted/30" />
+                                                    <p className="text-sm font-medium">No products selected yet.</p>
+                                                    <p className="text-xs text-muted-foreground/80">Use the search bar above to add products for direct transfer.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="divide-y divide-border/60">
+                                                    {items.map((item) => (
+                                                        <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                            <div className="flex-1 min-w-0 space-y-1">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-bold text-foreground text-sm tracking-tight">{item.sku}</span>
+                                                                    {item.size && (
+                                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 ring-1 ring-inset ring-indigo-700/10 dark:ring-indigo-300/20">
+                                                                            Size: {item.size}
+                                                                        </span>
+                                                                    )}
+                                                                    {item.color && (
+                                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 ring-1 ring-inset ring-pink-700/10 dark:ring-pink-300/20">
+                                                                            Color: {item.color}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground truncate leading-relaxed">
+                                                                    {item.description}
+                                                                </p>
+                                                                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">
+                                                                    Available Stock: {item.availableStock} Units
+                                                                </div>
+                                                            </div>
 
-                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex gap-3 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
-                                <AlertCircle className="w-5 h-5 flex-none mt-0.5 text-emerald-600" />
-                                <p className="leading-relaxed">
-                                    This transfer out will deduct stock from your outlet immediately.
-                                    It will appear directly in the destination outlet's inbound queue for receipt.
-                                </p>
-                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-28">
+                                                                    <Input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        max={item.availableStock}
+                                                                        value={item.quantity === 0 ? "" : item.quantity}
+                                                                        onChange={(e) => handleQtyChange(item.id, e.target.value)}
+                                                                        className="h-9 text-right font-mono focus-visible:ring-ring bg-muted/20"
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg flex-none"
+                                                                    onClick={() => handleRemoveItem(item.id)}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleClose}
-                                    disabled={isSubmitting}
-                                    className="font-bold uppercase tracking-wider text-xs h-11 px-6"
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={isSubmitting || availableStock <= 0}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider text-xs h-11 px-6 shadow-lg shadow-emerald-600/20"
-                                >
-                                    {isSubmitting ? "Sending..." : (
-                                        <>
-                                            <Send className="w-4 h-4 mr-2" />
-                                            Send Stock
-                                        </>
-                                    )}
-                                </Button>
+                                {/* Right Column: Form Inputs */}
+                                <div className="md:col-span-2">
+                                    <Card className="border border-border/80 shadow-lg overflow-hidden rounded-2xl bg-card">
+                                        <CardContent className="p-6">
+                                            <form onSubmit={handleSubmit} className="space-y-5">
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="destination" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                                        Select Destination Outlet
+                                                    </Label>
+                                                    {isLoadingDestinations ? (
+                                                        <div className="flex items-center gap-2 h-11 px-3 border rounded-md bg-muted/20 text-muted-foreground text-sm">
+                                                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                                            <span>Loading outlets...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <Select value={selectedDestId} onValueChange={setSelectedDestId}>
+                                                            <SelectTrigger className="h-11 bg-muted/30">
+                                                                <SelectValue placeholder="Choose target outlet..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {destinations.map((dest) => (
+                                                                    <SelectItem key={dest.id} value={dest.id}>
+                                                                        {dest.name} ({dest.code})
+                                                                    </SelectItem>
+                                                                ))}
+                                                                {destinations.length === 0 && (
+                                                                    <SelectItem value="none" disabled>
+                                                                        No other active outlets found
+                                                                    </SelectItem>
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="notes" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                                        Additional Notes (Optional)
+                                                    </Label>
+                                                    <Textarea
+                                                        id="notes"
+                                                        placeholder="e.g. Stock sent for customer booking order"
+                                                        className="resize-none focus-visible:ring-ring bg-muted/30 min-h-[80px]"
+                                                        value={notes}
+                                                        onChange={(e) => setNotes(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex gap-3 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
+                                                    <AlertCircle className="w-5 h-5 flex-none mt-0.5 text-emerald-600" />
+                                                    <p className="leading-relaxed">
+                                                        This transfer out will deduct stock from your outlet immediately.
+                                                        It will appear directly in the destination outlet's inbound queue for receipt.
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={handleClose}
+                                                        disabled={isSubmitting}
+                                                        className="font-bold uppercase tracking-wider text-xs h-11 px-6 w-full sm:w-auto"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        type="submit"
+                                                        disabled={isSubmitting || items.length === 0}
+                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider text-xs h-11 px-6 shadow-lg shadow-emerald-600/20 w-full sm:w-auto"
+                                                    >
+                                                        {isSubmitting ? "Sending..." : (
+                                                            <>
+                                                                <Send className="w-4 h-4 mr-2" />
+                                                                Send Stock
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </form>
+                                        </CardContent>
+                                    </Card>
+                                </div>
                             </div>
-                        </form>
+                        </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </main>
+            <DirectTransferBulkUploadModal
+                open={csvImportOpen}
+                onOpenChange={setCsvImportOpen}
+                onImportComplete={handleCsvImportComplete}
+            />
         </div>
     );
 }
