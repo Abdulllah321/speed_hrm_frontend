@@ -8,6 +8,7 @@ import {
     getSalesListReportExportStatus
 } from "@/lib/actions/pos-sales";
 import { getLocations, Location } from "@/lib/actions/location";
+import { getUsers, User } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
@@ -37,7 +38,11 @@ import {
     Inbox,
     PlusCircle,
     ArrowDownRight,
-    TrendingUp
+    TrendingUp,
+    UserCheck,
+    Filter,
+    DollarSign,
+    CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
@@ -50,7 +55,23 @@ export default function SalesListReportPage() {
 
     const [locations, setLocations] = useState<Location[]>([]);
     const [selectedLocationId, setSelectedLocationId] = useState<string>("");
+    
+    // Cashier/User state
+    const [cashiers, setCashiers] = useState<User[]>([]);
+    const [selectedCashierId, setSelectedCashierId] = useState<string>("ALL");
+
+    // Payment Mode Group state
+    const [paymentModeGroup, setPaymentModeGroup] = useState<string>("ALL");
+
+    // Amount Range state
+    const [minAmount, setMinAmount] = useState<string>("");
+    const [maxAmount, setMaxAmount] = useState<string>("");
+
+    // FBR Only state
+    const [fbrFilter, setFbrFilter] = useState<string>("ALL");
+
     const [searchQuery, setSearchQuery] = useState("");
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     const [dateRange, setDateRange] = useState<DateRange>({
         from: startOfMonth(new Date()),
@@ -71,19 +92,24 @@ export default function SalesListReportPage() {
     const [pdfExportState, setPdfExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
     const [pdfExportProgress, setPdfExportProgress] = useState<number>(0);
 
-    // Fetch Locations
+    // Fetch Locations & Cashiers
     useEffect(() => {
-        async function fetchLocations() {
+        async function loadMetadata() {
             try {
-                const res = await getLocations();
-                if (res && res.status && Array.isArray(res.data)) {
-                    setLocations(res.data);
+                const locRes = await getLocations();
+                if (locRes && locRes.status && Array.isArray(locRes.data)) {
+                    setLocations(locRes.data);
+                }
+
+                const userRes = await getUsers();
+                if (userRes && userRes.status && Array.isArray(userRes.data)) {
+                    setCashiers(userRes.data);
                 }
             } catch (err) {
-                console.error("Failed to load locations:", err);
+                console.error("Failed to load filter metadata:", err);
             }
         }
-        fetchLocations();
+        loadMetadata();
     }, []);
 
     // Set Default Location
@@ -103,6 +129,11 @@ export default function SalesListReportPage() {
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
                 search: searchQuery.trim() || undefined,
+                cashierUserId: selectedCashierId === "ALL" ? undefined : selectedCashierId,
+                paymentModeGroup: paymentModeGroup === "ALL" ? undefined : paymentModeGroup,
+                minAmount: minAmount.trim() ? Number(minAmount) : undefined,
+                maxAmount: maxAmount.trim() ? Number(maxAmount) : undefined,
+                fbrOnly: fbrFilter === "YES" ? true : undefined,
             });
             if (result && result.status !== false) {
                 setReportData(result.data || []);
@@ -110,11 +141,11 @@ export default function SalesListReportPage() {
                 toast.error("Failed to load Sales List Report data");
             }
         });
-    }, [selectedLocationId, defaultLocationId, dateRange, searchQuery]);
+    }, [selectedLocationId, defaultLocationId, dateRange, searchQuery, selectedCashierId, paymentModeGroup, minAmount, maxAmount, fbrFilter]);
 
     useEffect(() => {
         fetchReport();
-    }, [selectedLocationId]);
+    }, [selectedLocationId, selectedCashierId, paymentModeGroup, fbrFilter]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -204,6 +235,11 @@ export default function SalesListReportPage() {
                 endDate: dateRange.to.toISOString(),
                 format: "xlsx",
                 search: searchQuery.trim() || undefined,
+                cashierUserId: selectedCashierId === "ALL" ? undefined : selectedCashierId,
+                paymentModeGroup: paymentModeGroup === "ALL" ? undefined : paymentModeGroup,
+                minAmount: minAmount.trim() ? Number(minAmount) : undefined,
+                maxAmount: maxAmount.trim() ? Number(maxAmount) : undefined,
+                fbrOnly: fbrFilter === "YES" ? true : undefined,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -246,6 +282,11 @@ export default function SalesListReportPage() {
                 endDate: dateRange.to.toISOString(),
                 format: "pdf",
                 search: searchQuery.trim() || undefined,
+                cashierUserId: selectedCashierId === "ALL" ? undefined : selectedCashierId,
+                paymentModeGroup: paymentModeGroup === "ALL" ? undefined : paymentModeGroup,
+                minAmount: minAmount.trim() ? Number(minAmount) : undefined,
+                maxAmount: maxAmount.trim() ? Number(maxAmount) : undefined,
+                fbrOnly: fbrFilter === "YES" ? true : undefined,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -367,6 +408,24 @@ export default function SalesListReportPage() {
         return matched ? matched.name : defaultLocationName;
     };
 
+    const handleClearFilters = () => {
+        setSelectedCashierId("ALL");
+        setPaymentModeGroup("ALL");
+        setMinAmount("");
+        setMaxAmount("");
+        setFbrFilter("ALL");
+        setSearchQuery("");
+        toast.info("Filters cleared successfully.");
+    };
+
+    const hasActiveFilters = 
+        selectedCashierId !== "ALL" ||
+        paymentModeGroup !== "ALL" ||
+        minAmount.trim() !== "" ||
+        maxAmount.trim() !== "" ||
+        fbrFilter !== "ALL" ||
+        searchQuery.trim() !== "";
+
     return (
         <div className="p-6 space-y-6 max-w-[1700px] mx-auto">
             {/* Header Block */}
@@ -431,11 +490,11 @@ export default function SalesListReportPage() {
             </div>
 
             {/* Filters Row */}
-            <div className="flex flex-wrap items-end justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
-                <div className="flex flex-wrap items-end gap-4 flex-1">
+            <div className="flex flex-col gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
+                <div className="flex flex-wrap items-end gap-4">
                     {/* Location selector */}
-                    <div className="flex flex-col gap-1.5 min-w-[220px]">
-                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                    <div className="flex flex-col gap-1.5 min-w-[200px] flex-1 md:flex-none">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
                             <Store className="h-3.5 w-3.5 text-primary" />
                             Outlet / Store
                         </span>
@@ -443,7 +502,7 @@ export default function SalesListReportPage() {
                             value={selectedLocationId}
                             onValueChange={(val) => setSelectedLocationId(val)}
                         >
-                            <SelectTrigger className="h-10 text-sm font-medium bg-background border-slate-200">
+                            <SelectTrigger className="h-10 text-xs font-semibold bg-background border-slate-200">
                                 <SelectValue placeholder="Select Outlet" />
                             </SelectTrigger>
                             <SelectContent>
@@ -458,7 +517,7 @@ export default function SalesListReportPage() {
 
                     {/* Date period picker */}
                     <div className="flex flex-col gap-1.5">
-                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
                             <Calendar className="h-3.5 w-3.5 text-primary" />
                             Period Range
                         </span>
@@ -473,44 +532,157 @@ export default function SalesListReportPage() {
                         />
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="flex flex-col gap-1.5 flex-1 min-w-[280px]">
-                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
-                            <Search className="h-3.5 w-3.5 text-primary" />
-                            Search Invoices / Cards
+                    {/* Cashier Selector */}
+                    <div className="flex flex-col gap-1.5 min-w-[180px] flex-1 md:flex-none">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                            <UserCheck className="h-3.5 w-3.5 text-primary" />
+                            Cashier / Operator
                         </span>
-                        <div className="relative">
-                            <Input
-                                placeholder="Search by Invoice #, AUTH ID, Card last 4 digits..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="h-10 pl-9 pr-9 text-sm bg-background border-slate-200"
-                            />
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
-                                <Search className="h-4 w-4" />
-                            </div>
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery("")}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
+                        <Select
+                            value={selectedCashierId}
+                            onValueChange={(val) => setSelectedCashierId(val)}
+                        >
+                            <SelectTrigger className="h-10 text-xs font-semibold bg-background border-slate-200">
+                                <SelectValue placeholder="All Cashiers" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Cashiers & Operators</SelectItem>
+                                {cashiers.map(c => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                        {c.firstName} {c.lastName} ({c.email || c.employeeId})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Payment Mode Selector */}
+                    <div className="flex flex-col gap-1.5 min-w-[180px] flex-1 md:flex-none">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                            <Filter className="h-3.5 w-3.5 text-primary" />
+                            Payment Method
+                        </span>
+                        <Select
+                            value={paymentModeGroup}
+                            onValueChange={(val) => setPaymentModeGroup(val)}
+                        >
+                            <SelectTrigger className="h-10 text-xs font-semibold bg-background border-slate-200">
+                                <SelectValue placeholder="All Payment Modes" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Payment Methods</SelectItem>
+                                <SelectItem value="cash">Cash Collections Only</SelectItem>
+                                <SelectItem value="card">Card Payments Only</SelectItem>
+                                <SelectItem value="credit">On Credit Account Only</SelectItem>
+                                <SelectItem value="voucher">Voucher Redemptions Only</SelectItem>
+                                <SelectItem value="return">Refunds & Returns Only</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Advanced filter toggle */}
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowAdvanced(!showAdvanced)}
+                        className={cn(
+                            "h-10 px-4 text-xs font-bold gap-1.5 border-dashed transition-all",
+                            showAdvanced && "bg-slate-100 dark:bg-slate-800 text-primary border-solid"
+                        )}
+                    >
+                        <SlidersHorizontal className="h-4 w-4" />
+                        {showAdvanced ? "Hide Advanced" : "Advanced Filters"}
+                    </Button>
+
+                    <div className="flex gap-2 ml-auto">
+                        {hasActiveFilters && (
+                            <Button
+                                variant="ghost"
+                                onClick={handleClearFilters}
+                                className="h-10 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 gap-1.5"
+                            >
+                                <X className="h-4 w-4" />
+                                Clear
+                            </Button>
+                        )}
+                        <Button
+                            onClick={fetchReport}
+                            disabled={isPending}
+                            className="h-10 px-5 text-xs font-bold gap-1.5"
+                        >
+                            <RefreshCw className={cn("h-4 w-4", isPending && "animate-spin")} />
+                            Apply
+                        </Button>
                     </div>
                 </div>
 
-                <div className="flex gap-2">
-                    <Button
-                        onClick={fetchReport}
-                        disabled={isPending}
-                        className="h-10 px-5 font-bold gap-1.5"
-                    >
-                        <RefreshCw className={cn("h-4 w-4", isPending && "animate-spin")} />
-                        Refresh Report
-                    </Button>
-                </div>
+                {/* Expandable Advanced Filters Drawer */}
+                {showAdvanced && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-t pt-4 mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                        {/* Search Input */}
+                        <div className="flex flex-col gap-1.5 flex-1 col-span-1 md:col-span-2">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                                <Search className="h-3.5 w-3.5 text-primary" />
+                                Custom Search
+                            </span>
+                            <div className="relative">
+                                <Input
+                                    placeholder="Filter list by Invoice #, AUTH ID, Card digits..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="h-10 pl-9 text-xs bg-background border-slate-200"
+                                />
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                                    <Search className="h-4 w-4" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Amount Range Filter */}
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                                <DollarSign className="h-3.5 w-3.5 text-primary" />
+                                Total Net Amount Range
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="number"
+                                    placeholder="Min PKR"
+                                    value={minAmount}
+                                    onChange={(e) => setMinAmount(e.target.value)}
+                                    className="h-10 text-xs bg-background border-slate-200 flex-1"
+                                />
+                                <span className="text-muted-foreground text-xs font-bold">-</span>
+                                <Input
+                                    type="number"
+                                    placeholder="Max PKR"
+                                    value={maxAmount}
+                                    onChange={(e) => setMaxAmount(e.target.value)}
+                                    className="h-10 text-xs bg-background border-slate-200 flex-1"
+                                />
+                            </div>
+                        </div>
+
+                        {/* FBR Filter */}
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                                FBR Invoice Integration
+                            </span>
+                            <Select
+                                value={fbrFilter}
+                                onValueChange={(val) => setFbrFilter(val)}
+                            >
+                                <SelectTrigger className="h-10 text-xs font-semibold bg-background border-slate-200">
+                                    <SelectValue placeholder="All Invoices" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">All Invoices</SelectItem>
+                                    <SelectItem value="YES">Integrated with FBR Only</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* KPI Cards */}

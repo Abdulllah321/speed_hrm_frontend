@@ -326,6 +326,10 @@ export async function getSalesListReport(filters: {
     endDate?: string;
     cashierUserId?: string;
     search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -334,6 +338,10 @@ export async function getSalesListReport(filters: {
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
         if (filters.cashierUserId) queryParams.append("cashierUserId", filters.cashierUserId);
         if (filters.search) queryParams.append("search", filters.search);
+        if (filters.paymentModeGroup) queryParams.append("paymentModeGroup", filters.paymentModeGroup);
+        if (filters.minAmount !== undefined) queryParams.append("minAmount", String(filters.minAmount));
+        if (filters.maxAmount !== undefined) queryParams.append("maxAmount", String(filters.maxAmount));
+        if (filters.fbrOnly !== undefined) queryParams.append("fbrOnly", String(filters.fbrOnly));
 
         const res = await authFetch(`/pos-sales/reports/sales-list?${queryParams.toString()}`, { method: "GET" });
         return res.data;
@@ -350,6 +358,10 @@ export async function queueSalesListReportExport(filters: {
     cashierUserId?: string;
     format: "xlsx" | "pdf";
     search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
 }) {
     try {
         const res = await authFetch(`/pos-sales/reports/sales-list/export/queue`, {
