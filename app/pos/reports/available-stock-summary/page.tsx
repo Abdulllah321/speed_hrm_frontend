@@ -7,9 +7,18 @@ import {
     queueAvailableStockSummaryReportExport,
     getAvailableStockSummaryReportExportStatus
 } from "@/lib/actions/stock-ledger";
+import { getLocations, Location } from "@/lib/actions/location";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
     Download,
@@ -26,7 +35,10 @@ import {
     Folder,
     Settings,
     Coins,
-    Truck
+    Truck,
+    Search,
+    X,
+    SlidersHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
@@ -34,8 +46,12 @@ import { cn, COMPANY_NAME, getApiBaseUrl, formatCurrency } from "@/lib/utils";
 
 export default function AvailableStockSummaryReportPage() {
     const { user } = useAuth();
-    const locationId = user?.terminal?.location?.id || user?.locationId;
-    const locationName = user?.terminal?.location?.name || "Store";
+    const defaultLocationId = user?.terminal?.location?.id || user?.locationId;
+    const defaultLocationName = user?.terminal?.location?.name || "Store";
+
+    const [locations, setLocations] = useState<Location[]>([]);
+    const [selectedLocationId, setSelectedLocationId] = useState<string>("");
+    const [searchQuery, setSearchQuery] = useState("");
 
     const [dateRange, setDateRange] = useState<DateRange>({
         from: startOfMonth(new Date()),
@@ -49,7 +65,7 @@ export default function AvailableStockSummaryReportPage() {
         gender: true,
         silhouette: true,
         article: true,
-        variant: true, // size & color level default enabled for available stock summary
+        variant: true,
     });
 
     const [reportData, setReportData] = useState<any[]>([]);
@@ -68,11 +84,35 @@ export default function AvailableStockSummaryReportPage() {
 
     const summaryOnly = !groupingLevels.variant;
 
+    // Fetch Locations
+    useEffect(() => {
+        async function fetchLocations() {
+            try {
+                const res = await getLocations();
+                if (res && res.status && Array.isArray(res.data)) {
+                    setLocations(res.data);
+                }
+            } catch (err) {
+                console.error("Failed to load locations:", err);
+            }
+        }
+        fetchLocations();
+    }, []);
+
+    // Set Default Location
+    useEffect(() => {
+        if (defaultLocationId && !selectedLocationId) {
+            setSelectedLocationId(defaultLocationId);
+        }
+    }, [defaultLocationId]);
+
     const fetchReport = useCallback(() => {
-        if (!locationId || !dateRange.from || !dateRange.to) return;
+        const activeLocationId = selectedLocationId || defaultLocationId;
+        if (!activeLocationId || !dateRange.from || !dateRange.to) return;
+        
         startTransition(async () => {
             const result = await getAvailableStockSummaryReport({
-                locationId,
+                locationId: activeLocationId,
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
                 summaryOnly,
@@ -90,11 +130,11 @@ export default function AvailableStockSummaryReportPage() {
                 toast.error("Failed to load available stock summary report data");
             }
         });
-    }, [locationId, dateRange, groupingLevels, summaryOnly]);
+    }, [selectedLocationId, defaultLocationId, dateRange, groupingLevels, summaryOnly]);
 
     useEffect(() => {
         fetchReport();
-    }, [locationId, groupingLevels]);
+    }, [selectedLocationId, groupingLevels]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -161,7 +201,8 @@ export default function AvailableStockSummaryReportPage() {
     }, [pdfExportState, pdfJobId]);
 
     const handleExportExcelClick = async () => {
-        if (!locationId || !dateRange.from || !dateRange.to) return;
+        const activeLocationId = selectedLocationId || defaultLocationId;
+        if (!activeLocationId || !dateRange.from || !dateRange.to) return;
 
         if (exportState === "completed" && exportJobId) {
             const base = getApiBaseUrl();
@@ -178,7 +219,7 @@ export default function AvailableStockSummaryReportPage() {
         setExportState("queueing");
         try {
             const res = await queueAvailableStockSummaryReportExport({
-                locationId,
+                locationId: activeLocationId,
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "xlsx",
@@ -209,7 +250,8 @@ export default function AvailableStockSummaryReportPage() {
     };
 
     const handleExportPdfClick = async () => {
-        if (!locationId || !dateRange.from || !dateRange.to) return;
+        const activeLocationId = selectedLocationId || defaultLocationId;
+        if (!activeLocationId || !dateRange.from || !dateRange.to) return;
 
         if (pdfExportState === "completed" && pdfJobId) {
             const base = getApiBaseUrl();
@@ -226,7 +268,7 @@ export default function AvailableStockSummaryReportPage() {
         setPdfExportState("queueing");
         try {
             const res = await queueAvailableStockSummaryReportExport({
-                locationId,
+                locationId: activeLocationId,
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "pdf",
@@ -256,7 +298,43 @@ export default function AvailableStockSummaryReportPage() {
         }
     };
 
-    // Calculate Grand Totals
+    // Advanced Hierarchical Client-Side Search
+    const filteredReportData = useMemo(() => {
+        if (!searchQuery.trim()) return reportData;
+        const query = searchQuery.toLowerCase().trim();
+
+        const filterNode = (node: any): any => {
+            const nodeMatches = 
+                (node.value && node.value.toLowerCase().includes(query)) ||
+                (node.sku && node.sku.toLowerCase().includes(query)) ||
+                (node.articleName && node.articleName.toLowerCase().includes(query)) ||
+                (node.color && node.color.toLowerCase().includes(query)) ||
+                (node.size && node.size.toLowerCase().includes(query));
+
+            if (nodeMatches) {
+                return node;
+            }
+
+            if (node.children && node.children.length > 0) {
+                const filteredChildren = node.children
+                    .map(filterNode)
+                    .filter(Boolean);
+
+                if (filteredChildren.length > 0) {
+                    return {
+                        ...node,
+                        children: filteredChildren,
+                    };
+                }
+            }
+
+            return null;
+        };
+
+        return reportData.map(filterNode).filter(Boolean);
+    }, [reportData, searchQuery]);
+
+    // Calculate Grand Totals (based on filtered data!)
     const grandTotals = useMemo(() => {
         const t = {
             totalArticles: 0,
@@ -266,9 +344,9 @@ export default function AvailableStockSummaryReportPage() {
             value: 0,
         };
 
-        if (!Array.isArray(reportData)) return t;
+        if (!Array.isArray(filteredReportData)) return t;
 
-        for (const node of reportData) {
+        for (const node of filteredReportData) {
             if (!node || !node.totals) continue;
             t.quantity += node.totals.quantity || 0;
             t.transit += node.totals.transit || 0;
@@ -288,17 +366,17 @@ export default function AvailableStockSummaryReportPage() {
             }
         };
 
-        for (const node of reportData) {
+        for (const node of filteredReportData) {
             countArticles(node);
         }
 
         return t;
-    }, [reportData]);
+    }, [filteredReportData]);
 
-    // Flatten nested tree for virtualization
+    // Flatten nested tree for virtualization (based on filtered data!)
     const flatRows = useMemo(() => {
         const rows: any[] = [];
-        if (!Array.isArray(reportData)) return rows;
+        if (!Array.isArray(filteredReportData)) return rows;
         
         const visit = (node: any, path: string = "") => {
             if (!node) return;
@@ -336,12 +414,12 @@ export default function AvailableStockSummaryReportPage() {
             }
         };
 
-        for (const rootNode of reportData) {
+        for (const rootNode of filteredReportData) {
             visit(rootNode);
         }
         
         return rows;
-    }, [reportData]);
+    }, [filteredReportData]);
 
     const handleToggleLevel = (level: keyof typeof groupingLevels, checked: boolean) => {
         setGroupingLevels(prev => {
@@ -395,6 +473,12 @@ export default function AvailableStockSummaryReportPage() {
     const formatVal = (val: number) => val === 0 ? "-" : val.toLocaleString();
     const formatPriceVal = (val: number) => val === 0 ? "-" : formatCurrency(val);
 
+    const getActiveLocationName = () => {
+        if (!selectedLocationId) return defaultLocationName;
+        const matched = locations.find(l => l.id === selectedLocationId);
+        return matched ? matched.name : defaultLocationName;
+    };
+
     return (
         <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
             {/* Header Block */}
@@ -406,7 +490,7 @@ export default function AvailableStockSummaryReportPage() {
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5 font-medium">
                         <Store className="h-4 w-4 text-primary/70" />
-                        Stock Balance & Valuation for <span className="text-foreground font-semibold">{locationName}</span>
+                        Stock Balance & Valuation for <span className="text-foreground font-semibold">{getActiveLocationName()}</span>
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -452,42 +536,92 @@ export default function AvailableStockSummaryReportPage() {
             {/* Print Header */}
             <div className="hidden print:block mb-6 border-b pb-4">
                 <h1 className="text-2xl font-bold text-center text-slate-900">Available Stock Summary</h1>
-                <p className="text-sm text-center text-slate-600 mt-1">Outlet: {locationName}</p>
+                <p className="text-sm text-center text-slate-600 mt-1">Outlet: {getActiveLocationName()}</p>
                 <p className="text-xs text-center text-slate-500">
                     As of: {dateRange.to ? format(dateRange.to, "dd MMM yyyy") : "Today"}
                 </p>
             </div>
 
             {/* Filters Row */}
-            <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
-                <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        As of Period:
-                    </span>
-                    <DateRangePicker
-                        initialDateFrom={dateRange.from}
-                        initialDateTo={dateRange.to}
-                        onUpdate={({ range }: { range: DateRange }) => {
-                            if (range) {
-                                setDateRange(range);
-                            }
-                        }}
-                    />
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={fetchReport}
-                        disabled={isPending}
-                        className="text-primary hover:text-primary/95 text-xs font-bold"
-                    >
-                        Apply / Refresh
-                    </Button>
+            <div className="flex flex-wrap items-end justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
+                <div className="flex flex-wrap items-end gap-4 flex-1">
+                    {/* Location selector */}
+                    <div className="flex flex-col gap-1.5 min-w-[200px]">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                            <Store className="h-3.5 w-3.5 text-primary" />
+                            Outlet / Store
+                        </span>
+                        <Select
+                            value={selectedLocationId}
+                            onValueChange={(val) => setSelectedLocationId(val)}
+                        >
+                            <SelectTrigger className="h-10 text-sm font-medium bg-background border-slate-200">
+                                <SelectValue placeholder="Select Outlet" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {locations.map(loc => (
+                                    <SelectItem key={loc.id} value={loc.id}>
+                                        {loc.name} ({loc.code})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Date period picker */}
+                    <div className="flex flex-col gap-1.5">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                            <Calendar className="h-3.5 w-3.5 text-primary" />
+                            As of Period
+                        </span>
+                        <DateRangePicker
+                            initialDateFrom={dateRange.from}
+                            initialDateTo={dateRange.to}
+                            onUpdate={({ range }: { range: DateRange }) => {
+                                if (range) {
+                                    setDateRange(range);
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {/* Search Bar */}
+                    <div className="flex flex-col gap-1.5 flex-1 min-w-[260px]">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                            <Search className="h-3.5 w-3.5 text-primary" />
+                            Quick Search
+                        </span>
+                        <div className="relative">
+                            <Input
+                                placeholder="Search by SKU, Product Name, Size, Color, Category..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="h-10 pl-9 pr-9 text-sm bg-background border-slate-200"
+                            />
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                                <Search className="h-4 w-4" />
+                            </div>
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
-                    <Folder className="h-4 w-4 text-primary" />
-                    <span>{COMPANY_NAME} &bull; Virtualized High-Performance Scroll</span>
+                <div className="flex gap-2">
+                    <Button
+                        onClick={fetchReport}
+                        disabled={isPending}
+                        className="h-10 px-5 font-bold gap-1.5"
+                    >
+                        <RefreshCw className={cn("h-4 w-4", isPending && "animate-spin")} />
+                        Refresh Report
+                    </Button>
                 </div>
             </div>
 
@@ -496,7 +630,7 @@ export default function AvailableStockSummaryReportPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                            <Settings className="h-4 w-4 text-primary" />
+                            <SlidersHorizontal className="h-4 w-4 text-primary" />
                             Report Hierarchy Configuration
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
@@ -681,15 +815,15 @@ export default function AvailableStockSummaryReportPage() {
             <div ref={parentRef} className="overflow-auto max-h-[700px] border rounded-xl shadow-sm bg-background no-print">
                 <table className="w-full text-left border-collapse min-w-[1200px]">
                     <thead>
-                        <tr className="bg-slate-800 text-slate-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
-                            <th className="p-3 w-[300px] border-r bg-slate-800">GPC / Category / Product</th>
-                            <th className="p-3 w-[90px] border-r text-center bg-slate-800">Size</th>
-                            <th className="p-3 w-[110px] border-r text-center bg-slate-800">Color</th>
-                            <th className="p-3 w-[110px] border-r text-right bg-slate-800">Quantity</th>
-                            <th className="p-3 w-[110px] border-r text-right bg-slate-800">In Transit</th>
-                            <th className="p-3 w-[110px] border-r text-right bg-slate-900 font-extrabold text-white">Total</th>
-                            <th className="p-3 w-[120px] border-r text-right bg-slate-800">Selling Price</th>
-                            <th className="p-3 w-[150px] text-right bg-slate-900 font-extrabold text-emerald-300">Value (Rs.)</th>
+                        <tr className="bg-[#1e293b] text-slate-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
+                            <th className="p-3 w-[300px] border-r bg-[#1e293b]">GPC / Category / Product</th>
+                            <th className="p-3 w-[90px] border-r text-center bg-[#1e293b]">Size</th>
+                            <th className="p-3 w-[110px] border-r text-center bg-[#1e293b]">Color</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-[#1e293b]">Quantity</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-[#1e293b]">In Transit</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-[#0f172a] font-extrabold text-white">Total</th>
+                            <th className="p-3 w-[120px] border-r text-right bg-[#1e293b]">Selling Price</th>
+                            <th className="p-3 w-[150px] text-right bg-[#0f172a] font-extrabold text-emerald-300">Value (Rs.)</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y text-xs">
@@ -705,7 +839,7 @@ export default function AvailableStockSummaryReportPage() {
                         ) : flatRows.length === 0 ? (
                             <tr>
                                 <td colSpan={8} className="p-8 text-center text-muted-foreground font-medium">
-                                    No available stock records or transactions found.
+                                    No available stock records match the filters or search query.
                                 </td>
                             </tr>
                         ) : (
@@ -719,18 +853,19 @@ export default function AvailableStockSummaryReportPage() {
                                     const row = flatRows[virtualRow.index];
                                     
                                     const LEVEL_UI_STYLES: Record<string, { className: string; indentClass: string }> = {
-                                        brand: { className: "bg-slate-900 text-slate-100 font-black border-b h-[40px]", indentClass: "pl-3 text-slate-100" },
-                                        division: { className: "bg-slate-800 text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
-                                        category: { className: "bg-slate-700 text-white font-bold border-b h-[40px]", indentClass: "pl-9 text-white" },
-                                        gender: { className: "bg-slate-600 text-white font-semibold border-b h-[40px]", indentClass: "pl-12 text-white" },
-                                        silhouette: { className: "bg-slate-500 text-slate-100 font-medium border-b h-[40px]", indentClass: "pl-16" },
-                                        article: { className: "bg-slate-100/25 dark:bg-slate-900/15 font-bold text-slate-850 dark:text-slate-200 border-b h-[45px]", indentClass: "pl-20" },
+                                        brand: { className: "bg-[#0f172a] text-white font-black border-b h-[40px]", indentClass: "pl-3 text-white" },
+                                        division: { className: "bg-[#1e293b] text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
+                                        category: { className: "bg-[#334155] text-white font-bold border-b h-[40px]", indentClass: "pl-9 text-white" },
+                                        gender: { className: "bg-[#475569] text-white font-semibold border-b h-[40px]", indentClass: "pl-12 text-white" },
+                                        silhouette: { className: "bg-[#64748b] text-slate-100 font-medium border-b h-[40px]", indentClass: "pl-16 text-slate-100" },
+                                        article: { className: "bg-[#f1f5f9] dark:bg-slate-900/40 text-slate-900 dark:text-slate-100 font-bold border-b h-[45px]", indentClass: "pl-20" },
                                         variant: { className: "hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors h-[36px]", indentClass: "pl-24" },
                                     };
 
                                     const style = LEVEL_UI_STYLES[row.type] || LEVEL_UI_STYLES.brand;
                                     const isArticle = row.type === 'article';
                                     const isVariant = row.type === 'variant';
+                                    const isHeaderRow = ['brand', 'division', 'category', 'gender', 'silhouette'].includes(row.type);
                                     
                                     const totals = row.totals || {
                                         quantity: 0,
@@ -740,12 +875,35 @@ export default function AvailableStockSummaryReportPage() {
                                         value: 0,
                                     };
 
+                                    // Define clean text colors for table cells to avoid dark-on-dark slate colors on dark rows
+                                    const cellTextClass = isHeaderRow 
+                                        ? "text-white font-bold" 
+                                        : isArticle 
+                                            ? "text-slate-800 dark:text-slate-200 font-semibold" 
+                                            : "text-slate-700 dark:text-slate-350 font-medium";
+
+                                    const totalCellClass = isHeaderRow
+                                        ? "text-white font-black bg-slate-500/15"
+                                        : isArticle
+                                            ? "text-slate-900 dark:text-white font-bold bg-slate-500/5"
+                                            : "text-slate-700 dark:text-slate-300 font-medium bg-slate-500/5";
+
+                                    const valueCellClass = isHeaderRow
+                                        ? "text-[#4ade80] dark:text-emerald-400 font-black bg-emerald-500/15" // Extremely visible green
+                                        : isArticle
+                                            ? "text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-500/5"
+                                            : "text-emerald-600 dark:text-emerald-450 font-semibold bg-emerald-500/5";
+
+                                    const subTextClass = isHeaderRow 
+                                        ? "text-slate-300 font-semibold"
+                                        : "text-muted-foreground";
+
                                     return (
                                         <tr key={row.id} className={style.className}>
                                             {isArticle ? (
                                                 <td className={cn("p-3 border-r flex flex-col font-bold justify-center", style.indentClass)}>
                                                     <span className="text-[10px] text-primary">SKU: {row.sku}</span>
-                                                    <span className="text-slate-700 dark:text-slate-350">{row.label}</span>
+                                                    <span className="text-slate-900 dark:text-slate-100">{row.label}</span>
                                                 </td>
                                             ) : isVariant ? (
                                                 <td className={cn("p-3 border-r text-muted-foreground italic", style.indentClass)}>
@@ -771,19 +929,19 @@ export default function AvailableStockSummaryReportPage() {
                                                 </>
                                             )}
 
-                                            <td className="p-3 border-r text-right font-medium">{formatVal(totals.quantity)}</td>
-                                            <td className="p-3 border-r text-right font-medium">{formatVal(totals.transit)}</td>
-                                            <td className="p-3 border-r text-right bg-slate-500/5 font-bold text-slate-900 dark:text-white">{formatVal(totals.total)}</td>
+                                            <td className={cn("p-3 border-r text-right", cellTextClass)}>{formatVal(totals.quantity)}</td>
+                                            <td className={cn("p-3 border-r text-right", cellTextClass)}>{formatVal(totals.transit)}</td>
+                                            <td className={cn("p-3 border-r text-right", totalCellClass)}>{formatVal(totals.total)}</td>
                                             
                                             {isArticle ? (
-                                                <td className="p-3 border-r text-right font-bold bg-slate-500/5 text-slate-800 dark:text-slate-200">
+                                                <td className="p-3 border-r text-right font-bold bg-slate-500/5 text-slate-900 dark:text-white">
                                                     {formatPriceVal(totals.unitPrice)}
                                                 </td>
                                             ) : (
-                                                <td className="p-3 border-r text-right text-muted-foreground">&mdash;</td>
+                                                <td className={cn("p-3 border-r text-center", subTextClass)}>&mdash;</td>
                                             )}
 
-                                            <td className="p-3 text-right bg-emerald-500/5 font-extrabold text-emerald-600 dark:text-emerald-400">
+                                            <td className={cn("p-3 text-right", valueCellClass)}>
                                                 {formatPriceVal(totals.value)}
                                             </td>
                                         </tr>
@@ -801,15 +959,15 @@ export default function AvailableStockSummaryReportPage() {
                     {/* GRAND TOTALS FOOTER ROW */}
                     {reportData.length > 0 && (
                         <tfoot className="sticky bottom-0 z-10 shadow-md">
-                            <tr className="bg-slate-800 text-slate-100 font-extrabold border-t-2 border-slate-900 text-xs">
-                                <td colSpan={3} className="p-3 border-r text-left uppercase tracking-wider font-black bg-slate-800">
+                            <tr className="bg-[#1e293b] text-slate-100 font-extrabold border-t-2 border-slate-900 text-xs">
+                                <td colSpan={3} className="p-3 border-r text-left uppercase tracking-wider font-black bg-[#1e293b]">
                                     GRAND TOTALS
                                 </td>
-                                <td className="p-3 border-r text-right font-black bg-slate-800">{formatVal(grandTotals.quantity)}</td>
-                                <td className="p-3 border-r text-right font-black bg-slate-800">{formatVal(grandTotals.transit)}</td>
-                                <td className="p-3 border-r text-right font-black bg-slate-900 text-white">{formatVal(grandTotals.total)}</td>
-                                <td className="p-3 border-r text-right font-black bg-slate-800">&mdash;</td>
-                                <td className="p-3 text-right font-black bg-emerald-700/60 text-emerald-250">{formatPriceVal(grandTotals.value)}</td>
+                                <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white">{formatVal(grandTotals.quantity)}</td>
+                                <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white">{formatVal(grandTotals.transit)}</td>
+                                <td className="p-3 border-r text-right font-black bg-[#0f172a] text-white">{formatVal(grandTotals.total)}</td>
+                                <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white">&mdash;</td>
+                                <td className="p-3 text-right font-black bg-[#0f172a] text-[#4ade80]">{formatPriceVal(grandTotals.value)}</td>
                             </tr>
                         </tfoot>
                     )}

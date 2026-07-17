@@ -320,5 +320,59 @@ export async function getSalesRegisterReportExportStatus(jobId: string) {
     }
 }
 
+export async function getSalesListReport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    search?: string;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        queryParams.append("locationId", filters.locationId);
+        if (filters.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.cashierUserId) queryParams.append("cashierUserId", filters.cashierUserId);
+        if (filters.search) queryParams.append("search", filters.search);
+
+        const res = await authFetch(`/pos-sales/reports/sales-list?${queryParams.toString()}`, { method: "GET" });
+        return res.data;
+    } catch (error) {
+        console.error("getSalesListReport error:", error);
+        return { status: false, data: [], message: "Failed to fetch Sales List Report" };
+    }
+}
+
+export async function queueSalesListReportExport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    format: "xlsx" | "pdf";
+    search?: string;
+}) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/sales-list/export/queue`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("queueSalesListReportExport error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getSalesListReportExportStatus(jobId: string) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/sales-list/export/${jobId}/status`, { method: "GET" });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("getSalesListReportExportStatus error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
 
 
