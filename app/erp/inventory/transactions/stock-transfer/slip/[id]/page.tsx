@@ -441,7 +441,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
             <div className="flex items-center">
               <span className="font-semibold w-36 text-gray-600">S.T.N. No :</span>
               <span className="font-bold text-base font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                {(transfer.requestNo || '').replace('TR-', '')}
+                {transfer.requestNo || '-'}
               </span>
             </div>
             {transfer.stockRequisition && (

@@ -95,6 +95,8 @@ export default function StockRequisitionPage() {
   const [remarks, setRemarks] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [financialYear, setFinancialYear] = useState<string>('25-26');
+  const [nextRequisitionNumber, setNextRequisitionNumber] = useState<string>('');
+  const [editRequisitionNo, setEditRequisitionNo] = useState<string>('');
 
   // Manual items & Excel items list
   const [requisitionItems, setRequisitionItems] = useState<SRNItem[]>([]);
@@ -244,7 +246,19 @@ export default function StockRequisitionPage() {
   useEffect(() => {
     loadDropdownData();
     loadRequisitions();
+    fetchNextRequisitionNumber();
   }, []);
+
+  const fetchNextRequisitionNumber = async () => {
+    try {
+      const res = await stockRequisitionApi.getNextRequisitionNumber();
+      if (res.status && res.data) {
+        setNextRequisitionNumber(res.data.nextRequisitionNumber);
+      }
+    } catch (error) {
+      console.error('Error fetching next requisition number:', error);
+    }
+  };
 
   const loadDropdownData = async () => {
     try {
@@ -442,6 +456,7 @@ export default function StockRequisitionPage() {
 
   const handleStartEdit = (req: any) => {
     setEditId(req.id);
+    setEditRequisitionNo(req.requisitionNo);
     setSelectedWarehouseId(req.fromWarehouseId);
     setDestLocationId(req.toLocationId);
     setSelectedBrandId(req.brandId || 'none');
@@ -470,6 +485,7 @@ export default function StockRequisitionPage() {
 
   const handleCancelEdit = () => {
     setEditId(null);
+    setEditRequisitionNo('');
     setRequisitionItems([]);
     setRemarks('');
     setNotes('');
@@ -527,10 +543,12 @@ export default function StockRequisitionPage() {
         if (res.status) {
           toast.success('Outlet Request updated successfully!');
           setEditId(null);
+          setEditRequisitionNo('');
           setRequisitionItems([]);
           setRemarks('');
           setNotes('');
           loadRequisitions();
+          fetchNextRequisitionNumber();
           setActiveTab('all');
         }
       } else {
@@ -540,6 +558,7 @@ export default function StockRequisitionPage() {
           setRequisitionItems([]);
           setRemarks('');
           setNotes('');
+          fetchNextRequisitionNumber();
           router.push('/erp/inventory/transactions/stock-requisition/pending');
         }
       }
@@ -765,6 +784,11 @@ export default function StockRequisitionPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
+                <div className="space-y-2">
+                  <Label>Requisition Number</Label>
+                  <Input value={editId ? editRequisitionNo : (nextRequisitionNumber || 'Generating...')} disabled className="font-mono bg-gray-50" />
+                </div>
+
                 <div className="space-y-2">
                   <Label>Source Warehouse (From)</Label>
                   <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
@@ -1233,12 +1257,22 @@ export default function StockRequisitionPage() {
       />
 
       <Dialog open={replenishModalOpen} onOpenChange={setReplenishModalOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col p-6">
+        <DialogContent noScroll={true} className="!fixed !inset-0 !translate-x-0 !translate-y-0 !w-screen !h-screen !max-w-none !sm:max-w-none !max-h-none !m-0 !rounded-none !border-0 !gap-0 !z-[100] flex flex-col p-6 md:p-8 !pt-8 md:!pt-10">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-amber-700 flex items-center gap-2">
-              <RefreshCw className="h-6 w-6" /> Auto Replenish Requisition
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setReplenishModalOpen(false)}
+                className="rounded-full shrink-0"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <DialogTitle className="text-2xl font-bold text-amber-700 flex items-center gap-2">
+                <RefreshCw className="h-6 w-6" /> Auto Replenish Requisition
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-muted-foreground pl-12">
               Calculate replenishment for outlet <strong>{locations.find(l => l.id === destLocationId)?.name || 'Selected Outlet'}</strong> using net sales summary and reserve stock from warehouse <strong>{warehouses.find(w => w.id === selectedWarehouseId)?.name || 'Selected Warehouse'}</strong>.
             </DialogDescription>
           </DialogHeader>
@@ -1312,7 +1346,7 @@ export default function StockRequisitionPage() {
             </div>
           )}
 
-          <ScrollArea className="flex-1 border rounded-md my-2 overflow-y-auto max-h-[40vh]">
+          <ScrollArea className="flex-1 border rounded-md my-2 overflow-y-auto">
             {replenishCandidates.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-2" />
@@ -1341,7 +1375,7 @@ export default function StockRequisitionPage() {
                     return (
                       <TableRow key={candidate.itemId} className={`hover:bg-gray-50/50 ${isOos ? 'bg-rose-50/10' : ''}`}>
                         <TableCell className="font-bold text-gray-800">{candidate.sku}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{candidate.description}</TableCell>
+                        <TableCell className="max-w-xs md:max-w-md xl:max-w-lg truncate">{candidate.description}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             {candidate.color && (

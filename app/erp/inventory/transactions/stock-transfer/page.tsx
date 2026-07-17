@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { warehouseApi, inventoryApi, locationApi, brandApi, categoryApi, silhouetteApi, genderApi, Warehouse, WarehouseLocation, stockRequisitionApi } from '@/lib/api';
+import { warehouseApi, inventoryApi, locationApi, brandApi, categoryApi, silhouetteApi, genderApi, Warehouse, WarehouseLocation, stockRequisitionApi, transferRequestApi } from '@/lib/api';
 import { createTransferRequest, createReturnTransferRequest, createOutletToOutletTransferRequest } from '@/lib/actions/transfer-request';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History, RotateCcw, Trash2, Plus, CheckCircle2, Info, Loader2, WarehouseIcon, ArrowDown, Filter, X, ChevronDown, ChevronRight, ScanBarcode, Volume2, VolumeX, Keyboard, Sparkles, Printer } from 'lucide-react';
@@ -38,6 +38,7 @@ function StockTransferContent() {
     const [sourceLocationId, setSourceLocationId] = useState<string>('unassigned');
     const [destLocationId, setDestLocationId] = useState<string>('');
     const [transferMode, setTransferMode] = useState<'WAREHOUSE_TO_OUTLET' | 'OUTLET_TO_WAREHOUSE' | 'OUTLET_TO_OUTLET'>('WAREHOUSE_TO_OUTLET');
+    const [nextTransferNumber, setNextTransferNumber] = useState<string>('');
 
     // Item Selection State
     const [selectedItems, setSelectedItems] = useState<Array<{
@@ -451,12 +452,24 @@ function StockTransferContent() {
         await loadRequisitionItems(req, whId);
     };
 
+    const fetchNextTransferNumber = async () => {
+        try {
+            const res = await transferRequestApi.getNextTransferNumber();
+            if (res.status && res.data) {
+                setNextTransferNumber(res.data.nextTransferNumber);
+            }
+        } catch (error) {
+            console.error('Error fetching next transfer number:', error);
+        }
+    };
+
     useEffect(() => {
         const init = async () => {
             await loadWarehouses();
             await loadMasterLocations();
             await loadFilterData();
             await loadPendingRequisitions();
+            await fetchNextTransferNumber();
             
             if (requisitionId) {
                 try {
@@ -689,7 +702,7 @@ function StockTransferContent() {
                     toast.success('Requisition converted to Transfer Request successfully!');
                     stnId = res.data?.id;
                 } else {
-                    throw new Error(res.message || 'Failed to convert requisition to STN');
+                    throw new Error((res as any).message || 'Failed to convert requisition to STN');
                 }
             } else {
                 if (transferMode === 'WAREHOUSE_TO_OUTLET') {
@@ -725,6 +738,7 @@ function StockTransferContent() {
             setActiveRequisitionId(null);
             setActiveRequisitionNo(null);
             setRequisitionItemsMap({});
+            fetchNextTransferNumber();
 
             if (stnId) {
                 router.push(`/erp/inventory/transactions/stock-transfer/slip/${stnId}`);
@@ -834,6 +848,11 @@ function StockTransferContent() {
                         <CardTitle className="text-lg">Transfer Context</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Transfer Number</Label>
+                            <Input value={nextTransferNumber || 'Generating...'} disabled className="font-mono bg-gray-50" />
+                        </div>
+
                         {activeRequisitionNo && (
                             <div className="bg-indigo-50 border border-indigo-200 rounded-md p-3 mb-2 flex items-center justify-between text-xs text-indigo-800 animate-fade-in">
                                 <div className="flex items-center gap-1.5 font-semibold">

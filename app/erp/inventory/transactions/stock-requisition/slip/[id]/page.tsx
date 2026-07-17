@@ -301,7 +301,7 @@ export default function StockRequisitionSlipPage() {
             <div className="flex items-center">
               <span className="font-semibold w-32 text-gray-600">S.R.N. No :</span>
               <span className="font-bold text-base font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                {(requisition.requisitionNo || '').replace('SRN-', '')}
+                {requisition.requisitionNo || '-'}
               </span>
             </div>
             <div className="flex">
