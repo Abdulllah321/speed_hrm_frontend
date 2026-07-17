@@ -266,6 +266,12 @@ export default function AllianceRegisterReportPage() {
         let netSale = 0;
         let cash = 0;
         let card = 0;
+        let giftVoucherAmt = 0;
+        let creditAmt = 0;
+        let claimAmt = 0;
+        let corporateAmt = 0;
+        let exchangeAmt = 0;
+        let creditVoucherIssuedAmt = 0;
 
         reportData.forEach((row) => {
             count++;
@@ -276,6 +282,12 @@ export default function AllianceRegisterReportPage() {
             netSale += Number(row.netSale || 0);
             cash += Number(row.cash || 0);
             card += Number(row.card || 0);
+            giftVoucherAmt += Number(row.giftVoucherAmt || 0);
+            creditAmt += Number(row.creditAmt || 0);
+            claimAmt += Number(row.claimAmt || 0);
+            corporateAmt += Number(row.corporateAmt || 0);
+            exchangeAmt += Number(row.exchangeAmt || 0);
+            creditVoucherIssuedAmt += Number(row.creditVoucherIssuedAmt || 0);
         });
 
         return {
@@ -286,7 +298,13 @@ export default function AllianceRegisterReportPage() {
             sTax,
             netSale,
             cash,
-            card
+            card,
+            giftVoucherAmt,
+            creditAmt,
+            claimAmt,
+            corporateAmt,
+            exchangeAmt,
+            creditVoucherIssuedAmt
         };
     }, [reportData]);
 
@@ -496,7 +514,7 @@ export default function AllianceRegisterReportPage() {
 
             {/* Virtualized Scrolling Table */}
             <div ref={parentRef} className="overflow-auto max-h-[700px] border rounded-xl shadow-sm bg-background no-print">
-                <table className="w-full text-left border-collapse min-w-[1960px]">
+                <table className="w-full text-left border-collapse min-w-[3600px]">
                     <thead>
                         <tr className="bg-indigo-950 text-indigo-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
                             <th className="p-3 w-[160px] border-r bg-indigo-950">Sales Tax Invoice</th>
@@ -512,13 +530,26 @@ export default function AllianceRegisterReportPage() {
                             <th className="p-3 w-[140px] border-r bg-indigo-950">Prefix Card No.</th>
                             <th className="p-3 w-[100px] border-r text-center bg-indigo-950">Auth ID</th>
                             <th className="p-3 w-[100px] border-r text-center bg-indigo-950">Card No.</th>
-                            <th className="p-3 w-[300px] bg-indigo-950">Alliance Option</th>
+                            <th className="p-3 w-[250px] border-r bg-indigo-950">Alliance Option</th>
+                            <th className="p-3 w-[200px] border-r bg-indigo-950">Remarks</th>
+                            <th className="p-3 w-[150px] border-r bg-indigo-950">Gift Voucher No.</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-indigo-950">Amt</th>
+                            <th className="p-3 w-[150px] border-r bg-indigo-950">Credit Voucher No.</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-indigo-950">Amt</th>
+                            <th className="p-3 w-[150px] border-r bg-indigo-950">Claim Voucher No.</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-indigo-950">Amt</th>
+                            <th className="p-3 w-[150px] border-r bg-indigo-950">Corp Voucher No.</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-indigo-950">Amt</th>
+                            <th className="p-3 w-[150px] border-r bg-indigo-950">Exch Voucher No.</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-indigo-950">Amt</th>
+                            <th className="p-3 w-[150px] border-r bg-indigo-950">Credit Issued</th>
+                            <th className="p-3 w-[110px] text-right bg-indigo-950 animate-pulse">Amt</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y text-xs font-medium">
                         {isPending ? (
                             <tr>
-                                <td colSpan={14} className="p-8 text-center text-muted-foreground">
+                                <td colSpan={27} className="p-8 text-center text-muted-foreground">
                                     <div className="flex items-center justify-center gap-2">
                                         <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
                                         Loading alliance transactions register...
@@ -527,7 +558,7 @@ export default function AllianceRegisterReportPage() {
                             </tr>
                         ) : reportData.length === 0 ? (
                             <tr>
-                                <td colSpan={14} className="p-8 text-center text-muted-foreground">
+                                <td colSpan={27} className="p-8 text-center text-muted-foreground">
                                     No alliance register records found for this criteria.
                                 </td>
                             </tr>
@@ -535,7 +566,7 @@ export default function AllianceRegisterReportPage() {
                             <>
                                 {paddingTop > 0 && (
                                     <tr>
-                                        <td colSpan={14} style={{ height: `${paddingTop}px` }} />
+                                        <td colSpan={27} style={{ height: `${paddingTop}px` }} />
                                     </tr>
                                 )}
                                 {virtualItems.map((virtualRow) => {
@@ -559,13 +590,26 @@ export default function AllianceRegisterReportPage() {
                                             <td className="p-3 border-r font-mono text-[11px]">{row.prefixCardNo || "-"}</td>
                                             <td className="p-3 border-r text-center font-mono text-[11px]">{row.authId || "-"}</td>
                                             <td className="p-3 border-r text-center font-mono text-[11px]">{row.cardNo ? `****${row.cardNo}` : "-"}</td>
-                                            <td className="p-3 text-indigo-900 dark:text-indigo-300 font-semibold">{row.allianceOption || "-"}</td>
+                                            <td className="p-3 border-r text-indigo-900 dark:text-indigo-300 font-semibold">{row.allianceOption || "-"}</td>
+                                            <td className="p-3 border-r text-xs text-muted-foreground">{row.remarks || "-"}</td>
+                                            <td className="p-3 border-r font-mono text-[11px]">{row.giftVoucherCode || "-"}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(row.giftVoucherAmt)}</td>
+                                            <td className="p-3 border-r font-mono text-[11px]">{row.creditCode || "-"}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(row.creditAmt)}</td>
+                                            <td className="p-3 border-r font-mono text-[11px]">{row.claimCode || "-"}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(row.claimAmt)}</td>
+                                            <td className="p-3 border-r font-mono text-[11px]">{row.corporateCode || "-"}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(row.corporateAmt)}</td>
+                                            <td className="p-3 border-r font-mono text-[11px]">{row.exchangeCode || "-"}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(row.exchangeAmt)}</td>
+                                            <td className="p-3 border-r font-mono text-[11px]">{row.creditVoucherIssued || "-"}</td>
+                                            <td className="p-3 text-right">{formatVal(row.creditVoucherIssuedAmt)}</td>
                                         </tr>
                                     );
                                 })}
                                 {paddingBottom > 0 && (
                                     <tr>
-                                        <td colSpan={14} style={{ height: `${paddingBottom}px` }} />
+                                        <td colSpan={27} style={{ height: `${paddingBottom}px` }} />
                                     </tr>
                                 )}
                             </>
@@ -589,7 +633,20 @@ export default function AllianceRegisterReportPage() {
                                 <td className="p-3 border-r bg-indigo-950">-</td>
                                 <td className="p-3 border-r bg-indigo-950">-</td>
                                 <td className="p-3 border-r bg-indigo-950">-</td>
-                                <td className="p-3 bg-indigo-950">-</td>
+                                <td className="p-3 border-r bg-indigo-950">-</td>
+                                <td className="p-3 border-r bg-indigo-950">-</td>
+                                <td className="p-3 border-r bg-indigo-950">-</td>
+                                <td className="p-3 border-r text-right font-bold bg-indigo-950">{formatVal(grandTotals.giftVoucherAmt)}</td>
+                                <td className="p-3 border-r bg-indigo-950">-</td>
+                                <td className="p-3 border-r text-right font-bold bg-indigo-950">{formatVal(grandTotals.creditAmt)}</td>
+                                <td className="p-3 border-r bg-indigo-950">-</td>
+                                <td className="p-3 border-r text-right font-bold bg-indigo-950">{formatVal(grandTotals.claimAmt)}</td>
+                                <td className="p-3 border-r bg-indigo-950">-</td>
+                                <td className="p-3 border-r text-right font-bold bg-indigo-950">{formatVal(grandTotals.corporateAmt)}</td>
+                                <td className="p-3 border-r bg-indigo-950">-</td>
+                                <td className="p-3 border-r text-right font-bold bg-indigo-950">{formatVal(grandTotals.exchangeAmt)}</td>
+                                <td className="p-3 border-r bg-indigo-950">-</td>
+                                <td className="p-3 text-right font-bold bg-indigo-950">{formatVal(grandTotals.creditVoucherIssuedAmt)}</td>
                             </tr>
                         </tfoot>
                     )}
