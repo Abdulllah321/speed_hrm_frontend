@@ -58,6 +58,8 @@ const posMenuGroups = [
             { title: "Available Stock Summary", icon: TrendingUp, href: "/pos/reports/available-stock-summary" },
             { title: "Net Sales Summary", icon: FileText, href: "/pos/reports/net-sales-summary" },
             { title: "Sales List Report", icon: FileText, href: "/pos/reports/sales-list" },
+            { title: "Gross Sales Summary", icon: FileText, href: "/pos/reports/gross-sales-summary" },
+            { title: "Gross Sales Return", icon: FileText, href: "/pos/reports/gross-sales-return" },
         ],
     },
     {

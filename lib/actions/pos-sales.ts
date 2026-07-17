@@ -386,5 +386,128 @@ export async function getSalesListReportExportStatus(jobId: string) {
     }
 }
 
+// ─── Gross Sales Summary & Return Report Actions ──────────────────
+export async function getGrossSalesSummaryReport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        queryParams.append("locationId", filters.locationId);
+        if (filters.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.cashierUserId) queryParams.append("cashierUserId", filters.cashierUserId);
+        if (filters.search) queryParams.append("search", filters.search);
+        if (filters.paymentModeGroup) queryParams.append("paymentModeGroup", filters.paymentModeGroup);
+        if (filters.minAmount !== undefined) queryParams.append("minAmount", String(filters.minAmount));
+        if (filters.maxAmount !== undefined) queryParams.append("maxAmount", String(filters.maxAmount));
+        if (filters.fbrOnly !== undefined) queryParams.append("fbrOnly", String(filters.fbrOnly));
+
+        const res = await authFetch(`/pos-sales/reports/gross-sales-summary?${queryParams.toString()}`, { method: "GET" });
+        return res.data;
+    } catch (error) {
+        console.error("getGrossSalesSummaryReport error:", error);
+        return { status: false, data: [], message: "Failed to fetch Gross Sales Summary Report" };
+    }
+}
+
+export async function queueGrossSalesSummaryReportExport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    format: "xlsx" | "pdf";
+    search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
+}) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/gross-sales-summary/export/queue`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("queueGrossSalesSummaryReportExport error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getGrossSalesReturnReport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        queryParams.append("locationId", filters.locationId);
+        if (filters.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.cashierUserId) queryParams.append("cashierUserId", filters.cashierUserId);
+        if (filters.search) queryParams.append("search", filters.search);
+        if (filters.paymentModeGroup) queryParams.append("paymentModeGroup", filters.paymentModeGroup);
+        if (filters.minAmount !== undefined) queryParams.append("minAmount", String(filters.minAmount));
+        if (filters.maxAmount !== undefined) queryParams.append("maxAmount", String(filters.maxAmount));
+        if (filters.fbrOnly !== undefined) queryParams.append("fbrOnly", String(filters.fbrOnly));
+
+        const res = await authFetch(`/pos-sales/reports/gross-sales-return?${queryParams.toString()}`, { method: "GET" });
+        return res.data;
+    } catch (error) {
+        console.error("getGrossSalesReturnReport error:", error);
+        return { status: false, data: [], message: "Failed to fetch Gross Sales Return Report" };
+    }
+}
+
+export async function queueGrossSalesReturnReportExport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    format: "xlsx" | "pdf";
+    search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
+}) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/gross-sales-return/export/queue`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("queueGrossSalesReturnReportExport error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getGrossSalesExportStatus(jobId: string) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/gross-sales-export/${jobId}/status`, { method: "GET" });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("getGrossSalesExportStatus error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
 
 

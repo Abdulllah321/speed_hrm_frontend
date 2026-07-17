@@ -1731,6 +1731,16 @@ export const menuData: MenuItem[] = [
         permissions: ["pos.report.view"]
       },
       {
+        title: "Gross Sales Summary",
+        href: "/pos/reports/gross-sales-summary",
+        permissions: ["pos.report.view"]
+      },
+      {
+        title: "Gross Sales Return",
+        href: "/pos/reports/gross-sales-return",
+        permissions: ["pos.report.view"]
+      },
+      {
         title: "Sales Reconciliation",
         href:"/pos/reports/reconciliation",
         permissions: ["pos.report.view"]
