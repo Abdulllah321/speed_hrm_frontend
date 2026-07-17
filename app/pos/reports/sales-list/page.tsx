@@ -8,7 +8,7 @@ import {
     getSalesListReportExportStatus
 } from "@/lib/actions/pos-sales";
 import { getLocations, Location } from "@/lib/actions/location";
-import { getUsers, User } from "@/lib/actions/users";
+import { User } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
@@ -92,18 +92,13 @@ export default function SalesListReportPage() {
     const [pdfExportState, setPdfExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
     const [pdfExportProgress, setPdfExportProgress] = useState<number>(0);
 
-    // Fetch Locations & Cashiers
+    // Fetch Locations
     useEffect(() => {
         async function loadMetadata() {
             try {
                 const locRes = await getLocations();
                 if (locRes && locRes.status && Array.isArray(locRes.data)) {
                     setLocations(locRes.data);
-                }
-
-                const userRes = await getUsers();
-                if (userRes && userRes.status && Array.isArray(userRes.data)) {
-                    setCashiers(userRes.data);
                 }
             } catch (err) {
                 console.error("Failed to load filter metadata:", err);
@@ -137,6 +132,9 @@ export default function SalesListReportPage() {
             });
             if (result && result.status !== false) {
                 setReportData(result.data || []);
+                if (selectedCashierId === "ALL" && Array.isArray(result.cashiers)) {
+                    setCashiers(result.cashiers);
+                }
             } else {
                 toast.error("Failed to load Sales List Report data");
             }
