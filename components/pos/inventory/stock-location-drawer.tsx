@@ -13,7 +13,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Building2, MapPin, Package, ArrowRight, Loader2, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { RequestStockModal } from "@/components/pos/inventory/request-stock-modal";
 import { DirectTransferModal } from "@/components/pos/inventory/direct-transfer-modal";
 import { useAuth } from "@/components/providers/auth-provider";
 import { inventoryApi } from "@/lib/api";
@@ -58,7 +57,6 @@ export function StockLocationDrawer({
     const [locations, setLocations] = useState<StockLocation[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<StockLocation | null>(null);
-    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
     const [isDirectModalOpen, setIsDirectModalOpen] = useState(false);
 
     useEffect(() => {
@@ -83,8 +81,21 @@ export function StockLocationDrawer({
     }
 
     const handleRequestStock = (loc: StockLocation) => {
-        setSelectedLocation(loc);
-        setIsRequestModalOpen(true);
+        if (item) {
+            const params = new URLSearchParams({
+                itemId: item.id,
+                sku: item.sku,
+                description: item.description,
+                size: item.size || "",
+                color: item.color || "",
+                maxQuantity: loc.quantity.toString(),
+                fromLocationId: loc.location?.id || "",
+                fromLocationName: loc.location?.name || "",
+                fromWarehouseId: loc.location?.warehouse?.id || "",
+                fromWarehouseName: loc.location?.warehouse?.name || "",
+            });
+            router.push(`/pos/inventory/request-transfer?${params.toString()}`);
+        }
     };
 
     const currentLocationId = user?.terminal?.location?.id || user?.locationId;
@@ -101,21 +112,23 @@ export function StockLocationDrawer({
                             </div>
                             <SheetTitle className="text-xl font-bold tracking-tight">Stock Breakdown</SheetTitle>
                         </div>
-                        <SheetDescription className="text-muted-foreground font-medium flex flex-col gap-1">
-                            <div className="flex items-center flex-wrap gap-2">
-                                <span className="font-bold text-foreground">{item?.sku}</span>
-                                {item?.size && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 ring-1 ring-inset ring-indigo-700/10 dark:ring-indigo-300/20">
-                                         Size: {item.size}
-                                    </span>
-                                )}
-                                {item?.color && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 ring-1 ring-inset ring-pink-700/10 dark:ring-pink-300/20">
-                                         Color: {item.color}
-                                    </span>
-                                )}
+                        <SheetDescription asChild className="text-muted-foreground font-medium flex flex-col gap-1">
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center flex-wrap gap-2">
+                                    <span className="font-bold text-foreground">{item?.sku}</span>
+                                    {item?.size && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 ring-1 ring-inset ring-indigo-700/10 dark:ring-indigo-300/20">
+                                             Size: {item.size}
+                                        </span>
+                                    )}
+                                    {item?.color && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 ring-1 ring-inset ring-pink-700/10 dark:ring-pink-300/20">
+                                             Color: {item.color}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-sm text-muted-foreground/90">{item?.description}</span>
                             </div>
-                            <span className="text-sm text-muted-foreground/90">{item?.description}</span>
                         </SheetDescription>
                     </SheetHeader>
 
@@ -218,14 +231,7 @@ export function StockLocationDrawer({
                 </SheetContent>
             </Sheet>
 
-            {selectedLocation && (
-                <RequestStockModal
-                    item={item}
-                    fromLocation={selectedLocation}
-                    isOpen={isRequestModalOpen}
-                    onClose={() => setIsRequestModalOpen(false)}
-                />
-            )}
+
 
             {isDirectModalOpen && item && (
                 <DirectTransferModal
