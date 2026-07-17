@@ -810,6 +810,8 @@ export const purchaseReturnApi = {
     fetchApi<any[]>('/purchase/purchase-returns/eligible-landed-costs'),
   getEligibleInvoices: () =>
     fetchApi<any[]>('/purchase/purchase-returns/eligible-invoices'),
+  getNextReturnNumber: () =>
+    fetchApi<{ nextReturnNumber: string }>('/purchase/purchase-returns/next-return-number'),
 };
 
 export const warehouseApi = {
@@ -968,6 +970,8 @@ export const transferRequestApi = {
     method: 'POST',
     body: JSON.stringify({ userId }),
   }),
+  getNextTransferNumber: () =>
+    fetchApi<{ status: boolean; data: { nextTransferNumber: string } }>('/transfer-request/next-transfer-number'),
 };
 
 export const inventoryApi = {
@@ -1557,4 +1561,6 @@ export const stockRequisitionApi = {
     if (filters.endDate) params.append('endDate', filters.endDate);
     return fetchApi<{ status: boolean; data: any[] }>(`/stock-requisition/replenishment-candidates?${params.toString()}`);
   },
+  getNextRequisitionNumber: () =>
+    fetchApi<{ status: boolean; data: { nextRequisitionNumber: string } }>('/stock-requisition/next-requisition-number'),
 };
