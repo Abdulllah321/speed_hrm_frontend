@@ -1770,6 +1770,14 @@ export const menuData: MenuItem[] = [
     environment: "ERP",
     permissions: ["pos.dashboard.view"],
     children: [
+      {title: "ERP Reports", children: [
+        {
+          title: "Stock Valuation Report",
+          href: "/erp/reports/stock-valuation",
+          permissions: ["erp.report.view"],
+        }
+      ]},
+
       {
         title: "POS Reports",
         children: [
