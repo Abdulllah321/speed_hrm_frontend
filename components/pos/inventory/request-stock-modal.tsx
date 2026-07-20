@@ -95,7 +95,7 @@ export function RequestStockModal({
                 res = await createStockRequisition({
                     fromWarehouseId: fromLocation.location.warehouse.id,
                     toLocationId: toLocationId,
-                    documentType: "Outlet Request",
+                    documentType: "Store Request",
                     status: "PENDING",
                     items: [
                         {

@@ -229,6 +229,7 @@ export default function StockRequisitionPage() {
     });
     
     setReplenishModalOpen(false);
+    setDocumentType('Replenish');
     toast.success(`Added ${toAdd.length} replenishment items to the requisition note.`);
   };
 
@@ -846,7 +847,8 @@ export default function StockRequisitionPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="New Arrival">New Arrival</SelectItem>
-                      <SelectItem value="Regular">Regular / General</SelectItem>
+                      <SelectItem value="Replenish">Replenish</SelectItem>
+                      <SelectItem value="Store Request">Store Request</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
