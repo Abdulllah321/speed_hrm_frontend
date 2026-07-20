@@ -80,24 +80,24 @@ export function calculateTaxForAccount(
 
   // 12060004 - WHT Payable-Services u/s 153(1)(b)
 
-  // T00008S / T00008: 153(1)(b)/29-Services (ATL) - 7%
+  // T00008S / T00008: 153(1)(b)/29-Services (ATL) - 6%
   if (accountCode === "12060004" && (tagCode === "T00008S" || tagCode === "T00008")) {
-    return Math.round(taxableAmount * 0.07 * 100) / 100;
+    return Math.round(taxableAmount * 0.06 * 100) / 100;
   }
 
-  // T00009: 153(1)(b)/29-Services (Non ATL) - 14%
+  // T00009: 153(1)(b)/29-Services (Non ATL) - 12%
   if (accountCode === "12060004" && tagCode === "T00009") {
-    return Math.round(taxableAmount * 0.14 * 100) / 100;
+    return Math.round(taxableAmount * 0.12 * 100) / 100;
   }
 
-  // T00010: 153(1)(b)/30-Services (ATL) - 14%
+  // T00010: 153(1)(b)/30-Services (ATL) - 15%
   if (accountCode === "12060004" && tagCode === "T00010") {
-    return Math.round(taxableAmount * 0.14 * 100) / 100;
+    return Math.round(taxableAmount * 0.15 * 100) / 100;
   }
 
-  // T00011: 153(1)(b)/30-Services (Non ATL) - 28%
+  // T00011: 153(1)(b)/30-Services (Non ATL) - 30%
   if (accountCode === "12060004" && tagCode === "T00011") {
-    return Math.round(taxableAmount * 0.28 * 100) / 100;
+    return Math.round(taxableAmount * 0.30 * 100) / 100;
   }
 
   // T00012: 153(1)(b)/26-Services (ATL) - IT/IT-enabled - 4%
@@ -119,6 +119,27 @@ export function calculateTaxForAccount(
   if (accountCode === "12060004" && tagCode === "T00015") {
     return Math.round(taxableAmount * 0.03 * 100) / 100;
   }
+
+  // T00022: 153(1)(b)/32-Services (ATL) - Payment for Services u/s 153(1)(b) - 7%
+  if (accountCode === "12060004" && tagCode === "T00022") {
+    return Math.round(taxableAmount * 0.07 * 100) / 100;
+  }
+
+  // T00023: 153(1)(b)/32-Services (Non ATL) - Payment for Services u/s 153(1)(b) - 14%
+  if (accountCode === "12060004" && tagCode === "T00023") {
+    return Math.round(taxableAmount * 0.14 * 100) / 100;
+  }
+
+  // T00024: 153(1)(b)/34-Services (ATL) - Payment for Services u/s 153(1)(b) - 14%
+  if (accountCode === "12060004" && tagCode === "T00024") {
+    return Math.round(taxableAmount * 0.14 * 100) / 100;
+  }
+  // T00025: 153(1)(b)/34-Services (Non ATL) - Payment for Services u/s 153(1)(b) - 28%
+  if (accountCode === "12060004" && tagCode === "T00025") {
+    return Math.round(taxableAmount * 0.28 * 100) / 100;
+  }
+
+
 
   // 12060005 - WHT Payable-Rent u/s 155
 
