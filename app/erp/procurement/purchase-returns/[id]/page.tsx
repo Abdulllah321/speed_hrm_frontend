@@ -642,13 +642,13 @@ export default function PurchaseReturnDetailPage() {
                     <div className="w-[45%] flex flex-col space-y-1 text-right">
                         {(() => {
                           const advRate  = Number(purchaseReturn.purchaseInvoice?.advanceTaxRate || 0.5);
-                          const subtotal = Number(purchaseReturn.subtotal || 0);
-                          const salesTax = Number(purchaseReturn.taxAmount || 0);
-                          const total    = Number(purchaseReturn.totalAmount || 0);
                           
                           let totalQty = 0;
+                          let grossSubtotal = 0;
                           let totalDiscount = 0;
+                          let totalSalesTax = 0;
                           let totalAdvTax = 0;
+                          let totalAmount = 0;
                           
                           (purchaseReturn.items || []).forEach((item: any) => {
                             const qty      = Number(item.returnQty      || 0);
@@ -660,14 +660,18 @@ export default function PurchaseReturnDetailPage() {
                             const taxAmt   = valExcl * taxRate / 100;
                             const valIncl  = valExcl + taxAmt;
                             const itemAdv  = valIncl * advRate / 100;
+                            const lineTotal = valIncl + itemAdv;
                             
                             totalQty += qty;
+                            grossSubtotal += qty * unitCost;
                             totalDiscount += discAmt;
+                            totalSalesTax += taxAmt;
                             totalAdvTax += itemAdv;
+                            totalAmount += lineTotal;
                           });
                           
-                          const valExcl = subtotal - totalDiscount;
-                          const valIncl = valExcl + salesTax;
+                          const valExcl = grossSubtotal - totalDiscount;
+                          const valIncl = valExcl + totalSalesTax;
 
                           return (
                             <>
@@ -677,7 +681,7 @@ export default function PurchaseReturnDetailPage() {
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-gray-600">Subtotal (Gross):</span>
-                                <span className="tabular-nums font-medium">{fmtInt(subtotal)}</span>
+                                <span className="tabular-nums font-medium">{fmtInt(grossSubtotal)}</span>
                               </div>
                               {totalDiscount > 0 && (
                                 <div className="flex justify-between">
@@ -691,7 +695,7 @@ export default function PurchaseReturnDetailPage() {
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-gray-600">Sale Tax Amount:</span>
-                                <span className="tabular-nums font-medium">{fmtInt(salesTax)}</span>
+                                <span className="tabular-nums font-medium">{fmtInt(totalSalesTax)}</span>
                               </div>
                               <div className="flex justify-between border-t border-gray-400 pt-1">
                                 <span className="font-semibold">Value Incl. Sales Tax:</span>
@@ -703,7 +707,7 @@ export default function PurchaseReturnDetailPage() {
                               </div>
                               <div className="flex justify-between border-t border-black pt-1 font-bold">
                                 <span>Total Return Amount:</span>
-                                <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmtInt(total)}</span>
+                                <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmtInt(totalAmount)}</span>
                               </div>
                             </>
                           );

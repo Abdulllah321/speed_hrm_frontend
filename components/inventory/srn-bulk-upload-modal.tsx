@@ -249,7 +249,8 @@ export function SrnBulkUploadModal({
                                         <SelectTrigger className="bg-background h-10"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="New Arrival">New Arrival</SelectItem>
-                                            <SelectItem value="Regular">Regular / General</SelectItem>
+                                            <SelectItem value="Replenish">Replenish</SelectItem>
+                                            <SelectItem value="Store Request">Store Request</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
