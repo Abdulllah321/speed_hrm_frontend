@@ -32,6 +32,12 @@ interface PurchaseInvoice {
     name: string;
     code: string;
   };
+  items: {
+    quantity: number;
+    item?: {
+      brand?: { name: string } | null;
+    } | null;
+  }[];
   totalAmount: number;
   paidAmount: number;
   remainingAmount: number;
@@ -305,6 +311,8 @@ export default function PurchaseInvoiceListPage() {
                         <th className="text-left p-3">Invoice #</th>
                         <th className="text-left p-3">Date</th>
                         <th className="text-left p-3">Supplier</th>
+                        <th className="text-left p-3">Brand</th>
+                        <th className="text-right p-3">QTY</th>
                         <th className="text-right p-3">Total Amount</th>
                         <th className="text-right p-3">Paid Amount</th>
                         <th className="text-right p-3">Remaining</th>
@@ -334,6 +342,17 @@ export default function PurchaseInvoiceListPage() {
                                 {invoice.supplier?.code}
                               </div>
                             </div>
+                          </td>
+                          <td className="p-3 text-sm">
+                            {(() => {
+                              const brands = [...new Set(
+                                (invoice.items || []).map(i => i.item?.brand?.name).filter(Boolean)
+                              )];
+                              return brands.length > 0 ? brands.join(", ") : "—";
+                            })()}
+                          </td>
+                          <td className="p-3 text-right font-medium">
+                            {(invoice.items || []).reduce((sum, i) => sum + Number(i.quantity || 0), 0).toLocaleString()}
                           </td>
                           <td className="p-3 text-right">
                             {Math.round(invoice.totalAmount).toLocaleString()}
