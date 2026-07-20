@@ -1767,7 +1767,7 @@ export const menuData: MenuItem[] = [
   {
     title: "Reports",
     icon: TrendingUp,
-    environment: "POS",
+    environment: "ERP",
     permissions: ["pos.dashboard.view"],
     children: [
       {
