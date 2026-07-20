@@ -740,12 +740,18 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Reports",
-        permissions: ["erp.finance.general-ledger.read", "erp.finance.trial-balance.read", "erp.finance.balance-sheet.read", "erp.finance.profit-loss.read", "erp.finance.general-ledger-summary.read"],
+        permissions: [
+          "erp.finance.general-ledger.read",
+          "erp.finance.trial-balance.read",
+          "erp.finance.balance-sheet.read",
+          "erp.finance.profit-loss.read",
+          "erp.finance.general-ledger-summary.read",
+        ],
         children: [
           {
             title: "General Ledger",
             href: "/erp/finance/reports/general-ledger",
-            permissions: ["erp.finance.general-ledger.read"]
+            permissions: ["erp.finance.general-ledger.read"],
           },
           {
             title: "General Ledger Summary",
@@ -755,17 +761,17 @@ export const menuData: MenuItem[] = [
           {
             title: "Trial Balance",
             href: "/erp/finance/reports/trial-balance",
-            permissions: ["erp.finance.trial-balance.read"]
+            permissions: ["erp.finance.trial-balance.read"],
           },
           {
             title: "Balance Sheet",
             href: "/erp/finance/reports/balance-sheet",
-            permissions: ["erp.finance.balance-sheet.read"]
+            permissions: ["erp.finance.balance-sheet.read"],
           },
-          { 
-            title: "Profit & Loss", 
+          {
+            title: "Profit & Loss",
             href: "/erp/finance/reports/profit-loss",
-            permissions: ["erp.finance.profit-loss.read"]
+            permissions: ["erp.finance.profit-loss.read"],
           },
         ],
       },
@@ -847,10 +853,7 @@ export const menuData: MenuItem[] = [
           {
             title: "PLM Claims",
             href: "/erp/inventory/transactions/plm-claims",
-            permissions: [
-              "erp.inventory.claims.acknowledge",
-
-            ],
+            permissions: ["erp.inventory.claims.acknowledge"],
           },
         ],
       },
@@ -909,7 +912,10 @@ export const menuData: MenuItem[] = [
           {
             title: "Purchase Order",
             href: "/erp/procurement/purchase-order",
-            permissions: ["erp.procurement.po.create","erp.procurement.po.read"],
+            permissions: [
+              "erp.procurement.po.create",
+              "erp.procurement.po.read",
+            ],
           },
           {
             title: "Goods Receipt Note",
@@ -1707,43 +1713,43 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Stock Activity",
-        href:"/pos/reports/stock-activity",
-        permissions: ["pos.report.view"]
+        href: "/pos/reports/stock-activity",
+        permissions: ["pos.report.view"],
       },
       {
         title: "Available Stock Summary",
         href: "/pos/reports/available-stock-summary",
-        permissions: ["pos.report.view"]
+        permissions: ["pos.report.view"],
       },
       {
         title: "Stock Transaction Details",
         href: "/pos/reports/stock-transaction-detail",
-        permissions: ["pos.report.view"]
+        permissions: ["pos.report.view"],
       },
       {
         title: "Net Sales Summary",
-        href:"/pos/reports/net-sales-summary",
-        permissions: ["pos.report.view"]
+        href: "/pos/reports/net-sales-summary",
+        permissions: ["pos.report.view"],
       },
       {
         title: "Sales List Report",
         href: "/pos/reports/sales-list",
-        permissions: ["pos.report.view"]
+        permissions: ["pos.report.view"],
       },
       {
         title: "Gross Sales Summary",
         href: "/pos/reports/gross-sales-summary",
-        permissions: ["pos.report.view"]
+        permissions: ["pos.report.view"],
       },
       {
         title: "Gross Sales Return",
         href: "/pos/reports/gross-sales-return",
-        permissions: ["pos.report.view"]
+        permissions: ["pos.report.view"],
       },
       {
         title: "Sales Reconciliation",
-        href:"/pos/reports/reconciliation",
-        permissions: ["pos.report.view"]
+        href: "/pos/reports/reconciliation",
+        permissions: ["pos.report.view"],
       },
       {
         href: "/pos/reports/sales-register",
@@ -1754,7 +1760,71 @@ export const menuData: MenuItem[] = [
         href: "/pos/reports/alliance-register",
         title: "Alliance Register",
         permissions: ["pos.report.view"],
-      }
+      },
+    ],
+  },
+
+  {
+    title: "Reports",
+    icon: TrendingUp,
+    environment: "POS",
+    permissions: ["pos.dashboard.view"],
+    children: [
+      {
+        title: "POS Reports",
+        children: [
+          {
+            title: "Stock Activity",
+            href: "/erp/reports/pos/stock-activity",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Available Stock Summary",
+            href: "/erp/reports/pos/available-stock-summary",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Stock Transaction Details",
+            href: "/erp/reports/pos/stock-transaction-detail",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Net Sales Summary",
+            href: "/erp/reports/pos/net-sales-summary",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Sales List Report",
+            href: "/erp/reports/pos/sales-list",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Gross Sales Summary",
+            href: "/erp/reports/pos/gross-sales-summary",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Gross Sales Return",
+            href: "/erp/reports/pos/gross-sales-return",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Sales Reconciliation",
+            href: "/erp/reports/pos/reconciliation",
+            permissions: ["erp.report.view"],
+          },
+          {
+            href: "/erp/reports/pos/sales-register",
+            title: "Sales Register",
+            permissions: ["erp.report.view"],
+          },
+          {
+            href: "/erp/reports/pos/alliance-register",
+            title: "Alliance Register",
+            permissions: ["erp.report.view"],
+          },
+        ],
+      },
     ],
   },
 
