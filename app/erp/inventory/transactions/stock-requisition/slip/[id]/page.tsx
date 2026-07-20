@@ -264,22 +264,17 @@ export default function StockRequisitionSlipPage() {
         <div className="flex justify-between items-start border-b pb-4 mb-6">
           {/* Stylized Logo mimicking client standard */}
           <div className="flex items-center gap-3">
-            <div className="border-[3px] border-black p-2 flex flex-col justify-center items-center w-14 h-14 font-black tracking-tighter leading-none">
-              <span className="text-xl">S</span>
-              <span className="text-[10px] -mt-1">PEED</span>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase font-bold tracking-widest text-gray-500 leading-none">SPEED</p>
-              <p className="text-xs uppercase font-extrabold text-black leading-none">PRIVATE LIMITED</p>
-            </div>
+            <img src="/image.png" alt="Logo" className="w-20 object-contain print:w-24" />
           </div>
 
           <div className="text-center flex-1 pr-14">
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Speed (Private) Limited</h1>
             <p className="text-lg font-bold text-gray-800">Stock Requisition Note</p>
-            <p className="text-xl font-extrabold uppercase border-b-2 border-black inline-block px-8 mt-1 tracking-wider">
-              {requisition.brand?.name || 'GENERAL'}
-            </p>
+            {requisition.brand?.name && (
+              <p className="text-xl font-extrabold uppercase border-b-2 border-black inline-block px-8 mt-1 tracking-wider">
+                {requisition.brand.name}
+              </p>
+            )}
           </div>
         </div>
 
@@ -341,7 +336,7 @@ export default function StockRequisitionSlipPage() {
                 <div className="grid grid-cols-12 font-extrabold border-b pb-1 text-black text-sm uppercase">
                   <div className="col-span-5">{cat.categoryName}</div>
                   <div className="col-span-2"></div>
-                  <div className="col-span-1 text-center text-base font-black">{cat.totalQty}</div>
+                  <div className="col-span-1"></div>
                   <div className="col-span-2"></div>
                   <div className="col-span-2 text-right font-black">
                     {cat.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
@@ -351,28 +346,32 @@ export default function StockRequisitionSlipPage() {
                 {/* Level 2: Genders */}
                 {cat.genders.map((gender) => (
                   <div key={gender.genderName} className="pl-4 space-y-3">
-                    <div className="grid grid-cols-12 font-bold text-gray-800 border-b border-dashed pb-0.5 uppercase">
-                      <div className="col-span-5">{gender.genderName}</div>
-                      <div className="col-span-2"></div>
-                      <div className="col-span-1 text-center font-bold">{gender.totalQty}</div>
-                      <div className="col-span-2"></div>
-                      <div className="col-span-2 text-right font-bold">
-                        {gender.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+                    {gender.genderName !== 'GENERAL' && (
+                      <div className="grid grid-cols-12 font-bold text-gray-800 border-b border-dashed pb-0.5 uppercase">
+                        <div className="col-span-5">{gender.genderName}</div>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-1"></div>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-2 text-right font-bold">
+                          {gender.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Level 3: Segments */}
                     {gender.segments.map((segment) => (
                       <div key={segment.segmentName} className="pl-4 space-y-2">
-                        <div className="grid grid-cols-12 font-semibold text-gray-700 uppercase">
-                          <div className="col-span-5">{segment.segmentName}</div>
-                          <div className="col-span-2"></div>
-                          <div className="col-span-1 text-center font-semibold">{segment.totalQty}</div>
-                          <div className="col-span-2"></div>
-                          <div className="col-span-2 text-right">
-                            {segment.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+                        {segment.segmentName !== 'GENERAL' && (
+                          <div className="grid grid-cols-12 font-semibold text-gray-700 uppercase">
+                            <div className="col-span-5">{segment.segmentName}</div>
+                            <div className="col-span-2"></div>
+                            <div className="col-span-1"></div>
+                            <div className="col-span-2"></div>
+                            <div className="col-span-2 text-right">
+                              {segment.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Level 4: Products */}
                         {segment.products.map((prod) => (
@@ -384,7 +383,7 @@ export default function StockRequisitionSlipPage() {
                                 <span className="text-gray-600 truncate">{prod.description}</span>
                               </div>
                               <div className="col-span-2"></div>
-                              <div className="col-span-1 text-center font-bold bg-gray-50">{prod.totalQty}</div>
+                              <div className="col-span-1"></div>
                               <div className="col-span-2 text-right pr-4">
                                 {prod.unitPrice > 0
                                   ? prod.unitPrice.toLocaleString('en-PK', { minimumFractionDigits: 0 })
@@ -424,30 +423,6 @@ export default function StockRequisitionSlipPage() {
           <div className="col-span-2"></div>
           <div className="col-span-2 text-right text-lg">
             Rs. {grandTotalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
-          </div>
-        </div>
-
-        {/* Signatures Panel */}
-        <div className="grid grid-cols-4 gap-8 mt-24 pt-8 border-t border-dashed border-gray-300 text-center text-[11px] font-bold uppercase tracking-wider text-gray-700">
-          <div>
-            <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-            <p>Prepared By (Maker)</p>
-            <p className="text-[9px] text-gray-400 font-normal mt-0.5">Sign & Date</p>
-          </div>
-          <div>
-            <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-            <p>Checked By (Checker)</p>
-            <p className="text-[9px] text-gray-400 font-normal mt-0.5">Sign & Date</p>
-          </div>
-          <div>
-            <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-            <p>Authorized By</p>
-            <p className="text-[9px] text-gray-400 font-normal mt-0.5">Sign & Date</p>
-          </div>
-          <div>
-            <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-            <p>Received By (Outlet Manager)</p>
-            <p className="text-[9px] text-gray-400 font-normal mt-0.5">Sign & Date</p>
           </div>
         </div>
 
