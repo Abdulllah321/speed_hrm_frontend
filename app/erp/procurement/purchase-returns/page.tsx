@@ -153,14 +153,14 @@ export default function PurchaseReturnsPage() {
                       return (
                         <tr key={returnItem.id} className="border-b hover:bg-gray-50">
                           <td className="p-3 font-medium">{returnItem.returnNumber}</td>
-                          <td className="p-3">
-                            <Badge variant="outline">
-                              {returnItem.sourceType === 'INVOICE' 
-                                ? 'Purchase Invoice' 
-                                : returnItem.sourceType === 'GRN' 
-                                  ? 'GRN' 
-                                  : 'Landed Cost'}
-                            </Badge>
+                          <td className="p-3 font-mono text-xs font-semibold text-blue-600">
+                            {returnItem.purchaseInvoice?.invoiceNumber || (
+                              returnItem.sourceType === 'GRN' 
+                                ? (returnItem.grn?.grnNumber || 'GRN') 
+                                : returnItem.sourceType === 'LANDED_COST' 
+                                  ? (returnItem.landedCost?.landedCostNumber || 'Landed Cost') 
+                                  : '—'
+                            )}
                           </td>
                           <td className="p-3 font-mono text-xs">{grnNumber}</td>
                           <td className="p-3 font-medium">{brandNames}</td>

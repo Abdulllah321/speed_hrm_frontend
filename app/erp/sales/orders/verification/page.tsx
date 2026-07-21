@@ -130,7 +130,7 @@ export default function WarehouseVerificationPage() {
                     <TableCell className="font-medium">{order.orderNo}</TableCell>
                     <TableCell>{order.customer.name}</TableCell>
                     <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{order.warehouseId || 'N/A'}</TableCell>
+                    <TableCell>{order.warehouse?.name || 'N/A'}</TableCell>
                     <TableCell>{order.items.length} items</TableCell>
                     <TableCell>
                       {getStatusBadge(order.status)}

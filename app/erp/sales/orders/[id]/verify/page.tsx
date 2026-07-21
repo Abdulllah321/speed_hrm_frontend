@@ -154,7 +154,7 @@ export default function SalesOrderVerificationPage() {
             <CardTitle className="text-sm font-medium">Warehouse</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{order.warehouseId || 'N/A'}</div>
+            <div className="text-xl font-bold">{order.warehouse?.name || 'N/A'}</div>
           </CardContent>
         </Card>
       </div>
