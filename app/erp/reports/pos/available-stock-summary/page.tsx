@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useTransition, useCallback, useMemo, useRef } from "react";
 import { getLocations, Location } from "@/lib/actions/location";
+import { getWarehouses, Warehouse } from "@/lib/actions/warehouse";
 import {
     getAvailableStockSummaryReport,
     queueAvailableStockSummaryReportExport,
@@ -29,7 +30,8 @@ import {
     Truck,
     Search,
     X,
-    SlidersHorizontal
+    SlidersHorizontal,
+    Package
 } from "lucide-react";
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
@@ -39,6 +41,9 @@ export default function ERPAvailableStockSummaryReportPage() {
     const [locations, setLocations] = useState<Location[]>([]);
     const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
     const [isLoadingLocations, setIsLoadingLocations] = useState<boolean>(true);
+
+    const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+    const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>([]);
 
     const [dateRange, setDateRange] = useState<DateRange>({
         from: startOfMonth(new Date()),
@@ -91,6 +96,21 @@ export default function ERPAvailableStockSummaryReportPage() {
         fetchLocationsList();
     }, []);
 
+    // Fetch Warehouses on mount
+    useEffect(() => {
+        async function fetchWarehousesList() {
+            try {
+                const data = await getWarehouses();
+                if (Array.isArray(data)) {
+                    setWarehouses(data);
+                }
+            } catch (err) {
+                console.error("Error fetching warehouses:", err);
+            }
+        }
+        fetchWarehousesList();
+    }, []);
+
     // Format location options for MultiSelect
     const locationOptions: MultiSelectOption[] = useMemo(() => {
         return locations.map((loc) => ({
@@ -100,9 +120,22 @@ export default function ERPAvailableStockSummaryReportPage() {
         }));
     }, [locations]);
 
+    // Format warehouse options for MultiSelect
+    const warehouseOptions: MultiSelectOption[] = useMemo(() => {
+        return warehouses.map((wh) => ({
+            value: wh.id,
+            label: wh.name,
+            description: wh.code ? `Code: ${wh.code}` : undefined,
+        }));
+    }, [warehouses]);
+
     const locationParam = useMemo(() => {
         return selectedLocationIds.length > 0 ? selectedLocationIds.join(",") : undefined;
     }, [selectedLocationIds]);
+
+    const warehouseParam = useMemo(() => {
+        return selectedWarehouseIds.length > 0 ? selectedWarehouseIds.join(",") : undefined;
+    }, [selectedWarehouseIds]);
 
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
@@ -110,6 +143,7 @@ export default function ERPAvailableStockSummaryReportPage() {
         startTransition(async () => {
             const result = await getAvailableStockSummaryReport({
                 locationId: locationParam,
+                warehouseId: warehouseParam,
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
                 summaryOnly,
@@ -133,11 +167,11 @@ export default function ERPAvailableStockSummaryReportPage() {
                 toast.error("Failed to load available stock summary report data");
             }
         });
-    }, [locationParam, dateRange, groupingLevels, summaryOnly]);
+    }, [locationParam, warehouseParam, dateRange, groupingLevels, summaryOnly]);
 
     useEffect(() => {
         fetchReport();
-    }, [locationParam, groupingLevels]);
+    }, [locationParam, warehouseParam, groupingLevels]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -222,6 +256,7 @@ export default function ERPAvailableStockSummaryReportPage() {
         try {
             const res = await queueAvailableStockSummaryReportExport({
                 locationId: locationParam,
+                warehouseId: warehouseParam,
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "xlsx",
@@ -270,6 +305,7 @@ export default function ERPAvailableStockSummaryReportPage() {
         try {
             const res = await queueAvailableStockSummaryReportExport({
                 locationId: locationParam,
+                warehouseId: warehouseParam,
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "pdf",
@@ -477,12 +513,20 @@ export default function ERPAvailableStockSummaryReportPage() {
     const formatPriceVal = (val: number) => val === 0 ? "-" : formatCurrency(val);
 
     const getSelectedLocationText = () => {
-        if (selectedLocationIds.length === 0) return "All Locations";
+        const parts: string[] = [];
+        if (selectedWarehouseIds.length === 1) {
+            const match = warehouses.find(w => w.id === selectedWarehouseIds[0]);
+            parts.push(match ? match.name : "1 Warehouse");
+        } else if (selectedWarehouseIds.length > 1) {
+            parts.push(`${selectedWarehouseIds.length} Warehouses`);
+        }
         if (selectedLocationIds.length === 1) {
             const match = locations.find(l => l.id === selectedLocationIds[0]);
-            return match ? match.name : "1 Location";
+            parts.push(match ? match.name : "1 Outlet");
+        } else if (selectedLocationIds.length > 1) {
+            parts.push(`${selectedLocationIds.length} Outlets`);
         }
-        return `${selectedLocationIds.length} Locations Selected`;
+        return parts.length > 0 ? parts.join(" | ") : "All Warehouses & Outlets";
     };
 
     return (
@@ -551,17 +595,32 @@ export default function ERPAvailableStockSummaryReportPage() {
             {/* Filters Row */}
             <div className="flex flex-wrap items-end justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
                 <div className="flex flex-wrap items-end gap-4 flex-1">
+                    {/* Warehouse selector (MultiSelect in ERP) */}
+                    <div className="flex flex-col gap-1.5 min-w-[240px]">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                            <Package className="h-3.5 w-3.5 text-primary" />
+                            Select Warehouses
+                        </span>
+                        <MultiSelect
+                            options={warehouseOptions}
+                            value={selectedWarehouseIds}
+                            onValueChange={setSelectedWarehouseIds}
+                            placeholder="All Warehouses"
+                            className="bg-background"
+                        />
+                    </div>
+
                     {/* Location selector (MultiSelect in ERP) */}
-                    <div className="flex flex-col gap-1.5 min-w-[260px]">
+                    <div className="flex flex-col gap-1.5 min-w-[240px]">
                         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
                             <Store className="h-3.5 w-3.5 text-primary" />
-                            Select Outlets / Locations
+                            Select Outlets / Stores
                         </span>
                         <MultiSelect
                             options={locationOptions}
                             value={selectedLocationIds}
                             onValueChange={setSelectedLocationIds}
-                            placeholder="All Locations"
+                            placeholder="All Outlets"
                             className="bg-background"
                         />
                     </div>

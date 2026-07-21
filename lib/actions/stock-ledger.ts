@@ -335,6 +335,7 @@ export async function getStockTransactionDetailReportExportStatus(jobId: string)
 
 export async function getAvailableStockSummaryReport(filters: {
     locationId?: string;
+    warehouseId?: string;
     startDate?: string;
     endDate?: string;
     summaryOnly?: boolean;
@@ -349,6 +350,7 @@ export async function getAvailableStockSummaryReport(filters: {
     try {
         const queryParams = new URLSearchParams();
         if (filters.locationId) queryParams.append("locationId", filters.locationId);
+        if (filters.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
         if (filters.startDate) queryParams.append("startDate", filters.startDate);
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
         if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
@@ -373,6 +375,7 @@ export async function getAvailableStockSummaryReport(filters: {
 
 export async function queueAvailableStockSummaryReportExport(filters: {
     locationId?: string;
+    warehouseId?: string;
     startDate?: string;
     endDate?: string;
     format: "xlsx" | "pdf";
