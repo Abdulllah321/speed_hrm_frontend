@@ -499,7 +499,6 @@ export default function CreateSalesOrderPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead>Unit Cost</TableHead>
                       <TableHead>Sale Price</TableHead>
                       <TableHead>Qty</TableHead>
                       <TableHead>Discount</TableHead>
@@ -517,7 +516,7 @@ export default function CreateSalesOrderPage() {
                             <div className="text-xs text-muted-foreground">Stock: {item.availableStock}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{formatCurrency(item.costPrice)}</TableCell>
+
                         <TableCell>
                           <Input
                             type="number"

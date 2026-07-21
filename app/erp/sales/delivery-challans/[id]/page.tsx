@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Package, Truck, FileText, CheckCircle, X, Printer, Building2 } from "lucide-react";
@@ -51,6 +51,135 @@ export function numberToWords(amount: number): string {
 
 function fmt(n: number) {
   return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatNumber(n: number) {
+  if (n === undefined || n === null || isNaN(n)) return '0';
+  return n.toLocaleString('en-US');
+}
+
+function formatDateDisplay(d: string | Date | undefined) {
+  if (!d) return 'N/A';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return 'N/A';
+  const day = String(date.getDate()).padStart(2, '0');
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = monthNames[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+function getFinancialYear(d: string | Date | undefined) {
+  const date = d ? new Date(d) : new Date();
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  let startYear = month >= 6 ? year : year - 1;
+  let endYear = startYear + 1;
+  return `${String(startYear).slice(-2)}-${String(endYear).slice(-2)}`;
+}
+
+interface SizeItem {
+  size: string;
+  qty: number;
+  totalValue: number;
+}
+
+interface ProductItem {
+  sku: string;
+  description: string;
+  sellingPrice: number;
+  totalQty: number;
+  totalValue: number;
+  sizes: SizeItem[];
+}
+
+interface BrandItem {
+  name: string;
+  totalQty: number;
+  totalValue: number;
+  products: ProductItem[];
+}
+
+interface CategoryItem {
+  name: string;
+  totalQty: number;
+  totalValue: number;
+  brands: BrandItem[];
+}
+
+function groupChallanItems(items: any[]): CategoryItem[] {
+  if (!items || items.length === 0) return [];
+  
+  const categoryMap = new Map<string, CategoryItem>();
+
+  items.forEach((item: any) => {
+    const itemObj = item.item || {};
+    const catName = (itemObj.category?.name || item.categoryName || 'GENERAL').toUpperCase();
+    const brandName = (itemObj.brand?.name || itemObj.subCategory?.name || item.brandName || 'DEFAULT').toUpperCase();
+    const sku = itemObj.sku || item.sku || 'N/A';
+    const description = itemObj.description || item.description || 'N/A';
+    const sizeName = itemObj.size?.name || itemObj.size?.code || item.size || '';
+    const sellingPrice = Number(item.salePrice || item.unitPrice || 0);
+    const qty = Number(item.deliveredQty || item.quantity || 0);
+    const totalVal = qty * sellingPrice;
+
+    if (!categoryMap.has(catName)) {
+      categoryMap.set(catName, {
+        name: catName,
+        totalQty: 0,
+        totalValue: 0,
+        brands: [],
+      });
+    }
+
+    const category = categoryMap.get(catName)!;
+    category.totalQty += qty;
+    category.totalValue += totalVal;
+
+    let brand = category.brands.find((b) => b.name === brandName);
+    if (!brand) {
+      brand = {
+        name: brandName,
+        totalQty: 0,
+        totalValue: 0,
+        products: [],
+      };
+      category.brands.push(brand);
+    }
+    brand.totalQty += qty;
+    brand.totalValue += totalVal;
+
+    let product = brand.products.find((p) => p.sku === sku && p.description === description && p.sellingPrice === sellingPrice);
+    if (!product) {
+      product = {
+        sku,
+        description,
+        sellingPrice,
+        totalQty: 0,
+        totalValue: 0,
+        sizes: [],
+      };
+      brand.products.push(product);
+    }
+    product.totalQty += qty;
+    product.totalValue += totalVal;
+
+    if (sizeName) {
+      let sizeObj = product.sizes.find((s) => s.size === sizeName);
+      if (!sizeObj) {
+        sizeObj = {
+          size: sizeName,
+          qty: 0,
+          totalValue: 0,
+        };
+        product.sizes.push(sizeObj);
+      }
+      sizeObj.qty += qty;
+      sizeObj.totalValue += qty * sellingPrice;
+    }
+  });
+
+  return Array.from(categoryMap.values());
 }
 
 export default function DeliveryChallanViewPage() {
@@ -413,106 +542,125 @@ export default function DeliveryChallanViewPage() {
 
       {/* Print View */}
       <div id="print-section" className="hidden print:block min-h-screen bg-white p-0">
-          <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-8 print:max-w-none box-border">
-              {/* Header */}
-              <div className="flex justify-between mb-6 gap-4 items-start">
-                  {/* Logo */}
-                  <div className="w-[20%] flex flex-col items-start justify-center">
-                     <img src="/image.png" alt="Logo" className="w-32 object-contain" />
-                  </div>
-                  
-                  {/* Title */}
-                  <div className="w-[35%] flex flex-col justify-center">
-                    <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                      Delivery Challan
-                    </div>
-                  </div>
-
-                  {/* Details Box */}
-                  <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-                     <div className="flex justify-between mb-2">
-                       <span className="font-bold">Challan Number:</span>
-                       <span className="font-bold">{challan.challanNo}</span>
-                     </div>
-                     <div className="flex justify-between">
-                       <div className="flex gap-2">
-                         <span className="font-bold">Date:</span>
-                         <span>
-                           {challan.challanDate 
-                              ? new Date(challan.challanDate).toLocaleDateString('en-GB') 
-                              : challan.createdAt 
-                                ? new Date(challan.createdAt).toLocaleDateString('en-GB')
-                                : 'N/A'
-                           }
-                         </span>
-                       </div>
-                     </div>
-                  </div>
-              </div>
-
-              {/* Delivery / Shipping Box */}
-              <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                      <div className="font-bold border-b border-gray-300 mb-2 pb-1">Delivery Information</div>
-                      <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Driver:</span> <span>{challan.driverName || 'N/A'}</span></div>
-                      <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Vehicle No:</span> <span>{challan.vehicleNo || 'N/A'}</span></div>
-                      <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Transport:</span> <span>{challan.transportMode || 'N/A'}</span></div>
-                  </div>
-                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                      <div className="font-bold border-b border-gray-300 mb-2 pb-1">Customer / Bill To</div>
-                      <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{challan.customer?.name || challan.salesOrder?.customer?.name || 'N/A'}</span></div>
-                      <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Order No:</span> <span>{challan.salesOrder?.orderNo || 'N/A'}</span></div>
-                  </div>
-              </div>
-
-              {/* Table */}
-              <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
-                  <thead>
-                    <tr className="border-y-2 border-black">
-                      <th className="py-2 pr-2 text-left font-bold w-[60%]">Item Details</th>
-                      <th className="py-2 pr-2 text-right font-bold w-[20%]">Unit Price</th>
-                      <th className="py-2 pr-2 text-right font-bold w-[20%]">Delivered Qty</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {challan.items && challan.items.length > 0 ? (
-                      challan.items.map((item: any, i: number) => (
-                        <tr key={item.id || i} className="border-b border-gray-300 align-top">
-                          <td className="py-2 pr-2 overflow-hidden text-ellipsis">
-                            <div className="font-medium">{item.item?.sku || item.sku || '-'}</div>
-                            <div className="text-gray-700">{item.item?.description || item.description || '-'}</div>
-                          </td>
-                          <td className="py-2 pr-2 text-right tabular-nums">
-                            {fmt(Number(item.salePrice || item.unitPrice || 0))}
-                          </td>
-                          <td className="py-2 pr-2 text-right tabular-nums font-bold">
-                            {item.deliveredQty || item.quantity || 0}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                          <td colSpan={3} className="py-4 text-center text-muted-foreground border-b border-gray-300">
-                              No items found for this delivery challan
-                          </td>
-                      </tr>
-                    )}
-                  </tbody>
-              </table>
-
-              {/* Signatures */}
-              <div className="grid grid-cols-3 gap-3 mt-8">
-                  <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-center">PREPARED BY</span>
-                  </div>
-                  <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-center">CHECKED BY</span>
-                  </div>
-                  <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-center">RECEIVED BY</span>
-                  </div>
-              </div>
+        <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-6 font-sans print:p-6 print:max-w-none box-border text-xs">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-6">
+            <div className="w-1/4 flex items-center">
+              <svg className="h-10 w-auto text-black fill-current" viewBox="0 0 24 24">
+                <path d="M21.71 4.77C18.6 7.6 13.73 12.04 10.22 15.35C8.35 17.11 6.8 18.3 5.92 18.3C4.94 18.3 4.19 17.41 4.19 16.35C4.19 14.77 5.73 12.18 8.23 9.46C7.29 10.3 5.48 12.2 4.3 13.84C3.41 15.09 2.5 16.74 2.5 18.27C2.5 20.35 4.14 21.8 6.55 21.8C8.94 21.8 11.75 19.86 14.7 17.15C18.25 13.88 22.38 9.09 24 7.08L21.71 4.77Z" />
+              </svg>
+            </div>
+            <div className="w-1/2 text-center">
+              <h1 className="text-xl font-bold tracking-tight">Speed (Private) Limited</h1>
+              <h2 className="text-lg font-bold">Delivery Challan</h2>
+            </div>
+            <div className="w-1/4"></div>
           </div>
+
+          {/* Metadata Section */}
+          <div className="space-y-1 mb-4 text-xs font-sans">
+            <div className="grid grid-cols-3 gap-2">
+              <div><span className="font-bold inline-block w-28">Financial Year :</span> {getFinancialYear(challan.challanDate)}</div>
+              <div><span className="font-bold inline-block w-32">Document Status :</span> {challan.status === 'DELIVERED' || challan.status === 'INVOICED' ? 'Approved / Closed' : challan.status || 'Pending'}</div>
+              <div><span className="font-bold inline-block w-24">Approved By :</span> {challan.driverName || 'Faisal'}</div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-1">
+              <div><span className="font-bold inline-block w-36">Stock Deliverd From :</span> {challan.warehouse?.name || challan.salesOrder?.warehouse?.name || 'Warehouse'}</div>
+              <div><span className="font-bold inline-block w-36">Customer Name :</span> {challan.customer?.name || challan.salesOrder?.customer?.name || 'N/A'}</div>
+              <div><span className="font-bold inline-block w-36">Address :</span> {challan.customer?.address || challan.salesOrder?.customer?.address || 'N/A'}</div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div><span className="font-bold inline-block w-36">D.C. No :</span> {challan.challanNo}</div>
+              <div><span className="font-bold inline-block w-16">Date :</span> {formatDateDisplay(challan.challanDate || challan.createdAt)}</div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-1">
+              <div><span className="font-bold inline-block w-36">D.O.N. No :</span> {challan.salesOrder?.orderNo || 'N/A'}</div>
+              <div><span className="font-bold inline-block w-36">Employee :</span> {challan.driverName || 'Faisal'}</div>
+              <div><span className="font-bold inline-block w-36">Remarks :</span> {challan.notes || challan.salesOrder?.notes || 'N/A'}</div>
+            </div>
+
+            <div className="border-b-2 border-black pt-2 mb-2"></div>
+          </div>
+
+          {/* Grouped Items Table */}
+          <table className="w-full text-xs font-sans border-collapse">
+            <thead>
+              <tr className="border-y-2 border-black font-bold">
+                <th className="py-2 text-left w-[45%]">GPC / Category / Product</th>
+                <th className="py-2 text-center w-[10%]">Size</th>
+                <th className="py-2 text-right w-[15%]">Quantity</th>
+                <th className="py-2 text-right w-[15%]">Selling Price (Rs.)</th>
+                <th className="py-2 text-right w-[15%]">Total Value (Rs.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupChallanItems(challan.items || []).map((cat, catIdx) => (
+                <React.Fragment key={catIdx}>
+                  {/* Category Header Row */}
+                  <tr className="border-t-2 border-black font-bold">
+                    <td className="py-1 uppercase">{cat.name}</td>
+                    <td className="py-1 text-center"></td>
+                    <td className="py-1 text-right">{formatNumber(cat.totalQty)}</td>
+                    <td className="py-1 text-right"></td>
+                    <td className="py-1 text-right">{formatNumber(cat.totalValue)}</td>
+                  </tr>
+                  <tr className="border-b border-dotted border-black">
+                    <td colSpan={5}></td>
+                  </tr>
+
+                  {cat.brands.map((brand, brandIdx) => (
+                    <React.Fragment key={brandIdx}>
+                      {/* Brand / SubCategory Row */}
+                      <tr className="font-bold">
+                        <td className="py-1 pl-4 uppercase">{brand.name}</td>
+                        <td className="py-1 text-center"></td>
+                        <td className="py-1 text-right">{formatNumber(brand.totalQty)}</td>
+                        <td className="py-1 text-right"></td>
+                        <td className="py-1 text-right">{formatNumber(brand.totalValue)}</td>
+                      </tr>
+
+                      {brand.products.map((prod, prodIdx) => (
+                        <React.Fragment key={prodIdx}>
+                          {/* SKU Row */}
+                          <tr>
+                            <td className="py-0.5 pl-8 text-gray-800 text-[11px]" colSpan={5}>
+                              {prod.sku}
+                            </td>
+                          </tr>
+                          {/* Description Row */}
+                          <tr>
+                            <td className="py-0.5 pl-8 font-semibold">{prod.description}</td>
+                            <td className="py-0.5 text-center"></td>
+                            <td className="py-0.5 text-right">{formatNumber(prod.totalQty)}</td>
+                            <td className="py-0.5 text-right">{formatNumber(prod.sellingPrice)}</td>
+                            <td className="py-0.5 text-right">{formatNumber(prod.totalValue)}</td>
+                          </tr>
+                          <tr className="border-b border-dotted border-black">
+                            <td colSpan={5}></td>
+                          </tr>
+
+                          {/* Size Breakdown Rows */}
+                          {prod.sizes.map((sz, szIdx) => (
+                            <tr key={szIdx}>
+                              <td className="py-0.5"></td>
+                              <td className="py-0.5 text-center">{sz.size}</td>
+                              <td className="py-0.5 text-right">{formatNumber(sz.qty)}</td>
+                              <td className="py-0.5 text-right"></td>
+                              <td className="py-0.5 text-right">{formatNumber(sz.totalValue)}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
     </PermissionGuard>
