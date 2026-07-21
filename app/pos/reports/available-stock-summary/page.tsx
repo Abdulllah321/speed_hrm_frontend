@@ -348,6 +348,7 @@ export default function AvailableStockSummaryReportPage() {
             totalArticles: 0,
             quantity: 0,
             transit: 0,
+            reserved: 0,
             total: 0,
             value: 0,
         };
@@ -358,6 +359,7 @@ export default function AvailableStockSummaryReportPage() {
             if (!node || !node.totals) continue;
             t.quantity += node.totals.quantity || 0;
             t.transit += node.totals.transit || 0;
+            t.reserved += node.totals.reserved || 0;
             t.total += node.totals.total || 0;
             t.value += node.totals.value || 0;
         }
@@ -812,20 +814,21 @@ export default function AvailableStockSummaryReportPage() {
                 <table className="w-full text-left border-collapse min-w-[1200px]">
                     <thead>
                         <tr className="bg-[#1e293b] text-slate-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
-                            <th className="p-3 w-[300px] border-r bg-[#1e293b]">GPC / Category / Product</th>
-                            <th className="p-3 w-[90px] border-r text-center bg-[#1e293b]">Size</th>
-                            <th className="p-3 w-[110px] border-r text-center bg-[#1e293b]">Color</th>
-                            <th className="p-3 w-[110px] border-r text-right bg-[#1e293b]">Quantity</th>
-                            <th className="p-3 w-[110px] border-r text-right bg-[#1e293b]">In Transit</th>
-                            <th className="p-3 w-[110px] border-r text-right bg-[#0f172a] font-extrabold text-white">Total</th>
-                            <th className="p-3 w-[120px] border-r text-right bg-[#1e293b]">Selling Price</th>
-                            <th className="p-3 w-[150px] text-right bg-[#0f172a] font-extrabold text-emerald-300">Value (Rs.)</th>
+                            <th className="p-3 w-[280px] border-r bg-[#1e293b]">GPC / Category / Product</th>
+                            <th className="p-3 w-[80px] border-r text-center bg-[#1e293b]">Size</th>
+                            <th className="p-3 w-[100px] border-r text-center bg-[#1e293b]">Color</th>
+                            <th className="p-3 w-[100px] border-r text-right bg-[#1e293b]">Quantity</th>
+                            <th className="p-3 w-[100px] border-r text-right bg-[#1e293b]">In Transit</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-[#1e293b] text-purple-300">Stock Reserved</th>
+                            <th className="p-3 w-[100px] border-r text-right bg-[#0f172a] font-extrabold text-white">Total</th>
+                            <th className="p-3 w-[110px] border-r text-right bg-[#1e293b]">Selling Price</th>
+                            <th className="p-3 w-[140px] text-right bg-[#0f172a] font-extrabold text-emerald-300">Value (Rs.)</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y text-xs">
                         {isPending ? (
                             <tr>
-                                <td colSpan={8} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={9} className="p-8 text-center text-muted-foreground font-medium">
                                     <div className="flex items-center justify-center gap-2">
                                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                         Aggregating available inventory levels and valuation...
@@ -834,7 +837,7 @@ export default function AvailableStockSummaryReportPage() {
                             </tr>
                         ) : flatRows.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={9} className="p-8 text-center text-muted-foreground font-medium">
                                     No available stock records match the filters or search query.
                                 </td>
                             </tr>
@@ -842,7 +845,7 @@ export default function AvailableStockSummaryReportPage() {
                             <>
                                 {paddingTop > 0 && (
                                     <tr>
-                                        <td colSpan={8} style={{ height: `${paddingTop}px` }} />
+                                        <td colSpan={9} style={{ height: `${paddingTop}px` }} />
                                     </tr>
                                 )}
                                 {virtualItems.map((virtualRow) => {
@@ -927,6 +930,7 @@ export default function AvailableStockSummaryReportPage() {
 
                                             <td className={cn("p-3 border-r text-right", cellTextClass)}>{formatVal(totals.quantity)}</td>
                                             <td className={cn("p-3 border-r text-right", cellTextClass)}>{formatVal(totals.transit)}</td>
+                                            <td className={cn("p-3 border-r text-right text-purple-600 dark:text-purple-400 font-medium", cellTextClass)}>{formatVal(totals.reserved)}</td>
                                             <td className={cn("p-3 border-r text-right", totalCellClass)}>{formatVal(totals.total)}</td>
                                             
                                             {isArticle ? (
@@ -945,7 +949,7 @@ export default function AvailableStockSummaryReportPage() {
                                 })}
                                 {paddingBottom > 0 && (
                                     <tr>
-                                        <td colSpan={8} style={{ height: `${paddingBottom}px` }} />
+                                        <td colSpan={9} style={{ height: `${paddingBottom}px` }} />
                                     </tr>
                                 )}
                             </>
@@ -961,6 +965,7 @@ export default function AvailableStockSummaryReportPage() {
                                 </td>
                                 <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white">{formatVal(grandTotals.quantity)}</td>
                                 <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white">{formatVal(grandTotals.transit)}</td>
+                                <td className="p-3 border-r text-right font-black bg-[#1e293b] text-purple-300">{formatVal(grandTotals.reserved)}</td>
                                 <td className="p-3 border-r text-right font-black bg-[#0f172a] text-white">{formatVal(grandTotals.total)}</td>
                                 <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white">&mdash;</td>
                                 <td className="p-3 text-right font-black bg-[#0f172a] text-[#4ade80]">{formatPriceVal(grandTotals.value)}</td>

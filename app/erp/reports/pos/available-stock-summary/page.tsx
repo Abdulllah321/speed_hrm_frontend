@@ -379,6 +379,7 @@ export default function ERPAvailableStockSummaryReportPage() {
             totalArticles: 0,
             quantity: 0,
             transit: 0,
+            reserved: 0,
             total: 0,
             value: 0,
         };
@@ -389,6 +390,7 @@ export default function ERPAvailableStockSummaryReportPage() {
             if (!node || !node.totals) continue;
             t.quantity += node.totals.quantity || 0;
             t.transit += node.totals.transit || 0;
+            t.reserved += node.totals.reserved || 0;
             t.total += node.totals.total || 0;
             t.value += node.totals.value || 0;
         }
@@ -806,63 +808,75 @@ export default function ERPAvailableStockSummaryReportPage() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 no-print">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3.5 no-print">
                 <Card className="shadow-xs border-slate-100">
-                    <CardContent className="p-4 flex items-center justify-between">
+                    <CardContent className="p-3.5 flex items-center justify-between">
                         <div>
-                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Total Products</p>
-                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{grandTotals.totalArticles}</h3>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Total Products</p>
+                            <h3 className="text-lg font-bold mt-0.5 text-slate-800 dark:text-slate-100">{grandTotals.totalArticles}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400">
-                            <Layers className="h-5 w-5" />
+                            <Layers className="h-4 w-4" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card className="shadow-xs border-slate-100">
-                    <CardContent className="p-4 flex items-center justify-between">
+                    <CardContent className="p-3.5 flex items-center justify-between">
                         <div>
-                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Available Qty</p>
-                            <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">{formatVal(grandTotals.quantity)}</h3>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Available Qty</p>
+                            <h3 className="text-lg font-bold mt-0.5 text-emerald-600 dark:text-emerald-400">{formatVal(grandTotals.quantity)}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600">
-                            <Inbox className="h-5 w-5" />
+                            <Inbox className="h-4 w-4" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card className="shadow-xs border-slate-100">
-                    <CardContent className="p-4 flex items-center justify-between">
+                    <CardContent className="p-3.5 flex items-center justify-between">
                         <div>
-                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">In Transit</p>
-                            <h3 className="text-xl font-bold mt-1 text-amber-600 dark:text-amber-500">{formatVal(grandTotals.transit)}</h3>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">In Transit</p>
+                            <h3 className="text-lg font-bold mt-0.5 text-amber-600 dark:text-amber-500">{formatVal(grandTotals.transit)}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600">
-                            <Truck className="h-5 w-5" />
+                            <Truck className="h-4 w-4" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card className="shadow-xs border-slate-100">
-                    <CardContent className="p-4 flex items-center justify-between">
+                    <CardContent className="p-3.5 flex items-center justify-between">
                         <div>
-                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Total Qty</p>
-                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{formatVal(grandTotals.total)}</h3>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Stock Reserved</p>
+                            <h3 className="text-lg font-bold mt-0.5 text-purple-600 dark:text-purple-400">{formatVal(grandTotals.reserved)}</h3>
+                        </div>
+                        <div className="rounded-lg p-2 bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400">
+                            <Folder className="h-4 w-4" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="shadow-xs border-slate-100">
+                    <CardContent className="p-3.5 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Total Qty</p>
+                            <h3 className="text-lg font-bold mt-0.5 text-slate-800 dark:text-slate-100">{formatVal(grandTotals.total)}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-slate-100 dark:bg-slate-800 text-slate-600">
-                            <ShoppingCart className="h-5 w-5" />
+                            <ShoppingCart className="h-4 w-4" />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card className="shadow-xs border-slate-100">
-                    <CardContent className="p-4 flex items-center justify-between">
+                    <CardContent className="p-3.5 flex items-center justify-between">
                         <div>
-                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Total Valuation</p>
-                            <h3 className="text-xl font-bold mt-1 text-indigo-600 dark:text-indigo-400">{formatPriceVal(grandTotals.value)}</h3>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Total Valuation</p>
+                            <h3 className="text-lg font-bold mt-0.5 text-indigo-600 dark:text-indigo-400">{formatPriceVal(grandTotals.value)}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400">
-                            <Coins className="h-5 w-5" />
+                            <Coins className="h-4 w-4" />
                         </div>
                     </CardContent>
                 </Card>
@@ -880,20 +894,21 @@ export default function ERPAvailableStockSummaryReportPage() {
                     <table className="w-full text-xs text-left border-collapse min-w-[900px]">
                         <thead className="bg-slate-800 text-slate-100 sticky top-0 z-10 shadow-xs">
                             <tr>
-                                <th className="p-2.5 font-bold uppercase tracking-wider w-[35%]">GPC / Category / Product</th>
-                                <th className="p-2.5 font-bold uppercase tracking-wider text-center w-[8%]">Size</th>
-                                <th className="p-2.5 font-bold uppercase tracking-wider text-center w-[10%]">Color</th>
-                                <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[11%]">Quantity</th>
-                                <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[9%]">In Transit</th>
-                                <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[10%]">Total</th>
-                                <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[9%]">Selling Price</th>
+                                <th className="p-2.5 font-bold uppercase tracking-wider w-[28%]">GPC / Category / Product</th>
+                                <th className="p-2.5 font-bold uppercase tracking-wider text-center w-[7%]">Size</th>
+                                <th className="p-2.5 font-bold uppercase tracking-wider text-center w-[9%]">Color</th>
+                                <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[10%]">Quantity</th>
+                                <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[8%]">In Transit</th>
+                                <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[9%] text-purple-300">Stock Reserved</th>
+                                <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[9%]">Total</th>
+                                <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[8%]">Selling Price</th>
                                 <th className="p-2.5 font-bold uppercase tracking-wider text-right w-[12%]">Value (Rs.)</th>
                             </tr>
                         </thead>
                         <tbody>
                             {isPending ? (
                                 <tr>
-                                    <td colSpan={8} className="p-12 text-center text-muted-foreground">
+                                    <td colSpan={9} className="p-12 text-center text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
                                             <span>Loading Available Stock Summary Report...</span>
@@ -902,7 +917,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                 </tr>
                             ) : flatRows.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="p-12 text-center text-muted-foreground font-medium">
+                                    <td colSpan={9} className="p-12 text-center text-muted-foreground font-medium">
                                         No available stock records found matching criteria.
                                     </td>
                                 </tr>
@@ -910,7 +925,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                 <>
                                     {paddingTop > 0 && (
                                         <tr>
-                                            <td colSpan={8} style={{ height: `${paddingTop}px` }} />
+                                            <td colSpan={9} style={{ height: `${paddingTop}px` }} />
                                         </tr>
                                     )}
                                     {virtualItems.map((virtualRow) => {
@@ -925,6 +940,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                                     </td>
                                                     <td className="p-2.5 text-right">{formatVal(val.quantity)}</td>
                                                     <td className="p-2.5 text-right">{formatVal(val.transit)}</td>
+                                                    <td className="p-2.5 text-right text-purple-300">{formatVal(val.reserved)}</td>
                                                     <td className="p-2.5 text-right text-emerald-400 font-black">{formatVal(val.total)}</td>
                                                     <td className="p-2.5 text-right text-slate-400">-</td>
                                                     <td className="p-2.5 text-right text-indigo-300 font-black">{formatPriceVal(val.value)}</td>
@@ -940,6 +956,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                                     </td>
                                                     <td className="p-2 text-right">{formatVal(val.quantity)}</td>
                                                     <td className="p-2 text-right">{formatVal(val.transit)}</td>
+                                                    <td className="p-2 text-right text-purple-300">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-extrabold">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right font-extrabold">{formatPriceVal(val.value)}</td>
@@ -955,6 +972,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                                     </td>
                                                     <td className="p-2 text-right">{formatVal(val.quantity)}</td>
                                                     <td className="p-2 text-right">{formatVal(val.transit)}</td>
+                                                    <td className="p-2 text-right text-purple-300">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-bold">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right font-bold">{formatPriceVal(val.value)}</td>
@@ -970,6 +988,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                                     </td>
                                                     <td className="p-2 text-right">{formatVal(val.quantity)}</td>
                                                     <td className="p-2 text-right">{formatVal(val.transit)}</td>
+                                                    <td className="p-2 text-right text-purple-300">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-bold">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right font-bold">{formatPriceVal(val.value)}</td>
@@ -985,6 +1004,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                                     </td>
                                                     <td className="p-2 text-right">{formatVal(val.quantity)}</td>
                                                     <td className="p-2 text-right">{formatVal(val.transit)}</td>
+                                                    <td className="p-2 text-right text-purple-300">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-bold">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right font-bold">{formatPriceVal(val.value)}</td>
@@ -1002,6 +1022,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                                     <td className="p-2 text-center text-muted-foreground font-normal">ALL COLORS</td>
                                                     <td className="p-2 text-right">{formatVal(val.quantity)}</td>
                                                     <td className="p-2 text-right">{formatVal(val.transit)}</td>
+                                                    <td className="p-2 text-right text-purple-600 dark:text-purple-400">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right text-primary font-bold">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right text-slate-700 dark:text-slate-350 font-medium">{formatPriceVal(val.unitPrice)}</td>
                                                     <td className="p-2 text-right font-extrabold text-indigo-600 dark:text-indigo-400">{formatPriceVal(val.value)}</td>
@@ -1019,6 +1040,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                                     <td className="p-2 text-center font-medium">{row.color}</td>
                                                     <td className="p-2 text-right text-foreground">{formatVal(val.quantity)}</td>
                                                     <td className="p-2 text-right text-amber-600 dark:text-amber-500 font-medium">{formatVal(val.transit)}</td>
+                                                    <td className="p-2 text-right text-purple-600 dark:text-purple-400 font-medium">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-bold text-foreground">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right text-muted-foreground">-</td>
                                                     <td className="p-2 text-right font-semibold text-foreground">{formatPriceVal(val.value)}</td>
@@ -1030,7 +1052,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                     })}
                                     {paddingBottom > 0 && (
                                         <tr>
-                                            <td colSpan={8} style={{ height: `${paddingBottom}px` }} />
+                                            <td colSpan={9} style={{ height: `${paddingBottom}px` }} />
                                         </tr>
                                     )}
                                 </>
@@ -1042,6 +1064,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                                     <td colSpan={3} className="p-3 pl-4 text-emerald-400 uppercase tracking-wide">GRAND TOTALS</td>
                                     <td className="p-3 text-right text-emerald-400 text-sm">{formatVal(grandTotals.quantity)}</td>
                                     <td className="p-3 text-right text-amber-400 text-sm">{formatVal(grandTotals.transit)}</td>
+                                    <td className="p-3 text-right text-purple-300 text-sm">{formatVal(grandTotals.reserved)}</td>
                                     <td className="p-3 text-right text-white text-sm font-black">{formatVal(grandTotals.total)}</td>
                                     <td className="p-3 text-right text-slate-400">-</td>
                                     <td className="p-3 text-right text-indigo-300 text-sm font-black">{formatPriceVal(grandTotals.value)}</td>
