@@ -17,8 +17,8 @@ interface AdvanceSalaryListProps {
 export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) {
   const data: AdvanceSalaryRow[] = initialData;
   const router = useRouter();
-  const { hasPermission } = useAuth();
-  const canCreate = hasPermission("hr.advance-salary.create");
+  const { hasPermission, isAdmin } = useAuth();
+  const canCreate = isAdmin() || hasPermission("hr.advance-salary.create");
 
   const handlePrint = () => {
     if (data.length === 0) {
