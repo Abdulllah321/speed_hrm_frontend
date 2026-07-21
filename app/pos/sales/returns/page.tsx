@@ -1496,7 +1496,7 @@ export default function ReturnsPage() {
                           <>
                             <Separator />
                             <div className="flex justify-between font-bold text-base text-emerald-600">
-                              <span>Total refund</span>
+                              <span>Total</span>
                               <span>{formatCurrency(refundTotal)}</span>
                             </div>
                           </>
@@ -1536,7 +1536,7 @@ export default function ReturnsPage() {
                           )}
                         </Label>
                         <Textarea
-                          placeholder="Reason for return / refund..."
+                          placeholder={`Reason for ${mode === "return" ? "Return" : "Refund"}...`}
                           value={notes}
                           onChange={(e) => {
                             setNotes(e.target.value);
