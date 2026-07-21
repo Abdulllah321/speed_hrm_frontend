@@ -21,8 +21,10 @@ export interface MultiSelectOption {
 
 export interface MultiSelectProps {
   options: MultiSelectOption[];
-  value: string[];
-  onValueChange: (value: string[]) => void;
+  value?: string[];
+  selected?: string[];
+  onValueChange?: (value: string[]) => void;
+  onChange?: (value: string[]) => void;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;
@@ -42,9 +44,11 @@ export interface MultiSelectProps {
 }
 
 export function MultiSelect({
-  options,
-  value,
-  onValueChange,
+  options = [],
+  value: valueProp,
+  selected: selectedProp,
+  onValueChange: onValueChangeProp,
+  onChange: onChangeProp,
   placeholder = "Select items...",
   searchPlaceholder = "Search...",
   emptyMessage = "No items found",
@@ -58,6 +62,8 @@ export function MultiSelect({
   hasMore,
   isLoading,
 }: MultiSelectProps) {
+  const value = valueProp ?? selectedProp ?? [];
+  const onValueChange = onValueChangeProp ?? onChangeProp ?? (() => {});
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const loadMoreRef = React.useRef<HTMLDivElement>(null);

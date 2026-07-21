@@ -559,8 +559,8 @@ export default function ERPAvailableStockSummaryReportPage() {
                         </span>
                         <MultiSelect
                             options={locationOptions}
-                            selected={selectedLocationIds}
-                            onChange={setSelectedLocationIds}
+                            value={selectedLocationIds}
+                            onValueChange={setSelectedLocationIds}
                             placeholder="All Locations"
                             className="bg-background"
                         />
