@@ -23,6 +23,7 @@ export type PayrollReportRow = {
     attendanceDeduction: number;
     loanDeduction: number;
     loanDisbursement?: number;
+    advanceSalaryDisbursement?: number;
     advanceSalaryDeduction: number;
     eobiDeduction: number;
     providentFundDeduction: number;
@@ -183,6 +184,14 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                             <span className="shrink-0">Loan Disbursed (+):</span>
                             <span className="text-right">
                                 {Math.round(Number(data.loanDisbursement || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </span>
+                        </div>
+                    )}
+                    {Number(data.advanceSalaryDisbursement || 0) > 0 && (
+                        <div className="flex justify-between items-center gap-2 text-blue-600 font-semibold">
+                            <span className="shrink-0">Advance Salary Amt (+):</span>
+                            <span className="text-right">
+                                {Math.round(Number(data.advanceSalaryDisbursement || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                             </span>
                         </div>
                     )}

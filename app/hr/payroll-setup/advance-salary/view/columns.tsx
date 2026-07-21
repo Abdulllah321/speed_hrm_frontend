@@ -109,14 +109,15 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
   const [isPending, startTransition] = useTransition();
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [rejectDialog, setRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
   const [viewDialog, setViewDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
   const [advanceSalaryDetails, setAdvanceSalaryDetails] = useState<AdvanceSalary | null>(null);
-  const { hasPermission, user } = useAuth();
-  const canApprove = hasPermission("hr.advance-salary.approve");
-  const canEdit = hasPermission("hr.advance-salary.update");
-  const canDelete = hasPermission("hr.advance-salary.delete");
-  const canRead = hasPermission("hr.advance-salary.read");
+  const { hasPermission, user, isAdmin } = useAuth();
+  const canApprove = isAdmin() || hasPermission("hr.advance-salary.approve");
+  const canEdit = isAdmin() || hasPermission("hr.advance-salary.update");
+  const canDelete = isAdmin() || hasPermission("hr.advance-salary.delete");
+  const canRead = isAdmin() || hasPermission("hr.advance-salary.read");
 
   const [loadingDetails, setLoadingDetails] = useState(false);
   const record = row.original;
@@ -188,10 +189,11 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
 
   const handleReject = async () => {
     startTransition(async () => {
-      const result = await rejectAdvanceSalary(record.id);
+      const result = await rejectAdvanceSalary(record.id, rejectionReason);
       if (result.status) {
         toast.success(result.message || "Advance salary rejected successfully");
         setRejectDialog(false);
+        setRejectionReason("");
         router.refresh();
       } else {
         toast.error(result.message || "Failed to reject advance salary");
@@ -483,7 +485,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
             <>
               <DropdownMenuItem
                 onClick={handleApprove}
-                disabled={isPending || !canApprove || isCreatedByCurrentUser}
+                disabled={isPending || !canApprove || (isCreatedByCurrentUser && !isAdmin())}
                 className="text-green-600 focus:text-green-600"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -491,7 +493,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setRejectDialog(true)}
-                disabled={isPending || !canApprove || isCreatedByCurrentUser}
+                disabled={isPending || !canApprove || (isCreatedByCurrentUser && !isAdmin())}
                 className="text-destructive focus:text-destructive"
               >
                 <XCircle className="h-4 w-4 mr-2" />
@@ -1130,9 +1132,16 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
             <AlertDialogTitle>Reject Advance Salary Request?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to reject the advance salary request for{" "}
-              <strong>{record.empName}</strong>? This action will mark the request as rejected.
+              <strong>{record.empName}</strong>? Please provide a reason if needed.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <Textarea
+              placeholder="Enter rejection reason (optional)..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction

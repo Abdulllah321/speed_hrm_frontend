@@ -222,6 +222,7 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
             if (head === "Overtime") return Number(row.overtimeAmount || 0);
             if (head === "Leave Encashment") return Number(row.leaveEncashmentAmount || 0);
             if (head === "Loan Disbursed") return Number(row.loanDisbursement || 0);
+            if (head === "Advance Salary Amt (+)") return Number(row.advanceSalaryDisbursement || 0);
             
             // Check in bonusBreakup first to prioritize specific named bonuses
             const hasBonusBreakup = row.bonusBreakup && row.bonusBreakup.length > 0;
@@ -298,6 +299,7 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
             
             if (Number(row.leaveEncashmentAmount || 0) > 0) allowanceHeads.add("Leave Encashment");
             if (Number(row.loanDisbursement || 0) > 0) allowanceHeads.add("Loan Disbursed");
+            if (Number(row.advanceSalaryDisbursement || 0) > 0) allowanceHeads.add("Advance Salary Amt (+)");
 
             (row.deductionBreakup || []).forEach(d => deductionHeads.add(d.name));
         });

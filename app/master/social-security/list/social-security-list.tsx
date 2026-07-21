@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface SocialSecurityListProps {
   initialInstitutions: SocialSecurityInstitution[];

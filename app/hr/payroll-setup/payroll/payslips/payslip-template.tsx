@@ -161,6 +161,12 @@ export function PayslipTemplate({ data }: PayslipTemplateProps) {
                                     <td className="p-1 pr-2 text-right font-bold">{Number(data.loanDisbursement).toLocaleString()}</td>
                                 </tr>
                             )}
+                            {Number(data.advanceSalaryDisbursement) > 0 && (
+                                <tr className="border-t text-blue-600">
+                                    <td className="p-1 pl-2 font-bold">Advance Salary Amt (+)</td>
+                                    <td className="p-1 pr-2 text-right font-bold">{Number(data.advanceSalaryDisbursement).toLocaleString()}</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                     <div className="bg-gray-50 p-1 font-bold flex justify-between border-t border-gray-300 mt-auto">

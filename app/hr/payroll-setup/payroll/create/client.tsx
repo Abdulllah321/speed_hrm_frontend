@@ -235,7 +235,7 @@ export function GeneratePayrollClient({
 
         // Attendance is omitted here since it's already deducted from gross
         const totalDed = row.totalDeductions + row.taxDeduction + row.loanDeduction + row.advanceSalaryDeduction + row.providentFundDeduction;
-        row.netSalary = row.grossSalary - totalDed + (row.loanDisbursement || 0);
+        row.netSalary = row.grossSalary - totalDed + (row.loanDisbursement || 0) + (row.advanceSalaryDisbursement || 0);
 
         setPreviewData(updatedData);
     };
@@ -268,7 +268,7 @@ export function GeneratePayrollClient({
                 row.advanceSalaryDeduction + 
                 row.providentFundDeduction;
             
-            row.netSalary = row.grossSalary - totalDed + (row.loanDisbursement || 0);
+            row.netSalary = row.grossSalary - totalDed + (row.loanDisbursement || 0) + (row.advanceSalaryDisbursement || 0);
             
             setPreviewData(updatedData);
         }
@@ -624,6 +624,14 @@ export function GeneratePayrollClient({
                                                                     <span className="shrink-0">Loan Disbursed (+):</span>
                                                                     <span className="text-right">
                                                                         {Math.round(Number(row.loanDisbursement || 0)).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {Number(row.advanceSalaryDisbursement || 0) > 0 && (
+                                                                <div className="flex justify-between items-center gap-2 text-blue-600 font-semibold">
+                                                                    <span className="shrink-0">Advance Salary Amt (+):</span>
+                                                                    <span className="text-right">
+                                                                        {Math.round(Number(row.advanceSalaryDisbursement || 0)).toLocaleString()}
                                                                     </span>
                                                                 </div>
                                                             )}
