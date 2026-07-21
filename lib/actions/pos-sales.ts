@@ -560,7 +560,7 @@ export async function getGrossSalesExportStatus(jobId: string) {
 // ─── Alliance Register Report Actions ──────────────────────────────────────
 
 export async function getAllianceRegisterReport(filters: {
-    locationId: string;
+    locationId?: string;
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
@@ -568,7 +568,7 @@ export async function getAllianceRegisterReport(filters: {
 }) {
     try {
         const queryParams = new URLSearchParams();
-        queryParams.append("locationId", filters.locationId);
+        if (filters.locationId) queryParams.append("locationId", filters.locationId);
         if (filters.startDate) queryParams.append("startDate", filters.startDate);
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
         if (filters.cashierUserId) queryParams.append("cashierUserId", filters.cashierUserId);
@@ -583,7 +583,7 @@ export async function getAllianceRegisterReport(filters: {
 }
 
 export async function queueAllianceRegisterReportExport(filters: {
-    locationId: string;
+    locationId?: string;
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
