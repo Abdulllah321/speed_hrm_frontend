@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
     Download,
@@ -33,7 +34,7 @@ import { cn, COMPANY_NAME, getApiBaseUrl } from "@/lib/utils";
 
 export default function ERPAllianceRegisterReportPage() {
     const [locations, setLocations] = useState<Location[]>([]);
-    const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
+    const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
     const [isLoadingLocations, setIsLoadingLocations] = useState<boolean>(true);
 
     const [dateRange, setDateRange] = useState<DateRange>({
@@ -41,7 +42,7 @@ export default function ERPAllianceRegisterReportPage() {
         to: endOfMonth(new Date()),
     });
 
-    const [cashierUserId, setCashierUserId] = useState<string>("all");
+    const [selectedCashierIds, setSelectedCashierIds] = useState<string[]>([]);
     const [cashierList, setCashierList] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -78,16 +79,26 @@ export default function ERPAllianceRegisterReportPage() {
         fetchLocationsList();
     }, []);
 
-    // Fetch cashiers when selected location changes
+    // Format location options for MultiSelect
+    const locationOptions: MultiSelectOption[] = useMemo(() => {
+        return locations.map((loc) => ({
+            value: loc.id,
+            label: loc.name,
+            description: loc.code ? `Code: ${loc.code}` : undefined,
+        }));
+    }, [locations]);
+
+    // Fetch cashiers when single location is selected
     useEffect(() => {
-        if (!selectedLocationId || selectedLocationId === "all") {
+        if (selectedLocationIds.length !== 1) {
             setCashierList([]);
-            setCashierUserId("all");
+            setSelectedCashierIds([]);
             return;
         }
+        const locationId = selectedLocationIds[0];
         async function fetchCashiers() {
             try {
-                const res = await getSalespersons(selectedLocationId);
+                const res = await getSalespersons(locationId);
                 if (res && res.status && Array.isArray(res.data)) {
                     setCashierList(res.data);
                 } else {
@@ -99,16 +110,33 @@ export default function ERPAllianceRegisterReportPage() {
             }
         }
         fetchCashiers();
-    }, [selectedLocationId]);
+    }, [selectedLocationIds]);
+
+    // Format cashier options for MultiSelect
+    const cashierOptions: MultiSelectOption[] = useMemo(() => {
+        return cashierList.map((c: any) => ({
+            value: c.userId,
+            label: c.name,
+            description: c.empCode ? `Emp Code: ${c.empCode}` : undefined,
+        }));
+    }, [cashierList]);
+
+    const locationParam = useMemo(() => {
+        return selectedLocationIds.length > 0 ? selectedLocationIds.join(",") : undefined;
+    }, [selectedLocationIds]);
+
+    const cashierParam = useMemo(() => {
+        return selectedCashierIds.length > 0 ? selectedCashierIds.join(",") : undefined;
+    }, [selectedCashierIds]);
 
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
         startTransition(async () => {
             const result = await getAllianceRegisterReport({
-                locationId: selectedLocationId === "all" ? undefined : selectedLocationId,
+                locationId: locationParam,
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
-                cashierUserId: cashierUserId === "all" ? undefined : cashierUserId,
+                cashierUserId: cashierParam,
                 search: searchQuery.trim() || undefined,
             });
             if (result && result.status !== false) {
@@ -117,11 +145,11 @@ export default function ERPAllianceRegisterReportPage() {
                 toast.error("Failed to load alliance report data");
             }
         });
-    }, [selectedLocationId, dateRange, cashierUserId, searchQuery]);
+    }, [locationParam, dateRange, cashierParam, searchQuery]);
 
     useEffect(() => {
         fetchReport();
-    }, [selectedLocationId, cashierUserId]);
+    }, [locationParam, cashierParam]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -207,10 +235,10 @@ export default function ERPAllianceRegisterReportPage() {
         setExportProgress(0);
         try {
             const res = await queueAllianceRegisterReportExport({
-                locationId: selectedLocationId === "all" ? undefined : selectedLocationId,
+                locationId: locationParam,
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
-                cashierUserId: cashierUserId === "all" ? undefined : cashierUserId,
+                cashierUserId: cashierParam,
                 format: "xlsx",
                 search: searchQuery.trim() || undefined,
             });
@@ -249,10 +277,10 @@ export default function ERPAllianceRegisterReportPage() {
         setPdfExportProgress(0);
         try {
             const res = await queueAllianceRegisterReportExport({
-                locationId: selectedLocationId === "all" ? undefined : selectedLocationId,
+                locationId: locationParam,
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
-                cashierUserId: cashierUserId === "all" ? undefined : cashierUserId,
+                cashierUserId: cashierParam,
                 format: "pdf",
                 search: searchQuery.trim() || undefined,
             });
@@ -282,10 +310,13 @@ export default function ERPAllianceRegisterReportPage() {
     };
 
     const selectedLocationName = useMemo(() => {
-        if (selectedLocationId === "all") return "All Outlets";
-        const loc = locations.find((l) => l.id === selectedLocationId);
-        return loc ? loc.name : "Store";
-    }, [selectedLocationId, locations]);
+        if (selectedLocationIds.length === 0) return "All Outlets";
+        if (selectedLocationIds.length === 1) {
+            const loc = locations.find((l) => l.id === selectedLocationIds[0]);
+            return loc ? loc.name : "Store";
+        }
+        return `${selectedLocationIds.length} Outlets Selected`;
+    }, [selectedLocationIds, locations]);
 
     // Calculate Grand Totals and KPIs
     const grandTotals = useMemo(() => {
@@ -368,7 +399,7 @@ export default function ERPAllianceRegisterReportPage() {
                         </span>
                     </div>
                     <p className="text-sm text-muted-foreground font-medium">
-                        Detailed listing of alliance sales and manual discounts across all outlets. Select an outlet or view company-wide alliance transactions.
+                        Detailed listing of alliance sales and manual discounts across all outlets. Select outlets or view company-wide alliance transactions.
                     </p>
                 </div>
 
@@ -429,25 +460,25 @@ export default function ERPAllianceRegisterReportPage() {
             {/* Filters Row */}
             <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
                 <div className="flex flex-wrap items-center gap-4">
-                    {/* Outlet / Location Filter */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    {/* Styled MultiSelect Outlet / Location Filter */}
+                    <div className="flex items-center gap-2 min-w-[240px]">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1 shrink-0">
                             <Store className="h-3.5 w-3.5 text-indigo-600" />
                             Outlet:
                         </span>
-                        <select
-                            value={selectedLocationId}
-                            onChange={(e) => setSelectedLocationId(e.target.value)}
-                            disabled={isLoadingLocations}
-                            className="bg-background border rounded px-2.5 py-1.5 text-xs font-medium focus:ring-primary focus:border-primary cursor-pointer outline-none min-w-[200px]"
-                        >
-                            <option value="all">All Outlets</option>
-                            {locations.map((loc) => (
-                                <option key={loc.id} value={loc.id}>
-                                    {loc.name} {loc.code ? `(${loc.code})` : ""}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="flex-1 min-w-[180px]">
+                            <MultiSelect
+                                options={locationOptions}
+                                value={selectedLocationIds}
+                                onValueChange={setSelectedLocationIds}
+                                placeholder="All Outlets"
+                                searchPlaceholder="Search Outlets..."
+                                emptyMessage="No outlets found"
+                                disabled={isLoadingLocations}
+                                icon={<Store className="h-3 w-3 mr-1" />}
+                                className="bg-background text-xs"
+                            />
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -466,24 +497,24 @@ export default function ERPAllianceRegisterReportPage() {
                         />
                     </div>
 
-                    {selectedLocationId !== "all" && cashierList.length > 0 && (
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    {selectedLocationIds.length === 1 && cashierOptions.length > 0 && (
+                        <div className="flex items-center gap-2 min-w-[220px]">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1 shrink-0">
                                 <Users className="h-3.5 w-3.5" />
                                 Salesperson:
                             </span>
-                            <select
-                                value={cashierUserId}
-                                onChange={(e) => setCashierUserId(e.target.value)}
-                                className="bg-background border rounded px-2.5 py-1.5 text-xs font-medium focus:ring-primary focus:border-primary cursor-pointer outline-none min-w-[180px]"
-                            >
-                                <option value="all">All Salespersons</option>
-                                {cashierList.map((cashier: any) => (
-                                    <option key={cashier.userId} value={cashier.userId}>
-                                        {cashier.name} ({cashier.empCode || "No Emp Code"})
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="flex-1 min-w-[160px]">
+                                <MultiSelect
+                                    options={cashierOptions}
+                                    value={selectedCashierIds}
+                                    onValueChange={setSelectedCashierIds}
+                                    placeholder="All Salespersons"
+                                    searchPlaceholder="Search Salespersons..."
+                                    emptyMessage="No salespersons found"
+                                    icon={<Users className="h-3 w-3 mr-1" />}
+                                    className="bg-background text-xs"
+                                />
+                            </div>
                         </div>
                     )}
 
