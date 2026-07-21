@@ -1831,6 +1831,11 @@ export const menuData: MenuItem[] = [
             title: "Alliance Register",
             permissions: ["erp.report.view"],
           },
+          {
+            href: "/erp/reports/pos/available-stock-summary",
+            title: "Available Stock Summary",
+            permissions: ["erp.report.view"],
+          },
         ],
       },
     ],
