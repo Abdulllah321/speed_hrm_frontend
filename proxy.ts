@@ -526,7 +526,9 @@ export default function middleware(request: NextRequest): NextResponse {
     'self'
     ${apiOrigin}
     https://${baseDomain}
-    https://*.${baseDomain};
+    https://*.${baseDomain}
+    wss://${baseDomain}
+    wss://*.${baseDomain};
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://${baseDomain} https://*.${baseDomain};

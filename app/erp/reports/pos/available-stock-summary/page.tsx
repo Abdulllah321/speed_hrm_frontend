@@ -122,8 +122,14 @@ export default function ERPAvailableStockSummaryReportPage() {
                 showVariant: groupingLevels.variant,
             });
             if (result && result.status !== false) {
-                setReportData(result.data?.root || result.data || result || []);
+                const rootData = Array.isArray(result?.data?.root)
+                    ? result.data.root
+                    : (Array.isArray(result?.data)
+                        ? result.data
+                        : (Array.isArray(result) ? result : []));
+                setReportData(rootData);
             } else {
+                setReportData([]);
                 toast.error("Failed to load available stock summary report data");
             }
         });
@@ -295,22 +301,24 @@ export default function ERPAvailableStockSummaryReportPage() {
 
     // Advanced Hierarchical Client-Side Search
     const filteredReportData = useMemo(() => {
+        if (!Array.isArray(reportData)) return [];
         if (!searchQuery.trim()) return reportData;
         const query = searchQuery.toLowerCase().trim();
 
         const filterNode = (node: any): any => {
+            if (!node) return null;
             const nodeMatches =
-                (node.value && node.value.toLowerCase().includes(query)) ||
-                (node.sku && node.sku.toLowerCase().includes(query)) ||
-                (node.articleName && node.articleName.toLowerCase().includes(query)) ||
-                (node.color && node.color.toLowerCase().includes(query)) ||
-                (node.size && node.size.toLowerCase().includes(query));
+                (node.value && String(node.value).toLowerCase().includes(query)) ||
+                (node.sku && String(node.sku).toLowerCase().includes(query)) ||
+                (node.articleName && String(node.articleName).toLowerCase().includes(query)) ||
+                (node.color && String(node.color).toLowerCase().includes(query)) ||
+                (node.size && String(node.size).toLowerCase().includes(query));
 
             if (nodeMatches) {
                 return node;
             }
 
-            if (node.children && node.children.length > 0) {
+            if (Array.isArray(node.children) && node.children.length > 0) {
                 const filteredChildren = node.children
                     .map(filterNode)
                     .filter(Boolean);
@@ -354,7 +362,7 @@ export default function ERPAvailableStockSummaryReportPage() {
             if (node.level === 'article') {
                 t.totalArticles += 1;
             }
-            if (node.children && node.children.length > 0) {
+            if (Array.isArray(node.children) && node.children.length > 0) {
                 for (const child of node.children) {
                     countArticles(child);
                 }
@@ -397,12 +405,12 @@ export default function ERPAvailableStockSummaryReportPage() {
                 rows.push({
                     id: `${node.level}-${currentPath}`,
                     type: node.level,
-                    label: `${node.value.toUpperCase()}`,
+                    label: `${node.value ? String(node.value).toUpperCase() : ''}`,
                     totals: node.totals,
                 });
             }
 
-            if (node.children && node.children.length > 0) {
+            if (Array.isArray(node.children) && node.children.length > 0) {
                 for (const child of node.children) {
                     visit(child, currentPath);
                 }
