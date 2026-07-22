@@ -952,7 +952,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
 
                                         if (row.type === 'brand') {
                                             return (
-                                                <tr key={row.id} className="bg-slate-900 text-slate-100 font-extrabold text-[12px] border-b border-slate-800">
+                                                <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-900 text-slate-100 font-extrabold text-[12px] border-b border-slate-800">
                                                     <td colSpan={3} className="p-2.5 pl-3 text-indigo-300">
                                                         BRAND: {row.label}
                                                     </td>
@@ -970,7 +970,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
 
                                         if (row.type === 'division') {
                                             return (
-                                                <tr key={row.id} className="bg-slate-800 text-slate-100 font-bold text-[11px] border-b border-slate-700">
+                                                <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-800 text-slate-100 font-bold text-[11px] border-b border-slate-700">
                                                     <td colSpan={3} className="p-2 pl-6 text-blue-300">
                                                         DIVISION: {row.label}
                                                     </td>
@@ -988,7 +988,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
 
                                         if (row.type === 'category') {
                                             return (
-                                                <tr key={row.id} className="bg-slate-700 text-slate-100 font-semibold text-[11px] border-b border-slate-600">
+                                                <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-700 text-slate-100 font-semibold text-[11px] border-b border-slate-600">
                                                     <td colSpan={3} className="p-2 pl-9 text-emerald-300">
                                                         CATEGORY: {row.label}
                                                     </td>
@@ -1006,7 +1006,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
 
                                         if (row.type === 'gender') {
                                             return (
-                                                <tr key={row.id} className="bg-slate-600 text-slate-100 font-medium text-[11px] border-b border-slate-500">
+                                                <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-600 text-slate-100 font-medium text-[11px] border-b border-slate-500">
                                                     <td colSpan={3} className="p-2 pl-12 text-rose-200">
                                                         GENDER: {row.label}
                                                     </td>
@@ -1024,7 +1024,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
 
                                         if (row.type === 'silhouette') {
                                             return (
-                                                <tr key={row.id} className="bg-slate-500 text-slate-100 font-medium text-[11px] border-b border-slate-400">
+                                                <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-500 text-slate-100 font-medium text-[11px] border-b border-slate-400">
                                                     <td colSpan={3} className="p-2 pl-16 text-amber-200">
                                                         SILHOUETTE: {row.label}
                                                     </td>
@@ -1042,7 +1042,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
 
                                         if (row.type === 'article') {
                                             return (
-                                                <tr key={row.id} className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold border-b border-slate-200 dark:border-slate-700 hover:bg-slate-200/60 dark:hover:bg-slate-700/60">
+                                                <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold border-b border-slate-200 dark:border-slate-700 hover:bg-slate-200/60 dark:hover:bg-slate-700/60">
                                                     <td className="p-2 pl-20 font-mono text-xs">
                                                         SKU: <span className="text-primary">{row.sku}</span> ({row.label})
                                                     </td>
@@ -1062,7 +1062,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
 
                                         if (row.type === 'variant') {
                                             return (
-                                                <tr key={row.id} className="bg-background hover:bg-slate-50 dark:hover:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+                                                <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-background hover:bg-slate-50 dark:hover:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400">
                                                     <td className="p-2 pl-24 italic text-muted-foreground">
                                                         &mdash; Variant Detail
                                                     </td>

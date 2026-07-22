@@ -662,7 +662,9 @@ export default function ERPAllianceRegisterReportPage() {
 
                                     return (
                                         <tr
-                                            key={row.id}
+                                            key={virtualRow.key}
+                                            ref={rowVirtualizer.measureElement}
+                                            data-index={virtualRow.index}
                                             className="hover:bg-indigo-50/15 dark:hover:bg-indigo-950/5 transition-colors h-[40px] text-slate-800 dark:text-slate-200"
                                         >
                                             <td className="p-3 border-r font-bold">{row.invoiceNo}</td>

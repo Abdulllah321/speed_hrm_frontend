@@ -904,7 +904,7 @@ export default function NetSalesSummaryReportPage() {
                                     const avgRetail = totals.qty > 0 ? (totals.totalRetailValue / totals.qty) : 0;
 
                                     return (
-                                        <tr key={row.id} className={style.className}>
+                                        <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={style.className}>
                                             {isArticle ? (
                                                 <td className={cn("p-3 border-r flex flex-col font-bold justify-center", style.indentClass)}>
                                                     <span className="text-[10px] text-primary font-bold">SKU: {row.sku}</span>

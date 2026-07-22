@@ -1217,7 +1217,7 @@ export default function PosStockValuationReportPage() {
                                     };
 
                                     return (
-                                        <tr key={row.id} className={style.className}>
+                                        <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={style.className}>
                                             {!isArticle && !isVariant ? (
                                                 <td colSpan={5} className={cn("p-2 border-r font-bold uppercase tracking-wider text-xs align-middle", style.indentClass)}>
                                                     {row.type.toUpperCase()}: {row.label}

@@ -930,7 +930,7 @@ export default function GrossSalesReturnReport() {
                                     const styles = LEVEL_UI_STYLES[row.type] || LEVEL_UI_STYLES.variant;
 
                                     return (
-                                        <tr key={virtualRow.index} className={cn("align-middle", styles.className)}>
+                                        <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={cn("align-middle", styles.className)}>
                                             {/* GPC / Label */}
                                             <td className={cn("p-2 border-r select-none", styles.indentClass)}>
                                                 <div className="flex items-center gap-1.5">

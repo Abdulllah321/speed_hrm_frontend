@@ -582,7 +582,9 @@ export default function SalesRegisterReportPage() {
 
                                     return (
                                         <tr
-                                            key={row.id}
+                                            key={virtualRow.key}
+                                            ref={rowVirtualizer.measureElement}
+                                            data-index={virtualRow.index}
                                             className={cn(
                                                 "hover:bg-slate-50 dark:hover:bg-slate-900/35 transition-colors h-[40px] text-slate-800 dark:text-slate-200",
                                                 isReturn && "bg-rose-50/40 dark:bg-rose-950/10 text-rose-700 dark:text-rose-300 font-bold"

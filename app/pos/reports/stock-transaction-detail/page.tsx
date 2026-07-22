@@ -1052,7 +1052,7 @@ export default function StockTransactionDetailReportPage() {
                                                 : `${row.type.toUpperCase()}: ${row.label}`;
 
                                         return (
-                                            <tr key={row.id} className={cn("h-9 select-none", levelColors[row.type])}>
+                                            <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={cn("h-9 select-none", levelColors[row.type])}>
                                                 <td colSpan={5} className="pl-4 font-semibold">
                                                     {row._highlight ? highlight(labelText, row._highlight) : labelText}
                                                 </td>
@@ -1065,7 +1065,7 @@ export default function StockTransactionDetailReportPage() {
 
                                     if (row.type === 'product-header') {
                                         return (
-                                            <tr key={row.id} className="bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-350 dark:border-slate-800 text-[10px] uppercase font-bold h-7.5 text-left select-none">
+                                            <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-50 dark:bg-slate-900 border-t border-b border-slate-350 dark:border-slate-800 text-[10px] uppercase font-bold h-7.5 text-left select-none">
                                                 <th className="border-r border-slate-200 dark:border-slate-800 pl-4 text-slate-700 dark:text-slate-300">GPC</th>
                                                 <th className="border-r border-slate-200 dark:border-slate-800 pl-2 text-slate-700 dark:text-slate-300">Category</th>
                                                 <th className="border-r border-slate-200 dark:border-slate-800 pl-2 text-slate-700 dark:text-slate-300">SKU</th>
@@ -1078,7 +1078,7 @@ export default function StockTransactionDetailReportPage() {
 
                                     if (row.type === 'product-data') {
                                         return (
-                                            <tr key={row.id} className="bg-white dark:bg-slate-950 border-b border-slate-300 dark:border-slate-800 text-[11px] h-8.5 text-left font-bold select-none text-blue-800 dark:text-blue-450">
+                                            <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-white dark:bg-slate-950 border-b border-slate-300 dark:border-slate-800 text-[11px] h-8.5 text-left font-bold select-none text-blue-800 dark:text-blue-450">
                                                 <td className="border-r border-slate-200 dark:border-slate-800 pl-4">{row.division || "-"}</td>
                                                 <td className="border-r border-slate-200 dark:border-slate-800 pl-2">{row.category || "-"}</td>
                                                 <td className="border-r border-slate-200 dark:border-slate-800 pl-2">{row.sku || "-"}</td>
@@ -1095,7 +1095,7 @@ export default function StockTransactionDetailReportPage() {
 
                                     if (row.type === 'ledger-header') {
                                         return (
-                                            <tr key={row.id} className="bg-slate-800 text-slate-100 text-[10px] font-bold h-7.5 uppercase tracking-wider select-none">
+                                            <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-800 text-slate-100 text-[10px] font-bold h-7.5 uppercase tracking-wider select-none">
                                                 <th className="text-left pl-4 border-b border-slate-650">Doc Type</th>
                                                 <th className="text-left pl-2 border-b border-slate-650">Doc Ref</th>
                                                 <th className="text-left pl-2 border-b border-slate-650">Date</th>
@@ -1109,7 +1109,7 @@ export default function StockTransactionDetailReportPage() {
 
                                     if (row.type === 'opening-balance') {
                                         return (
-                                            <tr key={row.id} className="bg-slate-50/40 dark:bg-slate-900/10 text-slate-500 text-[11px] h-8 border-b border-border/40 select-none">
+                                            <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-50/40 dark:bg-slate-900/10 text-slate-500 text-[11px] h-8 border-b border-border/40 select-none">
                                                 <td className="pl-4 font-semibold text-slate-700 dark:text-slate-400">Opening Balance</td>
                                                 <td className="pl-2">-</td>
                                                 <td className="pl-2">{row.date ? format(new Date(row.date), "dd/MM/yyyy") : "-"}</td>
@@ -1123,7 +1123,7 @@ export default function StockTransactionDetailReportPage() {
 
                                     if (row.type === 'closing-balance') {
                                         return (
-                                            <tr key={row.id} className="bg-slate-50/80 dark:bg-slate-900/20 text-slate-800 dark:text-slate-200 text-[11px] font-bold h-8 border-b border-border/80 border-t border-border/50 select-none">
+                                            <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-50/80 dark:bg-slate-900/20 text-slate-800 dark:text-slate-200 text-[11px] font-bold h-8 border-b border-border/80 border-t border-border/50 select-none">
                                                 <td className="pl-4 uppercase">Closing Balance</td>
                                                 <td className="pl-2">-</td>
                                                 <td className="pl-2">{row.date ? format(new Date(row.date), "dd/MM/yyyy") : "-"}</td>
@@ -1137,7 +1137,7 @@ export default function StockTransactionDetailReportPage() {
 
                                     if (row.type === 'divider') {
                                         return (
-                                            <tr key={row.id} className="h-6 bg-slate-50/30 dark:bg-slate-900/5 select-none no-print">
+                                            <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="h-6 bg-slate-50/30 dark:bg-slate-900/5 select-none no-print">
                                                 <td colSpan={7} className="border-b border-slate-200 dark:border-slate-800" />
                                             </tr>
                                         );
@@ -1148,7 +1148,9 @@ export default function StockTransactionDetailReportPage() {
 
                                     return (
                                         <tr
-                                            key={row.id}
+                                            key={virtualRow.key}
+                                            ref={rowVirtualizer.measureElement}
+                                            data-index={virtualRow.index}
                                             className={cn(
                                                 "text-[11.5px] border-b border-border hover:bg-slate-50/30 dark:hover:bg-slate-900/10 h-8.5 transition-colors",
                                                 row.isInTransit && "bg-amber-500/5 hover:bg-amber-500/10 text-amber-850 dark:text-amber-400 font-medium"
