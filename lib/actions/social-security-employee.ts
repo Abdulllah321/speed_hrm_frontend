@@ -47,27 +47,32 @@ export async function getSocialSecurityEmployees(): Promise<{ status: boolean; d
       const contributionsResult = contributionsResponse.data || { data: [] };
       contributions = contributionsResult.data || [];
     }
-    const latestContributionByRegistration = new Map<string, any>();
+    const totalContributionByRegistration = new Map<string, number>();
+    const totalContributionByEmployeeId = new Map<string, number>();
+
     for (const contrib of contributions) {
-      const registrationId = contrib.employeeRegistrationId as string | undefined;
-      if (!registrationId) continue;
-      const existing = latestContributionByRegistration.get(registrationId);
-      if (!existing) {
-        latestContributionByRegistration.set(registrationId, contrib);
-        continue;
+      const amount = Number(contrib.contributionAmount || 0);
+      if (contrib.employeeRegistrationId) {
+        const curr = totalContributionByRegistration.get(contrib.employeeRegistrationId) || 0;
+        totalContributionByRegistration.set(contrib.employeeRegistrationId, curr + amount);
       }
-      const existingDate = new Date(existing.date || existing.createdAt);
-      const currentDate = new Date(contrib.date || contrib.createdAt);
-      if (currentDate > existingDate) {
-        latestContributionByRegistration.set(registrationId, contrib);
+      if (contrib.employeeId) {
+        const curr = totalContributionByEmployeeId.get(contrib.employeeId) || 0;
+        totalContributionByEmployeeId.set(contrib.employeeId, curr + amount);
       }
     }
+
     const enrichedRegistrations = registrations.map((reg) => {
-      const contrib = latestContributionByRegistration.get(reg.id);
-      if (!contrib) return reg;
+      const totalAmount =
+        totalContributionByRegistration.get(reg.id) ??
+        totalContributionByEmployeeId.get(reg.employeeId);
+
       return {
         ...reg,
-        monthlyContribution: contrib.contributionAmount,
+        monthlyContribution:
+          totalAmount !== undefined && totalAmount > 0
+            ? totalAmount
+            : Number(reg.monthlyContribution || 0),
       };
     });
     return { status: true, data: enrichedRegistrations };
