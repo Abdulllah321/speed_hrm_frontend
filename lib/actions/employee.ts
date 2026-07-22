@@ -134,6 +134,7 @@ export interface EmployeeDropdownOption {
   subDepartmentName?: string | null;
   designationName?: string | null;
   providentFund?: boolean;
+  eobi?: boolean;
   officialEmail?: string | null;
   personalEmail?: string | null;
 }
@@ -145,6 +146,7 @@ export async function getEmployeesForDropdown(params?: {
   departmentId?: string;
   subDepartmentId?: string;
   providentFund?: boolean;
+  eobi?: boolean;
   locationId?: string;
 }): Promise<{
   status: boolean;
@@ -166,6 +168,7 @@ export async function getEmployeesForDropdown(params?: {
     if (params?.subDepartmentId) searchParams.append('subDepartmentId', params.subDepartmentId);
     if (params?.locationId) searchParams.append('locationId', params.locationId);
     if (params?.providentFund) searchParams.append('providentFund', 'true');
+    if (params?.eobi) searchParams.append('eobi', 'true');
 
     const url = `/employees/dropdown${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     const res = await authFetch(url, {});
