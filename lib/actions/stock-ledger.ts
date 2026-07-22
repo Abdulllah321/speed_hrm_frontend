@@ -71,7 +71,8 @@ export async function queueStockLedgerExport(filters?: {
 }
 
 export async function getStockActivityReport(filters: {
-    locationId: string;
+    locationId?: string;
+    warehouseId?: string;
     startDate?: string;
     endDate?: string;
     summaryOnly?: boolean;
@@ -85,7 +86,8 @@ export async function getStockActivityReport(filters: {
 }) {
     try {
         const queryParams = new URLSearchParams();
-        queryParams.append("locationId", filters.locationId);
+        if (filters.locationId) queryParams.append("locationId", filters.locationId);
+        if (filters.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
         if (filters.startDate) queryParams.append("startDate", filters.startDate);
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
         if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
@@ -109,7 +111,8 @@ export async function getStockActivityReport(filters: {
 }
 
 export async function queueStockActivityReportExport(filters: {
-    locationId: string;
+    locationId?: string;
+    warehouseId?: string;
     startDate?: string;
     endDate?: string;
     format: "xlsx" | "pdf";
@@ -129,6 +132,7 @@ export async function queueStockActivityReportExport(filters: {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 locationId: filters.locationId,
+                warehouseId: filters.warehouseId,
                 startDate: filters.startDate,
                 endDate: filters.endDate,
                 format: filters.format,
