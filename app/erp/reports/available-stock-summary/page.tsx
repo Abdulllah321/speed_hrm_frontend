@@ -268,6 +268,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                 showSilhouette: groupingLevels.silhouette,
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
+                includeCosting: true,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -317,6 +318,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                 showSilhouette: groupingLevels.silhouette,
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
+                includeCosting: true,
             });
 
             if (res && res.status && res.data?.jobId) {

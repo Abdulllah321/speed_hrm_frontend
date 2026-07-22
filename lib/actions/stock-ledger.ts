@@ -387,6 +387,7 @@ export async function queueAvailableStockSummaryReportExport(filters: {
     showSilhouette?: boolean;
     showArticle?: boolean;
     showVariant?: boolean;
+    includeCosting?: boolean;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const url = `/stock-ledger/available-stock-summary/export/queue`;
