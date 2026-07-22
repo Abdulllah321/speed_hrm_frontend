@@ -1775,6 +1775,11 @@ export const menuData: MenuItem[] = [
           title: "Stock Valuation Report",
           href: "/erp/reports/stock-valuation",
           permissions: ["erp.report.view"],
+        },
+        {
+          title: "Available Stock Costing Summary",
+          href: "/erp/reports/available-stock-summary",
+          permissions: ["erp.report.view"],
         }
       ]},
 
