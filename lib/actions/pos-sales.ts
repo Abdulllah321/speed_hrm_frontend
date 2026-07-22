@@ -124,9 +124,9 @@ export async function listSalesActivities(params?: {
     }
 }
 
-export async function getSalespersons(locationId: string) {
+export async function getSalespersons(locationId?: string) {
     try {
-        const res = await authFetch(`/pos-sales/cashiers?locationId=${locationId}`, { method: "GET" });
+        const res = await authFetch(`/pos-sales/cashiers${locationId ? `?locationId=${locationId}` : ""}`, { method: "GET" });
         return res.data;
     } catch (error) {
         console.error("getSalespersons error:", error);
@@ -135,7 +135,7 @@ export async function getSalespersons(locationId: string) {
 }
 
 export async function getNetSalesSummaryReport(filters: {
-    locationId: string;
+    locationId?: string;
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
@@ -156,7 +156,7 @@ export async function getNetSalesSummaryReport(filters: {
 }) {
     try {
         const queryParams = new URLSearchParams();
-        queryParams.append("locationId", filters.locationId);
+        if (filters.locationId) queryParams.append("locationId", filters.locationId);
         if (filters.startDate) queryParams.append("startDate", filters.startDate);
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
         if (filters.cashierUserId) queryParams.append("cashierUserId", filters.cashierUserId);
@@ -184,7 +184,7 @@ export async function getNetSalesSummaryReport(filters: {
 }
 
 export async function queueNetSalesSummaryReportExport(filters: {
-    locationId: string;
+    locationId?: string;
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
