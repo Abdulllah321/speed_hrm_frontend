@@ -32,6 +32,7 @@ import {
   SlidersHorizontal,
   DollarSign,
   Tag,
+  Palette,
 } from "lucide-react";
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
@@ -39,7 +40,6 @@ import { cn, COMPANY_NAME, getApiBaseUrl, formatCurrency } from "@/lib/utils";
 
 export default function CostOfSalesReportPage() {
   const { user } = useAuth();
-  const defaultLocationName = user?.terminal?.location?.name || "Store";
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
@@ -294,8 +294,10 @@ export default function CostOfSalesReportPage() {
                         prod.sku.toLowerCase().includes(query) ||
                         prod.description.toLowerCase().includes(query) ||
                         prod.productLabel.toLowerCase().includes(query);
-                      const matchesSize = prod.sizes.some((s) => s.size.toLowerCase().includes(query));
-                      return matchesProd || matchesSize;
+                      const matchesSizeOrColor = prod.sizes.some(
+                        (s) => s.size.toLowerCase().includes(query) || (s.color && s.color.toLowerCase().includes(query)),
+                      );
+                      return matchesProd || matchesSizeOrColor;
                     });
 
                     if (
@@ -431,6 +433,7 @@ export default function CostOfSalesReportPage() {
                     id: `item-${item.id}`,
                     sku: prod.sku,
                     size: item.size,
+                    color: item.color,
                     quantity: item.quantity,
                     costPrice: item.costPrice,
                     totalCost: item.totalCost,
@@ -604,7 +607,7 @@ export default function CostOfSalesReportPage() {
             </span>
             <div className="relative">
               <Input
-                placeholder="Search by SKU, Product Description, Size, Category, Brand..."
+                placeholder="Search by SKU, Product Description, Size, Color, Category, Brand..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-10 pl-9 pr-9 text-sm bg-background border-slate-200"
@@ -632,7 +635,7 @@ export default function CostOfSalesReportPage() {
         </div>
       </div>
 
-      {/* Hierarchy Configuration Box (Brand -> Division -> Gender -> Category -> Product SKU -> Variant) */}
+      {/* Hierarchy Configuration Box */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4 no-print">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
@@ -729,7 +732,7 @@ export default function CostOfSalesReportPage() {
             </label>
           </div>
 
-          {/* Variant (Sizes) */}
+          {/* Variant (Sizes & Colors) */}
           <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <input
               type="checkbox"
@@ -740,7 +743,7 @@ export default function CostOfSalesReportPage() {
             />
             <label htmlFor="group-variant" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
               <Tag className="h-3.5 w-3.5 text-amber-500" />
-              Variant (Sizes)
+              Variant Details
             </label>
           </div>
         </div>
@@ -787,21 +790,22 @@ export default function CostOfSalesReportPage() {
 
       {/* Virtualized Scrolling Table */}
       <div ref={parentRef} className="overflow-auto max-h-[700px] border rounded-xl shadow-sm bg-background no-print">
-        <table className="w-full text-left border-collapse min-w-[1000px]">
+        <table className="w-full text-left border-collapse min-w-[1100px]">
           <thead>
             <tr className="bg-[#1e293b] text-slate-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
-              <th className="p-3 w-[320px] border-r bg-[#1e293b]">GPC / Category / Product</th>
-              <th className="p-3 w-[130px] border-r bg-[#1e293b]">SKU</th>
+              <th className="p-3 w-[300px] border-r bg-[#1e293b]">GPC / Category / Product</th>
+              <th className="p-3 w-[120px] border-r bg-[#1e293b]">SKU</th>
               <th className="p-3 w-[80px] border-r text-center bg-[#1e293b]">Size</th>
+              <th className="p-3 w-[100px] border-r text-center bg-[#1e293b]">Color</th>
               <th className="p-3 w-[100px] border-r text-right bg-[#1e293b]">Quantity</th>
-              <th className="p-3 w-[140px] border-r text-right bg-[#1e293b]">Cost Price (Rs.)</th>
-              <th className="p-3 w-[160px] text-right bg-[#0f172a] font-extrabold text-emerald-300">Total Cost (Rs.)</th>
+              <th className="p-3 w-[130px] border-r text-right bg-[#1e293b]">Cost Price (Rs.)</th>
+              <th className="p-3 w-[150px] text-right bg-[#0f172a] font-extrabold text-emerald-300">Total Cost (Rs.)</th>
             </tr>
           </thead>
           <tbody className="divide-y text-xs">
             {isPending ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted-foreground font-medium">
+                <td colSpan={7} className="p-8 text-center text-muted-foreground font-medium">
                   <div className="flex items-center justify-center gap-2">
                     <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
                     Aggregating cost of sales and sold product metrics...
@@ -810,7 +814,7 @@ export default function CostOfSalesReportPage() {
               </tr>
             ) : flatRows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted-foreground font-medium">
+                <td colSpan={7} className="p-8 text-center text-muted-foreground font-medium">
                   No sold products match the selected outlets, period, or search query.
                 </td>
               </tr>
@@ -818,7 +822,7 @@ export default function CostOfSalesReportPage() {
               <>
                 {paddingTop > 0 && (
                   <tr>
-                    <td colSpan={6} style={{ height: `${paddingTop}px` }} />
+                    <td colSpan={7} style={{ height: `${paddingTop}px` }} />
                   </tr>
                 )}
                 {virtualItems.map((virtualRow) => {
@@ -865,7 +869,7 @@ export default function CostOfSalesReportPage() {
                         </td>
                       ) : isVariant ? (
                         <td className={cn("p-3 border-r text-muted-foreground italic", style.indentClass)}>
-                          &mdash; Variant Size
+                          &mdash; Variant Item
                         </td>
                       ) : (
                         <td className={cn("p-3 border-r text-xs font-bold", style.indentClass)}>
@@ -890,11 +894,20 @@ export default function CostOfSalesReportPage() {
                       {isArticle && (
                         <td className="p-3 border-r text-center text-[10px] font-bold text-muted-foreground uppercase bg-slate-50/20">All Sizes</td>
                       )}
-
                       {isVariant && (
                         <td className="p-3 border-r text-center font-bold text-slate-800 dark:text-slate-200">{row.size}</td>
                       )}
+                      {!isArticle && !isVariant && (
+                        <td className="p-3 border-r text-center text-muted-foreground font-mono">&mdash;</td>
+                      )}
 
+                      {/* Color Column */}
+                      {isArticle && (
+                        <td className="p-3 border-r text-center text-[10px] font-bold text-muted-foreground uppercase bg-slate-50/20">All Colors</td>
+                      )}
+                      {isVariant && (
+                        <td className="p-3 border-r text-center font-semibold text-slate-700 dark:text-slate-300">{row.color || "N/A"}</td>
+                      )}
                       {!isArticle && !isVariant && (
                         <td className="p-3 border-r text-center text-muted-foreground font-mono">&mdash;</td>
                       )}
@@ -916,7 +929,7 @@ export default function CostOfSalesReportPage() {
                 })}
                 {paddingBottom > 0 && (
                   <tr>
-                    <td colSpan={6} style={{ height: `${paddingBottom}px` }} />
+                    <td colSpan={7} style={{ height: `${paddingBottom}px` }} />
                   </tr>
                 )}
               </>
@@ -927,7 +940,7 @@ export default function CostOfSalesReportPage() {
           {reportData && (
             <tfoot className="sticky bottom-0 z-10 shadow-md">
               <tr className="bg-[#1e293b] text-slate-100 font-extrabold border-t-2 border-slate-900 text-xs">
-                <td colSpan={3} className="p-3 border-r text-left uppercase tracking-wider font-black bg-[#1e293b]">
+                <td colSpan={4} className="p-3 border-r text-left uppercase tracking-wider font-black bg-[#1e293b]">
                   GRAND TOTALS (ALL OUTLETS)
                 </td>
                 <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white font-mono">{formatVal(grandTotals.quantity)}</td>

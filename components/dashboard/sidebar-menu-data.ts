@@ -1794,6 +1794,21 @@ export const menuData: MenuItem[] = [
             href: "/erp/reports/cost-of-sales",
             permissions: ["erp.report.view"],
           },
+          {
+            title: "Gift Voucher Sale Register",
+            href: "/erp/reports/gift-voucher-sale-register",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Corporate Voucher Report",
+            href: "/erp/reports/corporate-voucher-report",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Credit Voucher Report",
+            href: "/erp/reports/credit-voucher-report",
+            permissions: ["erp.report.view"],
+          },
         ],
       },
 

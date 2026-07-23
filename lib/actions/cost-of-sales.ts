@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/auth";
 export interface CostOfSalesSizeItem {
   id: string;
   size: string;
+  color: string;
   quantity: number;
   costPrice: number;
   totalCost: number;
