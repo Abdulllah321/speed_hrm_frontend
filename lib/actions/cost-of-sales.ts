@@ -66,19 +66,8 @@ export interface CostOfSalesBrandNode {
   };
 }
 
-export interface CostOfSalesOutletNode {
-  locationId: string;
-  locationName: string;
-  brands: CostOfSalesBrandNode[];
-  totals: {
-    quantity: number;
-    totalCost: number;
-    avgUnitCost: number;
-  };
-}
-
 export interface CostOfSalesReportData {
-  outlets: CostOfSalesOutletNode[];
+  brands: CostOfSalesBrandNode[];
   grandTotals: {
     quantity: number;
     totalCost: number;

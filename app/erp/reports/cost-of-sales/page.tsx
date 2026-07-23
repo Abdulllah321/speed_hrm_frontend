@@ -275,77 +275,65 @@ export default function CostOfSalesReportPage() {
     }
   };
 
-  // Client-Side Search & Hierarchy Filtering (Brand -> Division -> Gender -> Category -> Product)
-  const filteredOutlets = useMemo(() => {
-    if (!reportData || !reportData.outlets) return [];
-    if (!searchQuery.trim()) return reportData.outlets;
+  // Client-Side Search & Hierarchy Filtering (Brand -> Division -> Gender -> Category -> Product SKU)
+  const filteredBrands = useMemo(() => {
+    if (!reportData || !reportData.brands) return [];
+    if (!searchQuery.trim()) return reportData.brands;
     const query = searchQuery.toLowerCase().trim();
 
-    return reportData.outlets
-      .map((outlet) => {
-        const filteredBrands = outlet.brands
-          .map((brand) => {
-            const filteredDivisions = brand.divisions
-              .map((div) => {
-                const filteredGenders = div.genders
-                  .map((gender) => {
-                    const filteredCategories = gender.categories
-                      .map((cat) => {
-                        const filteredProducts = cat.products.filter((prod) => {
-                          const matchesProd =
-                            prod.sku.toLowerCase().includes(query) ||
-                            prod.description.toLowerCase().includes(query) ||
-                            prod.productLabel.toLowerCase().includes(query);
-                          const matchesSize = prod.sizes.some((s) => s.size.toLowerCase().includes(query));
-                          return matchesProd || matchesSize;
-                        });
-
-                        if (
-                          filteredProducts.length > 0 ||
-                          cat.categoryName.toLowerCase().includes(query)
-                        ) {
-                          return { ...cat, products: filteredProducts.length > 0 ? filteredProducts : cat.products };
-                        }
-                        return null;
-                      })
-                      .filter(Boolean) as any[];
+    return reportData.brands
+      .map((brand) => {
+        const filteredDivisions = brand.divisions
+          .map((div) => {
+            const filteredGenders = div.genders
+              .map((gender) => {
+                const filteredCategories = gender.categories
+                  .map((cat) => {
+                    const filteredProducts = cat.products.filter((prod) => {
+                      const matchesProd =
+                        prod.sku.toLowerCase().includes(query) ||
+                        prod.description.toLowerCase().includes(query) ||
+                        prod.productLabel.toLowerCase().includes(query);
+                      const matchesSize = prod.sizes.some((s) => s.size.toLowerCase().includes(query));
+                      return matchesProd || matchesSize;
+                    });
 
                     if (
-                      filteredCategories.length > 0 ||
-                      gender.genderName.toLowerCase().includes(query)
+                      filteredProducts.length > 0 ||
+                      cat.categoryName.toLowerCase().includes(query)
                     ) {
-                      return { ...gender, categories: filteredCategories };
+                      return { ...cat, products: filteredProducts.length > 0 ? filteredProducts : cat.products };
                     }
                     return null;
                   })
                   .filter(Boolean) as any[];
 
                 if (
-                  filteredGenders.length > 0 ||
-                  div.divisionName.toLowerCase().includes(query)
+                  filteredCategories.length > 0 ||
+                  gender.genderName.toLowerCase().includes(query)
                 ) {
-                  return { ...div, genders: filteredGenders };
+                  return { ...gender, categories: filteredCategories };
                 }
                 return null;
               })
               .filter(Boolean) as any[];
 
             if (
-              filteredDivisions.length > 0 ||
-              brand.brandName.toLowerCase().includes(query)
+              filteredGenders.length > 0 ||
+              div.divisionName.toLowerCase().includes(query)
             ) {
-              return { ...brand, divisions: filteredDivisions };
+              return { ...div, genders: filteredGenders };
             }
             return null;
           })
           .filter(Boolean) as any[];
 
-        if (filteredBrands.length > 0 || outlet.locationName.toLowerCase().includes(query)) {
-          return { ...outlet, brands: filteredBrands };
+        if (filteredDivisions.length > 0 || brand.brandName.toLowerCase().includes(query)) {
+          return { ...brand, divisions: filteredDivisions };
         }
         return null;
       })
-      .filter(Boolean) as typeof reportData.outlets;
+      .filter(Boolean) as typeof reportData.brands;
   }, [reportData, searchQuery]);
 
   // Grand Totals Calculation
@@ -357,18 +345,16 @@ export default function CostOfSalesReportPage() {
       avgUnitCost: 0,
     };
 
-    if (!filteredOutlets) return totals;
+    if (!filteredBrands) return totals;
 
-    for (const outlet of filteredOutlets) {
-      for (const brand of outlet.brands) {
-        for (const div of brand.divisions) {
-          for (const gender of div.genders) {
-            for (const cat of gender.categories) {
-              totals.totalProducts += cat.products.length;
-              for (const prod of cat.products) {
-                totals.quantity += prod.totals.quantity;
-                totals.totalCost += prod.totals.totalCost;
-              }
+    for (const brand of filteredBrands) {
+      for (const div of brand.divisions) {
+        for (const gender of div.genders) {
+          for (const cat of gender.categories) {
+            totals.totalProducts += cat.products.length;
+            for (const prod of cat.products) {
+              totals.quantity += prod.totals.quantity;
+              totals.totalCost += prod.totals.totalCost;
             }
           }
         }
@@ -380,84 +366,75 @@ export default function CostOfSalesReportPage() {
     }
 
     return totals;
-  }, [filteredOutlets]);
+  }, [filteredBrands]);
 
-  // Flatten tree according to checked grouping levels (Brand -> Division -> Gender -> Category -> Product -> Variant)
+  // Flatten tree directly starting at Brand (Brand -> Division -> Gender -> Category -> Product SKU -> Variant)
   const flatRows = useMemo(() => {
     const rows: any[] = [];
-    if (!filteredOutlets) return rows;
+    if (!filteredBrands) return rows;
 
-    for (const outlet of filteredOutlets) {
-      rows.push({
-        type: "outlet",
-        id: `outlet-${outlet.locationId}`,
-        label: `OUTLET: ${outlet.locationName.toUpperCase()}`,
-        totals: outlet.totals,
-      });
+    for (const brand of filteredBrands) {
+      if (groupingLevels.brand) {
+        rows.push({
+          type: "brand",
+          id: `brand-${brand.brandId}`,
+          label: `BRAND: ${brand.brandName.toUpperCase()}`,
+          totals: brand.totals,
+        });
+      }
 
-      for (const brand of outlet.brands) {
-        if (groupingLevels.brand) {
+      for (const div of brand.divisions) {
+        if (groupingLevels.division) {
           rows.push({
-            type: "brand",
-            id: `brand-${brand.brandId}`,
-            label: `BRAND: ${brand.brandName.toUpperCase()}`,
-            totals: brand.totals,
+            type: "division",
+            id: `div-${div.divisionId}`,
+            label: `DIVISION: ${div.divisionName.toUpperCase()}`,
+            totals: div.totals,
           });
         }
 
-        for (const div of brand.divisions) {
-          if (groupingLevels.division) {
+        for (const gender of div.genders) {
+          if (groupingLevels.gender) {
             rows.push({
-              type: "division",
-              id: `div-${div.divisionId}`,
-              label: `DIVISION: ${div.divisionName.toUpperCase()}`,
-              totals: div.totals,
+              type: "gender",
+              id: `gender-${gender.genderId}`,
+              label: `GENDER: ${gender.genderName.toUpperCase()}`,
+              totals: gender.totals,
             });
           }
 
-          for (const gender of div.genders) {
-            if (groupingLevels.gender) {
+          for (const cat of gender.categories) {
+            if (groupingLevels.category) {
               rows.push({
-                type: "gender",
-                id: `gender-${gender.genderId}`,
-                label: `GENDER: ${gender.genderName.toUpperCase()}`,
-                totals: gender.totals,
+                type: "category",
+                id: `cat-${cat.categoryId}`,
+                label: `CATEGORY: ${cat.categoryName.toUpperCase()}`,
+                totals: cat.totals,
               });
             }
 
-            for (const cat of gender.categories) {
-              if (groupingLevels.category) {
+            for (const prod of cat.products) {
+              if (groupingLevels.article) {
                 rows.push({
-                  type: "category",
-                  id: `cat-${cat.categoryId}`,
-                  label: `CATEGORY: ${cat.categoryName.toUpperCase()}`,
-                  totals: cat.totals,
+                  type: "article",
+                  id: `prod-${prod.sku}`,
+                  sku: prod.sku,
+                  label: prod.description || prod.sku,
+                  totals: prod.totals,
                 });
               }
 
-              for (const prod of cat.products) {
-                if (groupingLevels.article) {
+              if (groupingLevels.variant) {
+                for (const item of prod.sizes) {
                   rows.push({
-                    type: "article",
-                    id: `prod-${prod.sku}`,
+                    type: "variant",
+                    id: `item-${item.id}`,
                     sku: prod.sku,
-                    label: prod.description || prod.sku,
-                    totals: prod.totals,
+                    size: item.size,
+                    quantity: item.quantity,
+                    costPrice: item.costPrice,
+                    totalCost: item.totalCost,
                   });
-                }
-
-                if (groupingLevels.variant) {
-                  for (const item of prod.sizes) {
-                    rows.push({
-                      type: "variant",
-                      id: `item-${item.id}`,
-                      sku: prod.sku,
-                      size: item.size,
-                      quantity: item.quantity,
-                      costPrice: item.costPrice,
-                      totalCost: item.totalCost,
-                    });
-                  }
                 }
               }
             }
@@ -467,7 +444,7 @@ export default function CostOfSalesReportPage() {
     }
 
     return rows;
-  }, [filteredOutlets, groupingLevels]);
+  }, [filteredBrands, groupingLevels]);
 
   const handleToggleLevel = (level: keyof typeof groupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => {
@@ -670,7 +647,7 @@ export default function CostOfSalesReportPage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 pt-2">
-          {/* Brand (Top Parent) */}
+          {/* Brand (Root Level) */}
           <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <input
               type="checkbox"
@@ -848,19 +825,18 @@ export default function CostOfSalesReportPage() {
                   const row = flatRows[virtualRow.index];
 
                   const LEVEL_UI_STYLES: Record<string, { className: string; indentClass: string }> = {
-                    outlet: { className: "bg-[#0f172a] text-white font-black border-b h-[40px]", indentClass: "pl-3 text-white" },
-                    brand: { className: "bg-[#1e293b] text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
-                    division: { className: "bg-[#334155] text-white font-bold border-b h-[40px]", indentClass: "pl-9 text-white" },
-                    gender: { className: "bg-[#475569] text-white font-semibold border-b h-[40px]", indentClass: "pl-12 text-white" },
-                    category: { className: "bg-[#64748b] text-slate-100 font-medium border-b h-[40px]", indentClass: "pl-16 text-slate-100" },
-                    article: { className: "bg-[#f1f5f9] dark:bg-slate-900/40 text-slate-900 dark:text-slate-100 font-bold border-b h-[45px]", indentClass: "pl-20" },
-                    variant: { className: "hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors h-[36px]", indentClass: "pl-24" },
+                    brand: { className: "bg-[#0f172a] text-white font-black border-b h-[40px]", indentClass: "pl-3 text-white" },
+                    division: { className: "bg-[#1e293b] text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
+                    gender: { className: "bg-[#334155] text-white font-semibold border-b h-[40px]", indentClass: "pl-9 text-white" },
+                    category: { className: "bg-[#475569] text-slate-100 font-medium border-b h-[40px]", indentClass: "pl-12 text-slate-100" },
+                    article: { className: "bg-[#f1f5f9] dark:bg-slate-900/40 text-slate-900 dark:text-slate-100 font-bold border-b h-[45px]", indentClass: "pl-16" },
+                    variant: { className: "hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors h-[36px]", indentClass: "pl-20" },
                   };
 
-                  const style = LEVEL_UI_STYLES[row.type] || LEVEL_UI_STYLES.outlet;
+                  const style = LEVEL_UI_STYLES[row.type] || LEVEL_UI_STYLES.brand;
                   const isArticle = row.type === "article";
                   const isVariant = row.type === "variant";
-                  const isHeaderRow = ["outlet", "brand", "division", "gender", "category"].includes(row.type);
+                  const isHeaderRow = ["brand", "division", "gender", "category"].includes(row.type);
 
                   const totals = row.totals || { quantity: 0, totalCost: 0, avgUnitCost: 0 };
                   const qty = isVariant ? row.quantity || 0 : totals.quantity || 0;
@@ -926,7 +902,7 @@ export default function CostOfSalesReportPage() {
                       {/* Quantity */}
                       <td className={cn("p-3 border-r text-right font-mono", cellTextClass)}>{formatVal(qty)}</td>
 
-                      {/* Cost Price (Rs.) Column (displays average unit cost for aggregated SKU/group rows, e.g. 50,746 / 4 = 12,686.50) */}
+                      {/* Cost Price (Rs.) Column */}
                       <td className={cn("p-3 border-r text-right font-mono font-semibold", cellTextClass)}>
                         {formatPriceVal(avgUnitCost)}
                       </td>
