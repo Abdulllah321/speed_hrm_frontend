@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getLocationById } from "@/lib/actions/location";
-import { getWarehouses } from "@/lib/actions/warehouse";
+import { getWarehouses, getWarehouseById } from "@/lib/actions/warehouse";
 import { NewPosAdjustmentForm } from "./new-pos-adjustment-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShieldAlert, Loader2 } from "lucide-react";
@@ -19,36 +19,72 @@ export default function NewPosAdjustmentPage() {
 
     useEffect(() => {
         const resolveLocationWarehouse = async () => {
-            if (!locationId) return;
+            if (!locationId) {
+                setIsLoading(false);
+                return;
+            }
+
             setIsLoading(true);
             try {
-                // Fetch the store location details
+                let locData: { id: string; name: string; code: string; warehouseId?: string; warehouse?: any } | null = null;
+                let whData: { id: string; name: string; code: string } | null = null;
+
+                // 1. Fetch store location details
                 const res = await getLocationById(locationId);
-                if (res.status && res.data) {
-                    setLocation({
+                if (res && res.status && res.data) {
+                    locData = {
                         id: res.data.id,
                         name: res.data.name,
                         code: res.data.code,
-                    });
+                        warehouseId: (res.data as any).warehouseId,
+                        warehouse: (res.data as any).warehouse,
+                    };
+                    setLocation(locData);
+
+                    // 2. Check if location has a linked warehouse
+                    if (locData.warehouse) {
+                        whData = {
+                            id: locData.warehouse.id,
+                            name: locData.warehouse.name,
+                            code: locData.warehouse.code,
+                        };
+                    } else if (locData.warehouseId) {
+                        const linkedWh = await getWarehouseById(locData.warehouseId);
+                        if (linkedWh) {
+                            whData = {
+                                id: linkedWh.id,
+                                name: linkedWh.name,
+                                code: linkedWh.code,
+                            };
+                        }
+                    }
                 } else {
                     toast.error("Failed to load store location context.");
                 }
 
-                // Fetch warehouses in system and pick the first active one as default
-                const warehouses = await getWarehouses();
-                const activeWh = warehouses.find(w => w.isActive) || warehouses[0];
-                if (activeWh) {
-                    setWarehouse({
-                        id: activeWh.id,
-                        name: activeWh.name,
-                        code: activeWh.code,
-                    });
+                // 3. Fallback: Fetch system active warehouses
+                if (!whData) {
+                    const warehouses = await getWarehouses();
+                    if (Array.isArray(warehouses) && warehouses.length > 0) {
+                        const activeWh = warehouses.find((w) => w.isActive) || warehouses[1];
+                        if (activeWh) {
+                            whData = {
+                                id: activeWh.id,
+                                name: activeWh.name,
+                                code: activeWh.code,
+                            };
+                        }
+                    }
+                }
+
+                if (whData) {
+                    setWarehouse(whData);
                 } else {
-                    toast.error("No active warehouse found in the system.");
+                    toast.error("No active warehouse could be linked to this location.");
                 }
             } catch (error) {
-                console.error(error);
-                toast.error("An error occurred while loading location context.");
+                console.error("Error resolving location and warehouse context:", error);
+                toast.error("An error occurred while resolving store location context.");
             } finally {
                 setIsLoading(false);
             }
@@ -77,20 +113,24 @@ export default function NewPosAdjustmentPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground font-medium">Resolving store context...</p>
+                <p className="text-sm text-muted-foreground font-medium">Resolving store & warehouse context...</p>
             </div>
         );
     }
 
-    if (!warehouse) {
+    if (!location || !warehouse) {
         return (
             <div className="p-6 max-w-md mx-auto mt-20">
                 <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
                     <CardContent className="pt-6 text-center space-y-4">
                         <ShieldAlert className="mx-auto h-12 w-12 text-red-600 dark:text-red-400" />
-                        <h3 className="text-lg font-bold text-red-800 dark:text-red-300">No Warehouse Available</h3>
+                        <h3 className="text-lg font-bold text-red-800 dark:text-red-300">
+                            {!location ? "Location Context Required" : "No Warehouse Linked"}
+                        </h3>
                         <p className="text-sm text-red-600 dark:text-red-400">
-                            No warehouse is defined in the system. Please ask an ERP administrator to configure at least one warehouse.
+                            {!location
+                                ? "Could not resolve store location details for your session."
+                                : "No active warehouse is linked to this outlet. Please ask an ERP administrator to configure a warehouse for this store."}
                         </p>
                     </CardContent>
                 </Card>
@@ -102,7 +142,7 @@ export default function NewPosAdjustmentPage() {
         <div className="p-6 space-y-6">
             <NewPosAdjustmentForm 
                 warehouse={warehouse} 
-                location={location!} 
+                location={location} 
             />
         </div>
     );

@@ -90,7 +90,7 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
 
     // Debounce searches
     useEffect(() => {
-        if (!swapOutQuery.trim()) {
+        if (!swapOutQuery.trim() || !warehouse?.id || !location?.id) {
             setSwapOutResults([]);
             return;
         }
@@ -111,10 +111,10 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [swapOutQuery, warehouse.id, location.id]);
+    }, [swapOutQuery, warehouse?.id, location?.id]);
 
     useEffect(() => {
-        if (!swapInQuery.trim()) {
+        if (!swapInQuery.trim() || !warehouse?.id || !location?.id) {
             setSwapInResults([]);
             return;
         }
@@ -135,10 +135,10 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [swapInQuery, warehouse.id, location.id]);
+    }, [swapInQuery, warehouse?.id, location?.id]);
 
     useEffect(() => {
-        if (!searchQuery.trim()) {
+        if (!searchQuery.trim() || !warehouse?.id || !location?.id) {
             setSearchResults([]);
             return;
         }
@@ -159,7 +159,7 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery, warehouse.id, location.id]);
+    }, [searchQuery, warehouse?.id, location?.id]);
 
     // Handle standard item add
     const handleAddStandardItem = (item: any) => {

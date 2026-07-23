@@ -13,13 +13,16 @@ export interface Warehouse {
     isActive: boolean;
     createdAt?: string;
     updatedAt?: string;
-    
 }
 
 export async function getWarehouses(): Promise<Warehouse[]> {
     try {
         const res = await authFetch("/warehouse", { cache: "no-store" });
-        return res.data ?? [];
+        if (!res) return [];
+        if (Array.isArray(res.data)) return res.data;
+        if (Array.isArray(res.data?.data)) return res.data.data;
+        if (Array.isArray(res)) return res;
+        return [];
     } catch (error) {
         console.error("Failed to fetch warehouses:", error);
         return [];
@@ -29,7 +32,10 @@ export async function getWarehouses(): Promise<Warehouse[]> {
 export async function getWarehouseById(id: string): Promise<Warehouse | null> {
     try {
         const res = await authFetch(`/warehouse/${id}`, { cache: "no-store" });
-        return res.data ?? null;
+        if (!res) return null;
+        if (res.data?.id) return res.data;
+        if (res.data?.data?.id) return res.data.data;
+        return null;
     } catch (error) {
         console.error("Failed to fetch warehouse:", error);
         return null;
