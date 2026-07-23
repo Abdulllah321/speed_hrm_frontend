@@ -66,6 +66,7 @@ export default function PurchaseOrderList() {
                             <TableRow>
                                 <TableHead>PO #</TableHead>
                                 <TableHead>Vendor</TableHead>
+                                <TableHead>Brand</TableHead>
                                 <TableHead>Order Date</TableHead>
                                 <TableHead>Total Amount</TableHead>
                                 <TableHead>Status</TableHead>
@@ -75,19 +76,23 @@ export default function PurchaseOrderList() {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24">Loading...</TableCell>
+                                    <TableCell colSpan={7} className="text-center h-24">Loading...</TableCell>
                                 </TableRow>
                             ) : orders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24">No purchase orders found.</TableCell>
+                                    <TableCell colSpan={7} className="text-center h-24">No purchase orders found.</TableCell>
                                 </TableRow>
                             ) : (
-                                orders.map((order) => (
-                                    <TableRow key={order.id}>
-                                        <TableCell className="font-medium">{order.poNumber}</TableCell>
-                                        <TableCell>{order.vendor?.name}</TableCell>
-                                        <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
-                                        <TableCell className="font-semibold">Rs. {formatCurrency(order.totalAmount)}</TableCell>
+                                orders.map((order) => {
+                                    const brands = [...new Set((order.items || []).map(i => i.item?.brand?.name).filter(Boolean))];
+                                    const brandNames = brands.length > 0 ? brands.join(", ") : "—";
+                                    return (
+                                        <TableRow key={order.id}>
+                                            <TableCell className="font-medium">{order.poNumber}</TableCell>
+                                            <TableCell>{order.vendor?.name}</TableCell>
+                                            <TableCell>{brandNames}</TableCell>
+                                            <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                                            <TableCell className="font-semibold">Rs. {formatCurrency(order.totalAmount)}</TableCell>
                                         <TableCell>
                                             {(() => {
                                                 switch (order.status) {
@@ -150,7 +155,8 @@ export default function PurchaseOrderList() {
                                             </Link>
                                         </TableCell>
                                     </TableRow>
-                                ))
+                                    );
+                                })
                             )}
                         </TableBody>
                     </Table>
