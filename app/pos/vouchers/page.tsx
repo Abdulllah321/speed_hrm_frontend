@@ -27,7 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import {
     Gift, RefreshCw, CreditCard, Building2, MapPin,
     Plus, Copy, XCircle, CheckCircle2, Ticket, Layers,
-    Download, ChevronDown, Printer,
+    Download, ChevronDown, Printer, Trash2, Loader2, User,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -129,6 +129,40 @@ export default function PosVouchersPage() {
     const [issuingBulk, setIssuingBulk] = useState(false);
     const [bulkResult,  setBulkResult]  = useState<{ count: number; codes: string[] } | null>(null);
     const [customers,   setCustomers]   = useState<Customer[]>([]);
+
+    // ── Customer selection state ──────────────────────────────────
+    const [singleSelectedCustomer, setSingleSelectedCustomer] = useState<Customer | null>(null);
+    const [singleCustomerSearch, setSingleCustomerSearch] = useState("");
+    const [singleShowCustomerDropdown, setSingleShowCustomerDropdown] = useState(false);
+    const [singleRequireMatch, setSingleRequireMatch] = useState(false);
+
+    const [bulkSelectedCustomer, setBulkSelectedCustomer] = useState<Customer | null>(null);
+    const [bulkCustomerSearch, setBulkCustomerSearch] = useState("");
+    const [bulkShowCustomerDropdown, setBulkShowCustomerDropdown] = useState(false);
+    const [bulkRequireMatch, setBulkRequireMatch] = useState(false);
+
+    const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+    const [addCustomerModalTarget, setAddCustomerModalTarget] = useState<"single" | "bulk">("single");
+
+    const filteredSingleCustomers = customers.filter(c => {
+        if (!singleCustomerSearch.trim()) return true;
+        const q = singleCustomerSearch.toLowerCase();
+        return (
+            c.name.toLowerCase().includes(q) ||
+            c.code.toLowerCase().includes(q) ||
+            (c.contactNo && c.contactNo.toLowerCase().includes(q))
+        );
+    });
+
+    const filteredBulkCustomers = customers.filter(c => {
+        if (!bulkCustomerSearch.trim()) return true;
+        const q = bulkCustomerSearch.toLowerCase();
+        return (
+            c.name.toLowerCase().includes(q) ||
+            c.code.toLowerCase().includes(q) ||
+            (c.contactNo && c.contactNo.toLowerCase().includes(q))
+        );
+    });
 
     // ── Payment Mode state variables ──────────────────────────────
     const [singlePaymentMode, setSinglePaymentMode] = useState<"CASH" | "CARD">("CASH");
@@ -233,6 +267,8 @@ export default function PosVouchersPage() {
                     description: singleDesc || undefined,
                     companyName: singleType === "CORPORATE" ? singleCo || undefined : undefined,
                     companyGlCode: singleType === "CORPORATE" ? singleCoGl || undefined : undefined,
+                    customerId: singleSelectedCustomer?.id || undefined,
+                    requireCustomerMatch: singleSelectedCustomer ? singleRequireMatch : false,
                     expiresAt: singleExp || undefined,
                     locationIds: singleLocationIds,
                     paymentMode: singleType === "GIFT" ? singlePaymentMode : undefined,
@@ -247,6 +283,7 @@ export default function PosVouchersPage() {
                 setShowSingle(false);
                 setSingleAmount(""); setSingleDiscount(""); setSingleDesc(""); setSingleCo(""); setSingleCoGl(""); setSingleExp(""); setSingleLocationIds(currentLocationId ? [currentLocationId] : []);
                 setSinglePaymentMode("CASH"); setSingleMerchantId(""); setSingleCardholder(""); setSingleCardLast4(""); setSingleSlipNo("");
+                setSingleSelectedCustomer(null); setSingleCustomerSearch(""); setSingleRequireMatch(false);
                 fetchVouchers();
             } else {
                 toast.error(res.data?.message || "Failed to issue voucher");
@@ -289,6 +326,8 @@ export default function PosVouchersPage() {
                     description: bulkDesc || undefined,
                     companyName: bulkType === "CORPORATE" ? bulkCo || undefined : undefined,
                     companyGlCode: bulkType === "CORPORATE" ? bulkCoGl || undefined : undefined,
+                    customerId: bulkSelectedCustomer?.id || undefined,
+                    requireCustomerMatch: bulkSelectedCustomer ? bulkRequireMatch : false,
                     expiresAt: bulkExp || undefined,
                     locationIds: bulkLocationIds,
                     paymentMode: bulkType === "GIFT" ? bulkPaymentMode : undefined,
@@ -323,6 +362,9 @@ export default function PosVouchersPage() {
         setBulkCardholder("");
         setBulkCardLast4("");
         setBulkSlipNo("");
+        setBulkSelectedCustomer(null);
+        setBulkCustomerSearch("");
+        setBulkRequireMatch(false);
     };
 
     const handlePrintBulk = () => {
@@ -342,7 +384,8 @@ export default function PosVouchersPage() {
             description: bulkDesc || undefined,
             companyName: bulkCo || undefined,
             companyGlCode: bulkCoGl || undefined,
-            requireCustomerMatch: false,
+            customer: bulkSelectedCustomer ? { id: bulkSelectedCustomer.id, name: bulkSelectedCustomer.name, code: bulkSelectedCustomer.code, contactNo: bulkSelectedCustomer.contactNo } : null,
+            requireCustomerMatch: bulkSelectedCustomer ? bulkRequireMatch : false,
             expiresAt: bulkExp || undefined,
             createdAt: new Date().toISOString(),
             isActive: true,
@@ -491,6 +534,7 @@ export default function PosVouchersPage() {
                                     <TableRow className="bg-muted/30">
                                         <TableHead>Code</TableHead>
                                         <TableHead>Type</TableHead>
+                                        <TableHead>Customer</TableHead>
                                         <TableHead>Description</TableHead>
                                         <TableHead>Issued From</TableHead>
                                         <TableHead className="text-right">Value</TableHead>
@@ -523,8 +567,30 @@ export default function PosVouchersPage() {
                                                         {typeInfo?.label}
                                                     </span>
                                                 </TableCell>
+                                                <TableCell className="text-sm">
+                                                    {v.customer ? (
+                                                        <div className="space-y-0.5">
+                                                            <div className="font-semibold text-foreground truncate max-w-40" title={v.customer.name}>
+                                                                {v.customer.name}
+                                                            </div>
+                                                            <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                                                                <span>{v.customer.contactNo || v.customer.code}</span>
+                                                                {v.requireCustomerMatch && (
+                                                                    <span className="text-[9px] text-amber-600 font-sans font-bold bg-amber-500/10 px-1 py-0.5 rounded border border-amber-300/40">Matched</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ) : v.companyName ? (
+                                                        <div className="space-y-0.5">
+                                                            <div className="font-semibold text-foreground truncate max-w-40" title={v.companyName}>{v.companyName}</div>
+                                                            {v.companyGlCode && <div className="text-[10px] text-muted-foreground font-mono">{v.companyGlCode}</div>}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground italic text-xs">Walk-in</span>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground max-w-40 truncate">
-                                                    {v.description ? v.description : v.companyName ? `${v.companyName}${v.companyGlCode ? ` (${v.companyGlCode})` : ""}` : "—"}
+                                                    {v.description ? v.description : "—"}
                                                 </TableCell>
                                                 <TableCell className="text-sm">
                                                     {v.issuedByLocation ? (
@@ -629,6 +695,126 @@ export default function PosVouchersPage() {
                                         placeholder="e.g. 1000" autoFocus />
                                 </div>
                             </div>
+                            {singleType === "GIFT" && (
+                                <div className="space-y-3 rounded-lg border p-3 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                            Assigned Customer <span className="text-[10px] text-muted-foreground font-normal">(Optional)</span>
+                                        </Label>
+                                        <span className="text-[10px] text-muted-foreground">Walk-in or Registered</span>
+                                    </div>
+
+                                    <div className="flex gap-2 relative">
+                                        <div className="flex-1 relative">
+                                            <Input
+                                                placeholder="Search customer by name, phone or code..."
+                                                value={singleCustomerSearch}
+                                                onChange={(e) => {
+                                                    setSingleCustomerSearch(e.target.value);
+                                                    setSingleShowCustomerDropdown(true);
+                                                }}
+                                                onFocus={() => setSingleShowCustomerDropdown(true)}
+                                                onBlur={() => setTimeout(() => setSingleShowCustomerDropdown(false), 200)}
+                                                className="w-full bg-background h-9 text-xs"
+                                            />
+
+                                            {singleShowCustomerDropdown && (
+                                                <div className="absolute left-0 right-0 top-10 bg-popover border border-border shadow-lg rounded-md overflow-hidden z-[500] max-h-56 overflow-y-auto">
+                                                    <ul className="flex flex-col">
+                                                        <li
+                                                            className="px-3 py-2 hover:bg-muted cursor-pointer flex items-center justify-between border-b border-border/50 transition-colors text-xs font-semibold"
+                                                            onMouseDown={() => {
+                                                                setSingleSelectedCustomer(null);
+                                                                setSingleCustomerSearch("");
+                                                                setSingleShowCustomerDropdown(false);
+                                                            }}
+                                                        >
+                                                            Walk-in Customer (Default)
+                                                        </li>
+                                                        {filteredSingleCustomers.length === 0 ? (
+                                                            <div className="p-3 text-center text-xs text-muted-foreground italic">
+                                                                No matching customers
+                                                            </div>
+                                                        ) : (
+                                                            filteredSingleCustomers.map((c) => (
+                                                                <li
+                                                                    key={c.id}
+                                                                    className="px-3 py-2 hover:bg-muted cursor-pointer flex flex-col border-b border-border/50 last:border-0 transition-colors text-left"
+                                                                    onMouseDown={() => {
+                                                                        setSingleSelectedCustomer(c);
+                                                                        setSingleCustomerSearch("");
+                                                                        setSingleShowCustomerDropdown(false);
+                                                                    }}
+                                                                >
+                                                                    <span className="font-semibold text-xs">{c.name}</span>
+                                                                    <span className="text-[10px] text-muted-foreground">{c.contactNo || c.code}</span>
+                                                                </li>
+                                                            ))
+                                                        )}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            type="button"
+                                            className="h-9 px-3 shrink-0 text-xs gap-1"
+                                            onClick={() => {
+                                                setAddCustomerModalTarget("single");
+                                                setShowAddCustomerModal(true);
+                                            }}
+                                            title="Add New Customer"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" /> Customer
+                                        </Button>
+                                    </div>
+
+                                    {singleSelectedCustomer ? (
+                                        <div className="flex items-center justify-between rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-emerald-700 leading-none truncate">{singleSelectedCustomer.name}</p>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{singleSelectedCustomer.contactNo || "No contact"} · {singleSelectedCustomer.code}</p>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                type="button"
+                                                className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                                                onClick={() => setSingleSelectedCustomer(null)}
+                                            >
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="text-[11px] text-muted-foreground italic px-1">
+                                            Issued as Walk-in Customer (usable by anyone)
+                                        </div>
+                                    )}
+
+                                    {singleSelectedCustomer && (
+                                        <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                                            <div className="space-y-0.5">
+                                                <Label htmlFor="single-require-match" className="text-xs font-medium cursor-pointer">
+                                                    Require Customer Match
+                                                </Label>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    Only {singleSelectedCustomer.name} can redeem this voucher
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                id="single-require-match"
+                                                checked={singleRequireMatch}
+                                                onCheckedChange={setSingleRequireMatch}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {singleType === "GIFT" && (
                                 <div className="space-y-4 rounded-lg border p-3 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200 text-left">
                                     <div className="space-y-2">
@@ -823,6 +1009,126 @@ export default function PosVouchersPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {bulkType === "GIFT" && (
+                                <div className="space-y-3 rounded-lg border p-3 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                            Assigned Customer <span className="text-[10px] text-muted-foreground font-normal">(Optional)</span>
+                                        </Label>
+                                        <span className="text-[10px] text-muted-foreground">Walk-in or Registered</span>
+                                    </div>
+
+                                    <div className="flex gap-2 relative">
+                                        <div className="flex-1 relative">
+                                            <Input
+                                                placeholder="Search customer by name, phone or code..."
+                                                value={bulkCustomerSearch}
+                                                onChange={(e) => {
+                                                    setBulkCustomerSearch(e.target.value);
+                                                    setBulkShowCustomerDropdown(true);
+                                                }}
+                                                onFocus={() => setBulkShowCustomerDropdown(true)}
+                                                onBlur={() => setTimeout(() => setBulkShowCustomerDropdown(false), 200)}
+                                                className="w-full bg-background h-9 text-xs"
+                                            />
+
+                                            {bulkShowCustomerDropdown && (
+                                                <div className="absolute left-0 right-0 top-10 bg-popover border border-border shadow-lg rounded-md overflow-hidden z-[500] max-h-56 overflow-y-auto">
+                                                    <ul className="flex flex-col">
+                                                        <li
+                                                            className="px-3 py-2 hover:bg-muted cursor-pointer flex items-center justify-between border-b border-border/50 transition-colors text-xs font-semibold"
+                                                            onMouseDown={() => {
+                                                                setBulkSelectedCustomer(null);
+                                                                setBulkCustomerSearch("");
+                                                                setBulkShowCustomerDropdown(false);
+                                                            }}
+                                                        >
+                                                            Walk-in Customer (Default)
+                                                        </li>
+                                                        {filteredBulkCustomers.length === 0 ? (
+                                                            <div className="p-3 text-center text-xs text-muted-foreground italic">
+                                                                No matching customers
+                                                            </div>
+                                                        ) : (
+                                                            filteredBulkCustomers.map((c) => (
+                                                                <li
+                                                                    key={c.id}
+                                                                    className="px-3 py-2 hover:bg-muted cursor-pointer flex flex-col border-b border-border/50 last:border-0 transition-colors text-left"
+                                                                    onMouseDown={() => {
+                                                                        setBulkSelectedCustomer(c);
+                                                                        setBulkCustomerSearch("");
+                                                                        setBulkShowCustomerDropdown(false);
+                                                                    }}
+                                                                >
+                                                                    <span className="font-semibold text-xs">{c.name}</span>
+                                                                    <span className="text-[10px] text-muted-foreground">{c.contactNo || c.code}</span>
+                                                                </li>
+                                                            ))
+                                                        )}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            type="button"
+                                            className="h-9 px-3 shrink-0 text-xs gap-1"
+                                            onClick={() => {
+                                                setAddCustomerModalTarget("bulk");
+                                                setShowAddCustomerModal(true);
+                                            }}
+                                            title="Add New Customer"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" /> Customer
+                                        </Button>
+                                    </div>
+
+                                    {bulkSelectedCustomer ? (
+                                        <div className="flex items-center justify-between rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-emerald-700 leading-none truncate">{bulkSelectedCustomer.name}</p>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{bulkSelectedCustomer.contactNo || "No contact"} · {bulkSelectedCustomer.code}</p>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                type="button"
+                                                className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                                                onClick={() => setBulkSelectedCustomer(null)}
+                                            >
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="text-[11px] text-muted-foreground italic px-1">
+                                            Issued as Walk-in Customer (usable by anyone)
+                                        </div>
+                                    )}
+
+                                    {bulkSelectedCustomer && (
+                                        <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                                            <div className="space-y-0.5">
+                                                <Label htmlFor="bulk-require-match" className="text-xs font-medium cursor-pointer">
+                                                    Require Customer Match
+                                                </Label>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    Only {bulkSelectedCustomer.name} can redeem these vouchers
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                id="bulk-require-match"
+                                                checked={bulkRequireMatch}
+                                                onCheckedChange={setBulkRequireMatch}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {bulkType === "GIFT" && (
                                 <div className="space-y-4 rounded-lg border p-3 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200 text-left">
@@ -1110,6 +1416,146 @@ export default function PosVouchersPage() {
                     onClose={() => setVouchersToPrint(null)}
                 />
             )}
+
+            {/* ── Add Customer Modal ────────────────────────────────────── */}
+            <AddCustomerModal
+                open={showAddCustomerModal}
+                onOpenChange={setShowAddCustomerModal}
+                onSuccess={(newCustomer) => {
+                    getCustomers().then(data => setCustomers(data));
+                    if (addCustomerModalTarget === "single") {
+                        setSingleSelectedCustomer(newCustomer);
+                    } else {
+                        setBulkSelectedCustomer(newCustomer);
+                    }
+                }}
+            />
         </div>
     );
+}
+
+// ─── Add Customer Modal ─────────────────────────────────────────────────
+function AddCustomerModal({
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: (customer: Customer) => void;
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    contactNo: "",
+    email: "",
+    cnicNo: "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const code = `CUST-${Date.now()}`;
+      const res = await authFetch("/pos-sales/customers", {
+        method: "POST",
+        body: { ...formData, code },
+      });
+      if (res.ok && res.data?.status) {
+        toast.success("Customer added successfully");
+        onSuccess(res.data.data);
+        onOpenChange(false);
+        setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
+      } else {
+        toast.error(res.data?.message || "Failed to add customer");
+      }
+    } catch {
+      toast.error("Failed to add customer. Check connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add New Customer</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>
+              Full Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              placeholder="Customer name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData((d) => ({ ...d, name: e.target.value }))
+              }
+              required
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Contact Number</Label>
+            <Input
+              placeholder="e.g. 03001234567"
+              value={formData.contactNo}
+              onChange={(e) =>
+                setFormData((d) => ({ ...d, contactNo: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Email Address</Label>
+            <Input
+              type="email"
+              placeholder="e.g. customer@example.com"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData((d) => ({ ...d, email: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>CNIC</Label>
+            <Input
+              placeholder="e.g. 42201-1234567-1"
+              value={formData.cnicNo}
+              onChange={(e) =>
+                setFormData((d) => ({ ...d, cnicNo: e.target.value }))
+              }
+              maxLength={15}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Format: 42201-1234567-1
+            </p>
+          </div>
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Customer
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

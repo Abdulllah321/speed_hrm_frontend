@@ -8,7 +8,6 @@ import {
   queueClaimRegisterReportExport,
   getClaimRegisterReportExportStatus,
   ClaimRegisterReportData,
-  OutletClaimGroup,
 } from "@/lib/actions/claim-register";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Button } from "@/components/ui/button";
@@ -25,12 +24,16 @@ import {
   RefreshCw,
   FileSpreadsheet,
   FileText,
+  Inbox,
+  Layers,
+  ArrowDownRight,
+  ArrowUpRight,
+  Folder,
   Tag,
-  ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
-import { cn, getApiBaseUrl } from "@/lib/utils";
+import { cn, COMPANY_NAME, getApiBaseUrl } from "@/lib/utils";
 
 export default function ClaimRegisterReportPage() {
   const { user } = useAuth();
@@ -249,12 +252,14 @@ export default function ClaimRegisterReportPage() {
     window.print();
   };
 
-  // Flatten nested report data into a flat array for virtualization
+  // Flatten clean report data into a flat array for virtualization
   const flatRows = useMemo(() => {
     if (!reportData || !reportData.outlets) return [];
     const rows: any[] = [];
 
     for (const outlet of reportData.outlets) {
+      if (!outlet.claims || outlet.claims.length === 0) continue;
+
       rows.push({
         type: "outlet-header",
         id: `outlet-${outlet.locationId}`,
@@ -269,13 +274,6 @@ export default function ClaimRegisterReportPage() {
             data: item,
           });
         }
-
-        rows.push({
-          type: "claim-subtotal",
-          id: `claim-sub-${claimGroup.claimId}`,
-          claimNumber: claimGroup.claimNumber,
-          totals: claimGroup.totals,
-        });
       }
 
       rows.push({
@@ -293,7 +291,7 @@ export default function ClaimRegisterReportPage() {
   const rowVirtualizer = useVirtualizer({
     count: flatRows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 36,
+    estimateSize: () => 40,
     overscan: 10,
   });
 
@@ -315,362 +313,357 @@ export default function ClaimRegisterReportPage() {
 
   const getExcelButtonLabel = () => {
     if (exportState === "queueing") return "Queueing...";
-    if (exportState === "processing") return `Generating (${exportProgress}%)`;
+    if (exportState === "processing") return `Generating ${exportProgress}%`;
     if (exportState === "completed") return "Download Excel";
-    if (exportState === "failed") return "Retry Excel";
+    if (exportState === "failed") return "Retry Excel Export";
     return "Export Excel";
   };
 
   const getPdfButtonLabel = () => {
     if (pdfExportState === "queueing") return "Queueing...";
-    if (pdfExportState === "processing") return `Generating (${pdfExportProgress}%)`;
+    if (pdfExportState === "processing") return `Generating ${pdfExportProgress}%`;
     if (pdfExportState === "completed") return "Download PDF";
-    if (pdfExportState === "failed") return "Retry PDF";
+    if (pdfExportState === "failed") return "Retry PDF Export";
     return "Export PDF";
   };
 
   return (
-    <div className="flex flex-col space-y-6 p-6 min-h-screen bg-slate-50/50 dark:bg-slate-950/50 print:bg-white print:p-0">
-      {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
-        <div>
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white shadow-md shadow-indigo-500/20">
-              <ShoppingBag className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                Claim Register Report
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Sales returns, claim vouchers, settled invoices, and itemized breakdown
-              </p>
-            </div>
+    <div className="space-y-6 p-1 sm:p-6 max-w-[1800px] mx-auto">
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Store className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              Claim Register Report (ERP)
+            </h1>
           </div>
+          <p className="text-sm text-muted-foreground font-medium">
+            Outlets: <span className="font-semibold text-foreground">{activeSelectionNames}</span>
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Refresh Button */}
+        <div className="flex flex-wrap items-center gap-3 no-print">
           <Button
             variant="outline"
             size="sm"
             onClick={fetchReport}
             disabled={isPending}
-            className="h-9 gap-1.5"
+            className="h-9 font-bold text-xs gap-1.5"
           >
-            <RefreshCw className={cn("w-4 h-4", isPending && "animate-spin")} />
+            <RefreshCw className={cn("h-3.5 w-3.5", isPending && "animate-spin")} />
             <span>Refresh</span>
           </Button>
 
-          {/* Export Excel Button */}
           <Button
             variant={exportState === "completed" ? "default" : "outline"}
             size="sm"
             onClick={handleExportExcelClick}
             disabled={exportState === "queueing" || exportState === "processing"}
             className={cn(
-              "h-9 gap-1.5 transition-all",
-              exportState === "completed" && "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
+              "h-9 font-bold text-xs gap-1.5 transition-all shadow-xs",
+              exportState === "completed" && "bg-emerald-600 hover:bg-emerald-700 text-white",
             )}
           >
-            {exportState === "processing" || exportState === "queueing" ? (
-              <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
-            ) : (
-              <FileSpreadsheet className="w-4 h-4" />
+            {(exportState === "queueing" || exportState === "processing") && (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             )}
+            {exportState === "idle" && <FileSpreadsheet className="h-3.5 w-3.5" />}
             <span>{getExcelButtonLabel()}</span>
           </Button>
 
-          {/* Export PDF Button */}
           <Button
             variant={pdfExportState === "completed" ? "default" : "outline"}
             size="sm"
             onClick={handleExportPdfClick}
             disabled={pdfExportState === "queueing" || pdfExportState === "processing"}
             className={cn(
-              "h-9 gap-1.5 transition-all",
-              pdfExportState === "completed" && "bg-rose-600 hover:bg-rose-700 text-white shadow-sm",
+              "h-9 font-bold text-xs gap-1.5 transition-all shadow-xs",
+              pdfExportState === "completed" && "bg-rose-600 hover:bg-rose-700 text-white",
             )}
           >
-            {pdfExportState === "processing" || pdfExportState === "queueing" ? (
-              <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
-            ) : (
-              <FileText className="w-4 h-4" />
+            {(pdfExportState === "queueing" || pdfExportState === "processing") && (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             )}
+            {pdfExportState === "idle" && <FileText className="h-3.5 w-3.5" />}
             <span>{getPdfButtonLabel()}</span>
           </Button>
 
-          {/* Print Button */}
-          <Button variant="outline" size="sm" onClick={handlePrint} className="h-9 gap-1.5">
-            <Printer className="w-4 h-4" />
+          <Button variant="outline" size="sm" onClick={handlePrint} className="h-9 font-bold text-xs gap-1.5">
+            <Printer className="h-3.5 w-3.5" />
             <span>Print</span>
           </Button>
         </div>
       </div>
 
-      {/* Filter Card */}
-      <Card className="shadow-sm border-slate-200/80 dark:border-slate-800 print:hidden">
-        <CardContent className="p-4 sm:p-5">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-            {/* Multi-Outlet Selection */}
-            <div className="md:col-span-5 space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Store className="w-3.5 h-3.5 text-indigo-500" />
-                Select Outlets
-              </label>
-              <MultiSelect
-                options={locationOptions}
-                selected={selectedLocationIds}
-                onChange={setSelectedLocationIds}
-                placeholder="All Outlets"
-                className="w-full"
-              />
-            </div>
+      {/* Print Header */}
+      <div className="hidden print:block border-b-2 border-slate-900 pb-3 mb-4">
+        <h2 className="text-xl font-bold uppercase">{COMPANY_NAME}</h2>
+        <h3 className="text-md font-semibold text-slate-700">Sales Return | Claim Register | Crystal</h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Outlets: {activeSelectionNames} | Period:{" "}
+          {dateRange.from ? format(dateRange.from, "dd MMM yyyy") : "Start"} to{" "}
+          {dateRange.to ? format(dateRange.to, "dd MMM yyyy") : "End"}
+        </p>
+      </div>
 
-            {/* Date Range Picker */}
-            <div className="md:col-span-4 space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                Date Range
-              </label>
-              <DateRangePicker
-                value={dateRange}
-                onChange={setDateRange}
-                className="w-full"
-              />
-            </div>
-
-            {/* Search Query */}
-            <div className="md:col-span-3 space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5 text-indigo-500" />
-                Search Claims / Invoice / SKU
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Claim #, Inv #, SKU..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && fetchReport()}
-                  className="w-full h-10 pl-9 pr-3 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              </div>
-            </div>
+      {/* Filters Row */}
+      <div className="flex flex-col gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
+        <div className="flex flex-wrap items-end gap-4">
+          {/* Outlets Multi-Select */}
+          <div className="flex flex-col gap-1.5 min-w-[280px]">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+              <Store className="h-3.5 w-3.5 text-primary" />
+              Select Outlets / Stores
+            </span>
+            <MultiSelect
+              options={locationOptions}
+              value={selectedLocationIds}
+              onValueChange={setSelectedLocationIds}
+              placeholder="All Outlets"
+              className="bg-background"
+            />
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Main Report Document View */}
-      <Card className="shadow-md border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden print:border-none print:shadow-none print:bg-transparent">
-        <CardContent className="p-0">
-          {/* Top Banner Information */}
-          <div className="p-4 sm:p-6 bg-slate-900 text-white dark:bg-slate-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800 print:bg-white print:text-black print:p-0 print:border-b-2 print:border-black">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-black text-xl text-indigo-400 print:hidden">
-                ✓
-              </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              Period:
+            </span>
+            <DateRangePicker
+              initialDateFrom={dateRange.from}
+              initialDateTo={dateRange.to}
+              onUpdate={({ range }: { range: DateRange }) => {
+                if (range) {
+                  setDateRange(range);
+                }
+              }}
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+              <Search className="h-3.5 w-3.5" />
+              Search:
+            </span>
+            <input
+              type="text"
+              placeholder="CM #, Claim #, SKU..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-background border rounded px-2.5 py-1.5 text-xs font-medium focus:ring-primary focus:border-primary outline-none min-w-[220px]"
+            />
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={fetchReport}
+            disabled={isPending}
+            className="text-primary hover:text-primary/95 text-xs font-bold"
+          >
+            Apply / Refresh
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
+          <Folder className="h-4 w-4 text-primary" />
+          <span>Sales Return &bull; Claim Register &bull; Approved Exchange Claims</span>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      {reportData && reportData.grandTotals && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 no-print">
+          <Card className="shadow-xs border-slate-100">
+            <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-extrabold tracking-wide uppercase text-indigo-300 print:text-blue-900 print:text-center print:text-lg">
-                  {activeSelectionNames}
-                </h2>
-                <div className="text-xs text-slate-300 font-semibold tracking-wider uppercase flex flex-wrap items-center gap-2 print:text-red-700 print:text-center print:justify-center mt-1">
-                  <span>Sales Return</span>
-                  <span>|</span>
-                  <span>Claim Register</span>
-                  <span>|</span>
-                  <span className="text-indigo-400 print:text-red-700">Crystal</span>
-                  <span className="print:hidden">|</span>
-                  <span className="text-slate-400 normal-case font-normal print:hidden">
-                    Hierarchy: <span className="font-semibold text-slate-200">Outlet &rarr; Claim # &rarr; Item Detail</span>
-                  </span>
-                </div>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Approved Items</p>
+                <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{formatQty(reportData.grandTotals.quantity)}</h3>
               </div>
-            </div>
-
-            <div className="flex flex-col items-start md:items-end gap-1.5 print:text-right">
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold font-mono print:border-none print:bg-transparent print:text-red-600 print:text-sm">
-                Date Range: {dateRange.from ? format(dateRange.from, "dd/MM/yyyy") : ""} -{" "}
-                {dateRange.to ? format(dateRange.to, "dd/MM/yyyy") : ""}
+              <div className="rounded-lg p-2 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400">
+                <Inbox className="h-5 w-5" />
               </div>
-              {searchQuery.trim() && (
-                <div className="inline-flex items-center px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-medium print:text-black print:border-none">
-                  Active Filter: "{searchQuery.trim()}"
-                </div>
-              )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Loading Indicator */}
-          {isPending && (
-            <div className="p-12 flex flex-col items-center justify-center text-slate-500 space-y-3">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-              <p className="text-sm font-medium">Aggregating claim data...</p>
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!isPending && flatRows.length === 0 && (
-            <div className="p-16 flex flex-col items-center justify-center text-center text-slate-500 space-y-3">
-              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400">
-                <Tag className="w-8 h-8" />
+          <Card className="shadow-xs border-slate-100">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Sub Total (WOT)</p>
+                <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{formatNum(reportData.grandTotals.subTotal)}</h3>
               </div>
-              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">
-                No Claims Found
-              </h3>
-              <p className="text-xs text-slate-500 max-w-sm">
-                No sales return claims were recorded for the selected outlets and date range. Try adjusting your filter parameters.
-              </p>
-            </div>
-          )}
+              <div className="rounded-lg p-2 bg-slate-100 dark:bg-slate-800 text-slate-600">
+                <Layers className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Virtualized Table */}
-          {!isPending && flatRows.length > 0 && (
-            <div ref={parentRef} className="overflow-auto max-h-[750px] w-full print:max-h-none print:overflow-visible">
-              <table className="w-full text-xs text-left border-collapse min-w-[1300px] print:min-w-full font-sans">
-                <thead className="sticky top-0 z-20 bg-slate-800 text-slate-100 shadow-sm print:static print:bg-slate-100 print:text-slate-900 print:border-y-2 print:border-black">
+          <Card className="shadow-xs border-slate-100">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Total Discount</p>
+                <h3 className="text-xl font-bold mt-1 text-rose-600 dark:text-rose-450">{formatNum(reportData.grandTotals.discountAmount)}</h3>
+              </div>
+              <div className="rounded-lg p-2 bg-rose-50 dark:bg-rose-950/20 text-rose-600">
+                <ArrowDownRight className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-xs border-slate-100">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Net Claim Amount</p>
+                <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">{formatNum(reportData.grandTotals.netTotal)}</h3>
+              </div>
+              <div className="rounded-lg p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600">
+                <ArrowUpRight className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Virtualized Scrolling Table */}
+      <div ref={parentRef} className="overflow-x-auto max-h-[750px] border rounded-xl shadow-xs bg-background no-print">
+        <table className="w-full text-left border-collapse min-w-[2000px] whitespace-nowrap">
+          <thead>
+            <tr className="bg-slate-800 text-slate-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-xs">
+              <th className="p-3 w-[140px] border-r bg-slate-800">Base CM #</th>
+              <th className="p-3 w-[110px] border-r bg-slate-800">Base Date</th>
+              <th className="p-3 w-[150px] border-r bg-slate-800">Claim #</th>
+              <th className="p-3 w-[110px] border-r bg-slate-800">Claim Date</th>
+              <th className="p-3 w-[140px] border-r bg-slate-800">Settled Inv #</th>
+              <th className="p-3 w-[110px] border-r bg-slate-800">Settled Date</th>
+              <th className="p-3 w-[260px] border-r bg-slate-800">Product Description</th>
+              <th className="p-3 w-[130px] border-r bg-slate-800">Product SKU</th>
+              <th className="p-3 w-[80px] border-r text-center bg-slate-800">Size</th>
+              <th className="p-3 w-[110px] border-r text-center bg-slate-800">HS Code</th>
+              <th className="p-3 w-[80px] border-r text-right bg-slate-800">Qty</th>
+              <th className="p-3 w-[120px] border-r text-right bg-slate-800">Unit Price</th>
+              <th className="p-3 w-[90px] border-r text-right bg-slate-800">Tax %</th>
+              <th className="p-3 w-[120px] border-r text-right bg-slate-800">Price WOT</th>
+              <th className="p-3 w-[120px] border-r text-right bg-slate-800">Sub Total</th>
+              <th className="p-3 w-[110px] border-r text-right bg-rose-900/10 text-rose-300">Discount</th>
+              <th className="p-3 w-[110px] border-r text-right bg-slate-800">Tax Amt</th>
+              <th className="p-3 w-[130px] border-r text-right bg-emerald-900/10 text-emerald-300 font-extrabold">Net Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y text-xs font-medium">
+            {isPending ? (
+              <tr>
+                <td colSpan={18} className="p-8 text-center text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    Loading approved claim register report data...
+                  </div>
+                </td>
+              </tr>
+            ) : flatRows.length === 0 ? (
+              <tr>
+                <td colSpan={18} className="p-8 text-center text-muted-foreground">
+                  No approved return claims found for the selected criteria.
+                </td>
+              </tr>
+            ) : (
+              <>
+                {paddingTop > 0 && (
                   <tr>
-                    <th className="p-2 font-bold w-[100px]">Base CM #</th>
-                    <th className="p-2 font-bold w-[90px]">Base Date</th>
-                    <th className="p-2 font-bold w-[100px]">Claim #</th>
-                    <th className="p-2 font-bold w-[90px]">Claim Date</th>
-                    <th className="p-2 font-bold w-[100px]">Settled Inv #</th>
-                    <th className="p-2 font-bold w-[90px]">Settled Date</th>
-                    <th className="p-2 font-bold min-w-[180px]">Product Description</th>
-                    <th className="p-2 font-bold w-[110px]">Product</th>
-                    <th className="p-2 font-bold w-[60px] text-center">Size</th>
-                    <th className="p-2 font-bold w-[90px] text-center">HS Code</th>
-                    <th className="p-2 font-bold w-[60px] text-right">Qty</th>
-                    <th className="p-2 font-bold w-[90px] text-right">Unit Price</th>
-                    <th className="p-2 font-bold w-[65px] text-right">Tax %</th>
-                    <th className="p-2 font-bold w-[100px] text-right">Price WOT</th>
-                    <th className="p-2 font-bold w-[95px] text-right">Sub Total</th>
-                    <th className="p-2 font-bold w-[90px] text-right">Discount</th>
-                    <th className="p-2 font-bold w-[90px] text-right">Tax Amt</th>
-                    <th className="p-2 font-bold w-[100px] text-right">Net Total</th>
+                    <td colSpan={18} style={{ height: `${paddingTop}px` }} />
                   </tr>
-                </thead>
-
-                <tbody>
-                  {paddingTop > 0 && (
-                    <tr>
-                      <td colSpan={18} style={{ height: `${paddingTop}px` }} />
-                    </tr>
-                  )}
-
-                  {virtualItems.map((virtualRow) => {
-                    const row = flatRows[virtualRow.index];
-
-                    if (row.type === "outlet-header") {
-                      return (
-                        <tr key={row.id} className="bg-slate-100 dark:bg-slate-800 border-y border-slate-300 dark:border-slate-700">
-                          <td colSpan={18} className="p-2.5 font-extrabold text-sm text-indigo-900 dark:text-indigo-300 uppercase tracking-wider">
-                            Outlet: {row.locationName}
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "item") {
-                      const item = row.data;
-                      return (
-                        <tr
-                          key={row.id}
-                          className="hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-slate-200/60 dark:border-slate-800 transition-colors"
-                        >
-                          <td className="p-2 font-mono text-slate-700 dark:text-slate-300">{item.baseCmNumber}</td>
-                          <td className="p-2 text-slate-600 dark:text-slate-400">{item.baseCmDate}</td>
-                          <td className="p-2 font-mono font-medium text-slate-900 dark:text-slate-100">{item.claimNumber}</td>
-                          <td className="p-2 text-slate-600 dark:text-slate-400">{item.claimDate}</td>
-                          <td className="p-2 font-mono text-slate-700 dark:text-slate-300">{item.settledInvNumber}</td>
-                          <td className="p-2 text-slate-600 dark:text-slate-400">{item.settledDate}</td>
-                          <td className="p-2 font-medium text-slate-900 dark:text-slate-100 truncate max-w-[220px]" title={item.productDescription}>
-                            {item.productDescription}
-                          </td>
-                          <td className="p-2 font-mono text-xs text-indigo-600 dark:text-indigo-400">{item.productSku}</td>
-                          <td className="p-2 text-center font-semibold">{item.size}</td>
-                          <td className="p-2 text-center font-mono text-xs text-slate-500">{item.hsCode}</td>
-                          <td className="p-2 text-right font-medium">{formatQty(item.quantity)}</td>
-                          <td className="p-2 text-right font-mono">{formatNum(item.unitPrice)}</td>
-                          <td className="p-2 text-right font-mono text-slate-500">{item.taxPercent.toFixed(2)}</td>
-                          <td className="p-2 text-right font-mono">{formatNum(item.unitPriceWot)}</td>
-                          <td className="p-2 text-right font-mono font-medium">{formatNum(item.subTotal)}</td>
-                          <td className="p-2 text-right font-mono text-amber-600 dark:text-amber-400">{formatNum(item.discountAmount)}</td>
-                          <td className="p-2 text-right font-mono text-indigo-600 dark:text-indigo-400">{formatNum(item.taxAmount)}</td>
-                          <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{formatNum(item.netTotal)}</td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "claim-subtotal") {
-                      return (
-                        <tr key={row.id} className="bg-slate-50 dark:bg-slate-900/80 border-t border-slate-300 border-b-2 border-slate-900 dark:border-slate-100">
-                          <td colSpan={8}></td>
-                          <td colSpan={2} className="p-1.5 text-center">
-                            <span className="inline-block px-2 py-0.5 border border-slate-900 dark:border-slate-100 rounded text-xs font-bold bg-white dark:bg-slate-800">
-                              Claim #: {row.claimNumber}
-                            </span>
-                          </td>
-                          <td className="p-2 text-right font-bold">{formatQty(row.totals.quantity)}</td>
-                          <td colSpan={3}></td>
-                          <td className="p-2 text-right font-mono font-bold">{formatNum(row.totals.subTotal)}</td>
-                          <td className="p-2 text-right font-mono font-bold text-amber-600 dark:text-amber-400">{formatNum(row.totals.discountAmount)}</td>
-                          <td className="p-2 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">{formatNum(row.totals.taxAmount)}</td>
-                          <td className="p-2 text-right font-mono font-extrabold text-slate-900 dark:text-slate-100 border-b-2 border-slate-900 dark:border-slate-100">{formatNum(row.totals.netTotal)}</td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "outlet-subtotal") {
-                      return (
-                        <tr key={row.id} className="bg-indigo-50/70 dark:bg-indigo-950/40 border-t-2 border-b-2 border-indigo-900 dark:border-indigo-400">
-                          <td colSpan={8} className="p-3 font-extrabold text-indigo-950 dark:text-indigo-200">
-                            Total for {row.locationName}
-                          </td>
-                          <td colSpan={2}></td>
-                          <td className="p-3 text-right font-extrabold text-indigo-950 dark:text-indigo-200">{formatQty(row.totals.quantity)}</td>
-                          <td colSpan={3}></td>
-                          <td className="p-3 text-right font-mono font-extrabold text-indigo-950 dark:text-indigo-200">{formatNum(row.totals.subTotal)}</td>
-                          <td className="p-3 text-right font-mono font-extrabold text-amber-700 dark:text-amber-300">{formatNum(row.totals.discountAmount)}</td>
-                          <td className="p-3 text-right font-mono font-extrabold text-indigo-700 dark:text-indigo-300">{formatNum(row.totals.taxAmount)}</td>
-                          <td className="p-3 text-right font-mono font-black text-indigo-950 dark:text-indigo-100 underline decoration-double">{formatNum(row.totals.netTotal)}</td>
-                        </tr>
-                      );
-                    }
-
-                    return null;
-                  })}
-
-                  {paddingBottom > 0 && (
-                    <tr>
-                      <td colSpan={18} style={{ height: `${paddingBottom}px` }} />
-                    </tr>
-                  )}
-                </tbody>
-
-                {/* Grand Total Footer */}
-                {reportData.grandTotals && (
-                  <tfoot className="sticky bottom-0 z-20 bg-slate-900 text-white font-bold border-t-2 border-slate-950 shadow-md print:static">
-                    <tr>
-                      <td colSpan={8} className="p-3 uppercase tracking-wider font-black text-xs text-indigo-300">
-                        GRAND TOTAL (ALL OUTLETS)
-                      </td>
-                      <td colSpan={2}></td>
-                      <td className="p-3 text-right font-black">{formatQty(reportData.grandTotals.quantity)}</td>
-                      <td colSpan={3}></td>
-                      <td className="p-3 text-right font-mono font-black">{formatNum(reportData.grandTotals.subTotal)}</td>
-                      <td className="p-3 text-right font-mono font-black text-amber-300">{formatNum(reportData.grandTotals.discountAmount)}</td>
-                      <td className="p-3 text-right font-mono font-black text-indigo-300">{formatNum(reportData.grandTotals.taxAmount)}</td>
-                      <td className="p-3 text-right font-mono font-black text-emerald-400 text-sm">{formatNum(reportData.grandTotals.netTotal)}</td>
-                    </tr>
-                  </tfoot>
                 )}
-              </table>
-            </div>
+
+                {virtualItems.map((virtualRow) => {
+                  const row = flatRows[virtualRow.index];
+
+                  if (row.type === "outlet-header") {
+                    return (
+                      <tr key={row.id} className="bg-slate-100 dark:bg-slate-800/90 border-y border-slate-300 dark:border-slate-700">
+                        <td colSpan={18} className="p-3 font-extrabold text-xs text-primary uppercase tracking-wider">
+                          OUTLET: {row.locationName}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  if (row.type === "item") {
+                    const item = row.data;
+                    return (
+                      <tr
+                        key={row.id}
+                        className="hover:bg-slate-50 dark:hover:bg-slate-900/35 transition-colors h-[40px] text-slate-800 dark:text-slate-200"
+                      >
+                        <td className="p-3 border-r font-bold text-slate-900 dark:text-white">{item.baseCmNumber}</td>
+                        <td className="p-3 border-r">{item.baseCmDate}</td>
+                        <td className="p-3 border-r font-bold text-primary">{item.claimNumber}</td>
+                        <td className="p-3 border-r">{item.claimDate}</td>
+                        <td className="p-3 border-r font-semibold text-slate-700 dark:text-slate-300">{item.settledInvNumber}</td>
+                        <td className="p-3 border-r">{item.settledDate}</td>
+                        <td className="p-3 border-r truncate max-w-[260px]" title={item.productDescription}>
+                          {item.productDescription}
+                        </td>
+                        <td className="p-3 border-r font-mono text-xs text-indigo-600 dark:text-indigo-400">{item.productSku}</td>
+                        <td className="p-3 border-r text-center font-bold">{item.size}</td>
+                        <td className="p-3 border-r text-center font-mono text-xs text-muted-foreground">{item.hsCode}</td>
+                        <td className="p-3 border-r text-right font-bold">{formatQty(item.quantity)}</td>
+                        <td className="p-3 border-r text-right">{formatNum(item.unitPrice)}</td>
+                        <td className="p-3 border-r text-right text-muted-foreground">{item.taxPercent.toFixed(2)}</td>
+                        <td className="p-3 border-r text-right">{formatNum(item.unitPriceWot)}</td>
+                        <td className="p-3 border-r text-right font-semibold">{formatNum(item.subTotal)}</td>
+                        <td className="p-3 border-r text-right text-rose-600">{formatNum(item.discountAmount)}</td>
+                        <td className="p-3 border-r text-right">{formatNum(item.taxAmount)}</td>
+                        <td className="p-3 border-r text-right font-extrabold text-slate-900 dark:text-white bg-slate-500/5">{formatNum(item.netTotal)}</td>
+                      </tr>
+                    );
+                  }
+
+                  if (row.type === "outlet-subtotal") {
+                    return (
+                      <tr key={row.id} className="bg-slate-100/80 dark:bg-slate-800/80 border-t-2 border-b-2 border-slate-900 dark:border-slate-100 font-bold text-slate-900 dark:text-white">
+                        <td colSpan={10} className="p-3 font-extrabold uppercase text-xs">
+                          Total for {row.locationName}
+                        </td>
+                        <td className="p-3 border-r text-right font-extrabold">{formatQty(row.totals.quantity)}</td>
+                        <td colSpan={3} className="p-3 border-r"></td>
+                        <td className="p-3 border-r text-right font-extrabold">{formatNum(row.totals.subTotal)}</td>
+                        <td className="p-3 border-r text-right text-rose-600 font-extrabold">{formatNum(row.totals.discountAmount)}</td>
+                        <td className="p-3 border-r text-right font-extrabold">{formatNum(row.totals.taxAmount)}</td>
+                        <td className="p-3 border-r text-right font-black text-emerald-600 dark:text-emerald-400 text-sm underline decoration-double">{formatNum(row.totals.netTotal)}</td>
+                      </tr>
+                    );
+                  }
+
+                  return null;
+                })}
+
+                {paddingBottom > 0 && (
+                  <tr>
+                    <td colSpan={18} style={{ height: `${paddingBottom}px` }} />
+                  </tr>
+                )}
+              </>
+            )}
+          </tbody>
+
+          {/* Grand Total Footer */}
+          {reportData && reportData.grandTotals && (
+            <tfoot className="sticky bottom-0 z-20 bg-slate-900 text-white font-bold border-t-2 border-slate-950 shadow-md">
+              <tr>
+                <td colSpan={10} className="p-3.5 uppercase tracking-wider font-black text-xs text-indigo-300">
+                  GRAND TOTAL (ALL OUTLETS)
+                </td>
+                <td className="p-3.5 text-right font-black text-sm">{formatQty(reportData.grandTotals.quantity)}</td>
+                <td colSpan={3} className="p-3.5"></td>
+                <td className="p-3.5 text-right font-mono font-black">{formatNum(reportData.grandTotals.subTotal)}</td>
+                <td className="p-3.5 text-right font-mono font-black text-rose-400">{formatNum(reportData.grandTotals.discountAmount)}</td>
+                <td className="p-3.5 text-right font-mono font-black text-indigo-300">{formatNum(reportData.grandTotals.taxAmount)}</td>
+                <td className="p-3.5 text-right font-mono font-black text-emerald-400 text-base underline decoration-double">{formatNum(reportData.grandTotals.netTotal)}</td>
+              </tr>
+            </tfoot>
           )}
-        </CardContent>
-      </Card>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-                                                                                                                           "use client";
+"use client";
 
 import React, { useEffect, useState, useTransition, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -13,29 +13,38 @@ import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { Input } from "@/components/ui/input";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
+  Download,
   Printer,
   Loader2,
   Calendar,
-  Search,
   Store,
-  RefreshCw,
-  FileSpreadsheet,
-  FileText,
-  DollarSign,
   Layers,
+  ShoppingCart,
+  Inbox,
+  RefreshCw,
+  Folder,
+  Coins,
+  Search,
+  X,
+  SlidersHorizontal,
+  DollarSign,
   Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
-import { cn, getApiBaseUrl } from "@/lib/utils";
+import { cn, COMPANY_NAME, getApiBaseUrl, formatCurrency } from "@/lib/utils";
 
 export default function CostOfSalesReportPage() {
   const { user } = useAuth();
+  const defaultLocationId = user?.terminal?.location?.id || user?.locationId;
+  const defaultLocationName = user?.terminal?.location?.name || "Store";
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const locationParam = useMemo(
     () => (selectedLocationIds.length > 0 ? selectedLocationIds.join(",") : undefined),
@@ -66,7 +75,14 @@ export default function CostOfSalesReportPage() {
     to: endOfMonth(new Date()),
   });
 
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [groupingLevels, setGroupingLevels] = useState({
+    brand: true,
+    division: true,
+    category: true,
+    gender: true,
+    article: true,
+    variant: true,
+  });
 
   const [reportData, setReportData] = useState<CostOfSalesReportData | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -81,18 +97,23 @@ export default function CostOfSalesReportPage() {
   const [pdfExportState, setPdfExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
   const [pdfExportProgress, setPdfExportProgress] = useState<number>(0);
 
-  // Fetch Locations on mount
+  // Fetch Locations
   useEffect(() => {
-    getLocations()
-      .then((data: any) => {
-        if (Array.isArray(data)) setLocations(data);
-        else if (data?.status && Array.isArray(data?.data)) setLocations(data.data);
-      })
-      .catch(console.error);
+    async function fetchLocs() {
+      try {
+        const res = await getLocations();
+        if (Array.isArray(res)) setLocations(res);
+        else if (res?.status && Array.isArray(res.data)) setLocations(res.data);
+      } catch (err) {
+        console.error("Failed to load locations:", err);
+      }
+    }
+    fetchLocs();
   }, []);
 
   const fetchReport = useCallback(() => {
     if (!dateRange.from || !dateRange.to) return;
+
     startTransition(async () => {
       const result = await getCostOfSalesReport({
         locationId: locationParam ?? "",
@@ -103,7 +124,8 @@ export default function CostOfSalesReportPage() {
       if (result && result.status && result.data) {
         setReportData(result.data);
       } else {
-        toast.error("Failed to load Cost of Sales report");
+        setReportData(null);
+        toast.error("Failed to load Cost of Sales report data");
       }
     });
   }, [locationParam, dateRange, searchQuery]);
@@ -112,7 +134,7 @@ export default function CostOfSalesReportPage() {
     fetchReport();
   }, [locationParam, dateRange]);
 
-  // Poll Excel Job Status
+  // Poll Excel Export Job Status
   useEffect(() => {
     if (exportState !== "queueing" && exportState !== "processing") return;
     if (!exportJobId) return;
@@ -126,25 +148,25 @@ export default function CostOfSalesReportPage() {
 
           if (state === "completed") {
             setExportState("completed");
-            toast.success("Excel export processed successfully! Click to download.");
+            toast.success("Excel Export processed successfully! Ready to download.");
             clearInterval(interval);
           } else if (state === "failed") {
             setExportState("failed");
-            toast.error("Excel export job failed.");
+            toast.error("Background Excel export processing failed.");
             clearInterval(interval);
           } else {
             setExportState("processing");
           }
         }
       } catch (err) {
-        console.error("Error polling Excel job status:", err);
+        console.error("Error polling job status:", err);
       }
     }, 2000);
 
     return () => clearInterval(interval);
   }, [exportState, exportJobId]);
 
-  // Poll PDF Job Status
+  // Poll PDF Export Job Status
   useEffect(() => {
     if (pdfExportState !== "queueing" && pdfExportState !== "processing") return;
     if (!pdfJobId) return;
@@ -158,11 +180,11 @@ export default function CostOfSalesReportPage() {
 
           if (state === "completed") {
             setPdfExportState("completed");
-            toast.success("PDF document generated! Click to download.");
+            toast.success("PDF Report generated successfully! Ready to download.");
             clearInterval(interval);
           } else if (state === "failed") {
             setPdfExportState("failed");
-            toast.error("PDF export job failed.");
+            toast.error("Background PDF generation failed.");
             clearInterval(interval);
           } else {
             setPdfExportState("processing");
@@ -180,13 +202,17 @@ export default function CostOfSalesReportPage() {
     if (!dateRange.from || !dateRange.to) return;
 
     if (exportState === "completed" && exportJobId) {
-      const downloadUrl = `${getApiBaseUrl()}/api/pos-sales/reports/cost-of-sales/export-download/${exportJobId}`;
-      window.open(downloadUrl, "_blank");
+      const base = getApiBaseUrl();
+      const url = `${base}/api/pos-sales/reports/cost-of-sales/export-download/${exportJobId}`;
+      window.open(url, "_blank");
+
+      setExportState("idle");
+      setExportJobId(null);
+      setExportProgress(0);
       return;
     }
 
     setExportState("queueing");
-    setExportProgress(0);
     try {
       const res = await queueCostOfSalesExport({
         locationId: locationParam ?? "",
@@ -199,14 +225,15 @@ export default function CostOfSalesReportPage() {
       if (res && res.status && res.data?.jobId) {
         setExportJobId(res.data.jobId);
         setExportState("processing");
-        toast.info("Excel export added to server queue...");
+        setExportProgress(5);
+        toast.info("Background Excel generation queued.");
       } else {
         setExportState("failed");
-        toast.error(res?.message || "Failed to queue Excel export");
+        toast.error(res?.message || "Failed to queue export job.");
       }
     } catch (err) {
       setExportState("failed");
-      toast.error("An error occurred while queueing Excel export");
+      toast.error("Failed to queue export job.");
     }
   };
 
@@ -214,13 +241,17 @@ export default function CostOfSalesReportPage() {
     if (!dateRange.from || !dateRange.to) return;
 
     if (pdfExportState === "completed" && pdfJobId) {
-      const downloadUrl = `${getApiBaseUrl()}/api/pos-sales/reports/cost-of-sales/export-download/${pdfJobId}`;
-      window.open(downloadUrl, "_blank");
+      const base = getApiBaseUrl();
+      const url = `${base}/api/pos-sales/reports/cost-of-sales/export-download/${pdfJobId}`;
+      window.open(url, "_blank");
+
+      setPdfExportState("idle");
+      setPdfJobId(null);
+      setPdfExportProgress(0);
       return;
     }
 
     setPdfExportState("queueing");
-    setPdfExportProgress(0);
     try {
       const res = await queueCostOfSalesExport({
         locationId: locationParam ?? "",
@@ -233,131 +264,222 @@ export default function CostOfSalesReportPage() {
       if (res && res.status && res.data?.jobId) {
         setPdfJobId(res.data.jobId);
         setPdfExportState("processing");
-        toast.info("PDF generation added to server queue...");
+        setPdfExportProgress(5);
+        toast.info("Background PDF generation queued.");
       } else {
         setPdfExportState("failed");
-        toast.error(res?.message || "Failed to queue PDF export");
+        toast.error(res?.message || "Failed to queue export job.");
       }
     } catch (err) {
       setPdfExportState("failed");
-      toast.error("An error occurred while queueing PDF export");
+      toast.error("Failed to queue export job.");
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // Flatten deep hierarchical tree for virtualization
-  const flatRows = useMemo(() => {
+  // Client-Side Search & Hierarchy Filtering
+  const filteredOutlets = useMemo(() => {
     if (!reportData || !reportData.outlets) return [];
-    const rows: any[] = [];
+    if (!searchQuery.trim()) return reportData.outlets;
+    const query = searchQuery.toLowerCase().trim();
 
-    for (const outlet of reportData.outlets) {
+    return reportData.outlets
+      .map((outlet) => {
+        const filteredDivisions = outlet.divisions
+          .map((div) => {
+            const filteredBrands = div.brands
+              .map((brand) => {
+                const filteredGenders = brand.genders
+                  .map((gender) => {
+                    const filteredCategories = gender.categories
+                      .map((cat) => {
+                        const filteredProducts = cat.products.filter((prod) => {
+                          const matchesProd =
+                            prod.sku.toLowerCase().includes(query) ||
+                            prod.description.toLowerCase().includes(query) ||
+                            prod.productLabel.toLowerCase().includes(query);
+                          const matchesSize = prod.sizes.some((s) => s.size.toLowerCase().includes(query));
+                          return matchesProd || matchesSize;
+                        });
+
+                        if (
+                          filteredProducts.length > 0 ||
+                          cat.categoryName.toLowerCase().includes(query)
+                        ) {
+                          return { ...cat, products: filteredProducts.length > 0 ? filteredProducts : cat.products };
+                        }
+                        return null;
+                      })
+                      .filter(Boolean) as any[];
+
+                    if (
+                      filteredCategories.length > 0 ||
+                      gender.genderName.toLowerCase().includes(query)
+                    ) {
+                      return { ...gender, categories: filteredCategories };
+                    }
+                    return null;
+                  })
+                  .filter(Boolean) as any[];
+
+                if (
+                  filteredGenders.length > 0 ||
+                  brand.brandName.toLowerCase().includes(query)
+                ) {
+                  return { ...brand, genders: filteredGenders };
+                }
+                return null;
+              })
+              .filter(Boolean) as any[];
+
+            if (
+              filteredBrands.length > 0 ||
+              div.divisionName.toLowerCase().includes(query)
+            ) {
+              return { ...div, brands: filteredBrands };
+            }
+            return null;
+          })
+          .filter(Boolean) as any[];
+
+        if (filteredDivisions.length > 0 || outlet.locationName.toLowerCase().includes(query)) {
+          return { ...outlet, divisions: filteredDivisions };
+        }
+        return null;
+      })
+      .filter(Boolean) as typeof reportData.outlets;
+  }, [reportData, searchQuery]);
+
+  // Grand Totals Calculation
+  const grandTotals = useMemo(() => {
+    const totals = {
+      totalProducts: 0,
+      quantity: 0,
+      totalCost: 0,
+    };
+
+    if (!filteredOutlets) return totals;
+
+    for (const outlet of filteredOutlets) {
+      for (const div of outlet.divisions) {
+        for (const brand of div.brands) {
+          for (const gender of brand.genders) {
+            for (const cat of gender.categories) {
+              totals.totalProducts += cat.products.length;
+              for (const prod of cat.products) {
+                totals.quantity += prod.totals.quantity;
+                totals.totalCost += prod.totals.totalCost;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return totals;
+  }, [filteredOutlets]);
+
+  // Flatten tree according to checked grouping levels
+  const flatRows = useMemo(() => {
+    const rows: any[] = [];
+    if (!filteredOutlets) return rows;
+
+    for (const outlet of filteredOutlets) {
       rows.push({
-        type: "outlet-header",
+        type: "outlet",
         id: `outlet-${outlet.locationId}`,
-        name: outlet.locationName,
+        label: `OUTLET: ${outlet.locationName.toUpperCase()}`,
+        totals: outlet.totals,
       });
 
       for (const div of outlet.divisions) {
-        rows.push({
-          type: "div-header",
-          id: `div-${div.divisionId}`,
-          name: div.divisionName,
-        });
-
-        for (const brand of div.brands) {
+        if (groupingLevels.division) {
           rows.push({
-            type: "brand-header",
-            id: `brand-${brand.brandId}`,
-            name: brand.brandName,
-          });
-
-          for (const gender of brand.genders) {
-            rows.push({
-              type: "gender-header",
-              id: `gender-${gender.genderId}`,
-              name: gender.genderName,
-            });
-
-            for (const cat of gender.categories) {
-              rows.push({
-                type: "cat-header",
-                id: `cat-${cat.categoryId}`,
-                name: cat.categoryName,
-              });
-
-              for (const prod of cat.products) {
-                for (const item of prod.sizes) {
-                  rows.push({
-                    type: "size-item",
-                    id: `item-${item.id}`,
-                    productLabel: prod.productLabel,
-                    size: item.size,
-                    quantity: item.quantity,
-                    costPrice: item.costPrice,
-                    totalCost: item.totalCost,
-                  });
-                }
-
-                rows.push({
-                  type: "prod-subtotal",
-                  id: `prod-sub-${prod.sku}`,
-                  label: `Total for ${prod.sku}`,
-                  totals: prod.totals,
-                });
-              }
-
-              rows.push({
-                type: "cat-subtotal",
-                id: `cat-sub-${cat.categoryId}`,
-                label: `Category Total: ${cat.categoryName}`,
-                totals: cat.totals,
-              });
-            }
-
-            rows.push({
-              type: "gender-subtotal",
-              id: `gender-sub-${gender.genderId}`,
-              label: `Gender Total: ${gender.genderName}`,
-              totals: gender.totals,
-            });
-          }
-
-          rows.push({
-            type: "brand-subtotal",
-            id: `brand-sub-${brand.brandId}`,
-            label: `Brand Total: ${brand.brandName}`,
-            totals: brand.totals,
+            type: "division",
+            id: `div-${div.divisionId}`,
+            label: `DIVISION: ${div.divisionName.toUpperCase()}`,
+            totals: div.totals,
           });
         }
 
-        rows.push({
-          type: "div-subtotal",
-          id: `div-sub-${div.divisionId}`,
-          label: `Division Total: ${div.divisionName}`,
-          totals: div.totals,
-        });
-      }
+        for (const brand of div.brands) {
+          if (groupingLevels.brand) {
+            rows.push({
+              type: "brand",
+              id: `brand-${brand.brandId}`,
+              label: `BRAND: ${brand.brandName.toUpperCase()}`,
+              totals: brand.totals,
+            });
+          }
 
-      rows.push({
-        type: "outlet-subtotal",
-        id: `outlet-sub-${outlet.locationId}`,
-        name: outlet.locationName,
-        totals: outlet.totals,
-      });
+          for (const gender of brand.genders) {
+            if (groupingLevels.gender) {
+              rows.push({
+                type: "gender",
+                id: `gender-${gender.genderId}`,
+                label: `GENDER: ${gender.genderName.toUpperCase()}`,
+                totals: gender.totals,
+              });
+            }
+
+            for (const cat of gender.categories) {
+              if (groupingLevels.category) {
+                rows.push({
+                  type: "category",
+                  id: `cat-${cat.categoryId}`,
+                  label: `CATEGORY: ${cat.categoryName.toUpperCase()}`,
+                  totals: cat.totals,
+                });
+              }
+
+              for (const prod of cat.products) {
+                if (groupingLevels.article) {
+                  rows.push({
+                    type: "article",
+                    id: `prod-${prod.sku}`,
+                    sku: prod.sku,
+                    label: prod.productLabel,
+                    totals: prod.totals,
+                  });
+                }
+
+                if (groupingLevels.variant) {
+                  for (const item of prod.sizes) {
+                    rows.push({
+                      type: "variant",
+                      id: `item-${item.id}`,
+                      size: item.size,
+                      quantity: item.quantity,
+                      costPrice: item.costPrice,
+                      totalCost: item.totalCost,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     return rows;
-  }, [reportData]);
+  }, [filteredOutlets, groupingLevels]);
 
+  const handleToggleLevel = (level: keyof typeof groupingLevels, checked: boolean) => {
+    setGroupingLevels((prev) => {
+      const next = { ...prev, [level]: checked };
+      if (level === "division" && checked) next.brand = true;
+      if (level === "brand" && !checked) next.division = false;
+      return next;
+    });
+  };
+
+  // Virtual list setup
   const parentRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
     count: flatRows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 34,
-    overscan: 10,
+    estimateSize: () => 40,
+    overscan: 12,
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
@@ -366,420 +488,496 @@ export default function CostOfSalesReportPage() {
   const paddingBottom =
     virtualItems.length > 0 ? totalSize - virtualItems[virtualItems.length - 1].end : 0;
 
-  const formatNum = (val: number) => {
-    if (val === undefined || val === null) return "-";
-    return val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const getExportButtonText = () => {
+    switch (exportState) {
+      case "queueing": return "Queueing...";
+      case "processing": return `Generating ${exportProgress}%`;
+      case "completed": return "Download Excel";
+      case "failed": return "Retry Excel Export";
+      case "idle":
+      default: return "Export Excel";
+    }
   };
 
-  const formatQty = (val: number) => {
-    if (val === undefined || val === null) return "-";
-    return val.toLocaleString("en-US");
+  const getPdfButtonText = () => {
+    switch (pdfExportState) {
+      case "queueing": return "Queueing...";
+      case "processing": return `Generating ${pdfExportProgress}%`;
+      case "completed": return "Download PDF";
+      case "failed": return "Retry PDF Export";
+      case "idle":
+      default: return "Export PDF";
+    }
   };
 
-  const getExcelButtonLabel = () => {
-    if (exportState === "queueing") return "Queueing...";
-    if (exportState === "processing") return `Generating (${exportProgress}%)`;
-    if (exportState === "completed") return "Download Excel";
-    if (exportState === "failed") return "Retry Excel";
-    return "Export Excel";
-  };
-
-  const getPdfButtonLabel = () => {
-    if (pdfExportState === "queueing") return "Queueing...";
-    if (pdfExportState === "processing") return `Generating (${pdfExportProgress}%)`;
-    if (pdfExportState === "completed") return "Download PDF";
-    if (pdfExportState === "failed") return "Retry PDF";
-    return "Export PDF";
-  };
+  const formatVal = (val: number) => (val === 0 ? "-" : val.toLocaleString());
+  const formatPriceVal = (val: number) => (val === 0 ? "-" : formatCurrency(val));
 
   return (
-    <div className="flex flex-col space-y-6 p-6 min-h-screen bg-slate-50/50 dark:bg-slate-950/50 print:bg-white print:p-0">
-      {/* Page Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      {/* Header Block */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5 no-print">
         <div>
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-xl text-white shadow-md shadow-emerald-500/20">
-              <DollarSign className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                Cost of Sales Report
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Itemized costing of goods sold per outlet with hierarchical category aggregation
-              </p>
-            </div>
-          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2 text-slate-800 dark:text-slate-100">
+            <DollarSign className="h-8 w-8 text-emerald-600" />
+            Cost of Sales Report
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5 font-medium">
+            <Store className="h-4 w-4 text-emerald-600/70" />
+            Cost of Goods Sold (COGS) & Article Valuation for{" "}
+            <span className="text-foreground font-semibold">{activeSelectionNames}</span>
+          </p>
         </div>
-
         <div className="flex flex-wrap items-center gap-2">
-          {/* Refresh Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchReport}
-            disabled={isPending}
-            className="h-9 gap-1.5"
-          >
-            <RefreshCw className={cn("w-4 h-4", isPending && "animate-spin")} />
-            <span>Refresh</span>
-          </Button>
-
-          {/* Export Excel Button */}
-          <Button
-            variant={exportState === "completed" ? "default" : "outline"}
-            size="sm"
-            onClick={handleExportExcelClick}
-            disabled={exportState === "queueing" || exportState === "processing"}
-            className={cn(
-              "h-9 gap-1.5 transition-all",
-              exportState === "completed" && "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
-            )}
-          >
-            {exportState === "processing" || exportState === "queueing" ? (
-              <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
-            ) : (
-              <FileSpreadsheet className="w-4 h-4" />
-            )}
-            <span>{getExcelButtonLabel()}</span>
-          </Button>
-
-          {/* Export PDF Button */}
           <Button
             variant={pdfExportState === "completed" ? "default" : "outline"}
-            size="sm"
             onClick={handleExportPdfClick}
             disabled={pdfExportState === "queueing" || pdfExportState === "processing"}
             className={cn(
-              "h-9 gap-1.5 transition-all",
-              pdfExportState === "completed" && "bg-rose-600 hover:bg-rose-700 text-white shadow-sm",
+              "gap-2 font-semibold transition-all",
+              pdfExportState === "completed"
+                ? "bg-red-600 text-white hover:bg-red-700 border-none"
+                : "border-red-500/40 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30",
             )}
           >
-            {pdfExportState === "processing" || pdfExportState === "queueing" ? (
-              <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+            {pdfExportState === "queueing" || pdfExportState === "processing" ? (
+              <Loader2 className="h-4 w-4 animate-spin text-red-600" />
             ) : (
-              <FileText className="w-4 h-4" />
+              <Printer className="h-4 w-4" />
             )}
-            <span>{getPdfButtonLabel()}</span>
+            {getPdfButtonText()}
           </Button>
-
-          {/* Print Button */}
-          <Button variant="outline" size="sm" onClick={handlePrint} className="h-9 gap-1.5">
-            <Printer className="w-4 h-4" />
-            <span>Print</span>
+          <Button
+            variant={exportState === "completed" ? "default" : "outline"}
+            onClick={handleExportExcelClick}
+            disabled={exportState === "queueing" || exportState === "processing"}
+            className={cn(
+              "gap-2 font-semibold transition-all",
+              exportState === "completed"
+                ? "bg-emerald-600 text-white hover:bg-emerald-700 border-none"
+                : "border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30",
+            )}
+          >
+            {exportState === "queueing" || exportState === "processing" ? (
+              <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {getExportButtonText()}
           </Button>
         </div>
       </div>
 
-      {/* Filter Card */}
-      <Card className="shadow-sm border-slate-200/80 dark:border-slate-800 print:hidden">
-        <CardContent className="p-4 sm:p-5">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-            {/* Multi-Outlet Selection */}
-            <div className="md:col-span-5 space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Store className="w-3.5 h-3.5 text-emerald-500" />
-                Select Outlets
-              </label>
-              <MultiSelect
-                options={locationOptions}
-                selected={selectedLocationIds}
-                onChange={setSelectedLocationIds}
-                placeholder="All Outlets"
-                className="w-full"
-              />
-            </div>
+      {/* Print Header */}
+      <div className="hidden print:block mb-6 border-b pb-4">
+        <h1 className="text-2xl font-bold text-center text-slate-900">{COMPANY_NAME}</h1>
+        <h2 className="text-lg font-bold text-center text-slate-700">Cost of Sales Report</h2>
+        <p className="text-sm text-center text-slate-600 mt-1">Outlets: {activeSelectionNames}</p>
+        <p className="text-xs text-center text-slate-500">
+          Period: {dateRange.from ? format(dateRange.from, "dd MMM yyyy") : "Start"} to{" "}
+          {dateRange.to ? format(dateRange.to, "dd MMM yyyy") : "End"}
+        </p>
+      </div>
 
-            {/* Date Range Picker */}
-            <div className="md:col-span-4 space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-                Date Range
-              </label>
-              <DateRangePicker
-                value={dateRange}
-                onChange={setDateRange}
-                className="w-full"
-              />
-            </div>
-
-            {/* Search Query */}
-            <div className="md:col-span-3 space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5 text-emerald-500" />
-                Search Product / SKU / Category
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="SKU, Product, Category..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && fetchReport()}
-                  className="w-full h-10 pl-9 pr-3 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              </div>
-            </div>
+      {/* Filters Row */}
+      <div className="flex flex-wrap items-end justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
+        <div className="flex flex-wrap items-end gap-4 flex-1">
+          {/* Location Multi-Select */}
+          <div className="flex flex-col gap-1.5 min-w-[280px]">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+              <Store className="h-3.5 w-3.5 text-emerald-600" />
+              Select Outlets / Stores
+            </span>
+            <MultiSelect
+              options={locationOptions}
+              value={selectedLocationIds}
+              onValueChange={setSelectedLocationIds}
+              placeholder="All Outlets"
+              className="bg-background"
+            />
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Main Report Document View */}
-      <Card className="shadow-md border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden print:border-none print:shadow-none print:bg-transparent">
-        <CardContent className="p-0">
-          {/* Top Banner Information */}
-          <div className="p-4 sm:p-6 bg-slate-900 text-white dark:bg-slate-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800 print:bg-white print:text-black print:p-0 print:border-b-2 print:border-black">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-xl print:hidden">
-                $
-              </div>
-              <div>
-                <h2 className="text-xl font-extrabold tracking-wide uppercase text-emerald-400 print:text-slate-900 print:text-center print:text-lg">
-                  {activeSelectionNames}
-                </h2>
-                <div className="text-xs text-slate-300 font-semibold tracking-wider uppercase flex flex-wrap items-center gap-2 print:text-teal-800 print:text-center print:justify-center mt-1">
-                  <span>ERP Reports</span>
-                  <span>|</span>
-                  <span>Cost of Sales</span>
-                  <span className="print:hidden">|</span>
-                  <span className="text-slate-400 normal-case font-normal print:hidden">
-                    Hierarchy: <span className="font-semibold text-slate-200">Division &rarr; Brand &rarr; Gender &rarr; Category &rarr; Product &rarr; Size</span>
-                  </span>
-                </div>
-              </div>
-            </div>
+          {/* Date Period Picker */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+              <Calendar className="h-3.5 w-3.5 text-emerald-600" />
+              Period Range
+            </span>
+            <DateRangePicker
+              initialDateFrom={dateRange.from}
+              initialDateTo={dateRange.to}
+              onUpdate={({ range }: { range: DateRange }) => {
+                if (range) {
+                  setDateRange(range);
+                }
+              }}
+            />
+          </div>
 
-            <div className="flex flex-col items-start md:items-end gap-1.5 print:text-right">
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold font-mono print:border-none print:bg-transparent print:text-emerald-700 print:text-sm">
-                Date Range: {dateRange.from ? format(dateRange.from, "dd/MM/yyyy") : ""} -{" "}
-                {dateRange.to ? format(dateRange.to, "dd/MM/yyyy") : ""}
+          {/* Quick Search Bar */}
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[260px]">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+              <Search className="h-3.5 w-3.5 text-emerald-600" />
+              Quick Search
+            </span>
+            <div className="relative">
+              <Input
+                placeholder="Search by SKU, Product Description, Size, Category, Brand..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10 pl-9 pr-9 text-sm bg-background border-slate-200"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                <Search className="h-4 w-4" />
               </div>
-              {searchQuery.trim() && (
-                <div className="inline-flex items-center px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-medium print:text-black print:border-none">
-                  Active Filter: "{searchQuery.trim()}"
-                </div>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Loading State */}
-          {isPending && (
-            <div className="p-12 flex flex-col items-center justify-center text-slate-500 space-y-3">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-              <p className="text-sm font-medium">Aggregating sold articles cost of sales...</p>
+        <div className="flex gap-2">
+          <Button onClick={fetchReport} disabled={isPending} className="h-10 px-5 font-bold gap-1.5">
+            <RefreshCw className={cn("h-4 w-4", isPending && "animate-spin")} />
+            Refresh Report
+          </Button>
+        </div>
+      </div>
+
+      {/* Hierarchy Configuration Box */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4 no-print">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-emerald-600" />
+              Report Hierarchy Configuration
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Customize the nesting structure. Check the levels you want to group and report by.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 pt-2">
+          {/* Brand */}
+          <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <input
+              type="checkbox"
+              id="group-brand"
+              checked={groupingLevels.brand}
+              onChange={(e) => handleToggleLevel("brand", e.target.checked)}
+              disabled={groupingLevels.division}
+              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer disabled:opacity-50"
+            />
+            <label
+              htmlFor="group-brand"
+              className={cn(
+                "text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5",
+                groupingLevels.division && "opacity-60 cursor-not-allowed",
+              )}
+            >
+              <Layers className="h-3.5 w-3.5 text-indigo-500" />
+              Brand
+            </label>
+          </div>
+
+          {/* Division */}
+          <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <input
+              type="checkbox"
+              id="group-division"
+              checked={groupingLevels.division}
+              onChange={(e) => handleToggleLevel("division", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
+            />
+            <label htmlFor="group-division" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+              <Folder className="h-3.5 w-3.5 text-blue-500" />
+              Division
+            </label>
+          </div>
+
+          {/* Category */}
+          <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <input
+              type="checkbox"
+              id="group-category"
+              checked={groupingLevels.category}
+              onChange={(e) => handleToggleLevel("category", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
+            />
+            <label htmlFor="group-category" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+              <ShoppingCart className="h-3.5 w-3.5 text-teal-500" />
+              Category
+            </label>
+          </div>
+
+          {/* Gender */}
+          <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <input
+              type="checkbox"
+              id="group-gender"
+              checked={groupingLevels.gender}
+              onChange={(e) => handleToggleLevel("gender", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
+            />
+            <label htmlFor="group-gender" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+              <Store className="h-3.5 w-3.5 text-rose-500" />
+              Gender
+            </label>
+          </div>
+
+          {/* Product (Article) */}
+          <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <input
+              type="checkbox"
+              id="group-article"
+              checked={groupingLevels.article}
+              onChange={(e) => handleToggleLevel("article", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
+            />
+            <label htmlFor="group-article" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+              <Inbox className="h-3.5 w-3.5 text-cyan-500" />
+              Product SKU
+            </label>
+          </div>
+
+          {/* Variant (Sizes) */}
+          <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <input
+              type="checkbox"
+              id="group-variant"
+              checked={groupingLevels.variant}
+              onChange={(e) => handleToggleLevel("variant", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
+            />
+            <label htmlFor="group-variant" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+              <Tag className="h-3.5 w-3.5 text-amber-500" />
+              Variant (Sizes)
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 no-print">
+        <Card className="shadow-xs border-slate-100">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Sold Products</p>
+              <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{grandTotals.totalProducts}</h3>
             </div>
-          )}
-
-          {/* Empty State */}
-          {!isPending && flatRows.length === 0 && (
-            <div className="p-16 flex flex-col items-center justify-center text-center text-slate-500 space-y-3">
-              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400">
-                <Tag className="w-8 h-8" />
-              </div>
-              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">
-                No Sold Articles Found
-              </h3>
-              <p className="text-xs text-slate-500 max-w-sm">
-                No POS sales were recorded for the selected outlets and date range. Try expanding your date range or outlet selection.
-              </p>
+            <div className="rounded-lg p-2 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400">
+              <Layers className="h-5 w-5" />
             </div>
-          )}
+          </CardContent>
+        </Card>
 
-          {/* Virtualized Hierarchical Table */}
-          {!isPending && flatRows.length > 0 && (
-            <div ref={parentRef} className="overflow-auto max-h-[750px] w-full print:max-h-none print:overflow-visible">
-              <table className="w-full text-xs text-left border-collapse min-w-[900px] print:min-w-full font-sans">
-                <thead className="sticky top-0 z-20 bg-slate-900 text-slate-100 shadow-sm print:static print:bg-slate-100 print:text-slate-900 print:border-y-2 print:border-black">
+        <Card className="shadow-xs border-slate-100">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Sold Quantity</p>
+              <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{formatVal(grandTotals.quantity)}</h3>
+            </div>
+            <div className="rounded-lg p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600">
+              <Inbox className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs border-slate-100">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Total Cost of Sales (COGS)</p>
+              <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">{formatPriceVal(grandTotals.totalCost)}</h3>
+            </div>
+            <div className="rounded-lg p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400">
+              <Coins className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Virtualized Scrolling Table */}
+      <div ref={parentRef} className="overflow-auto max-h-[700px] border rounded-xl shadow-sm bg-background no-print">
+        <table className="w-full text-left border-collapse min-w-[900px]">
+          <thead>
+            <tr className="bg-[#1e293b] text-slate-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
+              <th className="p-3 w-[320px] border-r bg-[#1e293b]">GPC / Category / Product</th>
+              <th className="p-3 w-[90px] border-r text-center bg-[#1e293b]">Size</th>
+              <th className="p-3 w-[110px] border-r text-right bg-[#1e293b]">Quantity</th>
+              <th className="p-3 w-[130px] border-r text-right bg-[#1e293b]">Cost Price (Rs.)</th>
+              <th className="p-3 w-[150px] text-right bg-[#0f172a] font-extrabold text-emerald-300">Total Cost (Rs.)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y text-xs">
+            {isPending ? (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-muted-foreground font-medium">
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                    Aggregating cost of sales and sold product metrics...
+                  </div>
+                </td>
+              </tr>
+            ) : flatRows.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-muted-foreground font-medium">
+                  No sold products match the selected outlets, period, or search query.
+                </td>
+              </tr>
+            ) : (
+              <>
+                {paddingTop > 0 && (
                   <tr>
-                    <th className="p-2.5 font-bold min-w-[320px]">GPC / Category / Product</th>
-                    <th className="p-2.5 font-bold w-[90px] text-center">Size</th>
-                    <th className="p-2.5 font-bold w-[120px] text-right">Quantity</th>
-                    <th className="p-2.5 font-bold w-[150px] text-right">Cost Price (Rs.)</th>
-                    <th className="p-2.5 font-bold w-[160px] text-right">Total Cost (Rs.)</th>
+                    <td colSpan={5} style={{ height: `${paddingTop}px` }} />
                   </tr>
-                </thead>
-
-                <tbody>
-                  {paddingTop > 0 && (
-                    <tr>
-                      <td colSpan={5} style={{ height: `${paddingTop}px` }} />
-                    </tr>
-                  )}
-
-                  {virtualItems.map((virtualRow) => {
-                    const row = flatRows[virtualRow.index];
-
-                    if (row.type === "outlet-header") {
-                      return (
-                        <tr key={row.id} className="bg-slate-800 text-slate-100 border-y border-slate-700">
-                          <td colSpan={5} className="p-3 font-extrabold text-sm uppercase tracking-wider text-emerald-400">
-                            OUTLET: {row.name}
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "div-header") {
-                      return (
-                        <tr key={row.id} className="bg-slate-100 dark:bg-slate-800/80 border-t border-slate-300 dark:border-slate-700">
-                          <td colSpan={5} className="p-2 font-bold text-sky-700 dark:text-sky-400 pl-4">
-                            Division: {row.name}
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "brand-header") {
-                      return (
-                        <tr key={row.id} className="bg-slate-50 dark:bg-slate-800/40">
-                          <td colSpan={5} className="p-2 font-semibold text-slate-700 dark:text-slate-300 pl-8">
-                            Brand: {row.name}
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "gender-header") {
-                      return (
-                        <tr key={row.id} className="bg-white dark:bg-slate-900">
-                          <td colSpan={5} className="p-2 font-medium text-slate-600 dark:text-slate-400 pl-12">
-                            Gender: {row.name}
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "cat-header") {
-                      return (
-                        <tr key={row.id} className="bg-white dark:bg-slate-900 border-b border-slate-200/50 dark:border-slate-800">
-                          <td colSpan={5} className="p-2 font-semibold text-teal-700 dark:text-teal-400 pl-16">
-                            Category: {row.name}
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "size-item") {
-                      return (
-                        <tr
-                          key={row.id}
-                          className="hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800/60 transition-colors"
-                        >
-                          <td className="p-2 pl-20 font-normal text-slate-800 dark:text-slate-200 truncate max-w-[360px]" title={row.productLabel}>
-                            {row.productLabel}
-                          </td>
-                          <td className="p-2 text-center font-semibold text-slate-700 dark:text-slate-300">{row.size}</td>
-                          <td className="p-2 text-right font-mono font-medium">{formatQty(row.quantity)}</td>
-                          <td className="p-2 text-right font-mono text-slate-600 dark:text-slate-400">{formatNum(row.costPrice)}</td>
-                          <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{formatNum(row.totalCost)}</td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "prod-subtotal") {
-                      return (
-                        <tr key={row.id} className="bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200/80 dark:border-slate-800">
-                          <td className="p-1.5 pl-20 font-bold text-xs text-slate-600 dark:text-slate-400">{row.label}</td>
-                          <td></td>
-                          <td className="p-1.5 text-right font-mono font-bold">{formatQty(row.totals.quantity)}</td>
-                          <td></td>
-                          <td className="p-1.5 text-right font-mono font-bold text-slate-800 dark:text-slate-200">{formatNum(row.totals.totalCost)}</td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "cat-subtotal") {
-                      return (
-                        <tr key={row.id} className="bg-teal-50/50 dark:bg-teal-950/20 border-t border-teal-300 dark:border-teal-800 border-b-2 border-teal-600">
-                          <td className="p-2 pl-16 font-bold text-teal-800 dark:text-teal-300">{row.label}</td>
-                          <td></td>
-                          <td className="p-2 text-right font-mono font-bold text-teal-900 dark:text-teal-200">{formatQty(row.totals.quantity)}</td>
-                          <td></td>
-                          <td className="p-2 text-right font-mono font-bold text-teal-900 dark:text-teal-200">{formatNum(row.totals.totalCost)}</td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "gender-subtotal") {
-                      return (
-                        <tr key={row.id} className="bg-slate-100/60 dark:bg-slate-800/40 border-t border-slate-300 dark:border-slate-700 border-b-2 border-slate-400">
-                          <td className="p-2 pl-12 font-bold text-slate-700 dark:text-slate-300">{row.label}</td>
-                          <td></td>
-                          <td className="p-2 text-right font-mono font-bold">{formatQty(row.totals.quantity)}</td>
-                          <td></td>
-                          <td className="p-2 text-right font-mono font-bold">{formatNum(row.totals.totalCost)}</td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "brand-subtotal") {
-                      return (
-                        <tr key={row.id} className="bg-slate-100 dark:bg-slate-800/60 border-t border-slate-400 dark:border-slate-600 border-b-2 border-slate-600">
-                          <td className="p-2 pl-8 font-bold text-slate-800 dark:text-slate-200">{row.label}</td>
-                          <td></td>
-                          <td className="p-2 text-right font-mono font-bold">{formatQty(row.totals.quantity)}</td>
-                          <td></td>
-                          <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{formatNum(row.totals.totalCost)}</td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "div-subtotal") {
-                      return (
-                        <tr key={row.id} className="bg-sky-50 dark:bg-sky-950/30 border-t-2 border-sky-400 border-b-2 border-sky-700">
-                          <td className="p-2.5 pl-4 font-extrabold text-sky-900 dark:text-sky-300">{row.label}</td>
-                          <td></td>
-                          <td className="p-2.5 text-right font-mono font-extrabold text-sky-900 dark:text-sky-300">{formatQty(row.totals.quantity)}</td>
-                          <td></td>
-                          <td className="p-2.5 text-right font-mono font-extrabold text-sky-900 dark:text-sky-200">{formatNum(row.totals.totalCost)}</td>
-                        </tr>
-                      );
-                    }
-
-                    if (row.type === "outlet-subtotal") {
-                      return (
-                        <tr key={row.id} className="bg-slate-900 text-white border-t-2 border-b-2 border-black">
-                          <td className="p-3 font-extrabold text-emerald-400 uppercase tracking-wider">
-                            TOTAL FOR {row.name}
-                          </td>
-                          <td></td>
-                          <td className="p-3 text-right font-mono font-extrabold">{formatQty(row.totals.quantity)}</td>
-                          <td></td>
-                          <td className="p-3 text-right font-mono font-black text-emerald-300 text-sm underline decoration-double">{formatNum(row.totals.totalCost)}</td>
-                        </tr>
-                      );
-                    }
-
-                    return null;
-                  })}
-
-                  {paddingBottom > 0 && (
-                    <tr>
-                      <td colSpan={5} style={{ height: `${paddingBottom}px` }} />
-                    </tr>
-                  )}
-                </tbody>
-
-                {/* Grand Total Footer */}
-                {reportData && reportData.grandTotals && (
-                  <tfoot className="sticky bottom-0 z-20 bg-slate-950 text-white font-bold border-t-2 border-slate-900 shadow-md print:static">
-                    <tr>
-                      <td className="p-3.5 uppercase tracking-wider font-black text-xs text-emerald-400">
-                        GRAND TOTAL (ALL OUTLETS)
-                      </td>
-                      <td></td>
-                      <td className="p-3.5 text-right font-mono font-black text-sm">{formatQty(reportData.grandTotals.quantity)}</td>
-                      <td></td>
-                      <td className="p-3.5 text-right font-mono font-black text-emerald-400 text-base">{formatNum(reportData.grandTotals.totalCost)}</td>
-                    </tr>
-                  </tfoot>
                 )}
-              </table>
-            </div>
+                {virtualItems.map((virtualRow) => {
+                  const row = flatRows[virtualRow.index];
+
+                  const LEVEL_UI_STYLES: Record<string, { className: string; indentClass: string }> = {
+                    outlet: { className: "bg-[#0f172a] text-white font-black border-b h-[40px]", indentClass: "pl-3 text-white" },
+                    division: { className: "bg-[#1e293b] text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
+                    brand: { className: "bg-[#334155] text-white font-bold border-b h-[40px]", indentClass: "pl-9 text-white" },
+                    gender: { className: "bg-[#475569] text-white font-semibold border-b h-[40px]", indentClass: "pl-12 text-white" },
+                    category: { className: "bg-[#64748b] text-slate-100 font-medium border-b h-[40px]", indentClass: "pl-16 text-slate-100" },
+                    article: { className: "bg-[#f1f5f9] dark:bg-slate-900/40 text-slate-900 dark:text-slate-100 font-bold border-b h-[45px]", indentClass: "pl-20" },
+                    variant: { className: "hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors h-[36px]", indentClass: "pl-24" },
+                  };
+
+                  const style = LEVEL_UI_STYLES[row.type] || LEVEL_UI_STYLES.outlet;
+                  const isArticle = row.type === "article";
+                  const isVariant = row.type === "variant";
+                  const isHeaderRow = ["outlet", "division", "brand", "gender", "category"].includes(row.type);
+
+                  const totals = row.totals || { quantity: 0, totalCost: 0 };
+
+                  const cellTextClass = isHeaderRow
+                    ? "text-white font-bold"
+                    : isArticle
+                      ? "text-slate-800 dark:text-slate-200 font-semibold"
+                      : "text-slate-700 dark:text-slate-350 font-medium";
+
+                  const valueCellClass = isHeaderRow
+                    ? "text-[#4ade80] dark:text-emerald-400 font-black bg-emerald-500/15"
+                    : isArticle
+                      ? "text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-500/5"
+                      : "text-emerald-600 dark:text-emerald-450 font-semibold bg-emerald-500/5";
+
+                  return (
+                    <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={style.className}>
+                      {isArticle ? (
+                        <td className={cn("p-3 border-r flex flex-col font-bold justify-center", style.indentClass)}>
+                          <span className="text-[10px] text-emerald-600 font-mono">SKU: {row.sku}</span>
+                          <span className="text-slate-900 dark:text-slate-100">{row.label}</span>
+                        </td>
+                      ) : isVariant ? (
+                        <td className={cn("p-3 border-r text-muted-foreground italic", style.indentClass)}>
+                          &mdash; Variant Size
+                        </td>
+                      ) : (
+                        <td colSpan={2} className={cn("p-3 border-r text-xs font-bold", style.indentClass)}>
+                          {row.label}
+                        </td>
+                      )}
+
+                      {isArticle && (
+                        <td className="p-3 border-r text-center text-[10px] font-bold text-muted-foreground uppercase bg-slate-50/20">All Sizes</td>
+                      )}
+
+                      {isVariant && (
+                        <td className="p-3 border-r text-center font-bold text-slate-800 dark:text-slate-200">{row.size}</td>
+                      )}
+
+                      <td className={cn("p-3 border-r text-right font-mono", cellTextClass)}>{formatVal(totals.quantity || row.quantity || 0)}</td>
+
+                      {isVariant ? (
+                        <td className={cn("p-3 border-r text-right font-mono", cellTextClass)}>{formatPriceVal(row.costPrice || 0)}</td>
+                      ) : (
+                        <td className={cn("p-3 border-r text-center text-muted-foreground font-mono")}>&mdash;</td>
+                      )}
+
+                      <td className={cn("p-3 text-right font-mono", valueCellClass)}>
+                        {formatPriceVal(totals.totalCost || row.totalCost || 0)}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {paddingBottom > 0 && (
+                  <tr>
+                    <td colSpan={5} style={{ height: `${paddingBottom}px` }} />
+                  </tr>
+                )}
+              </>
+            )}
+          </tbody>
+
+          {/* GRAND TOTALS FOOTER ROW */}
+          {reportData && (
+            <tfoot className="sticky bottom-0 z-10 shadow-md">
+              <tr className="bg-[#1e293b] text-slate-100 font-extrabold border-t-2 border-slate-900 text-xs">
+                <td colSpan={2} className="p-3 border-r text-left uppercase tracking-wider font-black bg-[#1e293b]">
+                  GRAND TOTALS (ALL OUTLETS)
+                </td>
+                <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white font-mono">{formatVal(grandTotals.quantity)}</td>
+                <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white font-mono">&mdash;</td>
+                <td className="p-3 text-right font-black bg-[#0f172a] text-[#4ade80] font-mono text-sm">{formatPriceVal(grandTotals.totalCost)}</td>
+              </tr>
+            </tfoot>
           )}
-        </CardContent>
-      </Card>
+        </table>
+      </div>
+
+      {/* Downloader Overlay */}
+      {(exportState === "queueing" || pdfExportState === "queueing") && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center pointer-events-auto">
+          <div className="bg-background border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl flex flex-col items-center gap-4 text-center">
+            <div className="relative h-12 w-12 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 text-emerald-600 animate-spin" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-bold text-sm text-foreground">Preparing Download</h4>
+              <p className="text-xs text-muted-foreground">Queueing background export job... Please wait.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Styles */}
+      <style jsx global>{`
+        @media print {
+          body {
+            background-color: white !important;
+            color: black !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+          th,
+          td {
+            border: 1px solid #cbd5e1 !important;
+            padding: 6px 4px !important;
+            font-size: 8px !important;
+            color: black !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+          }
+          thead {
+            display: table-header-group !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

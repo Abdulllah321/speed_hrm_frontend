@@ -63,6 +63,12 @@ interface PrintVoucherReceiptProps {
             returnNumber?: string | null;
             refundNumber?: string | null;
         } | null;
+        customer?: {
+            id?: string;
+            name: string;
+            code?: string;
+            contactNo?: string | null;
+        } | null;
     };
     vouchers?: Array<{
         code: string;
@@ -78,6 +84,12 @@ interface PrintVoucherReceiptProps {
             orderNumber: string;
             returnNumber?: string | null;
             refundNumber?: string | null;
+        } | null;
+        customer?: {
+            id?: string;
+            name: string;
+            code?: string;
+            contactNo?: string | null;
         } | null;
     }>;
     isLoading?: boolean;
@@ -345,6 +357,12 @@ interface VoucherReceiptBodyProps {
             returnNumber?: string | null;
             refundNumber?: string | null;
         } | null;
+        customer?: {
+            id?: string;
+            name: string;
+            code?: string;
+            contactNo?: string | null;
+        } | null;
     };
 }
 
@@ -443,6 +461,12 @@ function VoucherReceiptBody({
 
                 {terminalName && <Row label="Terminal" value={terminalName} />}
                 {voucher.companyName && <Row label="Company" value={voucher.companyName} />}
+                {voucher.customer && (
+                    <Row
+                        label="Customer"
+                        value={`${voucher.customer.name}${voucher.customer.contactNo ? ` (${voucher.customer.contactNo})` : voucher.customer.code ? ` (${voucher.customer.code})` : ""}`}
+                    />
+                )}
                 {voucher.description && (
                     <div className="pt-0.5">
                         <p className="text-[10px] text-zinc-800">Note:</p>

@@ -41,6 +41,13 @@ export interface Voucher {
         name: string;
         code: string;
     } | null;
+    customer?: {
+        id: string;
+        name: string;
+        code: string;
+        contactNo?: string | null;
+        cnicNo?: string | null;
+    } | null;
 }
 
 export interface MerchantConfig {
