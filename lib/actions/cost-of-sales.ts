@@ -18,6 +18,7 @@ export interface CostOfSalesProductNode {
   totals: {
     quantity: number;
     totalCost: number;
+    avgUnitCost: number;
   };
 }
 
@@ -28,6 +29,7 @@ export interface CostOfSalesCategoryNode {
   totals: {
     quantity: number;
     totalCost: number;
+    avgUnitCost: number;
   };
 }
 
@@ -38,36 +40,40 @@ export interface CostOfSalesGenderNode {
   totals: {
     quantity: number;
     totalCost: number;
-  };
-}
-
-export interface CostOfSalesBrandNode {
-  brandId: string;
-  brandName: string;
-  genders: CostOfSalesGenderNode[];
-  totals: {
-    quantity: number;
-    totalCost: number;
+    avgUnitCost: number;
   };
 }
 
 export interface CostOfSalesDivisionNode {
   divisionId: string;
   divisionName: string;
-  brands: CostOfSalesBrandNode[];
+  genders: CostOfSalesGenderNode[];
   totals: {
     quantity: number;
     totalCost: number;
+    avgUnitCost: number;
+  };
+}
+
+export interface CostOfSalesBrandNode {
+  brandId: string;
+  brandName: string;
+  divisions: CostOfSalesDivisionNode[];
+  totals: {
+    quantity: number;
+    totalCost: number;
+    avgUnitCost: number;
   };
 }
 
 export interface CostOfSalesOutletNode {
   locationId: string;
   locationName: string;
-  divisions: CostOfSalesDivisionNode[];
+  brands: CostOfSalesBrandNode[];
   totals: {
     quantity: number;
     totalCost: number;
+    avgUnitCost: number;
   };
 }
 
@@ -76,6 +82,7 @@ export interface CostOfSalesReportData {
   grandTotals: {
     quantity: number;
     totalCost: number;
+    avgUnitCost: number;
   };
   startDate: string;
   endDate: string;

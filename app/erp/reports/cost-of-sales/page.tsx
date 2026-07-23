@@ -39,7 +39,6 @@ import { cn, COMPANY_NAME, getApiBaseUrl, formatCurrency } from "@/lib/utils";
 
 export default function CostOfSalesReportPage() {
   const { user } = useAuth();
-  const defaultLocationId = user?.terminal?.location?.id || user?.locationId;
   const defaultLocationName = user?.terminal?.location?.name || "Store";
 
   const [locations, setLocations] = useState<Location[]>([]);
@@ -276,7 +275,7 @@ export default function CostOfSalesReportPage() {
     }
   };
 
-  // Client-Side Search & Hierarchy Filtering
+  // Client-Side Search & Hierarchy Filtering (Brand -> Division -> Gender -> Category -> Product)
   const filteredOutlets = useMemo(() => {
     if (!reportData || !reportData.outlets) return [];
     if (!searchQuery.trim()) return reportData.outlets;
@@ -284,11 +283,11 @@ export default function CostOfSalesReportPage() {
 
     return reportData.outlets
       .map((outlet) => {
-        const filteredDivisions = outlet.divisions
-          .map((div) => {
-            const filteredBrands = div.brands
-              .map((brand) => {
-                const filteredGenders = brand.genders
+        const filteredBrands = outlet.brands
+          .map((brand) => {
+            const filteredDivisions = brand.divisions
+              .map((div) => {
+                const filteredGenders = div.genders
                   .map((gender) => {
                     const filteredCategories = gender.categories
                       .map((cat) => {
@@ -323,26 +322,26 @@ export default function CostOfSalesReportPage() {
 
                 if (
                   filteredGenders.length > 0 ||
-                  brand.brandName.toLowerCase().includes(query)
+                  div.divisionName.toLowerCase().includes(query)
                 ) {
-                  return { ...brand, genders: filteredGenders };
+                  return { ...div, genders: filteredGenders };
                 }
                 return null;
               })
               .filter(Boolean) as any[];
 
             if (
-              filteredBrands.length > 0 ||
-              div.divisionName.toLowerCase().includes(query)
+              filteredDivisions.length > 0 ||
+              brand.brandName.toLowerCase().includes(query)
             ) {
-              return { ...div, brands: filteredBrands };
+              return { ...brand, divisions: filteredDivisions };
             }
             return null;
           })
           .filter(Boolean) as any[];
 
-        if (filteredDivisions.length > 0 || outlet.locationName.toLowerCase().includes(query)) {
-          return { ...outlet, divisions: filteredDivisions };
+        if (filteredBrands.length > 0 || outlet.locationName.toLowerCase().includes(query)) {
+          return { ...outlet, brands: filteredBrands };
         }
         return null;
       })
@@ -355,14 +354,15 @@ export default function CostOfSalesReportPage() {
       totalProducts: 0,
       quantity: 0,
       totalCost: 0,
+      avgUnitCost: 0,
     };
 
     if (!filteredOutlets) return totals;
 
     for (const outlet of filteredOutlets) {
-      for (const div of outlet.divisions) {
-        for (const brand of div.brands) {
-          for (const gender of brand.genders) {
+      for (const brand of outlet.brands) {
+        for (const div of brand.divisions) {
+          for (const gender of div.genders) {
             for (const cat of gender.categories) {
               totals.totalProducts += cat.products.length;
               for (const prod of cat.products) {
@@ -375,10 +375,14 @@ export default function CostOfSalesReportPage() {
       }
     }
 
+    if (totals.quantity > 0) {
+      totals.avgUnitCost = Math.round((totals.totalCost / totals.quantity) * 100) / 100;
+    }
+
     return totals;
   }, [filteredOutlets]);
 
-  // Flatten tree according to checked grouping levels
+  // Flatten tree according to checked grouping levels (Brand -> Division -> Gender -> Category -> Product -> Variant)
   const flatRows = useMemo(() => {
     const rows: any[] = [];
     if (!filteredOutlets) return rows;
@@ -391,27 +395,27 @@ export default function CostOfSalesReportPage() {
         totals: outlet.totals,
       });
 
-      for (const div of outlet.divisions) {
-        if (groupingLevels.division) {
+      for (const brand of outlet.brands) {
+        if (groupingLevels.brand) {
           rows.push({
-            type: "division",
-            id: `div-${div.divisionId}`,
-            label: `DIVISION: ${div.divisionName.toUpperCase()}`,
-            totals: div.totals,
+            type: "brand",
+            id: `brand-${brand.brandId}`,
+            label: `BRAND: ${brand.brandName.toUpperCase()}`,
+            totals: brand.totals,
           });
         }
 
-        for (const brand of div.brands) {
-          if (groupingLevels.brand) {
+        for (const div of brand.divisions) {
+          if (groupingLevels.division) {
             rows.push({
-              type: "brand",
-              id: `brand-${brand.brandId}`,
-              label: `BRAND: ${brand.brandName.toUpperCase()}`,
-              totals: brand.totals,
+              type: "division",
+              id: `div-${div.divisionId}`,
+              label: `DIVISION: ${div.divisionName.toUpperCase()}`,
+              totals: div.totals,
             });
           }
 
-          for (const gender of brand.genders) {
+          for (const gender of div.genders) {
             if (groupingLevels.gender) {
               rows.push({
                 type: "gender",
@@ -437,7 +441,7 @@ export default function CostOfSalesReportPage() {
                     type: "article",
                     id: `prod-${prod.sku}`,
                     sku: prod.sku,
-                    label: prod.productLabel,
+                    label: prod.description || prod.sku,
                     totals: prod.totals,
                   });
                 }
@@ -447,6 +451,7 @@ export default function CostOfSalesReportPage() {
                     rows.push({
                       type: "variant",
                       id: `item-${item.id}`,
+                      sku: prod.sku,
                       size: item.size,
                       quantity: item.quantity,
                       costPrice: item.costPrice,
@@ -467,8 +472,8 @@ export default function CostOfSalesReportPage() {
   const handleToggleLevel = (level: keyof typeof groupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => {
       const next = { ...prev, [level]: checked };
-      if (level === "division" && checked) next.brand = true;
-      if (level === "brand" && !checked) next.division = false;
+      if (level === "brand" && checked) next.division = true;
+      if (level === "division" && !checked) next.brand = false;
       return next;
     });
   };
@@ -650,7 +655,7 @@ export default function CostOfSalesReportPage() {
         </div>
       </div>
 
-      {/* Hierarchy Configuration Box */}
+      {/* Hierarchy Configuration Box (Brand -> Division -> Gender -> Category -> Product SKU -> Variant) */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4 no-print">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
@@ -659,44 +664,44 @@ export default function CostOfSalesReportPage() {
               Report Hierarchy Configuration
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Customize the nesting structure. Check the levels you want to group and report by.
+              Customize the nesting structure. Check the levels you want to group and report by (Brand &rarr; Division &rarr; Gender &rarr; Category &rarr; Product SKU &rarr; Variant).
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 pt-2">
-          {/* Brand */}
+          {/* Brand (Top Parent) */}
           <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <input
               type="checkbox"
               id="group-brand"
               checked={groupingLevels.brand}
               onChange={(e) => handleToggleLevel("brand", e.target.checked)}
-              disabled={groupingLevels.division}
-              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer disabled:opacity-50"
+              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
             />
-            <label
-              htmlFor="group-brand"
-              className={cn(
-                "text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5",
-                groupingLevels.division && "opacity-60 cursor-not-allowed",
-              )}
-            >
+            <label htmlFor="group-brand" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
               <Layers className="h-3.5 w-3.5 text-indigo-500" />
               Brand
             </label>
           </div>
 
-          {/* Division */}
+          {/* Division (Inside Brand) */}
           <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <input
               type="checkbox"
               id="group-division"
               checked={groupingLevels.division}
               onChange={(e) => handleToggleLevel("division", e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
+              disabled={groupingLevels.brand}
+              className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 cursor-pointer disabled:opacity-50"
             />
-            <label htmlFor="group-division" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+            <label
+              htmlFor="group-division"
+              className={cn(
+                "text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5",
+                groupingLevels.brand && "opacity-60 cursor-not-allowed",
+              )}
+            >
               <Folder className="h-3.5 w-3.5 text-blue-500" />
               Division
             </label>
@@ -732,7 +737,7 @@ export default function CostOfSalesReportPage() {
             </label>
           </div>
 
-          {/* Product (Article) */}
+          {/* Product SKU */}
           <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <input
               type="checkbox"
@@ -805,20 +810,21 @@ export default function CostOfSalesReportPage() {
 
       {/* Virtualized Scrolling Table */}
       <div ref={parentRef} className="overflow-auto max-h-[700px] border rounded-xl shadow-sm bg-background no-print">
-        <table className="w-full text-left border-collapse min-w-[900px]">
+        <table className="w-full text-left border-collapse min-w-[1000px]">
           <thead>
             <tr className="bg-[#1e293b] text-slate-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
               <th className="p-3 w-[320px] border-r bg-[#1e293b]">GPC / Category / Product</th>
-              <th className="p-3 w-[90px] border-r text-center bg-[#1e293b]">Size</th>
-              <th className="p-3 w-[110px] border-r text-right bg-[#1e293b]">Quantity</th>
-              <th className="p-3 w-[130px] border-r text-right bg-[#1e293b]">Cost Price (Rs.)</th>
-              <th className="p-3 w-[150px] text-right bg-[#0f172a] font-extrabold text-emerald-300">Total Cost (Rs.)</th>
+              <th className="p-3 w-[130px] border-r bg-[#1e293b]">SKU</th>
+              <th className="p-3 w-[80px] border-r text-center bg-[#1e293b]">Size</th>
+              <th className="p-3 w-[100px] border-r text-right bg-[#1e293b]">Quantity</th>
+              <th className="p-3 w-[140px] border-r text-right bg-[#1e293b]">Cost Price (Rs.)</th>
+              <th className="p-3 w-[160px] text-right bg-[#0f172a] font-extrabold text-emerald-300">Total Cost (Rs.)</th>
             </tr>
           </thead>
           <tbody className="divide-y text-xs">
             {isPending ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-muted-foreground font-medium">
+                <td colSpan={6} className="p-8 text-center text-muted-foreground font-medium">
                   <div className="flex items-center justify-center gap-2">
                     <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
                     Aggregating cost of sales and sold product metrics...
@@ -827,7 +833,7 @@ export default function CostOfSalesReportPage() {
               </tr>
             ) : flatRows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-muted-foreground font-medium">
+                <td colSpan={6} className="p-8 text-center text-muted-foreground font-medium">
                   No sold products match the selected outlets, period, or search query.
                 </td>
               </tr>
@@ -835,7 +841,7 @@ export default function CostOfSalesReportPage() {
               <>
                 {paddingTop > 0 && (
                   <tr>
-                    <td colSpan={5} style={{ height: `${paddingTop}px` }} />
+                    <td colSpan={6} style={{ height: `${paddingTop}px` }} />
                   </tr>
                 )}
                 {virtualItems.map((virtualRow) => {
@@ -843,8 +849,8 @@ export default function CostOfSalesReportPage() {
 
                   const LEVEL_UI_STYLES: Record<string, { className: string; indentClass: string }> = {
                     outlet: { className: "bg-[#0f172a] text-white font-black border-b h-[40px]", indentClass: "pl-3 text-white" },
-                    division: { className: "bg-[#1e293b] text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
-                    brand: { className: "bg-[#334155] text-white font-bold border-b h-[40px]", indentClass: "pl-9 text-white" },
+                    brand: { className: "bg-[#1e293b] text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
+                    division: { className: "bg-[#334155] text-white font-bold border-b h-[40px]", indentClass: "pl-9 text-white" },
                     gender: { className: "bg-[#475569] text-white font-semibold border-b h-[40px]", indentClass: "pl-12 text-white" },
                     category: { className: "bg-[#64748b] text-slate-100 font-medium border-b h-[40px]", indentClass: "pl-16 text-slate-100" },
                     article: { className: "bg-[#f1f5f9] dark:bg-slate-900/40 text-slate-900 dark:text-slate-100 font-bold border-b h-[45px]", indentClass: "pl-20" },
@@ -854,9 +860,14 @@ export default function CostOfSalesReportPage() {
                   const style = LEVEL_UI_STYLES[row.type] || LEVEL_UI_STYLES.outlet;
                   const isArticle = row.type === "article";
                   const isVariant = row.type === "variant";
-                  const isHeaderRow = ["outlet", "division", "brand", "gender", "category"].includes(row.type);
+                  const isHeaderRow = ["outlet", "brand", "division", "gender", "category"].includes(row.type);
 
-                  const totals = row.totals || { quantity: 0, totalCost: 0 };
+                  const totals = row.totals || { quantity: 0, totalCost: 0, avgUnitCost: 0 };
+                  const qty = isVariant ? row.quantity || 0 : totals.quantity || 0;
+                  const totalCost = isVariant ? row.totalCost || 0 : totals.totalCost || 0;
+                  const avgUnitCost = isVariant
+                    ? row.costPrice || 0
+                    : totals.avgUnitCost || (qty > 0 ? Math.round((totalCost / qty) * 100) / 100 : 0);
 
                   const cellTextClass = isHeaderRow
                     ? "text-white font-bold"
@@ -873,20 +884,33 @@ export default function CostOfSalesReportPage() {
                   return (
                     <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={style.className}>
                       {isArticle ? (
-                        <td className={cn("p-3 border-r flex flex-col font-bold justify-center", style.indentClass)}>
-                          <span className="text-[10px] text-emerald-600 font-mono">SKU: {row.sku}</span>
-                          <span className="text-slate-900 dark:text-slate-100">{row.label}</span>
+                        <td className={cn("p-3 border-r font-bold text-slate-900 dark:text-slate-100", style.indentClass)}>
+                          {row.label}
                         </td>
                       ) : isVariant ? (
                         <td className={cn("p-3 border-r text-muted-foreground italic", style.indentClass)}>
                           &mdash; Variant Size
                         </td>
                       ) : (
-                        <td colSpan={2} className={cn("p-3 border-r text-xs font-bold", style.indentClass)}>
+                        <td className={cn("p-3 border-r text-xs font-bold", style.indentClass)}>
                           {row.label}
                         </td>
                       )}
 
+                      {/* Separate SKU Column */}
+                      {isArticle ? (
+                        <td className="p-3 border-r font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-slate-50/20">
+                          {row.sku}
+                        </td>
+                      ) : isVariant ? (
+                        <td className="p-3 border-r font-mono text-xs text-muted-foreground">
+                          {row.sku}
+                        </td>
+                      ) : (
+                        <td className="p-3 border-r text-center text-muted-foreground font-mono">&mdash;</td>
+                      )}
+
+                      {/* Size Column */}
                       {isArticle && (
                         <td className="p-3 border-r text-center text-[10px] font-bold text-muted-foreground uppercase bg-slate-50/20">All Sizes</td>
                       )}
@@ -895,23 +919,28 @@ export default function CostOfSalesReportPage() {
                         <td className="p-3 border-r text-center font-bold text-slate-800 dark:text-slate-200">{row.size}</td>
                       )}
 
-                      <td className={cn("p-3 border-r text-right font-mono", cellTextClass)}>{formatVal(totals.quantity || row.quantity || 0)}</td>
-
-                      {isVariant ? (
-                        <td className={cn("p-3 border-r text-right font-mono", cellTextClass)}>{formatPriceVal(row.costPrice || 0)}</td>
-                      ) : (
-                        <td className={cn("p-3 border-r text-center text-muted-foreground font-mono")}>&mdash;</td>
+                      {!isArticle && !isVariant && (
+                        <td className="p-3 border-r text-center text-muted-foreground font-mono">&mdash;</td>
                       )}
 
+                      {/* Quantity */}
+                      <td className={cn("p-3 border-r text-right font-mono", cellTextClass)}>{formatVal(qty)}</td>
+
+                      {/* Cost Price (Rs.) Column (displays average unit cost for aggregated SKU/group rows, e.g. 50,746 / 4 = 12,686.50) */}
+                      <td className={cn("p-3 border-r text-right font-mono font-semibold", cellTextClass)}>
+                        {formatPriceVal(avgUnitCost)}
+                      </td>
+
+                      {/* Total Cost (Rs.) */}
                       <td className={cn("p-3 text-right font-mono", valueCellClass)}>
-                        {formatPriceVal(totals.totalCost || row.totalCost || 0)}
+                        {formatPriceVal(totalCost)}
                       </td>
                     </tr>
                   );
                 })}
                 {paddingBottom > 0 && (
                   <tr>
-                    <td colSpan={5} style={{ height: `${paddingBottom}px` }} />
+                    <td colSpan={6} style={{ height: `${paddingBottom}px` }} />
                   </tr>
                 )}
               </>
@@ -922,11 +951,13 @@ export default function CostOfSalesReportPage() {
           {reportData && (
             <tfoot className="sticky bottom-0 z-10 shadow-md">
               <tr className="bg-[#1e293b] text-slate-100 font-extrabold border-t-2 border-slate-900 text-xs">
-                <td colSpan={2} className="p-3 border-r text-left uppercase tracking-wider font-black bg-[#1e293b]">
+                <td colSpan={3} className="p-3 border-r text-left uppercase tracking-wider font-black bg-[#1e293b]">
                   GRAND TOTALS (ALL OUTLETS)
                 </td>
                 <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white font-mono">{formatVal(grandTotals.quantity)}</td>
-                <td className="p-3 border-r text-right font-black bg-[#1e293b] text-white font-mono">&mdash;</td>
+                <td className="p-3 border-r text-right font-black bg-[#1e293b] text-emerald-300 font-mono">
+                  {formatPriceVal(grandTotals.avgUnitCost)}
+                </td>
                 <td className="p-3 text-right font-black bg-[#0f172a] text-[#4ade80] font-mono text-sm">{formatPriceVal(grandTotals.totalCost)}</td>
               </tr>
             </tfoot>
