@@ -205,11 +205,7 @@ export default function ReconciliationReportPage() {
                         setExportState("completed");
                         toast.loading("Downloading Excel sheet...", { id: toastId });
 
-                        const anchor = document.createElement("a");
-                        anchor.href = `${apiBase}/pos-session/reconciliation/daywise/export/${jobId}/download`;
-                        document.body.appendChild(anchor);
-                        anchor.click();
-                        document.body.removeChild(anchor);
+                        window.open(`${apiBase}/pos-session/reconciliation/daywise/export/${jobId}/download`, "_blank");
 
                         toast.success("Excel Reconciliation Report exported successfully!", { id: toastId });
                         setTimeout(() => setExportState("idle"), 2000);
