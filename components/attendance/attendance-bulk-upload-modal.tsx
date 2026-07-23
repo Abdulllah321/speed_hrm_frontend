@@ -408,14 +408,62 @@ export function AttendanceBulkUploadModal({
                                 )}
 
                                 {data?.status === 'completed' && (
-                                    <div className="p-8 bg-green-500/5 border-2 border-green-500/20 rounded-3xl flex flex-col items-center gap-4 text-center animate-in zoom-in-95 duration-500">
-                                        <CheckCircle2 className="h-12 w-12 text-green-600" />
-                                        <div className="space-y-1">
-                                            <h3 className="text-2xl font-black text-green-700">Import Complete!</h3>
-                                            <p className="text-green-600/80 font-medium">
-                                                {data?.successRecords} attendance records have been successfully added to the system.
-                                            </p>
+                                    <div className="space-y-4">
+                                        <div className="p-8 bg-green-500/5 border-2 border-green-500/20 rounded-3xl flex flex-col items-center gap-4 text-center animate-in zoom-in-95 duration-500">
+                                            <CheckCircle2 className="h-12 w-12 text-green-600" />
+                                            <div className="space-y-1">
+                                                <h3 className="text-2xl font-black text-green-700">Import Complete!</h3>
+                                                <p className="text-green-600/80 font-medium">
+                                                    {data?.successRecords} attendance records have been successfully added to the system.
+                                                </p>
+                                            </div>
                                         </div>
+
+                                        {(data?.failedRecords ?? 0) > 0 && (
+                                            <div className="p-4 border rounded-2xl bg-muted/30 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
+                                                        <AlertCircle className="h-4 w-4" />
+                                                        {data.failedRecords} records were skipped due to errors
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button variant="ghost" size="sm" onClick={() => setShowErrors(!showErrors)} className="text-xs h-7">
+                                                            {showErrors ? 'Hide Issues' : 'View Issues'}
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" onClick={downloadErrorReport} className="text-destructive text-xs h-7">
+                                                            <Download className="h-3 w-3 mr-1" /> Download Report
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                {showErrors && data?.errors && data.errors.length > 0 && (
+                                                    <div className="border rounded-xl overflow-hidden bg-background text-left">
+                                                        <ScrollArea className="h-[200px]">
+                                                            <Table>
+                                                                <TableHeader className="bg-muted sticky top-0">
+                                                                    <TableRow>
+                                                                        <TableHead className="w-[60px] font-black text-[10px]">Row</TableHead>
+                                                                        <TableHead className="w-[120px] font-black text-[10px]">Emp ID</TableHead>
+                                                                        <TableHead className="font-black text-[10px]">Field</TableHead>
+                                                                        <TableHead className="font-black text-[10px]">Error Reason</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {data.errors.slice(0, 50).map((err: any, i) => (
+                                                                        <TableRow key={i}>
+                                                                            <TableCell className="font-mono text-xs">{err.row}</TableCell>
+                                                                            <TableCell className="font-bold text-xs">{err.employeeId || err.data?.employeeId || err.data?.['Employee ID'] || '—'}</TableCell>
+                                                                            <TableCell className="text-xs font-semibold">{err.field || 'System'}</TableCell>
+                                                                            <TableCell className="text-xs text-destructive">{err.reason}</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </ScrollArea>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
