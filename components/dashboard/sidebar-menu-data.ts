@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Monitor,
   CheckSquare,
+  ChartNoAxesGantt,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -1697,7 +1698,7 @@ export const menuData: MenuItem[] = [
   // ── POS: Reports ─────────────────────────────────────────────────────────────
   {
     title: "Reports",
-    icon: TrendingUp,
+    icon: ChartNoAxesGantt,
     environment: "POS",
     permissions: ["pos.dashboard.view"],
     children: [
@@ -1770,18 +1771,31 @@ export const menuData: MenuItem[] = [
     environment: "ERP",
     permissions: ["pos.dashboard.view"],
     children: [
-      {title: "ERP Reports", children: [
-        {
-          title: "Stock Valuation Report",
-          href: "/erp/reports/stock-valuation",
-          permissions: ["erp.report.view"],
-        },
-        {
-          title: "Available Stock Summary",
-          href: "/erp/reports/available-stock-summary",
-          permissions: ["erp.report.view"],
-        }
-      ]},
+      {
+        title: "ERP Reports",
+        children: [
+          {
+            title: "Stock Valuation Report",
+            href: "/erp/reports/stock-valuation",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Available Stock Summary",
+            href: "/erp/reports/available-stock-summary",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Claim Register",
+            href: "/erp/reports/claim-register",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Cost of Sales",
+            href: "/erp/reports/cost-of-sales",
+            permissions: ["erp.report.view"],
+          },
+        ],
+      },
 
       {
         title: "POS Reports",
@@ -1836,7 +1850,6 @@ export const menuData: MenuItem[] = [
             title: "Alliance Register",
             permissions: ["erp.report.view"],
           },
-          
         ],
       },
     ],
