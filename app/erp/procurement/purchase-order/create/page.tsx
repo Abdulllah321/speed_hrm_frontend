@@ -35,6 +35,7 @@ interface OrderItem {
     // Display only
     itemName?: string;
     lineTotal?: number;
+    brand?: string;
 }
 
 const resolveItemAvgCost = (item: any): number => {
@@ -139,6 +140,7 @@ export default function CreateDirectPurchaseOrder() {
                 unitPrice,
                 lineTotal: quantity * unitPrice,
                 vendorId: multiVendorMode ? currentVendorId : undefined,
+                brand: item.brand?.name || '',
             }]);
             toast.success(`Added ${item.description}`);
         }
@@ -192,7 +194,8 @@ export default function CreateDirectPurchaseOrder() {
                 description: masterItem?.description || '',
                 quantity: qty,
                 unitPrice: price,
-                lineTotal: lineTotal
+                lineTotal: lineTotal,
+                brand: masterItem?.brand?.name || '',
             };
         });
 
@@ -574,6 +577,7 @@ export default function CreateDirectPurchaseOrder() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Item SKU</TableHead>
+                                        <TableHead>Brand</TableHead>
                                         <TableHead>Vendor</TableHead>
                                         <TableHead className="text-right">Qty</TableHead>
                                         <TableHead className="text-right">Unit Price</TableHead>
@@ -584,7 +588,7 @@ export default function CreateDirectPurchaseOrder() {
                                 <TableBody>
                                     {orderItems.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center text-muted-foreground h-24">
+                                            <TableCell colSpan={7} className="text-center text-muted-foreground h-24">
                                                 No items added yet
                                             </TableCell>
                                         </TableRow>
@@ -594,6 +598,9 @@ export default function CreateDirectPurchaseOrder() {
                                                 <TableCell>
                                                     <div className="font-medium">{item.itemName}</div>
                                                     <div className="text-sm text-muted-foreground">{item.description}</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="text-sm">{item.brand || '—'}</span>
                                                 </TableCell>
                                             <TableCell>
                                                 {multiVendorMode ? (

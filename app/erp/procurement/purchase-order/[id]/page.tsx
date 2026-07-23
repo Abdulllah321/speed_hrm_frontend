@@ -423,6 +423,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>SKU</TableHead>
+                                    <TableHead>Brand</TableHead>
                                     <TableHead>Size</TableHead>
                                     <TableHead>Color</TableHead>
                                     <TableHead>Description</TableHead>
@@ -438,6 +439,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                         {order.items.map((item) => (
                                             <TableRow key={item.id}>
                                                 <TableCell className="font-medium">{item.item?.sku || '-'}</TableCell>
+                                                <TableCell>{item.item?.brand?.name || '-'}</TableCell>
                                                 <TableCell>{item.item?.size?.name || '-'}</TableCell>
                                                 <TableCell>{item.item?.color?.name || '-'}</TableCell>
                                                 <TableCell>{item.description || 'No description'}</TableCell>
@@ -448,7 +450,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                             </TableRow>
                                         ))}
                                         <TableRow className="border-t-2 font-semibold bg-muted/30">
-                                            <TableCell colSpan={4} className="text-right text-sm text-muted-foreground">Total Ordered Quantity:</TableCell>
+                                            <TableCell colSpan={5} className="text-right text-sm text-muted-foreground">Total Ordered Quantity:</TableCell>
                                             <TableCell className="text-right font-bold">
                                                 {order.items.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(2)}
                                             </TableCell>
@@ -541,13 +543,14 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                         <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
                             <thead>
                               <tr className="border-y-2 border-black">
-                                <th className="py-2 pr-2 text-left font-bold w-[15%]">SKU</th>
-                                <th className="py-2 pr-2 text-left font-bold w-[25%]">Description</th>
+                                <th className="py-2 pr-2 text-left font-bold w-[12%]">SKU</th>
+                                <th className="py-2 pr-2 text-left font-bold w-[12%]">Brand</th>
+                                <th className="py-2 pr-2 text-left font-bold w-[22%]">Description</th>
                                 <th className="py-2 pr-2 text-left font-bold w-[10%]">Size</th>
                                 <th className="py-2 pr-2 text-left font-bold w-[10%]">Color</th>
                                 <th className="py-2 pr-2 text-right font-bold w-[10%]">Qty</th>
-                                <th className="py-2 pr-2 text-right font-bold w-[15%]">Unit Price</th>
-                                <th className="py-2 text-right font-bold w-[15%]">Total</th>
+                                <th className="py-2 pr-2 text-right font-bold w-[12%]">Unit Price</th>
+                                <th className="py-2 text-right font-bold w-[12%]">Total</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -557,6 +560,9 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                     <tr key={item.id || i} className="border-b border-gray-300 align-top">
                                       <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
                                         {item.item?.sku || '-'}
+                                      </td>
+                                      <td className="py-2 pr-2 overflow-hidden text-ellipsis">
+                                        {item.item?.brand?.name || '-'}
                                       </td>
                                       <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
                                         {item.description || '-'}
@@ -579,7 +585,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                     </tr>
                                   ))}
                                   <tr className="border-t-2 border-black">
-                                    <td colSpan={4} className="py-2 pr-2 text-right font-bold text-xs sm:text-[13px]">Total Ordered Qty:</td>
+                                    <td colSpan={5} className="py-2 pr-2 text-right font-bold text-xs sm:text-[13px]">Total Ordered Qty:</td>
                                     <td className="py-2 pr-2 text-right tabular-nums font-bold">
                                       {order.items.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(2)}
                                     </td>
