@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,58 +20,73 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import {
   Banknote,
   Building2,
   Calendar,
   Download,
+  Loader2,
   RefreshCw,
   TrendingDown,
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { cn, formatCurrency } from "@/lib/utils";
+import { startOfMonth, endOfMonth, format } from "date-fns";
+import { cn, formatCurrency, getApiBaseUrl } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
-import { getLocations } from "@/lib/actions/location";
+import { getLocations, Location } from "@/lib/actions/location";
 
 export default function CashCompareReportPage() {
-  const now = new Date();
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    .toISOString()
-    .split("T")[0];
-  const todayStr = now.toISOString().split("T")[0];
-
-  const [startDate, setStartDate] = useState<string>(firstDayOfMonth);
-  const [endDate, setEndDate] = useState<string>(todayStr);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("ALL");
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
 
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [exporting, setExporting] = useState<boolean>(false);
 
-  // Fetch available stock locations
+  // Excel Export Background Queue & Progress Controller States
+  const [exportJobId, setExportJobId] = useState<string | null>(null);
+  const [exportState, setExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
+  const [exportProgress, setExportProgress] = useState<number>(0);
+
+  // Fetch available stock locations on mount
   useEffect(() => {
     async function fetchLocations() {
       try {
-        const location = await getLocations(true);
-        if (location.data) {
-          setLocations(location.data as any[]);
+        const res = await getLocations(true);
+        if (Array.isArray(res)) {
+          setLocations(res);
+        } else if (res?.status && Array.isArray(res?.data)) {
+          setLocations(res.data);
         }
-      } catch (error) { 
-        toast.error("Failed to load locations");
+      } catch (error) {
+        console.error("Failed to load locations", error);
+        toast.error("Failed to load outlet locations");
       }
     }
     fetchLocations();
   }, []);
+
+  const startDateStr = useMemo(() => {
+    return dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : format(startOfMonth(new Date()), "yyyy-MM-dd");
+  }, [dateRange.from]);
+
+  const endDateStr = useMemo(() => {
+    return dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : format(endOfMonth(new Date()), "yyyy-MM-dd");
+  }, [dateRange.to]);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
       const res = await authFetch("/pos-session/cash-compare", {
         params: {
-          startDate,
-          endDate,
+          startDate: startDateStr,
+          endDate: endDateStr,
           locationId: selectedLocation,
         },
       });
@@ -87,50 +100,78 @@ export default function CashCompareReportPage() {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, selectedLocation]);
+  }, [startDateStr, endDateStr, selectedLocation]);
 
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
 
-  const handleExportExcel = async () => {
-    setExporting(true);
+  // Poll Excel Export Job Status
+  useEffect(() => {
+    if (exportState !== "queueing" && exportState !== "processing") return;
+    if (!exportJobId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await authFetch(`/exports/status/${exportJobId}`);
+        if (res.ok && res.data) {
+          const { state, progress } = res.data;
+          setExportProgress(progress || 0);
+
+          if (state === "completed") {
+            setExportState("completed");
+            toast.success("Excel Export processed successfully! Click download.");
+            clearInterval(interval);
+          } else if (state === "failed") {
+            setExportState("failed");
+            toast.error("Background Excel export processing failed.");
+            clearInterval(interval);
+          } else {
+            setExportState("processing");
+          }
+        }
+      } catch (err) {
+        console.error("Error polling export status:", err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [exportState, exportJobId]);
+
+  // Export button controller logic following Report Architecture Pattern
+  const handleExportClick = async () => {
+    if (exportState === "completed") {
+      // Direct CORS-Safe Download via window.open
+      const queryParams = new URLSearchParams({
+        startDate: startDateStr,
+        endDate: endDateStr,
+        locationId: selectedLocation,
+      });
+      const downloadUrl = `${getApiBaseUrl()}/pos-session/cash-compare/excel?${queryParams.toString()}`;
+      window.open(downloadUrl, "_blank");
+      toast.success("Downloading Excel file...");
+      return;
+    }
+
+    // Initiate Export Job
+    setExportState("queueing");
+    setExportProgress(0);
+
     try {
       const queryParams = new URLSearchParams({
-        startDate,
-        endDate,
+        startDate: startDateStr,
+        endDate: endDateStr,
         locationId: selectedLocation,
       });
 
-      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/pos-session/cash-compare/excel?${queryParams.toString()}`;
+      const url = `${getApiBaseUrl()}/pos-session/cash-compare/excel?${queryParams.toString()}`;
       window.open(url, "_blank");
-      toast.success("Excel export initiated");
-    } catch {
-      toast.error("Failed to export Excel");
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const setPresetRange = (preset: "today" | "thisMonth" | "thisYear") => {
-    const today = new Date();
-    const todayFormatted = today.toISOString().split("T")[0];
-
-    if (preset === "today") {
-      setStartDate(todayFormatted);
-      setEndDate(todayFormatted);
-    } else if (preset === "thisMonth") {
-      const start = new Date(today.getFullYear(), today.getMonth(), 1)
-        .toISOString()
-        .split("T")[0];
-      setStartDate(start);
-      setEndDate(todayFormatted);
-    } else if (preset === "thisYear") {
-      const start = new Date(today.getFullYear(), 0, 1)
-        .toISOString()
-        .split("T")[0];
-      setStartDate(start);
-      setEndDate(todayFormatted);
+      setExportState("completed");
+      toast.success("Export generated and opened");
+    } catch (err) {
+      console.error(err);
+      setExportState("failed");
+      toast.error("Failed to initiate export");
     }
   };
 
@@ -146,13 +187,13 @@ export default function CashCompareReportPage() {
         <div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="rounded-full px-3 py-0.5 text-xs font-semibold">
-              Cash Audit
+              Cash Audit Report
             </Badge>
-            <span className="text-xs text-muted-foreground">Variance & Bank Deposits Report</span>
+            <span className="text-xs text-muted-foreground">Variance & Bank Deposits Ledger</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight pt-1">Cash Compare Report</h1>
           <p className="text-sm text-muted-foreground">
-            Track daily/shift expected cash, actual counted cash, short/excess variances, and bank deposits across any date range.
+            Session & day-end expected cash, physical counted cash, short/excess variances, and bank deposits.
           </p>
         </div>
 
@@ -161,7 +202,7 @@ export default function CashCompareReportPage() {
           <Select value={selectedLocation} onValueChange={setSelectedLocation}>
             <SelectTrigger className="w-[180px] rounded-full">
               <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="All Outlets" />
+              <SelectValue placeholder="All Stock Outlets" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Outlets</SelectItem>
@@ -173,53 +214,59 @@ export default function CashCompareReportPage() {
             </SelectContent>
           </Select>
 
-          {/* DATE RANGE INPUTS */}
-          <div className="flex items-center gap-2 bg-muted/40 p-1.5 rounded-full border border-border">
-            <Calendar className="w-4 h-4 text-muted-foreground ml-2" />
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-[130px] h-8 text-xs rounded-full border-none bg-transparent focus-visible:ring-0"
-            />
-            <span className="text-xs text-muted-foreground">to</span>
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-[130px] h-8 text-xs rounded-full border-none bg-transparent focus-visible:ring-0 mr-1"
-            />
-          </div>
-
-          <Select onValueChange={(v) => setPresetRange(v as any)}>
-            <SelectTrigger className="w-[120px] rounded-full">
-              <SelectValue placeholder="Presets" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="thisMonth">This Month</SelectItem>
-              <SelectItem value="thisYear">This Year</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* DATE RANGE PICKER */}
+          <DateRangePicker
+            onUpdate={(values) => setDateRange(values.range)}
+            initialDateFrom={dateRange.from}
+            initialDateTo={dateRange.to}
+            className="rounded-full"
+          />
 
           <Button variant="outline" size="icon" onClick={fetchReport} className="rounded-full">
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           </Button>
 
+          {/* PROGRESS CONTROLLER EXPORT BUTTON */}
           <Button
-            onClick={handleExportExcel}
-            disabled={exporting || rows.length === 0}
-            className="rounded-full px-5 bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-medium"
+            onClick={handleExportClick}
+            disabled={rows.length === 0 || exportState === "queueing"}
+            className={cn(
+              "rounded-full px-5 gap-2 font-medium transition-all",
+              exportState === "completed"
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                : exportState === "failed"
+                ? "bg-amber-600 hover:bg-amber-700 text-white"
+                : "bg-slate-900 hover:bg-slate-800 text-white"
+            )}
           >
-            <Download className="w-4 h-4" />
-            Export Excel
+            {exportState === "queueing" || exportState === "processing" ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {exportState === "queueing" ? "Queueing..." : `Generating ${exportProgress}%`}
+              </>
+            ) : exportState === "completed" ? (
+              <>
+                <Download className="w-4 h-4" />
+                Download Excel
+              </>
+            ) : exportState === "failed" ? (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Retry Export
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Export Excel
+              </>
+            )}
           </Button>
         </div>
       </div>
 
       {/* KPI METRICS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="rounded-[24px] border border-border">
+        <Card className="rounded-[24px] border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Expected Cash</CardTitle>
             <Wallet className="w-4 h-4 text-blue-500" />
@@ -230,7 +277,7 @@ export default function CashCompareReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[24px] border border-border">
+        <Card className="rounded-[24px] border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Actual Counted Cash</CardTitle>
             <Banknote className="w-4 h-4 text-emerald-500" />
@@ -241,7 +288,7 @@ export default function CashCompareReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[24px] border border-border">
+        <Card className="rounded-[24px] border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Net Variance</CardTitle>
             {totalVariance < 0 ? (
@@ -266,7 +313,7 @@ export default function CashCompareReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[24px] border border-border">
+        <Card className="rounded-[24px] border border-border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Bank Deposits</CardTitle>
             <Building2 className="w-4 h-4 text-primary" />
@@ -278,11 +325,11 @@ export default function CashCompareReportPage() {
         </Card>
       </div>
 
-      {/* TABLE */}
-      <Card className="rounded-[28px] border border-border overflow-hidden">
+      {/* TABLE MATRIX */}
+      <Card className="rounded-[28px] border border-border overflow-hidden shadow-sm">
         <CardHeader className="border-b border-border bg-muted/30">
           <CardTitle className="text-lg font-bold">
-            Cash Comparison Matrix ({startDate} to {endDate})
+            Cash Comparison Matrix ({startDateStr} to {endDateStr})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
