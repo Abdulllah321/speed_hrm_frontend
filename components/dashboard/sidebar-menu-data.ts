@@ -1795,6 +1795,11 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.view"],
           },
           {
+            title: "Voucher Register (All Vouchers)",
+            href: "/erp/reports/voucher-register",
+            permissions: ["erp.report.view"],
+          },
+          {
             title: "Gift Voucher Sale Register",
             href: "/erp/reports/gift-voucher-sale-register",
             permissions: ["erp.report.view"],
