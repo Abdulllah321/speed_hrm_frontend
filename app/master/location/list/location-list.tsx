@@ -35,11 +35,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { useEffect } from "react";
-import { getBrands, Brand } from "@/lib/actions/brand";
-import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Brand, getBrands } from "@/lib/actions/brand";
 
 interface LocationListProps {
   initialLocations: Location[];
@@ -229,8 +228,8 @@ export function LocationList({
 
       {/* Bulk Edit Dialog */}
       <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] h-[85vh] flex flex-col p-6 overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Bulk Edit Locations ({editRows.length})</DialogTitle>
             <DialogDescription>
               Update names, stock location status, and registered brands across selected locations.
@@ -238,7 +237,7 @@ export function LocationList({
           </DialogHeader>
 
           {/* Quick Apply Bar */}
-          <div className="p-3 border rounded-lg bg-muted/20 space-y-2 text-xs">
+          <div className="flex-shrink-0 p-3 border rounded-lg bg-muted/20 space-y-2 text-xs">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-foreground">Apply to All Selected ({editRows.length}):</span>
               <div className="flex gap-2">
@@ -290,69 +289,71 @@ export function LocationList({
             )}
           </div>
 
-          <div className="space-y-4 overflow-y-auto flex-1 pr-1 py-2">
-            {editRows.map((row, index) => (
-              <div key={row.id} className="p-3 border rounded-lg bg-card space-y-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs text-muted-foreground">Location Name</Label>
-                    <Input
-                      placeholder={`Location ${index + 1}`}
-                      value={row.name}
-                      onChange={(e) => updateEditRow(row.id, "name", e.target.value)}
-                      disabled={isPending}
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="w-28 space-y-1">
-                    <Label className="text-xs text-muted-foreground">Code</Label>
-                    <Input
-                      value={row.code}
-                      onChange={(e) => updateEditRow(row.id, "code", e.target.value.toUpperCase())}
-                      disabled={isPending}
-                      className="h-9 font-mono uppercase text-xs"
-                    />
-                  </div>
-                  <div className="flex flex-col items-end space-y-1 pt-3">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs font-normal">Stock Location</Label>
-                      <Switch
-                        checked={row.isStockLocation}
-                        onCheckedChange={(checked) => updateEditRow(row.id, "isStockLocation", checked)}
+          <ScrollArea className="flex-1 min-h-0 pr-3 my-2">
+            <div className="space-y-4 py-1">
+              {editRows.map((row, index) => (
+                <div key={row.id} className="p-3 border rounded-lg bg-card space-y-3 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Location Name</Label>
+                      <Input
+                        placeholder={`Location ${index + 1}`}
+                        value={row.name}
+                        onChange={(e) => updateEditRow(row.id, "name", e.target.value)}
                         disabled={isPending}
+                        className="h-9"
                       />
                     </div>
-                  </div>
-                </div>
-
-                {allBrands.length > 0 && (
-                  <div className="space-y-1.5 pt-1 border-t border-border/40">
-                    <Label className="text-[11px] text-muted-foreground">Registered Brands:</Label>
-                    <div className="flex flex-wrap gap-1">
-                      {allBrands.map((b) => {
-                        const isSelected = row.brandIds.includes(b.id);
-                        return (
-                          <Button
-                            key={b.id}
-                            type="button"
-                            variant={isSelected ? "default" : "outline"}
-                            size="sm"
-                            className="h-6 text-[10px] px-2 py-0"
-                            onClick={() => toggleBrandForEditRow(row.id, b.id)}
-                            disabled={isPending}
-                          >
-                            {b.name}
-                          </Button>
-                        );
-                      })}
+                    <div className="w-28 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Code</Label>
+                      <Input
+                        value={row.code}
+                        onChange={(e) => updateEditRow(row.id, "code", e.target.value.toUpperCase())}
+                        disabled={isPending}
+                        className="h-9 font-mono uppercase text-xs"
+                      />
+                    </div>
+                    <div className="flex flex-col items-end space-y-1 pt-3">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs font-normal">Stock Location</Label>
+                        <Switch
+                          checked={row.isStockLocation}
+                          onCheckedChange={(checked) => updateEditRow(row.id, "isStockLocation", checked)}
+                          disabled={isPending}
+                        />
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
 
-          <DialogFooter className="pt-2">
+                  {allBrands.length > 0 && (
+                    <div className="space-y-1.5 pt-1 border-t border-border/40">
+                      <Label className="text-[11px] text-muted-foreground">Registered Brands:</Label>
+                      <div className="flex flex-wrap gap-1">
+                        {allBrands.map((b) => {
+                          const isSelected = row.brandIds.includes(b.id);
+                          return (
+                            <Button
+                              key={b.id}
+                              type="button"
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              className="h-6 text-[10px] px-2 py-0"
+                              onClick={() => toggleBrandForEditRow(row.id, b.id)}
+                              disabled={isPending}
+                            >
+                              {b.name}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="flex-shrink-0 pt-2 border-t mt-auto">
             <Button
               variant="outline"
               onClick={() => setBulkEditOpen(false)}
