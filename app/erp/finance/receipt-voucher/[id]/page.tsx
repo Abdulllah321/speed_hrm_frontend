@@ -39,9 +39,11 @@ function folio(id: string) {
 }
 
 const STATUS_CONFIG = {
-  approved: { label: "Approved", icon: CheckCircle2, cls: "bg-green-500/10 text-green-600 border-green-200 dark:border-green-800" },
-  pending:  { label: "Pending",  icon: Clock,         cls: "bg-yellow-500/10 text-yellow-600 border-yellow-200 dark:border-yellow-800" },
-  rejected: { label: "Rejected", icon: XCircle,       cls: "bg-red-500/10 text-red-600 border-red-200 dark:border-red-800" },
+  approved:         { label: "Approved", icon: CheckCircle2, cls: "bg-green-500/10 text-green-600 border-green-200 dark:border-green-800" },
+  pending_approval: { label: "Pending Approval", icon: Clock, cls: "bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800" },
+  pending_check:    { label: "Pending Check", icon: Clock,    cls: "bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-800" },
+  draft:            { label: "Draft", icon: Clock,            cls: "bg-slate-500/10 text-slate-600 border-slate-200 dark:border-slate-800" },
+  rejected:         { label: "Rejected", icon: XCircle,       cls: "bg-red-500/10 text-red-600 border-red-200 dark:border-red-800" },
 } as const;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -75,13 +77,13 @@ export default function ReceiptVoucherDetailPage({
     setMounted(true);
   }, []);
 
-  const handleUpdateStatus = async (newStatus: "approved" | "rejected") => {
+  const handleUpdateStatus = async (newStatus: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected") => {
     if (!voucher) return;
     try {
       setActionPending(true);
       const res = await updateReceiptVoucherStatus(voucher.id, newStatus);
       if (res.status) {
-        toast.success(`Receipt Voucher ${newStatus} successfully`);
+        toast.success(`Receipt Voucher status updated to ${newStatus}`);
         setVoucher((prev) => prev ? { ...prev, status: newStatus } : null);
       } else {
         toast.error(res.message || `Failed to update status to ${newStatus}`);
@@ -230,7 +232,7 @@ export default function ReceiptVoucherDetailPage({
               <Printer className="h-4 w-4 mr-2" />
               Print Voucher
             </Button>
-            {voucher.status === "pending" && (
+            {voucher.status === "draft" && (
               <>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/erp/finance/receipt-voucher/${voucher.id}/edit`}>
@@ -238,12 +240,49 @@ export default function ReceiptVoucherDetailPage({
                   </Link>
                 </Button>
                 <Button
+                  onClick={() => handleUpdateStatus("pending_check")}
+                  size="sm"
+                  disabled={actionPending}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  Submit for Check
+                </Button>
+              </>
+            )}
+            {voucher.status === "pending_check" && (
+              <>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/erp/finance/receipt-voucher/${voucher.id}/edit`}>
+                    Edit Voucher
+                  </Link>
+                </Button>
+                <Button
+                  onClick={() => handleUpdateStatus("pending_approval")}
+                  size="sm"
+                  disabled={actionPending}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Check & Verify
+                </Button>
+                <Button
+                  onClick={() => handleUpdateStatus("rejected")}
+                  size="sm"
+                  variant="destructive"
+                  disabled={actionPending}
+                >
+                  Reject
+                </Button>
+              </>
+            )}
+            {voucher.status === "pending_approval" && (
+              <>
+                <Button
                   onClick={() => handleUpdateStatus("approved")}
                   size="sm"
                   disabled={actionPending}
                   className="bg-green-600 hover:bg-green-700 text-white"
                 >
-                  Approve
+                  Authorize & Approve
                 </Button>
                 <Button
                   onClick={() => handleUpdateStatus("rejected")}

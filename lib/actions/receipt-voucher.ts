@@ -32,7 +32,14 @@ export interface ReceiptVoucher {
     debitAccountCode?: string;
     debitAmount: number;
     customerId?: string;
-    status: "pending" | "approved" | "rejected";
+    status: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected";
+    makerId?: string;
+    checkerId?: string;
+    authorizerId?: string;
+    checkedAt?: string;
+    approvedAt?: string;
+    rejectionReason?: string;
+    remarks?: string;
     description?: string;
     taxType?: string;
     isAdvance?: boolean;
@@ -220,7 +227,7 @@ export async function updateReceiptVoucher(id: string, data: any) {
     }
 }
 
-export async function updateReceiptVoucherStatus(id: string, status: "approved" | "rejected" | "pending", remarks?: string) {
+export async function updateReceiptVoucherStatus(id: string, status: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected", remarks?: string) {
     try {
         const response = await authFetch(`/finance/receipt-vouchers/${id}/status`, {
             method: "PATCH",

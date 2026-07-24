@@ -1743,10 +1743,23 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                         )}
                     </div>
 
-                    <div className="flex justify-center pt-6 border-t">
-                        <Button type="submit" disabled={isPending || !isBalanced}>
+                    <div className="flex justify-center gap-3 pt-6 border-t">
+                        <Button
+                            type="submit"
+                            variant="outline"
+                            disabled={isPending || !isBalanced}
+                            onClick={() => form.setValue("status", "draft")}
+                        >
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {initialData ? "Update Receipt Voucher" : "Create Receipt Voucher"}
+                            Save as Draft
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={isPending || !isBalanced}
+                            onClick={() => form.setValue("status", "pending_check")}
+                        >
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {initialData ? "Update & Submit for Check" : "Submit for Check"}
                         </Button>
                     </div>
 

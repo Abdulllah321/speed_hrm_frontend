@@ -13,9 +13,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Printer, Download, Plus, CreditCard, Wallet, Eye, Loader2 } from "lucide-react";
+import { Printer, Download, Plus, CreditCard, Wallet, Eye, CheckCircle2, XCircle, FileCheck, Send, Loader2 } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
-import { PaymentVoucher } from "@/lib/actions/payment-voucher";
+import { PaymentVoucher, updatePaymentVoucherStatus } from "@/lib/actions/payment-voucher";
 import { queuePaymentVouchersExport } from "@/lib/actions/payment-voucher";
 import { PaymentVoucherPrint } from "./payment-voucher-print";
 import { cn } from "@/lib/utils";
@@ -137,6 +137,20 @@ export function PaymentVoucherList({
         }, 0);
     }, [initialData]);
 
+    const handleUpdateStatus = async (id: string, newStatus: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected") => {
+        try {
+            const res = await updatePaymentVoucherStatus(id, newStatus);
+            if (res.status) {
+                toast.success(`Payment Voucher ${newStatus} successfully`);
+                setVouchers(prev => prev.map(v => v.id === id ? { ...v, status: newStatus as const } : v));
+            } else {
+                toast.error(res.message || "Failed to update voucher status");
+            }
+        } catch {
+            toast.error("An unexpected error occurred");
+        }
+    };
+
     const columns = useMemo<ColumnDef<PaymentVoucher>[]>(() => [
         {
             accessorKey: "pvNo",
@@ -243,15 +257,37 @@ export function PaymentVoucherList({
         {
             accessorKey: "status",
             header: "Status",
-            cell: ({ row }) => (
-                <span className={cn(
-                    "px-3 py-1 rounded-md text-[10px] uppercase font-bold text-white",
-                    row.original.status === "approved" ? "bg-green-500" :
-                        row.original.status === "pending" ? "bg-yellow-500" : "bg-red-500"
-                )}>
-                    {row.original.status}
-                </span>
-            )
+            cell: ({ row }) => {
+                const st = row.original.status;
+                const badgeClass =
+                    st === "approved"
+                        ? "bg-green-600 text-white"
+                        : st === "pending_approval"
+                            ? "bg-blue-600 text-white"
+                            : st === "pending_check"
+                                ? "bg-amber-500 text-white"
+                                : st === "draft"
+                                    ? "bg-slate-500 text-white"
+                                    : "bg-red-600 text-white";
+                const label =
+                    st === "approved"
+                        ? "APPROVED"
+                        : st === "pending_approval"
+                            ? "PENDING APPROVAL"
+                            : st === "pending_check"
+                                ? "PENDING CHECK"
+                                : st === "draft"
+                                    ? "DRAFT"
+                                    : "REJECTED";
+                return (
+                    <span className={cn(
+                        "px-2 py-0.5 rounded text-[9px] font-extrabold uppercase text-white whitespace-nowrap",
+                        badgeClass
+                    )}>
+                        {label}
+                    </span>
+                );
+            }
         },
         {
             id: "actions",
@@ -275,10 +311,65 @@ export function PaymentVoucherList({
                     >
                         <Printer className="h-3.5 w-3.5" />
                     </Button>
+                    {row.original.status === "draft" && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleUpdateStatus(row.original.id, "pending_check")}
+                            className="h-7 w-7 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600"
+                            title="Submit for Check"
+                        >
+                            <Send className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
+                    {row.original.status === "pending_check" && (
+                        <>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUpdateStatus(row.original.id, "pending_approval")}
+                                className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-blue-600"
+                                title="Check & Verify"
+                            >
+                                <FileCheck className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUpdateStatus(row.original.id, "rejected")}
+                                className="h-7 w-7 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
+                                title="Reject Voucher"
+                            >
+                                <XCircle className="h-3.5 w-3.5" />
+                            </Button>
+                        </>
+                    )}
+                    {row.original.status === "pending_approval" && (permissions?.canApprove ?? true) && (
+                        <>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUpdateStatus(row.original.id, "approved")}
+                                className="h-7 w-7 hover:bg-green-50 dark:hover:bg-green-950/20 text-green-600"
+                                title="Authorize & Approve"
+                            >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUpdateStatus(row.original.id, "rejected")}
+                                className="h-7 w-7 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
+                                title="Reject Voucher"
+                            >
+                                <XCircle className="h-3.5 w-3.5" />
+                            </Button>
+                        </>
+                    )}
                 </div>
             )
         }
-    ], [handlePrint]);
+    ], [permissions, handlePrint, handleUpdateStatus]);
 
     const filteredData = useMemo(() => {
         return vouchers.filter(v => {
@@ -426,8 +517,10 @@ export function PaymentVoucherList({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All</SelectItem>
+                                        <SelectItem value="draft">Draft</SelectItem>
+                                        <SelectItem value="pending_check">Pending Check</SelectItem>
+                                        <SelectItem value="pending_approval">Pending Approval</SelectItem>
                                         <SelectItem value="approved">Approved</SelectItem>
-                                        <SelectItem value="pending">Pending</SelectItem>
                                         <SelectItem value="rejected">Rejected</SelectItem>
                                     </SelectContent>
                                 </Select>

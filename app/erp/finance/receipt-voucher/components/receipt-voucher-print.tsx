@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { ReceiptVoucher } from "@/lib/actions/receipt-voucher";
 import { format } from "date-fns";
 
@@ -34,6 +35,11 @@ function fmt(n: number) {
 }
 
 export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
+  const [printedAt, setPrintedAt] = useState<string>("");
+  useEffect(() => {
+    setPrintedAt(format(new Date(), "dd-MMM-yyyy hh:mm a"));
+  }, []);
+
   const isBank = voucher.type === "bank";
   const debitRows = voucher.details.filter((d) => Number(d.debit) > 0);
   const creditRows = voucher.details.filter((d) => Number(d.credit) > 0);
@@ -45,69 +51,72 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page {
-            margin: 0;
-          }
-          @page :not(:first) {
-            margin-top: 1.5cm;
+            margin: 10mm;
           }
           body {
-            margin: 0.7cm;
+            margin: 0;
           }
           thead {
             display: table-header-group;
           }
           tfoot {
-            display: none;
+            display: table-footer-group;
+          }
+          .print-page-number::after {
+            content: counter(page);
           }
         }
       `}} />
 
-      {/* Header */}
-      <div className="flex justify-between mb-1.5 gap-2 items-start">
-        {/* Logo */}
-        <div className="w-[20%] flex flex-col items-start justify-center">
-           <img src="/image.png" alt="Logo" className="w-14 sm:w-18 print:w-20 object-contain" />
-        </div>
-        
-        {/* Title */}
-        <div className="w-[35%] flex flex-col justify-center">
-          <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-            <span className="text-base sm:text-lg font-extrabold underline decoration-2 underline-offset-2 tracking-wide">
-              {isBank ? "Bank" : "Cash"} Receipt
-            </span>
-            <br />
-            <span className="text-base sm:text-lg font-extrabold tracking-wide">Voucher</span>
-          </div>
-        </div>
-
-        {/* Details Box */}
-        <div className="w-[45%] bg-[#f8fafc] text-[9px] sm:text-[10px] p-1 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-           <div className="flex justify-between mb-0.5">
-             <span className="font-bold">Voucher Number:</span>
-             <span className="font-bold">{voucher.rvNo}</span>
-           </div>
-           <div className="flex justify-between">
-             <div className="flex gap-1.5">
-               <span className="font-bold">Date:</span>
-               <span>{voucher.rvDate ? format(new Date(voucher.rvDate), "dd/MM/yyyy") : ""}</span>
-             </div>
-             <div className="flex gap-1.5">
-               <span className="font-bold">Folio:</span>
-               <span>{voucher.folio || voucher.id.replace(/-/g, "").slice(-5).toUpperCase()}</span>
-             </div>
-           </div>
-           {isBank && (
-             <div className="flex gap-1.5 mt-0.5">
-               <span className="font-bold">Cheque #:</span>
-               <span className="uppercase">{voucher.chequeNo || "—"}</span>
-             </div>
-           )}
-        </div>
-      </div>
-
       {/* Table */}
       <table className="w-full text-[9px] sm:text-[10px] border-collapse table-fixed">
         <thead>
+          <tr>
+            <th colSpan={5} className="font-normal text-left pb-1">
+              {/* Header */}
+              <div className="flex justify-between mb-1.5 gap-2 items-start text-black">
+                {/* Logo */}
+                <div className="w-[20%] flex flex-col items-start justify-center">
+                   <img src="/image.png" alt="Logo" className="w-14 sm:w-18 print:w-20 object-contain" />
+                </div>
+                
+                {/* Title */}
+                <div className="w-[35%] flex flex-col justify-center">
+                  <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+                    <span className="text-base sm:text-lg font-extrabold underline decoration-2 underline-offset-2 tracking-wide">
+                      {isBank ? "Bank" : "Cash"} Receipt
+                    </span>
+                    <br />
+                    <span className="text-base sm:text-lg font-extrabold tracking-wide">Voucher</span>
+                  </div>
+                </div>
+
+                {/* Details Box */}
+                <div className="w-[45%] bg-[#f8fafc] text-[9px] sm:text-[10px] p-1 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
+                   <div className="flex justify-between mb-0.5">
+                     <span className="font-bold">Voucher Number:</span>
+                     <span className="font-bold">{voucher.rvNo}</span>
+                   </div>
+                   <div className="flex justify-between">
+                     <div className="flex gap-1.5">
+                       <span className="font-bold">Date:</span>
+                       <span>{voucher.rvDate ? format(new Date(voucher.rvDate), "dd/MM/yyyy") : ""}</span>
+                     </div>
+                     <div className="flex gap-1.5">
+                       <span className="font-bold">Folio:</span>
+                       <span>{voucher.folio || voucher.id.replace(/-/g, "").slice(-5).toUpperCase()}</span>
+                     </div>
+                   </div>
+                   {isBank && (
+                     <div className="flex gap-1.5 mt-0.5">
+                       <span className="font-bold">Cheque #:</span>
+                       <span className="uppercase">{voucher.chequeNo || "—"}</span>
+                     </div>
+                   )}
+                </div>
+              </div>
+            </th>
+          </tr>
           <tr className="border-y-2 border-black">
             <th className="py-0.5 pr-1 text-left font-bold w-[38%]">Account Code/Description</th>
             <th className="py-0.5 pr-1 text-left font-bold w-[28%]">Naration</th>
@@ -263,6 +272,20 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
             );
           })}
         </tbody>
+        <tfoot className="display-table-footer-group">
+          <tr>
+            <td colSpan={5} className="pt-2 pb-0 font-normal text-left">
+              <div className="flex justify-between items-center text-[8px] sm:text-[9px] text-gray-500 border-t border-gray-300 pt-1">
+                <div>
+                  Printed At: <span className="font-semibold">{printedAt}</span>
+                </div>
+                <div className="font-semibold">
+                  Page <span className="print-page-number"></span>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
       </table>
 
       {/* Totals row — outside table so it only appears once at the very end */}

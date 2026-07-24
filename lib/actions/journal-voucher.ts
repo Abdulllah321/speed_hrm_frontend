@@ -29,7 +29,14 @@ export interface JournalVoucher {
     refBillNo2?: string;
     taxType?: string;
     details: JournalVoucherDetail[];
-    status: "pending" | "approved" | "rejected";
+    status: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected";
+    makerId?: string;
+    checkerId?: string;
+    authorizerId?: string;
+    checkedAt?: string;
+    approvedAt?: string;
+    rejectionReason?: string;
+    remarks?: string;
     createdAt: string;
     updatedAt: string;
 }
