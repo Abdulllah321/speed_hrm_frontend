@@ -124,8 +124,11 @@ interface InvoiceCategoryGroup {
   subCategories: InvoiceSubCategoryGroup[];
 }
 
-function groupInvoiceItems(items: any[], defaultTaxRate: number = 18): InvoiceCategoryGroup[] {
-  if (!items || items.length === 0) return [];
+function groupInvoiceItems(items: any[], defaultTaxRate: number = 18, baseMarginPct: number = 0, cashMarginPct: number = 0): InvoiceCategoryGroup[] {
+  if (!items || items.length === 0) return []
+
+  const totalMarginPct = baseMarginPct + cashMarginPct;
+  const marginMultiplier = totalMarginPct > 0 ? (1 - totalMarginPct / 100) : 1;
 
   const categoryMap = new Map<string, InvoiceCategoryGroup>();
 
@@ -139,9 +142,13 @@ function groupInvoiceItems(items: any[], defaultTaxRate: number = 18): InvoiceCa
     const size = itemObj.size?.name || itemObj.size?.code || item.size || 'N/A';
 
     const qty = Number(item.quantity || 0);
-    const sellingPrice = Number(item.salePrice || item.unitPrice || 0);
+    const grossSellingPrice = Number(item.salePrice || item.unitPrice || 0);
+    // Apply margin deduction to arrive at net selling price for display
+    const sellingPrice = grossSellingPrice;
     const discount = Number(item.discount || 0);
-    const valueExclTax = item.valueExclTax !== undefined ? Number(item.valueExclTax) : qty * sellingPrice;
+    const grossValueExclTax = item.valueExclTax !== undefined ? Number(item.valueExclTax) : qty * grossSellingPrice;
+    // Apply combined margin deduction to the item value
+    const valueExclTax = Math.round(grossValueExclTax * marginMultiplier);
     const taxableAmt = Math.max(0, valueExclTax - discount);
     const itemTaxRate = Number(item.taxRate || defaultTaxRate || 18);
     const salesTax = item.salesTax !== undefined ? Number(item.salesTax) : Math.round(taxableAmt * (itemTaxRate / 100));
@@ -338,7 +345,11 @@ export default function SalesInvoiceViewPage() {
     );
   }
 
-  const groupedData = groupInvoiceItems(invoice.items || [], invoice.taxRate || 18);
+  // Get customer margins from invoice -> customer or from salesOrder
+  const baseMarginPct = Number(invoice.customer?.baseMargin ?? invoice.salesOrder?.baseMargin ?? 0);
+  const cashMarginPct = Number(invoice.customer?.cashMargin ?? invoice.salesOrder?.cashMargin ?? 0);
+
+  const groupedData = groupInvoiceItems(invoice.items || [], invoice.taxRate || 0, baseMarginPct, cashMarginPct);
 
   let grandQty = 0;
   let grandExclTax = 0;
@@ -358,8 +369,10 @@ export default function SalesInvoiceViewPage() {
     grandValueInclTax += cat.totalValueInclTax;
   });
 
-  const advanceIncomeTax = Math.round(grandValueInclTax * 0.005);
-  const netTotal = grandValueInclTax + advanceIncomeTax;
+  // Use invoice.grandTotal from DB as the authoritative total (already has margins applied)
+  const invoiceGrandTotal = Number(invoice.grandTotal || grandValueInclTax);
+  const advanceIncomeTax = Math.round(invoiceGrandTotal * 0.005);
+  const netTotal = invoiceGrandTotal + advanceIncomeTax;
 
   return (
     <>
@@ -460,8 +473,13 @@ export default function SalesInvoiceViewPage() {
                   <span className="font-medium">Name:</span> {invoice.customer?.name || 'N/A'}
                 </div>
                 <div>
-                  <span className="font-medium">Code:</span> {invoice.customer?.code || 'N/A'}
+                  <span className="font-medium">Trader ID:</span> {invoice.customer?.traderId || 'N/A'}
                 </div>
+                {invoice.customer?.subCode && (
+                  <div>
+                    <span className="font-medium">Sub Code:</span> {invoice.customer.subCode}
+                  </div>
+                )}
                 {invoice.customer?.email && (
                   <div>
                     <span className="font-medium">Email:</span> {invoice.customer.email}
@@ -556,23 +574,41 @@ export default function SalesInvoiceViewPage() {
           {/* Invoice Summary */}
           <Card>
             <CardHeader>
-              <CardTitle>Invoice Summary</CardTitle>
+              <CardTitle>Invoice Summary & Margins</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Gross Total:</span>
+                  <span>{formatCurrency((Number(invoice.subtotal) || 0) + (Number(invoice.baseMarginAmount) || 0) + (Number(invoice.cashMarginAmount) || 0))}</span>
+                </div>
+                {(Number(invoice.baseMarginAmount) > 0 || Number(invoice.baseMargin) > 0) && (
+                  <div className="flex justify-between text-emerald-600 font-medium">
+                    <span>Base Margin ({Number(invoice.baseMargin || 0)}% Cut):</span>
+                    <span>-{formatCurrency(Number(invoice.baseMarginAmount || 0))}</span>
+                  </div>
+                )}
+                {(Number(invoice.cashMarginAmount) > 0 || Number(invoice.cashMargin) > 0) && (
+                  <div className="flex justify-between text-blue-600 font-medium">
+                    <span>Cash Margin ({Number(invoice.cashMargin || 0)}% Cut):</span>
+                    <span>-{formatCurrency(Number(invoice.cashMarginAmount || 0))}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-semibold border-t border-b py-1">
+                  <span>Net Subtotal:</span>
                   <span>{formatCurrency(invoice.subtotal || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax ({invoice.taxRate || 0}%):</span>
                   <span>{formatCurrency(invoice.taxAmount || 0)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Discount:</span>
-                  <span>{formatCurrency(invoice.discount || 0)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg border-t pt-2">
+                {Number(invoice.discount) > 0 && (
+                  <div className="flex justify-between text-amber-600">
+                    <span>Discount:</span>
+                    <span>-{formatCurrency(invoice.discount || 0)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-xl border-t pt-2 text-primary">
                   <span>Grand Total:</span>
                   <span>{formatCurrency(invoice.grandTotal || 0)}</span>
                 </div>
@@ -591,8 +627,6 @@ export default function SalesInvoiceViewPage() {
             {/* Top Left Logo & Info */}
             <div className="w-[28%] text-xs space-y-0.5">
               <img src="/image.png" alt="Speed Logo" className="h-10 object-contain mb-1" />
-              <div><span className="font-bold">GST No. :</span> 12-01-9999-663-46</div>
-              <div><span className="font-bold">NTN :</span> 1208373-9</div>
             </div>
 
             {/* Center Title */}
@@ -620,15 +654,18 @@ export default function SalesInvoiceViewPage() {
               <div><span className="font-bold inline-block w-28">Invoice No :</span> {invoice.invoiceNo}</div>
               <div><span className="font-bold inline-block w-28">Invoice Date :</span> {formatDateDisplay(invoice.createdAt || invoice.invoiceDate)}</div>
               <div><span className="font-bold inline-block w-28">Customer Name :</span> {invoice.customer?.name || 'N/A'}</div>
-              <div><span className="font-bold inline-block w-28">Address :</span> {invoice.customer?.address || 'N/A'}</div>
+              {invoice.customer?.traderId && (
+                <div><span className="font-bold inline-block w-28">Trader ID :</span> {invoice.customer.traderId}{invoice.customer?.subCode ? ` (Sub: ${invoice.customer.subCode})` : ''}</div>
+              )}
+              <div><span className="font-bold inline-block w-28">Address :</span> {invoice.customer?.deliveryAddress || invoice.customer?.address || 'N/A'}</div>
             </div>
 
             {/* Right Side */}
             <div className="space-y-0.5 text-right md:text-left">
               <div><span className="font-bold inline-block w-28">Order. No :</span> {invoice.salesOrder?.orderNo || '30'}</div>
               <div><span className="font-bold inline-block w-28">Order Date :</span> {formatDateDisplay(invoice.salesOrder?.orderDate || invoice.createdAt)}</div>
-              <div><span className="font-bold inline-block w-28">GST No. :</span> {invoice.customer?.strn || invoice.customer?.gstNo || '1623094-9'}</div>
-              <div><span className="font-bold inline-block w-28">NTN No. :</span> {invoice.customer?.ntn || '1623094-9'}</div>
+              <div><span className="font-bold inline-block w-28">GST No. :</span> {invoice.customer?.strn || invoice.customer?.gstNo || '—'}</div>
+              <div><span className="font-bold inline-block w-28">NTN No. :</span> {invoice.customer?.ntn || '—'}</div>
             </div>
           </div>
 
@@ -729,7 +766,7 @@ export default function SalesInvoiceViewPage() {
                 <td className="py-2 text-right border-b-2 border-black" style={{ borderBottomStyle: 'double' }}>{formatNumber(grandSalesTax)}</td>
                 <td className="py-2 text-right border-b-2 border-black" style={{ borderBottomStyle: 'double' }}>{formatNumber(grandAddTax)}</td>
                 <td className="py-2 text-right border-b-2 border-black" style={{ borderBottomStyle: 'double' }}>{formatNumber(grandTaxPayable)}</td>
-                <td className="py-2 text-right border-b-2 border-black" style={{ borderBottomStyle: 'double' }}>{formatNumber(grandValueInclTax)}</td>
+                <td className="py-2 text-right border-b-2 border-black" style={{ borderBottomStyle: 'double' }}>{formatNumber(invoiceGrandTotal)}</td>
               </tr>
             </tfoot>
           </table>

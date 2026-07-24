@@ -188,8 +188,8 @@ export function CustomerBulkUploadModal({ open, onOpenChange, onSuccess, uploadI
                                                 <Upload className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
                                             </div>
                                             <div className="text-center space-y-2">
-                                                <p className="font-bold text-xl">Upload customer list</p>
-                                                <p className="text-sm text-muted-foreground max-w-[300px]">CSV or Excel with columns: Code, Name, Address, Contact No., Email</p>
+                                                <p className="font-bold text-xl">Upload customer / trader list</p>
+                                                <p className="text-sm text-muted-foreground max-w-[450px]">Excel or CSV with columns: Trader ID, Company, Sub Code, Brands, Base Margin, Cash Margin, Remarks, Address, Delivery Address, CNIC, NTN, STRN</p>
                                             </div>
                                             <div className="flex gap-2 mt-2">
                                                 {['.CSV', '.XLSX', '.XLS'].map(ext => <Badge key={ext} variant="outline" className="bg-background/50">{ext}</Badge>)}
@@ -206,7 +206,7 @@ export function CustomerBulkUploadModal({ open, onOpenChange, onSuccess, uploadI
                                         </div>
                                         <div>
                                             <p className="font-bold text-sm">Download Template</p>
-                                            <p className="text-xs text-muted-foreground">Columns: Code, Name of Customer, Address, Contact No., Email</p>
+                                            <p className="text-xs text-muted-foreground">Columns: Trader ID, Company, Sub Code, Brands, Base Margin, Cash Margin, Remarks, Address, Delivery Address, CNIC, NTN, STRN</p>
                                         </div>
                                     </div>
                                     <Button variant="secondary" size="sm" onClick={() => window.open(`${BASE()}/template/download`, '_blank')} className="font-semibold shadow-sm">
