@@ -20,15 +20,10 @@ import {
     CheckCircle2, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle,
     Printer,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PrintReconciliation } from "@/components/pos/print-reconciliation";
-
-function fmt(val: number) {
-    return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
-import { formatCurrency } from "@/lib/utils";
 
 function fmtTime(dateStr: string) {
     return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -53,7 +48,7 @@ function ShiftDetailModal({ shift, open, onOpenChange, onPrint }: {
     shift: any; open: boolean; onOpenChange: (v: boolean) => void; onPrint: (id: string) => void;
 }) {
     if (!shift) return null;
-    const variance = shift.difference;
+    const variance = shift.difference ?? shift.variance;
     const isOpen = shift.status === "open";
 
     return (
@@ -76,17 +71,17 @@ function ShiftDetailModal({ shift, open, onOpenChange, onPrint }: {
                         <div className="bg-muted/50 rounded-2xl p-4 border border-border text-center">
                             <ShoppingCart className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
                             <p className="text-xs text-muted-foreground">Orders</p>
-                            <p className="text-xl font-bold">{shift.metrics.orderCount}</p>
+                            <p className="text-xl font-bold">{shift.metrics?.orderCount ?? 0}</p>
                         </div>
                         <div className="bg-muted/50 rounded-2xl p-4 border border-border text-center">
                             <Banknote className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
                             <p className="text-xs text-muted-foreground">Cash</p>
-                            <p className="text-xl font-bold">{formatCurrency(shift.metrics.cashSales)}</p>
+                            <p className="text-xl font-bold">{formatCurrency(shift.metrics?.cashSales ?? 0)}</p>
                         </div>
                         <div className="bg-muted/50 rounded-2xl p-4 border border-border text-center">
                             <CreditCard className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
                             <p className="text-xs text-muted-foreground">Card</p>
-                            <p className="text-xl font-bold">{formatCurrency(shift.metrics.cardSales)}</p>
+                            <p className="text-xl font-bold">{formatCurrency(shift.metrics?.cardSales ?? 0)}</p>
                         </div>
                     </div>
 
@@ -94,17 +89,17 @@ function ShiftDetailModal({ shift, open, onOpenChange, onPrint }: {
                     <div className="bg-muted/30 rounded-2xl p-4 border border-border space-y-2 text-sm">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Opening Float</span>
-                            <span className="font-medium">{formatCurrency(shift.openingFloat)}</span>
+                            <span className="font-medium">{formatCurrency(shift.openingFloat ?? 0)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Cash Sales</span>
-                            <span className="font-medium">{formatCurrency(shift.metrics.cashSales)}</span>
+                            <span className="font-medium">{formatCurrency(shift.metrics?.cashSales ?? 0)}</span>
                         </div>
                         <div className="flex justify-between border-t border-border pt-2">
                             <span className="font-semibold">Expected Cash</span>
-                            <span className="font-bold">{formatCurrency(shift.expectedCash)}</span>
+                            <span className="font-bold">{formatCurrency(shift.expectedCash ?? 0)}</span>
                         </div>
-                        {!isOpen && shift.actualCash !== null && (
+                        {!isOpen && shift.actualCash !== null && shift.actualCash !== undefined && (
                             <>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Actual Cash</span>
@@ -112,8 +107,8 @@ function ShiftDetailModal({ shift, open, onOpenChange, onPrint }: {
                                 </div>
                                 <div className="flex justify-between border-t border-border pt-2">
                                     <span className="font-semibold">Variance</span>
-                                    <span className={cn("font-bold", variance < 0 ? "text-destructive" : variance > 0 ? "text-emerald-600" : "text-muted-foreground")}>
-                                        {variance > 0 ? "+" : ""}{formatCurrency(variance ?? 0)}
+                                    <span className={cn("font-bold", (variance ?? 0) < 0 ? "text-destructive" : (variance ?? 0) > 0 ? "text-emerald-600" : "text-muted-foreground")}>
+                                        {(variance ?? 0) > 0 ? "+" : ""}{formatCurrency(variance ?? 0)}
                                     </span>
                                 </div>
                             </>
@@ -270,8 +265,18 @@ export default function ShiftsPage() {
                 body: { actualCash: Number(actualCash), note: closeNote },
             });
             if (res.ok) {
-                setCloseSummary({
-                    id: res.data?.session?.id || sessionData?.session?.id || sessionData?.id,
+                const closedSessId = res.data?.session?.id || sessionData?.session?.id || sessionData?.id;
+                let summaryData = null;
+                if (closedSessId) {
+                    try {
+                        const sumRes = await authFetch(`/pos-session/${closedSessId}/close-summary`);
+                        if (sumRes.ok) summaryData = sumRes.data;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+                setCloseSummary(summaryData || {
+                    id: closedSessId,
                     expected: sessionData?.metrics?.expectedCash ?? 0,
                     actual: Number(actualCash),
                     variance: res.data?.variance ?? 0,
@@ -429,61 +434,41 @@ export default function ShiftsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-muted/30">
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Opened</TableHead>
-                                            <TableHead>Closed</TableHead>
-                                            <TableHead>Duration</TableHead>
-                                            <TableHead className="text-right">Orders</TableHead>
-                                            <TableHead className="text-right">Total Sales</TableHead>
+                                            <TableHead>Date / Duration</TableHead>
+                                            <TableHead className="text-right">Float</TableHead>
+                                            <TableHead className="text-right">Cash Sales</TableHead>
+                                            <TableHead className="text-right">Expected</TableHead>
+                                            <TableHead className="text-right">Actual</TableHead>
                                             <TableHead className="text-right">Variance</TableHead>
-                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-center">Action</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {shifts.map((shift) => {
-                                            const variance = shift.difference;
-                                            const isOpen = shift.status === "open";
+                                        {shifts.map((s) => {
+                                            const v = s.difference ?? s.variance;
                                             return (
-                                                <TableRow
-                                                    key={shift.id}
-                                                    className="cursor-pointer hover:bg-muted/30 transition-colors"
-                                                    onClick={() => router.push(`/pos/session/${shift.id}`)}
-                                                >
-                                                    <TableCell className="font-medium">{fmtDate(shift.openedAt)}</TableCell>
-                                                    <TableCell className="text-muted-foreground">{fmtTime(shift.openedAt)}</TableCell>
-                                                    <TableCell className="text-muted-foreground">
-                                                        {shift.closedAt ? fmtTime(shift.closedAt) : "—"}
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground text-sm">
-                                                        {duration(shift.openedAt, shift.closedAt)}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">{shift.metrics.orderCount}</TableCell>
-                                                    <TableCell className="text-right font-semibold">
-                                                        {formatCurrency(shift.metrics.totalSales)}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        {isOpen ? (
-                                                            <span className="text-muted-foreground text-xs">—</span>
-                                                        ) : variance === null ? (
-                                                            <span className="text-muted-foreground text-xs">—</span>
-                                                        ) : (
-                                                            <span className={cn("font-semibold text-sm flex items-center justify-end gap-1",
-                                                                variance < 0 ? "text-destructive" : variance > 0 ? "text-emerald-600" : "text-muted-foreground"
-                                                            )}>
-                                                                {variance !== 0 && <AlertTriangle className="w-3 h-3" />}
-                                                                {variance > 0 ? "+" : ""}{formatCurrency(variance)}
-                                                            </span>
-                                                        )}
-                                                    </TableCell>
+                                                <TableRow key={s.id} className="hover:bg-muted/30">
                                                     <TableCell>
-                                                        <Badge variant="outline" className={cn(
-                                                            "text-[10px] px-2 py-0 h-5 capitalize",
-                                                            isOpen
-                                                                ? "bg-emerald-500/10 text-emerald-700 border-emerald-300"
-                                                                : "bg-muted text-muted-foreground border-border"
-                                                        )}>
-                                                            {shift.status}
-                                                        </Badge>
+                                                        <div className="font-medium text-sm">{fmtDate(s.openedAt)}</div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {fmtTime(s.openedAt)} {s.closedAt ? `→ ${fmtTime(s.closedAt)}` : "(ongoing)"} ({duration(s.openedAt, s.closedAt)})
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">{formatCurrency(s.openingFloat)}</TableCell>
+                                                    <TableCell className="text-right font-medium">{formatCurrency(s.metrics?.cashSales ?? 0)}</TableCell>
+                                                    <TableCell className="text-right font-bold">{formatCurrency(s.expectedCash ?? 0)}</TableCell>
+                                                    <TableCell className="text-right font-medium">{s.actualCash !== null && s.actualCash !== undefined ? formatCurrency(s.actualCash) : "-"}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        {v !== null && v !== undefined ? (
+                                                            <span className={cn("font-bold text-sm", v < 0 ? "text-destructive" : v > 0 ? "text-emerald-600" : "text-muted-foreground")}>
+                                                                {v > 0 ? "+" : ""}{formatCurrency(v)}
+                                                            </span>
+                                                        ) : "-"}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Button variant="ghost" size="sm" onClick={() => { setSelectedShift(s); setShowDetailModal(true); }} className="rounded-full h-8 px-3">
+                                                            Details
+                                                        </Button>
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -498,54 +483,17 @@ export default function ShiftsPage() {
                                     <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"
                                         disabled={page === 1} onClick={() => setPage(p => p - 1)}>
                                         <ChevronLeft className="w-4 h-4" />
-                        <div className="py-12 text-center text-muted-foreground">No shift history found.</div>
-                    ) : (
-                        <div className="rounded-2xl border border-border overflow-hidden">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                        <TableHead>Date / Duration</TableHead>
-                                        <TableHead className="text-right">Float</TableHead>
-                                        <TableHead className="text-right">Cash Sales</TableHead>
-                                        <TableHead className="text-right">Expected</TableHead>
-                                        <TableHead className="text-right">Actual</TableHead>
-                                        <TableHead className="text-right">Variance</TableHead>
-                                        <TableHead className="text-center">Action</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {shifts.map((s) => {
-                                        const v = s.difference ?? s.variance;
-                                        return (
-                                            <TableRow key={s.id} className="hover:bg-muted/30">
-                                                <TableCell>
-                                                    <div className="font-medium text-sm">{fmtDate(s.openedAt)}</div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {fmtTime(s.openedAt)} {s.closedAt ? `→ ${fmtTime(s.closedAt)}` : "(ongoing)"} ({duration(s.openedAt, s.closedAt)})
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right font-medium">{formatCurrency(s.openingFloat)}</TableCell>
-                                                <TableCell className="text-right font-medium">{formatCurrency(s.metrics?.cashSales ?? 0)}</TableCell>
-                                                <TableCell className="text-right font-bold">{formatCurrency(s.expectedCash ?? 0)}</TableCell>
-                                                <TableCell className="text-right font-medium">{s.actualCash !== null && s.actualCash !== undefined ? formatCurrency(s.actualCash) : "-"}</TableCell>
-                                                <TableCell className="text-right">
-                                                    {v !== null && v !== undefined ? (
-                                                        <span className={cn("font-bold text-sm", v < 0 ? "text-destructive" : v > 0 ? "text-emerald-600" : "text-muted-foreground")}>
-                                                            {v > 0 ? "+" : ""}{formatCurrency(v)}
-                                                        </span>
-                                                    ) : "-"}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Button variant="ghost" size="sm" onClick={() => { setSelectedShift(s); setShowDetailModal(true); }} className="rounded-full h-8 px-3">
-                                                        Details
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </Button>
+                                    <span className="text-sm text-muted-foreground">
+                                        Page {page} of {totalPages}
+                                    </span>
+                                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"
+                                        disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                                        <ChevronRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
