@@ -13,6 +13,9 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
 
+import { getBrands, Brand } from "@/lib/actions/brand";
+import { Switch } from "@/components/ui/switch";
+
 export default function AddLocationPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -23,22 +26,33 @@ export default function AddLocationPage() {
     shortCode: string;
     address: string;
     cityId: string;
+    isStockLocation: boolean;
+    brandIds: string[];
   }
-  const [locations, setLocations] = useState<LocationState[]>([{ id: 1, name: "", code: "", shortCode: "", address: "", cityId: "" }]);
+  const [locations, setLocations] = useState<LocationState[]>([
+    { id: 1, name: "", code: "", shortCode: "", address: "", cityId: "", isStockLocation: true, brandIds: [] },
+  ]);
   const [cities, setCities] = useState<City[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
 
   useEffect(() => {
-    async function fetchCities() {
-      const result = await getCities();
-      if (result.status && result.data) {
-        setCities(result.data);
+    async function fetchData() {
+      const [resCities, resBrands] = await Promise.all([getCities(), getBrands()]);
+      if (resCities.status && resCities.data) {
+        setCities(resCities.data);
+      }
+      if (resBrands.status && resBrands.data) {
+        setBrands(resBrands.data);
       }
     }
-    fetchCities();
+    fetchData();
   }, []);
 
   const addRow = () => {
-    setLocations([...locations, { id: Date.now(), name: "", code: "", shortCode: "", address: "", cityId: "" }]);
+    setLocations([
+      ...locations,
+      { id: Date.now(), name: "", code: "", shortCode: "", address: "", cityId: "", isStockLocation: true, brandIds: [] },
+    ]);
   };
 
   const removeRow = (id: number) => {
@@ -47,8 +61,20 @@ export default function AddLocationPage() {
     }
   };
 
-  const updateLocation = (id: number, field: string, value: string) => {
+  const updateLocation = (id: number, field: string, value: any) => {
     setLocations(locations.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
+  };
+
+  const toggleBrandForLocation = (locId: number, brandId: string) => {
+    setLocations(
+      locations.map((l) => {
+        if (l.id !== locId) return l;
+        const brandIds = l.brandIds.includes(brandId)
+          ? l.brandIds.filter((bId) => bId !== brandId)
+          : [...l.brandIds, brandId];
+        return { ...l, brandIds };
+      })
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,6 +94,8 @@ export default function AddLocationPage() {
           shortCode: l.shortCode.trim() || undefined,
           address: l.address.trim() || undefined,
           cityId: l.cityId || undefined,
+          isStockLocation: l.isStockLocation,
+          brandIds: l.brandIds,
         }))
       );
       if (result.status) {
@@ -101,7 +129,7 @@ export default function AddLocationPage() {
       <Card>
         <CardHeader>
           <CardTitle>Add Locations</CardTitle>
-          <CardDescription>Create one or more locations with their addresses and cities</CardDescription>
+          <CardDescription>Create one or more locations with their registered brands and stock location settings</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -178,6 +206,42 @@ export default function AddLocationPage() {
                       />
                     </div>
                   </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded bg-background">
+                    <div>
+                      <Label className="text-xs font-semibold">Stock Location</Label>
+                      <p className="text-[11px] text-muted-foreground">Holds stock inventory for reports and sales</p>
+                    </div>
+                    <Switch
+                      checked={loc.isStockLocation}
+                      onCheckedChange={(checked) => updateLocation(loc.id, "isStockLocation", checked)}
+                      disabled={isPending}
+                    />
+                  </div>
+
+                  {brands.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <Label className="text-xs text-muted-foreground">Registered Brands</Label>
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {brands.map((b) => {
+                          const isSelected = loc.brandIds.includes(b.id);
+                          return (
+                            <Button
+                              key={b.id}
+                              type="button"
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              className="h-6 text-[11px] px-2 py-0"
+                              onClick={() => toggleBrandForLocation(loc.id, b.id)}
+                              disabled={isPending}
+                            >
+                              {b.name}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

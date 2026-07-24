@@ -25,6 +25,8 @@ export interface Location {
     fbrEnabled: boolean;
     /// Whether this outlet is currently online.
     isOnline: boolean;
+    /// Whether this location is a stock holding location.
+    isStockLocation?: boolean;
     /// Cash GL Account Code
     cashGLCode: string | null;
     /// Timestamp of the last known online time.
@@ -35,6 +37,7 @@ export interface Location {
         stateId: string;
         country?: { id: string; name: string };
     } | null;
+    brands?: { id: string; name: string }[];
     status: 'active' | 'inactive';
     pos?: {
         id: string;
@@ -47,9 +50,10 @@ export interface Location {
 }
 
 // Get all locations
-export async function getLocations(): Promise<{ status: boolean; data?: Location[]; message?: string }> {
+export async function getLocations(stockOnly?: boolean): Promise<{ status: boolean; data?: Location[]; message?: string }> {
     try {
-        const res = await authFetch(`/locations`, {});
+        const url = stockOnly ? `/locations/active?stockOnly=true` : `/locations`;
+        const res = await authFetch(url, {});
         if (!res.ok) {
             const errorData = res.data;
             return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
@@ -83,7 +87,7 @@ export async function getLocationById(id: string): Promise<{ status: boolean; da
 }
 
 // Create locations bulk
-export async function createLocations(items: { name: string; code: string; address?: string; cityId?: string; companyId?: string; shortCode?: string }[]): Promise<{ status: boolean; message: string; data?: Location[] }> {
+export async function createLocations(items: { name: string; code: string; address?: string; cityId?: string; companyId?: string; shortCode?: string; isStockLocation?: boolean; brandIds?: string[] }[]): Promise<{ status: boolean; message: string; data?: Location[] }> {
     if (!items.length) {
         return { status: false, message: "At least one location is required" };
     }
@@ -102,6 +106,36 @@ export async function createLocations(items: { name: string; code: string; addre
     }
 }
 
+// Update single location (including isStockLocation and brandIds)
+export async function updateSingleLocation(
+    id: string,
+    data: {
+        name?: string;
+        code?: string;
+        shortCode?: string;
+        address?: string;
+        cityId?: string;
+        cashGLCode?: string | null;
+        isStockLocation?: boolean;
+        brandIds?: string[];
+    }
+): Promise<{ status: boolean; message: string; data?: Location }> {
+    try {
+        const res = await authFetch(`/locations/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({ id, ...data }),
+        });
+        const resData = res.data;
+        if (resData.status) {
+            revalidatePath("/master/location");
+        }
+        return resData;
+    } catch (error) {
+        console.error("Error updating location:", error);
+        return { status: false, message: "Failed to update location" };
+    }
+}
+
 // Update locations bulk
 export async function updateLocations(
     items: {
@@ -117,6 +151,8 @@ export async function updateLocations(
         ipWhitelistEnabled?: boolean;
         cashGLCode?: string | null;
         shortCode?: string | null;
+        isStockLocation?: boolean;
+        brandIds?: string[];
     }[]): Promise<{ status: boolean; message: string }> {
     if (!items.length) {
         return { status: false, message: "No items to update" };

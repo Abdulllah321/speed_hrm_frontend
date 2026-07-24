@@ -42,8 +42,9 @@ import { EllipsisIcon, Loader2, Pencil, Trash2, Monitor, Wifi, WifiOff } from "l
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Location, updateLocations, deleteLocation, updateLocationOtherInfo, updateLocationOnlineStatus } from "@/lib/actions/location";
+import { Location, updateLocations, updateSingleLocation, deleteLocation, updateLocationOtherInfo, updateLocationOnlineStatus } from "@/lib/actions/location";
 import { getCities, City } from "@/lib/actions/city";
+import { getBrands, Brand } from "@/lib/actions/brand";
 import { useAuth } from "@/components/providers/auth-provider";
 import { ManagePosModal } from "./pos-management-modal";
 import { ChartOfAccountSelect } from "@/components/ui/chart-of-account-select";
@@ -93,28 +94,60 @@ export const columns: ColumnDef<LocationRow>[] = [
   {
     header: "Code",
     accessorKey: "code",
-    size: 200,
+    size: 150,
     enableSorting: true,
     cell: ({ row }) => <HighlightText text={row.original.code} />,
   },
   {
+    header: "Stock Location",
+    accessorKey: "isStockLocation",
+    size: 140,
+    cell: ({ row }) => {
+      const isStock = row.original.isStockLocation !== false;
+      return (
+        <Badge variant={isStock ? "default" : "outline"} className={isStock ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "text-amber-600 border-amber-500 dark:text-amber-400"}>
+          {isStock ? "Stock Location" : "Office / Non-Stock"}
+        </Badge>
+      );
+    },
+    enableSorting: true,
+  },
+  {
+    header: "Registered Brands",
+    accessorKey: "brands",
+    size: 180,
+    cell: ({ row }) => {
+      const brands = row.original.brands || [];
+      if (brands.length === 0) return <span className="text-muted-foreground italic text-xs">None</span>;
+      return (
+        <div className="flex flex-wrap gap-1">
+          {brands.map((b) => (
+            <Badge key={b.id} variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+              {b.name}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
+  },
+  {
     header: "Short Code",
     accessorKey: "shortCode",
-    size: 150,
+    size: 120,
     enableSorting: true,
     cell: ({ row }) => row.original.shortCode || <span className="text-muted-foreground italic">N/A</span>,
   },
   {
     header: "City",
     accessorKey: "city.name",
-    size: 150,
+    size: 130,
     enableSorting: true,
     cell: ({ row }) => row.original.city?.name || <span className="text-muted-foreground italic">N/A</span>,
   },
   {
     header: "POS Terminals",
     accessorKey: "pos",
-    size: 200,
+    size: 160,
     cell: ({ row }) => {
       const posList = row.original.pos || [];
       if (posList.length === 0) return <span className="text-muted-foreground italic">None</span>;
@@ -128,18 +161,6 @@ export const columns: ColumnDef<LocationRow>[] = [
         </div>
       );
     },
-  },
-  {
-    header: "Address",
-    accessorKey: "address",
-    size: 250,
-    cell: ({ row }) => <span className="truncate max-w-[240px] block">{row.original.address || <span className="text-muted-foreground italic">No address</span>}</span>,
-  },
-  {
-    header: "Cash GL Code",
-    accessorKey: "cashGLCode",
-    size: 130,
-    cell: ({ row }) => row.original.cashGLCode || <span className="text-muted-foreground italic">None</span>,
   },
   {
     header: "Status",
@@ -171,13 +192,6 @@ export const columns: ColumnDef<LocationRow>[] = [
         </div>
       );
     },
-    enableSorting: true,
-  },
-  {
-    header: "Created At",
-    accessorKey: "createdAt",
-    size: 150,
-    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
     enableSorting: true,
   },
   {
@@ -217,6 +231,11 @@ function RowActions({ row }: RowActionsProps) {
     setSelectedAccountId(val);
   };
 
+  // Local state for brands and stock location
+  const [allBrands, setAllBrands] = useState<Brand[]>([]);
+  const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
+  const [isStockLocation, setIsStockLocation] = useState<boolean>(location.isStockLocation !== false);
+
   // Local state for toggles to handle UI conditionally
   const [geoFenceEnabled, setGeoFenceEnabled] = useState(location.geoFenceEnabled || false);
   const [ipWhitelistEnabled, setIpWhitelistEnabled] = useState(location.ipWhitelistEnabled || false);
@@ -237,8 +256,19 @@ function RowActions({ row }: RowActionsProps) {
     }
   };
 
+  const fetchBrandsData = async () => {
+    const result = await getBrands();
+    if (result.status && result.data) {
+      setAllBrands(result.data);
+    }
+  };
+
   const handleEditOpen = () => {
     fetchCities();
+    fetchBrandsData();
+    setSelectedBrandIds((location.brands || []).map((b) => b.id));
+    setIsStockLocation(location.isStockLocation !== false);
+
     getChartOfAccountsTree().then((res) => {
       if (res.status && res.data) {
         setAccountsTree(res.data);
@@ -270,6 +300,12 @@ function RowActions({ row }: RowActionsProps) {
     setEditDialog(true);
   };
 
+  const handleBrandToggle = (brandId: string) => {
+    setSelectedBrandIds((prev) =>
+      prev.includes(brandId) ? prev.filter((id) => id !== brandId) : [...prev, brandId]
+    );
+  };
+
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -278,15 +314,16 @@ function RowActions({ row }: RowActionsProps) {
     const cashGLCode = selectedAccount ? selectedAccount.code : null;
 
     startTransition(async () => {
-      const resGeneral = await updateLocations([{
-        id: location.id,
+      const resGeneral = await updateSingleLocation(location.id, {
         name: formData.get("name") as string,
         code: formData.get("code") as string,
-        shortCode: formData.get("shortCode") as string || null,
+        shortCode: formData.get("shortCode") as string || undefined,
         address: formData.get("address") as string,
         cityId: formData.get("cityId") as string,
         cashGLCode,
-      }]);
+        isStockLocation,
+        brandIds: selectedBrandIds,
+      });
 
       if (!resGeneral.status) {
         toast.error(resGeneral.message || "Failed to update general info");
@@ -464,6 +501,48 @@ function RowActions({ row }: RowActionsProps) {
                       <p className="text-[10px] text-muted-foreground font-mono">
                         Current GL Code: {location.cashGLCode}
                       </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/20">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Stock Location</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Whether this location holds physical inventory (uncheck for Office / HQ locations).
+                    </p>
+                  </div>
+                  <Switch
+                    checked={isStockLocation}
+                    onCheckedChange={setIsStockLocation}
+                    disabled={isPending}
+                  />
+                </div>
+
+                <div className="space-y-2 border rounded-lg p-3">
+                  <Label className="text-sm font-medium block">Registered Brands</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Select brands available at this location (e.g. Nike, Puma, Adidas).
+                  </p>
+                  <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pt-1">
+                    {allBrands.map((b) => {
+                      const isSelected = selectedBrandIds.includes(b.id);
+                      return (
+                        <Button
+                          key={b.id}
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleBrandToggle(b.id)}
+                          disabled={isPending}
+                        >
+                          {b.name}
+                        </Button>
+                      );
+                    })}
+                    {allBrands.length === 0 && (
+                      <span className="text-xs text-muted-foreground italic">No brands found</span>
                     )}
                   </div>
                 </div>
