@@ -77,15 +77,46 @@ export default function CreateDeliveryChallanPage() {
     ));
   };
 
-  // Calculate totals
-  const totalQuantity = deliveryItems.reduce((sum, item) => sum + (item.deliveredQty || 0), 0);
-  const subtotal = deliveryItems.reduce((sum, item) => sum + ((item.deliveredQty || 0) * (item.salePrice || 0)), 0);
-  
-  // Calculate tax and total amount like sales order
-  const taxRate = selectedOrder?.taxRate || 0;
-  const taxAmount = subtotal * (taxRate / 100);
+  // Calculate totals using same FBR WOST logic as sales order
+  const baseMargin = Number(selectedOrder?.baseMargin ?? selectedOrder?.customer?.baseMargin ?? 0);
+  const cashMargin = Number(selectedOrder?.cashMargin ?? selectedOrder?.customer?.cashMargin ?? 0);
+  const marginPct = baseMargin + cashMargin;
+
   const orderDiscount = selectedOrder?.discount || 0;
-  const totalAmount = subtotal + taxAmount - orderDiscount;
+
+  const itemDetails = deliveryItems.map(item => {
+    const retailPrice = Number(item.salePrice || 0);
+    const itemTaxRate = Number(item.item?.taxRate1 || 18);
+    const qty = Number(item.deliveredQty || 0);
+
+    // 1. WOST: Retail / (1 + TaxRate/100)
+    const wostUnit = retailPrice / (1 + itemTaxRate / 100);
+    const wostTotal = wostUnit * qty;
+
+    // 2. Margin discount on WOST
+    const marginDiscount = wostTotal * (marginPct / 100);
+
+    // 3. After margin discount
+    const afterDiscount = wostTotal - marginDiscount;
+
+    return { wostTotal, afterDiscount, itemTaxRate };
+  });
+
+  const grossTotal = itemDetails.reduce((sum, it) => sum + it.wostTotal, 0);
+  const baseMarginAmount = (grossTotal * baseMargin) / 100;
+  const cashMarginAmount = (grossTotal * cashMargin) / 100;
+  const subtotal = grossTotal - baseMarginAmount - cashMarginAmount;
+
+  // Additional discount applied to subtotal, then tax calculated on discounted base
+  const orderDiscountPct = subtotal > 0 ? (orderDiscount / subtotal) * 100 : 0;
+
+  const taxAmount = itemDetails.reduce((sum, it) => {
+    const discountedBase = it.afterDiscount * (1 - orderDiscountPct / 100);
+    return sum + discountedBase * (it.itemTaxRate / 100);
+  }, 0);
+
+  const totalAmount = (subtotal - orderDiscount) + taxAmount;
+  const totalQuantity = deliveryItems.reduce((sum, item) => sum + (item.deliveredQty || 0), 0);
 
   const handleCreateChallan = async () => {
     try {
@@ -185,7 +216,7 @@ export default function CreateDeliveryChallanPage() {
                         <div className="flex flex-col">
                           <span className="font-medium">{order.orderNo}</span>
                           <span className="text-sm text-muted-foreground">
-                            {order.customer?.name} - {formatCurrency(order.grandTotal || 0)}
+                            {order.customer?.name}
                           </span>
                         </div>
                       </SelectItem>
@@ -206,9 +237,6 @@ export default function CreateDeliveryChallanPage() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Status:</span> {selectedOrder.status}
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Total:</span> {formatCurrency(selectedOrder.grandTotal || 0)}
                     </div>
                   </div>
                 </div>
@@ -324,28 +352,14 @@ export default function CreateDeliveryChallanPage() {
                 {/* Summary */}
                 <div className="border-t pt-4">
                   <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Subtotal:</span>
-                      <span>{formatCurrency(subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Tax ({taxRate}%):</span>
-                      <span>{formatCurrency(taxAmount)}</span>
-                    </div>
-                    {orderDiscount > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span>Discount:</span>
-                        <span>{formatCurrency(orderDiscount)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center border-t pt-2">
+                    <div className="flex justify-between items-center">
                       <div className="space-y-1">
                         <div className="text-sm text-muted-foreground">Total Items</div>
                         <div className="font-bold text-lg">{totalQuantity}</div>
                       </div>
                       <div className="space-y-1 text-right">
                         <div className="text-sm text-muted-foreground">Total Amount</div>
-                        <div className="font-bold text-lg text-green-600">
+                        <div className="font-bold text-xl text-primary">
                           {formatCurrency(totalAmount)}
                         </div>
                       </div>

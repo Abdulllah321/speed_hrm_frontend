@@ -37,12 +37,23 @@ export default function CustomersPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({
-    code: "",
+    traderId: "",
+    subCode: "",
     name: "",
+    company: "",
+    brands: "",
+    baseMargin: 0,
+    cashMargin: 0,
+    remarks: "",
     address: "",
+    deliveryAddress: "",
     contactNo: "",
     email: "",
+    cnicNo: "",
+    ntn: "",
+    strn: "",
   });
 
   // Load customers
@@ -71,22 +82,71 @@ export default function CustomersPage() {
     return () => clearTimeout(debounce);
   }, [searchTerm]);
 
+  const resetForm = () => {
+    setFormData({
+      traderId: "",
+      subCode: "",
+      name: "",
+      company: "",
+      brands: "",
+      baseMargin: 0,
+      cashMargin: 0,
+      remarks: "",
+      address: "",
+      deliveryAddress: "",
+      contactNo: "",
+      email: "",
+      cnicNo: "",
+      ntn: "",
+      strn: "",
+    });
+    setEditingCustomer(null);
+  };
+
+  const handleOpenEdit = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setFormData({
+      traderId: customer.traderId || "",
+      subCode: customer.subCode || "",
+      name: customer.name || "",
+      company: customer.company || "",
+      brands: customer.brands || "",
+      baseMargin: customer.baseMargin || 0,
+      cashMargin: customer.cashMargin || 0,
+      remarks: customer.remarks || "",
+      address: customer.address || "",
+      deliveryAddress: customer.deliveryAddress || "",
+      contactNo: customer.contactNo || "",
+      email: customer.email || "",
+      cnicNo: customer.cnicNo || "",
+      ntn: customer.ntn || "",
+      strn: customer.strn || "",
+    });
+    setIsCreateOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await customerApi.create(formData);
-      toast.success("Customer created successfully");
-      setFormData({
-        code: "",
-        name: "",
-        address: "",
-        contactNo: "",
-        email: "",
-      });
+      const payload = {
+        ...formData,
+        name: formData.name || formData.company || "Unnamed Customer",
+        baseMargin: Number(formData.baseMargin) || 0,
+        cashMargin: Number(formData.cashMargin) || 0,
+      };
+
+      if (editingCustomer) {
+        await customerApi.update(editingCustomer.id, payload);
+        toast.success("Customer updated successfully");
+      } else {
+        await customerApi.create(payload);
+        toast.success("Customer created successfully");
+      }
+      resetForm();
       setIsCreateOpen(false);
       loadCustomers();
     } catch (error: any) {
-      const errMsg = error?.message || "Failed to create customer";
+      const errMsg = error?.message || "Failed to save customer";
       toast.error(errMsg);
       console.error(error);
     }
@@ -142,9 +202,9 @@ export default function CustomersPage() {
       <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Customers & Traders</h1>
             <p className="text-muted-foreground">
-              Manage customer information and accounts
+              Manage trader profiles, base/cash margins, and customer accounts
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -162,97 +222,192 @@ export default function CustomersPage() {
               {isExporting ? "Queuing…" : "Export"}
             </Button>
             <PermissionGuard permissions="erp.sales.customer.create" fallback={null}>
-              <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <Dialog open={isCreateOpen} onOpenChange={(open) => {
+                setIsCreateOpen(open);
+                if (!open) resetForm();
+              }}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button onClick={resetForm}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add Customer
+                    Add Trader / Customer
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                   <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                      <DialogTitle>Add New Customer</DialogTitle>
+                      <DialogTitle>{editingCustomer ? "Edit Customer / Trader" : "Add New Customer / Trader"}</DialogTitle>
                       <DialogDescription>
-                        Create a new customer account
+                        Set up company details, margins, tax IDs, and addresses.
                       </DialogDescription>
                     </DialogHeader>
+
                     <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="code" className="text-right">
-                          Code
-                        </Label>
-                        <Input
-                          id="code"
-                          value={formData.code}
-                          onChange={(e) =>
-                            setFormData({ ...formData, code: e.target.value })
-                          }
-                          className="col-span-3"
-                          placeholder="Auto-generated if empty"
-                        />
+                      {/* Row 1: Trader ID & Sub Code */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="traderId">Trader ID (System Generated)</Label>
+                          <Input
+                            id="traderId"
+                            value={formData.traderId}
+                            onChange={(e) => setFormData({ ...formData, traderId: e.target.value })}
+                            placeholder="Auto-generated if left empty"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="subCode">Sub Code</Label>
+                          <Input
+                            id="subCode"
+                            value={formData.subCode}
+                            onChange={(e) => setFormData({ ...formData, subCode: e.target.value })}
+                            placeholder="e.g. 310001"
+                          />
+                        </div>
                       </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right">
-                          Name
-                        </Label>
-                        <Input
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) =>
-                            setFormData({ ...formData, name: e.target.value })
-                          }
-                          className="col-span-3"
-                          placeholder="Customer Name"
-                          required
-                        />
+
+                      {/* Row 2: Customer/Company Name & Brands */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="name">Company / Customer Name *</Label>
+                          <Input
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value, company: e.target.value })}
+                            placeholder="e.g. ZAHEER ASSOCIATES"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="brands">Brands</Label>
+                          <Input
+                            id="brands"
+                            value={formData.brands}
+                            onChange={(e) => setFormData({ ...formData, brands: e.target.value })}
+                            placeholder="e.g. Nike / Under Armour"
+                          />
+                        </div>
                       </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="contactNo" className="text-right">
-                          Contact
-                        </Label>
-                        <Input
-                          id="contactNo"
-                          value={formData.contactNo}
-                          onChange={(e) =>
-                            setFormData({ ...formData, contactNo: e.target.value })
-                          }
-                          className="col-span-3"
-                          placeholder="03001234567"
-                        />
+
+                      {/* Row 3: Base Margin % & Cash Margin % */}
+                      <div className="grid grid-cols-2 gap-3 bg-muted/40 p-3 rounded-lg border">
+                        <div>
+                          <Label htmlFor="baseMargin" className="text-primary font-bold">Base Margin (%)</Label>
+                          <Input
+                            id="baseMargin"
+                            type="number"
+                            step="0.01"
+                            value={formData.baseMargin}
+                            onChange={(e) => setFormData({ ...formData, baseMargin: parseFloat(e.target.value) || 0 })}
+                            placeholder="e.g. 35"
+                          />
+                          <p className="text-[11px] text-muted-foreground mt-1">Deducted from sales gross total</p>
+                        </div>
+                        <div>
+                          <Label htmlFor="cashMargin" className="text-primary font-bold">Cash Margin (%)</Label>
+                          <Input
+                            id="cashMargin"
+                            type="number"
+                            step="0.01"
+                            value={formData.cashMargin}
+                            onChange={(e) => setFormData({ ...formData, cashMargin: parseFloat(e.target.value) || 0 })}
+                            placeholder="e.g. 3"
+                          />
+                          <p className="text-[11px] text-muted-foreground mt-1">Additional margin deduction</p>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="email" className="text-right">
-                          Email
-                        </Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) =>
-                            setFormData({ ...formData, email: e.target.value })
-                          }
-                          className="col-span-3"
-                          placeholder="customer@example.com"
-                        />
+
+                      {/* Row 4: Tax Numbers & CNIC */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label htmlFor="ntn">NTN (National Tax No)</Label>
+                          <Input
+                            id="ntn"
+                            value={formData.ntn}
+                            onChange={(e) => setFormData({ ...formData, ntn: e.target.value })}
+                            placeholder="e.g. 1623094-9"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="strn">STRN / GST No</Label>
+                          <Input
+                            id="strn"
+                            value={formData.strn}
+                            onChange={(e) => setFormData({ ...formData, strn: e.target.value })}
+                            placeholder="e.g. 32-77-8762-207-86"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="cnicNo">CNIC</Label>
+                          <Input
+                            id="cnicNo"
+                            value={formData.cnicNo}
+                            onChange={(e) => setFormData({ ...formData, cnicNo: e.target.value })}
+                            placeholder="CNIC No"
+                          />
+                        </div>
                       </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="address" className="text-right">
-                          Address
-                        </Label>
-                        <Textarea
-                          id="address"
-                          value={formData.address}
-                          onChange={(e) =>
-                            setFormData({ ...formData, address: e.target.value })
-                          }
-                          className="col-span-3"
-                          placeholder="Customer address"
+
+                      {/* Row 5: Contact & Email */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="contactNo">Contact No.</Label>
+                          <Input
+                            id="contactNo"
+                            value={formData.contactNo}
+                            onChange={(e) => setFormData({ ...formData, contactNo: e.target.value })}
+                            placeholder="0300-855 2662"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="email">Email</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="customer@example.com"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Row 6: Address & Delivery Address */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="address">Address</Label>
+                          <Textarea
+                            id="address"
+                            value={formData.address}
+                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                            placeholder="Main office/shop address"
+                            rows={2}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="deliveryAddress">Delivery Address</Label>
+                          <Textarea
+                            id="deliveryAddress"
+                            value={formData.deliveryAddress}
+                            onChange={(e) => setFormData({ ...formData, deliveryAddress: e.target.value })}
+                            placeholder="Warehouse / delivery address"
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Row 7: Remarks */}
+                      <div>
+                        <Label htmlFor="remarks">Remarks</Label>
+                        <Input
+                          id="remarks"
+                          value={formData.remarks}
+                          onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                          placeholder="e.g. On Both / On All"
                         />
                       </div>
                     </div>
+
                     <DialogFooter>
-                      <Button type="submit">Create Customer</Button>
+                      <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                      <Button type="submit">{editingCustomer ? "Update Customer" : "Create Customer"}</Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -261,7 +416,7 @@ export default function CustomersPage() {
 
             <PermissionGuard permissions="erp.sales.customer.create" fallback={null}>
               <Button onClick={() => setBulkOpen(true)} variant={"outline"} >
-                <Upload className="mr-2" />
+                <Upload className="mr-2 h-4 w-4" />
                 Bulk Import
               </Button>
               <CustomerBulkUploadModal
@@ -277,7 +432,7 @@ export default function CustomersPage() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Search customers..."
+              placeholder="Search by name, sub code, trader ID, brands, NTN..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -285,14 +440,17 @@ export default function CustomersPage() {
           </div>
         </div>
 
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Address</TableHead>
+                <TableHead>Trader / Sub Code</TableHead>
+                <TableHead>Customer / Company</TableHead>
+                <TableHead>Brands</TableHead>
+                <TableHead className="text-center">Base Margin</TableHead>
+                <TableHead className="text-center">Cash Margin</TableHead>
+                <TableHead>Tax IDs (NTN / STRN)</TableHead>
+                <TableHead>Contact & Address</TableHead>
                 <TableHead className="text-right">Balance</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -300,7 +458,7 @@ export default function CustomersPage() {
             <TableBody>
               {customers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
                     <div className="text-muted-foreground">
                       {searchTerm
                         ? "No customers found matching your search."
@@ -311,40 +469,61 @@ export default function CustomersPage() {
               ) : (
                 customers.map((customer) => (
                   <TableRow key={customer.id}>
-                  <TableCell className="font-medium">{customer.code}</TableCell>
-                  <TableCell>{customer.name}</TableCell>
-                  <TableCell>{customer.contactNo || "-"}</TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {customer.address || "-"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span
-                      className={
-                        customer.balance > 0 ? "text-red-600" : "text-green-600"
-                      }
-                    >
-                      {formatCurrency(customer.balance)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600"
-                        onClick={() => handleDelete(customer.id)}
+                    <TableCell className="font-mono text-xs">
+                      {customer.subCode || "—"}
+                      {customer.traderId && (
+                        <div className="text-[11px] text-muted-foreground font-sans">ID: {customer.traderId}</div>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-semibold">
+                      {customer.name}
+                      {customer.company && customer.company !== customer.name && (
+                        <div className="text-xs font-normal text-muted-foreground">{customer.company}</div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {customer.brands || "—"}
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-emerald-600">
+                      {Number(customer.baseMargin || 0)}%
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-blue-600">
+                      {Number(customer.cashMargin || 0)}%
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {customer.ntn && <div>NTN: {customer.ntn}</div>}
+                      {customer.strn && <div>STRN: {customer.strn}</div>}
+                      {!customer.ntn && !customer.strn && "—"}
+                    </TableCell>
+                    <TableCell className="text-xs max-w-xs truncate">
+                      <div>{customer.contactNo || customer.email || "—"}</div>
+                      <div className="text-muted-foreground truncate">{customer.address || "—"}</div>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      <span
+                        className={
+                          (customer.balance || 0) > 0 ? "text-red-600" : "text-green-600"
+                        }
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                        {formatCurrency(customer.balance || 0)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(customer)}>
+                          <Edit className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600"
+                          onClick={() => handleDelete(customer.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
             </TableBody>
