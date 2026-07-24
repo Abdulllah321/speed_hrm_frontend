@@ -27,6 +27,11 @@ interface DeliveryChallan {
   customer: Customer;
   totalAmount: number;
   items: DeliveryChallanItem[];
+  salesOrder?: {
+    baseMargin?: number;
+    cashMargin?: number;
+    discount?: number;
+  };
 }
 
 interface DeliveryChallanItem {
@@ -35,6 +40,7 @@ interface DeliveryChallanItem {
   item: {
     description: string;
     sku: string;
+    taxRate1?: number;
   };
   deliveredQty: number;
   salePrice: number;
@@ -50,7 +56,7 @@ export default function CreateSalesInvoicePage() {
   const [formData, setFormData] = useState({
     deliveryChallanId: '',
     customerId: '',
-    taxRate: 5,
+    taxRate: 0,
     discount: 0,
     notes: '',
   });
@@ -82,29 +88,63 @@ export default function CreateSalesInvoicePage() {
     }
   };
 
-  const handleChallanSelection = (challanId: string) => {
-    const challan = deliveryChallans.find(c => c.id === challanId);
-    
-    if (challan) {
-      setSelectedChallan(challan);
-      setFormData(prev => ({
-        ...prev,
-        deliveryChallanId: challanId,
-        customerId: challan.customer.id,
-      }));
+  const handleChallanSelection = async (challanId: string) => {
+    try {
+      const response = await deliveryChallanApi.getById(challanId);
+      const challan = response.data;
+      if (challan) {
+        setSelectedChallan(challan);
+        setFormData(prev => ({
+          ...prev,
+          deliveryChallanId: challanId,
+          customerId: challan.customer.id,
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching challan details:', error);
+      toast.error('Failed to load delivery challan details');
     }
   };
 
   const calculateTotals = () => {
     if (!selectedChallan) {
-      return { subtotal: 0, taxAmount: 0, totalAmount: 0 };
+      return { subtotal: 0, taxAmount: 0, discountAmount: 0, totalAmount: 0 };
     }
 
-    const subtotal = selectedChallan.totalAmount;
-    const taxAmount = subtotal * (formData.taxRate / 100);
-    const totalAmount = subtotal + taxAmount - formData.discount;
+    const items = selectedChallan.items || [];
+    const baseMargin = Number(selectedChallan.salesOrder?.baseMargin ?? 0);
+    const cashMargin = Number(selectedChallan.salesOrder?.cashMargin ?? 0);
+    const marginPct = baseMargin + cashMargin;
+    const orderDiscount = Number(selectedChallan.salesOrder?.discount ?? 0);
 
-    return { subtotal, taxAmount, totalAmount };
+    // FBR WOST: same as sales order create page
+    const itemDetails = items.map(item => {
+      const retailPrice = Number(item.salePrice || 0);
+      const itemTaxRate = Number(item.item?.taxRate1 ?? 18);
+      const qty = Number(item.deliveredQty || 0);
+
+      const wostUnit = retailPrice / (1 + itemTaxRate / 100);
+      const wostTotal = wostUnit * qty;
+      const afterDiscount = wostTotal * (1 - marginPct / 100);
+
+      return { wostTotal, afterDiscount, itemTaxRate };
+    });
+
+    const grossTotal = itemDetails.reduce((sum, it) => sum + it.wostTotal, 0);
+    const baseMarginAmount = (grossTotal * baseMargin) / 100;
+    const cashMarginAmount = (grossTotal * cashMargin) / 100;
+    const subtotal = grossTotal - baseMarginAmount - cashMarginAmount;
+
+    const orderDiscountPct = subtotal > 0 ? (orderDiscount / subtotal) * 100 : 0;
+
+    const taxAmount = itemDetails.reduce((sum, it) => {
+      const discountedBase = it.afterDiscount * (1 - orderDiscountPct / 100);
+      return sum + discountedBase * (it.itemTaxRate / 100);
+    }, 0);
+
+    const totalAmount = (subtotal - orderDiscount) + taxAmount;
+
+    return { subtotal, taxAmount, discountAmount: orderDiscount, totalAmount };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,7 +182,7 @@ export default function CreateSalesInvoicePage() {
     }
   };
 
-  const { subtotal, taxAmount, totalAmount } = calculateTotals();
+  const { subtotal, taxAmount, discountAmount, totalAmount } = calculateTotals();
 
   return (
     <div className="container mx-auto p-6">
@@ -179,7 +219,7 @@ export default function CreateSalesInvoicePage() {
                         <div className="flex flex-col">
                           <span className="font-medium">{challan.challanNo}</span>
                           <span className="text-sm text-muted-foreground">
-                            {challan.customer?.name} - {formatCurrency(challan.totalAmount || 0)}
+                            {challan.customer?.name}
                           </span>
                         </div>
                       </SelectItem>
@@ -210,28 +250,7 @@ export default function CreateSalesInvoicePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="taxRate">Tax Rate (%)</Label>
-                <Input
-                  id="taxRate"
-                  type="number"
-                  step="0.01"
-                  value={formData.taxRate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, taxRate: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="discount">Discount Amount</Label>
-                <Input
-                  id="discount"
-                  type="number"
-                  step="0.01"
-                  value={formData.discount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, discount: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
+
 
             <div>
               <Label htmlFor="notes">Notes</Label>
@@ -246,43 +265,6 @@ export default function CreateSalesInvoicePage() {
           </CardContent>
         </Card>
 
-        {/* Invoice Items Preview */}
-        {selectedChallan && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Invoice Items ({selectedChallan.items?.length || 0})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {selectedChallan.items?.map((item, index) => (
-                  <div key={index} className="border p-4 rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="md:col-span-2">
-                        <Label>Item</Label>
-                        <div className="text-sm">
-                          <div className="font-medium">{item.item?.description || 'N/A'}</div>
-                          <div className="text-muted-foreground">SKU: {item.item?.sku || 'N/A'}</div>
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Quantity</Label>
-                        <div className="text-sm font-medium">{item.deliveredQty}</div>
-                      </div>
-                      <div>
-                        <Label>Sale Price</Label>
-                        <div className="text-sm font-medium">{formatCurrency(item.salePrice || 0)}</div>
-                      </div>
-                    </div>
-                  </div>
-                )) || (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No items found
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Invoice Summary */}
         <Card>
@@ -291,17 +273,19 @@ export default function CreateSalesInvoicePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Net Subtotal:</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Tax ({formData.taxRate}%):</span>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-sm text-amber-600">
+                  <span>Discount:</span>
+                  <span>-{formatCurrency(discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tax (Item-wise FBR):</span>
                 <span>{formatCurrency(taxAmount)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Discount:</span>
-                <span>-{formatCurrency(formData.discount)}</span>
               </div>
               <hr />
               <div className="flex justify-between font-bold text-lg">
