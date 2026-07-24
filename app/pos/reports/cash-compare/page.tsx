@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { getLocations } from "@/lib/actions/location";
 
 export default function CashCompareReportPage() {
   const now = new Date();
@@ -55,16 +56,12 @@ export default function CashCompareReportPage() {
   useEffect(() => {
     async function fetchLocations() {
       try {
-        const res = await authFetch("/inventory/locations");
-        if (res.ok && res.data) {
-          const locList = Array.isArray(res.data) ? res.data : res.data.data || [];
-          const stockLocations = locList.filter(
-            (loc: any) => loc.isStockLocation !== false
-          );
-          setLocations(stockLocations);
+        const location = await getLocations(true);
+        if (location.data) {
+          setLocations(location.data as any[]);
         }
-      } catch (err) {
-        console.error("Failed loading locations", err);
+      } catch (error) { 
+        toast.error("Failed to load locations");
       }
     }
     fetchLocations();
