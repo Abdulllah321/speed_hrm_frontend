@@ -93,20 +93,39 @@ export interface BalanceSheetAccount {
   code: string;
   name: string;
   type: string;
+  isGroup?: boolean;
+  isTagAccount?: boolean;
+  isVirtual?: boolean;
+  parentId?: string | null;
+  level?: number;
   amount: number;
+  compareAmount?: number;
+  variance?: number;
+  percentageChange?: number;
   parent?: { id: string; code: string; name: string } | null;
 }
 
 export interface BalanceSheetResult {
   assets: BalanceSheetAccount[];
   totalAssets: number;
+  compareTotalAssets?: number;
   liabilities: BalanceSheetAccount[];
   totalLiabilities: number;
+  compareTotalLiabilities?: number;
   equity: BalanceSheetAccount[];
   totalEquity: number;
+  compareTotalEquity?: number;
   totalLiabilitiesAndEquity: number;
+  compareTotalLiabilitiesAndEquity?: number;
+  currentNetIncome?: number;
+  compareCurrentNetIncome?: number;
+  workingCapital?: number;
+  compareWorkingCapital?: number;
   balanced: boolean;
   asOf?: string;
+  compareAsOf?: string;
+  includeTagAccounts?: boolean;
+  showZeroBalances?: boolean;
 }
 
 function buildQuery(params: Record<string, string | undefined>) {
@@ -180,9 +199,26 @@ export async function getIncomeStatement(from?: string, to?: string): Promise<{ 
   }
 }
 
-export async function getBalanceSheet(asOf?: string): Promise<{ status: boolean; data?: BalanceSheetResult; message?: string }> {
+export async function getBalanceSheet(
+  params?: string | {
+    asOf?: string;
+    compareAsOf?: string;
+    includeTagAccounts?: boolean;
+    showZeroBalances?: boolean;
+  }
+): Promise<{ status: boolean; data?: BalanceSheetResult; message?: string }> {
   try {
-    const res = await authFetch(`/finance/reports/balance-sheet${buildQuery({ asOf })}`, {});
+    const opts = typeof params === "string" ? { asOf: params } : params;
+    const { asOf, compareAsOf, includeTagAccounts, showZeroBalances } = opts ?? {};
+    const res = await authFetch(
+      `/finance/reports/balance-sheet${buildQuery({
+        asOf,
+        compareAsOf,
+        includeTagAccounts: includeTagAccounts !== undefined ? String(includeTagAccounts) : undefined,
+        showZeroBalances: showZeroBalances ? "true" : undefined,
+      })}`,
+      {}
+    );
     return res.data;
   } catch (e: any) {
     return { status: false, message: e.message };
