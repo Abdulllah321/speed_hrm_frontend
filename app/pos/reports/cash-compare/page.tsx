@@ -51,14 +51,17 @@ export default function CashCompareReportPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [exporting, setExporting] = useState<boolean>(false);
 
-  // Fetch available locations
+  // Fetch available stock locations
   useEffect(() => {
     async function fetchLocations() {
       try {
         const res = await authFetch("/inventory/locations");
         if (res.ok && res.data) {
           const locList = Array.isArray(res.data) ? res.data : res.data.data || [];
-          setLocations(locList);
+          const stockLocations = locList.filter(
+            (loc: any) => loc.isStockLocation !== false
+          );
+          setLocations(stockLocations);
         }
       } catch (err) {
         console.error("Failed loading locations", err);
