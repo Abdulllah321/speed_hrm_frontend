@@ -163,14 +163,14 @@ export function ShiftGuard({ children }: { children: React.ReactNode }) {
     // 2. Super Admins/Managers bypass shift float requirements on non-transactional routes,
     // but MUST open a shift to access transactional views (new-sale, checkout, pos dashboard)
     const isTransactionalPath = pathname === "/pos" || pathname === "/pos/new-sale" || pathname === "/pos/checkout";
-    if (isAdmin() && !isTransactionalPath) {
+    if (!isTransactionalPath) {
         return <>{children}</>;
     }
 
-    // 3. Always exclude the Shift Management screen itself so users can click "Open Shift" or view history
-    if (pathname === "/pos/shifts") {
-        return <>{children}</>;
-    }
+    // // 3. Always exclude the Shift Management screen itself so users can click "Open Shift" or view history
+    // if (pathname === "/pos/shifts") {
+    //     return <>{children}</>;
+    // }
 
     const isDrawerOpen = sessionData?.isDrawerOpen;
     const hasSession = !!sessionData;
