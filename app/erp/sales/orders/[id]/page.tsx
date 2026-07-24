@@ -333,8 +333,13 @@ export default function SalesOrderViewPage() {
                   <span className="font-medium">Name:</span> {order.customer.name}
                 </div>
                 <div>
-                  <span className="font-medium">Code:</span> {order.customer.code}
+                  <span className="font-medium">Trader ID:</span> {order.customer.traderId || 'N/A'}
                 </div>
+                {order.customer.subCode && (
+                  <div>
+                    <span className="font-medium">Sub Code:</span> {order.customer.subCode}
+                  </div>
+                )}
                 {order.customer.email && (
                   <div>
                     <span className="font-medium">Email:</span> {order.customer.email}
@@ -422,23 +427,41 @@ export default function SalesOrderViewPage() {
           {/* Order Summary */}
           <Card>
             <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
+              <CardTitle>Order Summary & Margins</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Gross Total:</span>
+                  <span>{formatCurrency((Number(order.subtotal) || 0) + (Number(order.baseMarginAmount) || 0) + (Number(order.cashMarginAmount) || 0))}</span>
+                </div>
+                {(Number(order.baseMarginAmount) > 0 || Number(order.baseMargin) > 0) && (
+                  <div className="flex justify-between text-emerald-600 font-medium">
+                    <span>Base Margin ({Number(order.baseMargin || 0)}% Cut):</span>
+                    <span>-{formatCurrency(Number(order.baseMarginAmount || 0))}</span>
+                  </div>
+                )}
+                {(Number(order.cashMarginAmount) > 0 || Number(order.cashMargin) > 0) && (
+                  <div className="flex justify-between text-blue-600 font-medium">
+                    <span>Cash Margin ({Number(order.cashMargin || 0)}% Cut):</span>
+                    <span>-{formatCurrency(Number(order.cashMarginAmount || 0))}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-semibold border-t border-b py-1">
+                  <span>Net Subtotal:</span>
                   <span>{formatCurrency(order.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax ({order.taxRate}%):</span>
                   <span>{formatCurrency(order.taxAmount)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Discount:</span>
-                  <span>{formatCurrency(order.discount || 0)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg border-t pt-2">
+                {Number(order.discount) > 0 && (
+                  <div className="flex justify-between text-amber-600">
+                    <span>Discount:</span>
+                    <span>-{formatCurrency(order.discount || 0)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-xl border-t pt-2 text-primary">
                   <span>Grand Total:</span>
                   <span>{formatCurrency(order.grandTotal)}</span>
                 </div>
@@ -484,6 +507,7 @@ export default function SalesOrderViewPage() {
               <div><span className="font-bold inline-block w-36">Stock Deliverd From :</span> {order.warehouse?.name || 'Warehouse'}</div>
               <div><span className="font-bold inline-block w-36">Customer Name :</span> {order.customer?.name || 'N/A'}</div>
               <div><span className="font-bold inline-block w-36">Address :</span> {order.customer?.address || 'N/A'}</div>
+              <div><span className="font-bold inline-block w-36">Delivery Address :</span> {order.customer?.deliveryAddress || 'N/A'}</div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">

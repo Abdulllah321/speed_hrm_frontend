@@ -5,10 +5,23 @@ import { revalidatePath } from "next/cache";
 
 export interface Customer {
   id: string;
-  code: string;
+  traderId?: string;
+  code?: string;
+  subCode?: string;
   name: string;
+  company?: string;
+  brands?: string;
+  baseMargin?: number;
+  cashMargin?: number;
+  remarks?: string;
   address?: string;
+  deliveryAddress?: string;
   contactNo?: string;
+  email?: string;
+  cnicNo?: string;
+  ntn?: string;
+  strn?: string;
+  balance?: number;
 }
 
 export async function getCustomers() {

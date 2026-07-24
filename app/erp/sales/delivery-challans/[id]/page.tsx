@@ -406,6 +406,11 @@ export default function DeliveryChallanViewPage() {
                 <div>
                   <span className="font-medium">Customer:</span> {challan.customer?.name || challan.salesOrder?.customer?.name || 'N/A'}
                 </div>
+                {challan.customer?.deliveryAddress && (
+                  <div>
+                    <span className="font-medium text-primary">Delivery Address:</span> {challan.customer.deliveryAddress}
+                  </div>
+                )}
                 <div>
                   <span className="font-medium">Order Date:</span> {challan.salesOrder?.orderDate 
                     ? new Date(challan.salesOrder.orderDate).toLocaleDateString() 
@@ -569,6 +574,7 @@ export default function DeliveryChallanViewPage() {
               <div><span className="font-bold inline-block w-36">Stock Deliverd From :</span> {challan.warehouse?.name || challan.salesOrder?.warehouse?.name || 'Warehouse'}</div>
               <div><span className="font-bold inline-block w-36">Customer Name :</span> {challan.customer?.name || challan.salesOrder?.customer?.name || 'N/A'}</div>
               <div><span className="font-bold inline-block w-36">Address :</span> {challan.customer?.address || challan.salesOrder?.customer?.address || 'N/A'}</div>
+              <div><span className="font-bold inline-block w-36">Delivery Address :</span> {challan.customer?.deliveryAddress || challan.salesOrder?.customer?.deliveryAddress || 'N/A'}</div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">

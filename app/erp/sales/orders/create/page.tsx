@@ -52,6 +52,7 @@ interface SelectedItem {
   discount: number;
   total: number;
   availableStock: number;
+  taxRate: number;
 }
 
 export default function CreateSalesOrderPage() {
@@ -63,9 +64,21 @@ export default function CreateSalesOrderPage() {
   // Create Order Form State
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
-  const [taxRate, setTaxRate] = useState(5);
-  const [orderDiscount, setOrderDiscount] = useState(0);
+  const [baseMargin, setBaseMargin] = useState(0);
+  const [cashMargin, setCashMargin] = useState(0);
+  const [taxRate, setTaxRate] = useState(0);
+  const [orderDiscountPct, setOrderDiscountPct] = useState(0);
   const [notes, setNotes] = useState("");
+
+  // Handle Customer Selection & Auto-populate Margins
+  const handleCustomerChange = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setBaseMargin(Number(customer.baseMargin || 0));
+      setCashMargin(Number(customer.cashMargin || 0));
+    }
+  };
 
   // Item Selection State
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
@@ -181,6 +194,7 @@ export default function CreateSalesOrderPage() {
       discount: 0,
       total: itemData.unitPrice || 0,
       availableStock: itemData.availableStock,
+      taxRate: Number(itemData.taxRate1 || 0),
     };
 
     setSelectedItems(prev => [...prev, newItem]);
@@ -193,10 +207,7 @@ export default function CreateSalesOrderPage() {
   const updateItem = (id: string, field: keyof SelectedItem, value: number) => {
     setSelectedItems(prev => prev.map(item => {
       if (item.id === id) {
-        const updated = { ...item, [field]: value };
-        // Recalculate total
-        updated.total = (updated.salePrice * updated.quantity) - updated.discount;
-        return updated;
+        return { ...item, [field]: value };
       }
       return item;
     }));
@@ -207,10 +218,54 @@ export default function CreateSalesOrderPage() {
     setSelectedItems(prev => prev.filter(item => item.id !== id));
   };
 
-  // Calculate totals
-  const subtotal = selectedItems.reduce((sum, item) => sum + item.total, 0);
-  const taxAmount = subtotal * (taxRate / 100);
-  const grandTotal = subtotal + taxAmount - orderDiscount;
+  // Calculate totals & margins FBR style
+  const marginPct = baseMargin + cashMargin;
+
+  const itemDetails = selectedItems.map(item => {
+    const retailPrice = Number(item.salePrice || 0);
+    const itemTaxRate = Number(item.taxRate || 18);
+    const quantity = Number(item.quantity || 0);
+    const manualDiscount = Number(item.discount || 0);
+
+    // 1. Calculate WOST: Retail / (1 + TaxRate/100)
+    const wostUnit = retailPrice / (1 + itemTaxRate / 100);
+    const wostTotal = wostUnit * quantity;
+
+    // 2. Calculate customer margin discount on WOST
+    const marginDiscount = wostTotal * (marginPct / 100);
+    
+    // 3. After Discount value: WOST - discount
+    const afterDiscount = wostTotal - marginDiscount;
+
+    // 4. Apply manual order discount (Additional Discount %) on afterDiscount base
+    const discountedBase = afterDiscount * (1 - orderDiscountPct / 100);
+
+    // 5. Calculate Sales Tax on discounted base
+    const itemTaxAmount = discountedBase * (itemTaxRate / 100);
+
+    // 6. Total for the item: (Discounted Base + Tax) - manual discount
+    const itemTotal = (discountedBase + itemTaxAmount) - manualDiscount;
+
+    return {
+      ...item,
+      wostTotal,
+      marginDiscount,
+      afterDiscount,
+      discountedBase,
+      itemTaxAmount,
+      itemTotal
+    };
+  });
+
+  const grossTotal = itemDetails.reduce((sum, item) => sum + item.wostTotal, 0);
+  const baseMarginAmount = (grossTotal * baseMargin) / 100;
+  const cashMarginAmount = (grossTotal * cashMargin) / 100;
+  const totalMarginDeduction = baseMarginAmount + cashMarginAmount;
+  const subtotal = grossTotal - totalMarginDeduction; // Net Subtotal
+  const orderDiscountAmount = (subtotal * orderDiscountPct) / 100;
+  const taxableAmount = subtotal - orderDiscountAmount; // Subtotal after Additional Discount
+  const taxAmount = itemDetails.reduce((sum, item) => sum + item.itemTaxAmount, 0);
+  const grandTotal = taxableAmount + taxAmount;
 
   // Item search
   useEffect(() => {
@@ -231,8 +286,10 @@ export default function CreateSalesOrderPage() {
       const orderData = {
         customerId: selectedCustomerId,
         warehouseId: selectedWarehouseId,
+        baseMargin,
+        cashMargin,
         taxRate,
-        discount: orderDiscount,
+        discount: orderDiscountAmount,
         items: selectedItems.map(item => ({
           itemId: item.id,
           quantity: item.quantity,
@@ -297,14 +354,14 @@ export default function CreateSalesOrderPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Customer *</Label>
-                <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                <Select value={selectedCustomerId} onValueChange={handleCustomerChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select customer" />
                   </SelectTrigger>
                   <SelectContent>
                     {customers.map((customer) => (
                       <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name} ({customer.code})
+                        {customer.name} (Trader ID: {customer.traderId || 'N/A'}{customer.subCode ? ` | Sub: ${customer.subCode}` : ''}) — Margin: {Number(customer.baseMargin || 0)}% + {Number(customer.cashMargin || 0)}%
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -494,20 +551,19 @@ export default function CreateSalesOrderPage() {
               <CardTitle>Selected Items ({selectedItems.length})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <Table>
+              <div className="rounded-md border">                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
                       <TableHead>Sale Price</TableHead>
                       <TableHead>Qty</TableHead>
-                      <TableHead>Discount</TableHead>
+                      <TableHead>Tax Rate</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedItems.map((item) => (
+                    {itemDetails.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
                           <div>
@@ -538,16 +594,11 @@ export default function CreateSalesOrderPage() {
                           />
                         </TableCell>
                         <TableCell>
-                          <Input
-                            type="number"
-                            value={item.discount}
-                            onChange={(e) => updateItem(item.id, 'discount', Number(e.target.value))}
-                            className="w-24"
-                            min="0"
-                            step="0.01"
-                          />
+                          <span className="font-mono text-xs bg-muted px-2 py-1 rounded border">
+                            {item.taxRate}%
+                          </span>
                         </TableCell>
-                        <TableCell>{formatCurrency(item.total)}</TableCell>
+                        <TableCell>{formatCurrency(item.itemTotal)}</TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -570,29 +621,42 @@ export default function CreateSalesOrderPage() {
         {/* Order Configuration */}
         <Card>
           <CardHeader>
-            <CardTitle>Order Configuration</CardTitle>
+            <CardTitle>Order Configuration & Margins</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Tax Rate (%)</Label>
+                <Label className="text-emerald-700 dark:text-emerald-400 font-semibold">Base Margin (%)</Label>
                 <Input
                   type="number"
-                  value={taxRate}
-                  onChange={(e) => setTaxRate(Number(e.target.value))}
+                  value={baseMargin}
+                  onChange={(e) => setBaseMargin(Number(e.target.value))}
                   min="0"
                   max="100"
                   step="0.01"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Order Discount</Label>
+                <Label className="text-blue-700 dark:text-blue-400 font-semibold">Cash Margin (%)</Label>
                 <Input
                   type="number"
-                  value={orderDiscount}
-                  onChange={(e) => setOrderDiscount(Number(e.target.value))}
+                  value={cashMargin}
+                  onChange={(e) => setCashMargin(Number(e.target.value))}
                   min="0"
+                  max="100"
                   step="0.01"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Manual Order Discount (%)</Label>
+                <Input
+                  type="number"
+                  value={orderDiscountPct}
+                  onChange={(e) => setOrderDiscountPct(Number(e.target.value))}
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="0"
                 />
               </div>
             </div>
@@ -616,19 +680,43 @@ export default function CreateSalesOrderPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Gross Subtotal:</span>
+                  <span>{formatCurrency(grossTotal)}</span>
+                </div>
+                {baseMargin > 0 && (
+                  <div className="flex justify-between text-emerald-600 font-medium">
+                    <span>Base Margin ({baseMargin}% Cut):</span>
+                    <span>-{formatCurrency(baseMarginAmount)}</span>
+                  </div>
+                )}
+                {cashMargin > 0 && (
+                  <div className="flex justify-between text-blue-600 font-medium">
+                    <span>Cash Margin ({cashMargin}% Cut):</span>
+                    <span>-{formatCurrency(cashMarginAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-semibold border-t border-b py-1">
+                  <span>Net Subtotal:</span>
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
+                {orderDiscountPct > 0 && (
+                  <>
+                    <div className="flex justify-between text-amber-600">
+                      <span>Additional Discount ({orderDiscountPct}%):</span>
+                      <span>-{formatCurrency(orderDiscountAmount)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-gray-700 border-b pb-1">
+                      <span>Net Subtotal after Discount:</span>
+                      <span>{formatCurrency(taxableAmount)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between">
                   <span>Tax ({taxRate}%):</span>
                   <span>{formatCurrency(taxAmount)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Discount:</span>
-                  <span>{formatCurrency(orderDiscount)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg border-t pt-2">
+                <div className="flex justify-between font-bold text-xl border-t pt-2 text-primary">
                   <span>Grand Total:</span>
                   <span>{formatCurrency(grandTotal)}</span>
                 </div>

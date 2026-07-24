@@ -145,7 +145,7 @@ export default function SalesOrderVerificationPage() {
           <CardContent>
             <div className="text-xl font-bold">{order.customer.name}</div>
             <p className="text-xs text-muted-foreground">
-              Code: {order.customer.code}
+              Trader ID: {order.customer.traderId || 'N/A'} {order.customer.subCode ? `| Sub Code: ${order.customer.subCode}` : ''}
             </p>
           </CardContent>
         </Card>

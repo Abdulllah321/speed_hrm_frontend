@@ -1314,11 +1314,22 @@ export const debitNoteApi = {
 // Sales Module APIs
 export interface Customer {
   id: string;
-  code: string;
+  traderId?: string;
+  code?: string;
+  subCode?: string;
   name: string;
+  company?: string;
+  brands?: string;
+  baseMargin?: number;
+  cashMargin?: number;
+  remarks?: string;
   address?: string;
+  deliveryAddress?: string;
   contactNo?: string;
   email?: string;
+  cnicNo?: string;
+  ntn?: string;
+  strn?: string;
   balance: number;
   createdAt: string;
   updatedAt: string;
@@ -1332,6 +1343,10 @@ export interface SalesOrder {
   warehouseId?: string;
   orderDate: string;
   status: 'DRAFT' | 'CONFIRMED' | 'WAREHOUSE_VERIFIED' | 'CANCELLED';
+  baseMargin?: number;
+  cashMargin?: number;
+  baseMarginAmount?: number;
+  cashMarginAmount?: number;
   subtotal: number;
   taxRate: number;
   taxAmount: number;
@@ -1378,6 +1393,10 @@ export interface SalesInvoice {
   invoiceDate: string;
   dueDate?: string;
   status: 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED';
+  baseMargin?: number;
+  cashMargin?: number;
+  baseMarginAmount?: number;
+  cashMarginAmount?: number;
   subtotal: number;
   taxAmount: number;
   grandTotal: number;
@@ -1397,7 +1416,7 @@ export const customerApi = {
     body: JSON.stringify(data),
   }),
   update: (id: string, data: Partial<Customer>) => fetchApi<{ status: boolean; data: Customer }>(`/sales/customers/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify(data),
   }),
   delete: (id: string) => fetchApi<{ status: boolean; message: string }>(`/sales/customers/${id}`, {
