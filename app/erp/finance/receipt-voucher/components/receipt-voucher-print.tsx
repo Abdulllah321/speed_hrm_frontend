@@ -118,10 +118,10 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
             </th>
           </tr>
           <tr className="border-y-2 border-black">
-            <th className="py-0.5 pr-1 text-left font-bold w-[50%]">Account Code/Description</th>
-            <th className="py-0.5 pr-1 text-left font-bold w-[32%]">Naration</th>
-            <th className="py-0.5 pr-1 text-right font-bold w-[9%]">Debit</th>
-            <th className="py-0.5 text-right font-bold w-[9%]">Credit</th>
+            <th className="py-0.5 pr-1 text-left font-bold w-[49%]">Account Code/Description</th>
+            <th className="py-0.5 pr-1 text-left font-bold w-[37%]">Naration</th>
+            <th className="py-0.5 pr-1 text-right font-bold w-[7%]">Debit</th>
+            <th className="py-0.5 pr-1 text-right font-bold w-[7%]">Credit</th>
           </tr>
         </thead>
         <tbody>
@@ -170,7 +170,7 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                 <td className="py-px pr-1 text-right tabular-nums font-semibold">
                   {Number(d.debit) > 0 ? fmt(Number(d.debit)) : ""}
                 </td>
-                <td className="py-px text-right tabular-nums">
+                <td className="py-px pr-1 text-right tabular-nums">
                 </td>
               </tr>
             );
@@ -208,7 +208,7 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
               <td className="py-px pr-1 text-right tabular-nums font-semibold">
                 {fmt(totalDebit)}
               </td>
-              <td className="py-px text-right tabular-nums">
+              <td className="py-px pr-1 text-right tabular-nums">
               </td>
             </tr>
           )}
@@ -256,7 +256,7 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                 </td>
                 <td className="py-px pr-1 text-right tabular-nums">
                 </td>
-                <td className="py-px text-right tabular-nums font-semibold">
+                <td className="py-px pr-1 text-right tabular-nums font-semibold">
                   {fmt(Number(d.credit))}
                 </td>
               </tr>
@@ -289,13 +289,13 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
             </div>
           </div>
           {/* Debit total */}
-          <div className="w-[9%] py-px pr-1 text-right">
+          <div className="w-[7%] py-px pr-1 text-right">
             <div className="border-t border-black pb-px" style={{ borderBottom: '3px double black' }}>
               <span className="tabular-nums text-[9px] sm:text-[10px] block pt-px font-bold">{fmt(totalDebit)}</span>
             </div>
           </div>
           {/* Credit total */}
-          <div className="w-[9%] py-px text-right">
+          <div className="w-[7%] py-px pr-1 text-right">
             <div className="border-t border-black pb-px" style={{ borderBottom: '3px double black' }}>
               <span className="tabular-nums text-[9px] sm:text-[10px] block pt-px font-bold">{fmt(totalCredit)}</span>
             </div>
