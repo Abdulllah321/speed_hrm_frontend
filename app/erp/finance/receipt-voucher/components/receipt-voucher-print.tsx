@@ -72,7 +72,7 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
       <table className="w-full text-[9px] sm:text-[10px] border-collapse table-fixed">
         <thead>
           <tr>
-            <th colSpan={5} className="font-normal text-left pb-1">
+            <th colSpan={4} className="font-normal text-left pb-1">
               {/* Header */}
               <div className="flex justify-between mb-1.5 gap-2 items-start text-black">
                 {/* Logo */}
@@ -84,7 +84,7 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                 <div className="w-[35%] flex flex-col justify-center">
                   <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
                     <span className="text-base sm:text-lg font-extrabold underline decoration-2 underline-offset-2 tracking-wide">
-                      {isBank ? "Bank" : "Cash"} Receipt
+                      {isBank ? "Bank Receipt" : "Cash Receipt"}
                     </span>
                     <br />
                     <span className="text-base sm:text-lg font-extrabold tracking-wide">Voucher</span>
@@ -118,9 +118,8 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
             </th>
           </tr>
           <tr className="border-y-2 border-black">
-            <th className="py-0.5 pr-1 text-left font-bold w-[38%]">Account Code/Description</th>
-            <th className="py-0.5 pr-1 text-left font-bold w-[28%]">Naration</th>
-            <th className="py-0.5 pr-1 text-right font-bold w-[10%]">Taxable</th>
+            <th className="py-0.5 pr-1 text-left font-bold w-[42%]">Account Code/Description</th>
+            <th className="py-0.5 pr-1 text-left font-bold w-[34%]">Naration</th>
             <th className="py-0.5 pr-1 text-right font-bold w-[12%]">Debit</th>
             <th className="py-0.5 text-right font-bold w-[12%]">Credit</th>
           </tr>
@@ -146,30 +145,28 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                        <span className="uppercase text-gray-700">{d.tagAccountName}</span>
                      </div>
                   )}
-                  {/* Ref# / taxType / taxable */}
-                  {(r1 || r2 || tType || taxableVal) && (
+                  {/* Ref# */}
+                  {(r1 || r2) && (
                     <div className="flex gap-1 sm:gap-2 mt-px text-[8px] text-gray-600">
                       <span className="w-12 sm:w-16 shrink-0 font-bold whitespace-nowrap">
-                        Ref# {tType ? tType : ""}
+                        Ref#
                       </span>
                       <span className="uppercase flex-1">
                         {r1 || ""}
                         {r1 && r2 ? " / " : ""}
                         {r2 || ""}
                       </span>
-                      {taxableVal && (
-                        <span className="font-semibold whitespace-nowrap">
-                          Txbl: {fmt(Number(taxableVal))}
-                        </span>
-                      )}
                     </div>
                   )}
                 </td>
                 <td className="py-px pr-1 leading-tight text-gray-700">
-                  {d.narration || voucher.description}
-                </td>
-                <td className="py-px pr-1 text-right tabular-nums text-gray-600">
-                  {taxableVal ? fmt(Number(taxableVal)) : ""}
+                  <div>{d.narration || voucher.description}</div>
+                  {(taxableVal && Number(taxableVal) > 0 || tType) && (
+                    <div className="text-[8px] text-gray-600 font-semibold mt-0.5">
+                      {tType ? `${tType} ` : ""}
+                      {taxableVal && Number(taxableVal) > 0 ? `Taxable: ${fmt(Number(taxableVal))}` : ""}
+                    </div>
+                  )}
                 </td>
                 <td className="py-px pr-1 text-right tabular-nums font-semibold">
                   {Number(d.debit) > 0 ? fmt(Number(d.debit)) : ""}
@@ -191,12 +188,11 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                 {(() => {
                   const r1 = voucher.refBillNo;
                   const r2 = (voucher as any).refBillNo2;
-                  const tType = voucher.taxType;
-                  if (!r1 && !r2 && !tType) return null;
+                  if (!r1 && !r2) return null;
                   return (
                     <div className="flex gap-1 sm:gap-2 mt-px text-[8px] text-gray-600">
                       <span className="w-12 sm:w-16 shrink-0 font-bold whitespace-nowrap">
-                        Ref# {tType ? tType : ""}
+                        Ref#
                       </span>
                       <span className="uppercase">
                         {r1 || ""}
@@ -210,7 +206,6 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
               <td className="py-px pr-1 leading-tight text-gray-700">
                 {voucher.description}
               </td>
-              <td className="py-px pr-1 text-right tabular-nums text-gray-600"></td>
               <td className="py-px pr-1 text-right tabular-nums font-semibold">
                 {fmt(totalDebit)}
               </td>
@@ -238,30 +233,28 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                        <span className="uppercase text-gray-700">{d.tagAccountName}</span>
                      </div>
                   )}
-                  {/* Ref# / taxType / taxable */}
-                  {(r1 || r2 || tType || taxableVal) && (
+                  {/* Ref# */}
+                  {(r1 || r2) && (
                     <div className="flex gap-1 sm:gap-2 mt-px text-[8px] text-gray-600">
                       <span className="w-12 sm:w-16 shrink-0 font-bold whitespace-nowrap">
-                        Ref# {tType ? tType : ""}
+                        Ref#
                       </span>
                       <span className="uppercase flex-1">
                         {r1 || ""}
                         {r1 && r2 ? " / " : ""}
                         {r2 || ""}
                       </span>
-                      {taxableVal && (
-                        <span className="font-semibold whitespace-nowrap">
-                          Txbl: {fmt(Number(taxableVal))}
-                        </span>
-                      )}
                     </div>
                   )}
                 </td>
                 <td className="py-px pr-1 leading-tight text-gray-700">
-                  {d.narration || voucher.description}
-                </td>
-                <td className="py-px pr-1 text-right tabular-nums text-gray-600">
-                  {taxableVal ? fmt(Number(taxableVal)) : ""}
+                  <div>{d.narration || voucher.description}</div>
+                  {(taxableVal && Number(taxableVal) > 0 || tType) && (
+                    <div className="text-[8px] text-gray-600 font-semibold mt-0.5">
+                      {tType ? `${tType} ` : ""}
+                      {taxableVal && Number(taxableVal) > 0 ? `Taxable: ${fmt(Number(taxableVal))}` : ""}
+                    </div>
+                  )}
                 </td>
                 <td className="py-px pr-1 text-right tabular-nums">
                 </td>
@@ -274,7 +267,7 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
         </tbody>
         <tfoot className="display-table-footer-group">
           <tr>
-            <td colSpan={5} className="pt-2 pb-0 font-normal text-left">
+            <td colSpan={4} className="pt-2 pb-0 font-normal text-left">
               <div className="flex justify-between items-center text-[8px] sm:text-[9px] text-gray-500 border-t border-gray-300 pt-1">
                 <div>
                   Printed At: <span className="font-semibold">{printedAt}</span>
@@ -297,8 +290,6 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
               <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(totalDebit)}</span>
             </div>
           </div>
-          {/* Taxable total spacer */}
-          <div className="w-[10%]" />
           {/* Debit total */}
           <div className="w-[12%] py-px pr-1 text-right">
             <div className="border-t border-black pb-px" style={{ borderBottom: '3px double black' }}>
