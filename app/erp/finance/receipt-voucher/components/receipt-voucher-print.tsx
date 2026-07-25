@@ -118,10 +118,10 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
             </th>
           </tr>
           <tr className="border-y-2 border-black">
-            <th className="py-0.5 pr-1 text-left font-bold w-[42%]">Account Code/Description</th>
-            <th className="py-0.5 pr-1 text-left font-bold w-[34%]">Naration</th>
-            <th className="py-0.5 pr-1 text-right font-bold w-[12%]">Debit</th>
-            <th className="py-0.5 text-right font-bold w-[12%]">Credit</th>
+            <th className="py-0.5 pr-1 text-left font-bold w-[50%]">Account Code/Description</th>
+            <th className="py-0.5 pr-1 text-left font-bold w-[32%]">Naration</th>
+            <th className="py-0.5 pr-1 text-right font-bold w-[9%]">Debit</th>
+            <th className="py-0.5 text-right font-bold w-[9%]">Credit</th>
           </tr>
         </thead>
         <tbody>
@@ -161,12 +161,11 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                 </td>
                 <td className="py-px pr-1 leading-tight text-gray-700">
                   <div>{d.narration || voucher.description}</div>
-                  {(taxableVal && Number(taxableVal) > 0 || tType) && (
+                  {taxableVal && Number(taxableVal) > 0 ? (
                     <div className="text-[8px] text-gray-600 font-semibold mt-0.5">
-                      {tType ? `${tType} ` : ""}
-                      {taxableVal && Number(taxableVal) > 0 ? `Taxable: ${fmt(Number(taxableVal))}` : ""}
+                      Taxable: {fmt(Number(taxableVal))}
                     </div>
-                  )}
+                  ) : null}
                 </td>
                 <td className="py-px pr-1 text-right tabular-nums font-semibold">
                   {Number(d.debit) > 0 ? fmt(Number(d.debit)) : ""}
@@ -249,12 +248,11 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                 </td>
                 <td className="py-px pr-1 leading-tight text-gray-700">
                   <div>{d.narration || voucher.description}</div>
-                  {(taxableVal && Number(taxableVal) > 0 || tType) && (
+                  {taxableVal && Number(taxableVal) > 0 ? (
                     <div className="text-[8px] text-gray-600 font-semibold mt-0.5">
-                      {tType ? `${tType} ` : ""}
-                      {taxableVal && Number(taxableVal) > 0 ? `Taxable: ${fmt(Number(taxableVal))}` : ""}
+                      Taxable: {fmt(Number(taxableVal))}
                     </div>
-                  )}
+                  ) : null}
                 </td>
                 <td className="py-px pr-1 text-right tabular-nums">
                 </td>
@@ -291,13 +289,13 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
             </div>
           </div>
           {/* Debit total */}
-          <div className="w-[12%] py-px pr-1 text-right">
+          <div className="w-[9%] py-px pr-1 text-right">
             <div className="border-t border-black pb-px" style={{ borderBottom: '3px double black' }}>
               <span className="tabular-nums text-[9px] sm:text-[10px] block pt-px font-bold">{fmt(totalDebit)}</span>
             </div>
           </div>
           {/* Credit total */}
-          <div className="w-[12%] py-px text-right">
+          <div className="w-[9%] py-px text-right">
             <div className="border-t border-black pb-px" style={{ borderBottom: '3px double black' }}>
               <span className="tabular-nums text-[9px] sm:text-[10px] block pt-px font-bold">{fmt(totalCredit)}</span>
             </div>
