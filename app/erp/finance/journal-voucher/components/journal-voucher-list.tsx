@@ -250,32 +250,34 @@ export function JournalVoucherList({
             )}
           </div>
         ),
-      },
-      {
+      },      {
         accessorKey: "status",
         header: "Voucher Status",
         cell: ({ row }) => {
-          const st = row.original.status;
-          const badgeClass =
-            st === "approved"
-              ? "bg-green-600 text-white"
-              : st === "pending_approval"
-                ? "bg-blue-600 text-white"
-                : st === "pending_check"
-                  ? "bg-amber-500 text-white"
-                  : st === "draft"
-                    ? "bg-slate-500 text-white"
-                    : "bg-red-600 text-white";
-          const label =
-            st === "approved"
-              ? "APPROVED"
-              : st === "pending_approval"
-                ? "PENDING APPROVAL"
-                : st === "pending_check"
-                  ? "PENDING CHECK"
-                  : st === "draft"
-                    ? "DRAFT"
-                    : "REJECTED";
+          const st = (row.original.status || "draft").toLowerCase();
+          const isApproved = st === "approved";
+          const isPendingApproval = st === "pending_approval";
+          const isPendingCheck = st === "pending_check" || st === "pending";
+          const isDraft = st === "draft";
+
+          const badgeClass = isApproved
+            ? "bg-green-600 text-white"
+            : isPendingApproval
+              ? "bg-blue-600 text-white"
+              : isPendingCheck
+                ? "bg-amber-500 text-white"
+                : isDraft
+                  ? "bg-slate-500 text-white"
+                  : "bg-red-600 text-white";
+          const label = isApproved
+            ? "APPROVED"
+            : isPendingApproval
+              ? "PENDING APPROVAL"
+              : isPendingCheck
+                ? "PENDING CHECK"
+                : isDraft
+                  ? "DRAFT"
+                  : "REJECTED";
           return (
             <span
               className={cn(
@@ -291,43 +293,49 @@ export function JournalVoucherList({
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => (
-          <div className="flex items-center gap-1.5">
-            <Link
-              href={`/erp/finance/journal-voucher/${row.original.id}`}
-              transitionTypes={["nav-forward"]}
-            >
+        cell: ({ row }) => {
+          const st = (row.original.status || "draft").toLowerCase();
+          const isDraft = st === "draft";
+          const isPendingCheck = st === "pending_check" || st === "pending";
+          const isApproved = st === "approved";
+          const isRejected = st === "rejected";
+
+          return (
+            <div className="flex items-center gap-1.5">
+              <Link
+                href={`/erp/finance/journal-voucher/${row.original.id}`}
+                transitionTypes={["nav-forward"]}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 hover:bg-muted"
+                  title="View Details"
+                >
+                  <Eye className="h-4 w-4 text-primary" />
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 hover:bg-muted"
-                title="View Details"
+                onClick={() => handlePrint(row.original)}
+                className="h-8 w-8 hover:bg-muted text-primary"
+                title="Print Voucher"
               >
-                <Eye className="h-4 w-4 text-primary" />
+                <Printer className="h-4 w-4" />
               </Button>
-            </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handlePrint(row.original)}
-              className="h-8 w-8 hover:bg-muted text-primary"
-              title="Print Voucher"
-            >
-              <Printer className="h-4 w-4" />
-            </Button>
-            {row.original.status === "draft" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleUpdateStatus(row.original.id, "pending_check")}
-                className="h-8 w-8 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600"
-                title="Submit for Check"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            )}
-            {row.original.status === "pending_check" && (
-              <>
+              {isDraft && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleUpdateStatus(row.original.id, "pending_check")}
+                  className="h-8 w-8 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600"
+                  title="Submit for Check"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
+              {isPendingCheck && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -337,44 +345,35 @@ export function JournalVoucherList({
                 >
                   <FileCheck className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleUpdateStatus(row.original.id, "rejected")}
-                  className="h-8 w-8 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
-                  title="Reject Voucher"
-                >
-                  <XCircle className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-            {row.original.status === "pending_approval" && (permissions?.canApprove ?? true) && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleUpdateStatus(row.original.id, "approved")}
-                  className="h-8 w-8 hover:bg-green-50 dark:hover:bg-green-950/20 text-green-600"
-                  title="Authorize & Approve"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleUpdateStatus(row.original.id, "rejected")}
-                  className="h-8 w-8 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
-                  title="Reject Voucher"
-                >
-                  <XCircle className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-          </div>
-        ),
+              )}
+              {!isApproved && !isRejected && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleUpdateStatus(row.original.id, "approved")}
+                    className="h-8 w-8 hover:bg-green-50 dark:hover:bg-green-950/20 text-green-600"
+                    title="Authorize & Approve"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleUpdateStatus(row.original.id, "rejected")}
+                    className="h-8 w-8 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
+                    title="Reject Voucher"
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          );
+        },
       },
     ],
-    [permissions, handlePrint],
+    [permissions, handlePrint, handleUpdateStatus],
   );
 
   // Filter logic for DataTable data

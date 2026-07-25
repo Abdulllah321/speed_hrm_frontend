@@ -227,68 +227,63 @@ export default function JournalVoucherDetailPage({
               <Printer className="h-4 w-4 mr-2" />
               Print Voucher
             </Button>
-            {voucher.status === "draft" && (
-              <>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/erp/finance/journal-voucher/${voucher.id}/edit`}>
-                    Edit Voucher
-                  </Link>
-                </Button>
-                <Button
-                  onClick={() => handleUpdateStatus("pending_check")}
-                  size="sm"
-                  disabled={actionPending}
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                >
-                  Submit for Check
-                </Button>
-              </>
-            )}
-            {voucher.status === "pending_check" && (
-              <>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/erp/finance/journal-voucher/${voucher.id}/edit`}>
-                    Edit Voucher
-                  </Link>
-                </Button>
-                <Button
-                  onClick={() => handleUpdateStatus("pending_approval")}
-                  size="sm"
-                  disabled={actionPending}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Check & Verify
-                </Button>
-                <Button
-                  onClick={() => handleUpdateStatus("rejected")}
-                  size="sm"
-                  variant="destructive"
-                  disabled={actionPending}
-                >
-                  Reject
-                </Button>
-              </>
-            )}
-            {voucher.status === "pending_approval" && (
-              <>
-                <Button
-                  onClick={() => handleUpdateStatus("approved")}
-                  size="sm"
-                  disabled={actionPending}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  Authorize & Approve
-                </Button>
-                <Button
-                  onClick={() => handleUpdateStatus("rejected")}
-                  size="sm"
-                  variant="destructive"
-                  disabled={actionPending}
-                >
-                  Reject
-                </Button>
-              </>
-            )}
+            {(() => {
+              const currentStatus = (voucher.status || "draft").toLowerCase();
+              const isApproved = currentStatus === "approved";
+              const isRejected = currentStatus === "rejected";
+              const isDraft = currentStatus === "draft";
+              const isPendingCheck = currentStatus === "pending_check" || currentStatus === "pending";
+
+              if (isApproved || isRejected) return null;
+
+              return (
+                <>
+                  {(isDraft || isPendingCheck) && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/erp/finance/journal-voucher/${voucher.id}/edit`}>
+                        Edit Voucher
+                      </Link>
+                    </Button>
+                  )}
+                  {isDraft && (
+                    <Button
+                      onClick={() => handleUpdateStatus("pending_check")}
+                      size="sm"
+                      disabled={actionPending}
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      Submit for Check
+                    </Button>
+                  )}
+                  {isPendingCheck && (
+                    <Button
+                      onClick={() => handleUpdateStatus("pending_approval")}
+                      size="sm"
+                      disabled={actionPending}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Check & Verify
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => handleUpdateStatus("approved")}
+                    size="sm"
+                    disabled={actionPending}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    Authorize & Approve
+                  </Button>
+                  <Button
+                    onClick={() => handleUpdateStatus("rejected")}
+                    size="sm"
+                    variant="destructive"
+                    disabled={actionPending}
+                  >
+                    Reject
+                  </Button>
+                </>
+              );
+            })()}
           </div>
         </div>
 

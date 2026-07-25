@@ -258,27 +258,30 @@ export function PaymentVoucherList({
             accessorKey: "status",
             header: "Status",
             cell: ({ row }) => {
-                const st = row.original.status;
-                const badgeClass =
-                    st === "approved"
-                        ? "bg-green-600 text-white"
-                        : st === "pending_approval"
-                            ? "bg-blue-600 text-white"
-                            : st === "pending_check"
-                                ? "bg-amber-500 text-white"
-                                : st === "draft"
-                                    ? "bg-slate-500 text-white"
-                                    : "bg-red-600 text-white";
-                const label =
-                    st === "approved"
-                        ? "APPROVED"
-                        : st === "pending_approval"
-                            ? "PENDING APPROVAL"
-                            : st === "pending_check"
-                                ? "PENDING CHECK"
-                                : st === "draft"
-                                    ? "DRAFT"
-                                    : "REJECTED";
+                const st = (row.original.status || "draft").toLowerCase();
+                const isApproved = st === "approved";
+                const isPendingApproval = st === "pending_approval";
+                const isPendingCheck = st === "pending_check" || st === "pending";
+                const isDraft = st === "draft";
+
+                const badgeClass = isApproved
+                    ? "bg-green-600 text-white"
+                    : isPendingApproval
+                        ? "bg-blue-600 text-white"
+                        : isPendingCheck
+                            ? "bg-amber-500 text-white"
+                            : isDraft
+                                ? "bg-slate-500 text-white"
+                                : "bg-red-600 text-white";
+                const label = isApproved
+                    ? "APPROVED"
+                    : isPendingApproval
+                        ? "PENDING APPROVAL"
+                        : isPendingCheck
+                            ? "PENDING CHECK"
+                            : isDraft
+                                ? "DRAFT"
+                                : "REJECTED";
                 return (
                     <span className={cn(
                         "px-2 py-0.5 rounded text-[9px] font-extrabold uppercase text-white whitespace-nowrap",
@@ -292,38 +295,44 @@ export function PaymentVoucherList({
         {
             id: "actions",
             header: "",
-            cell: ({ row }) => (
-                <div className="flex items-center gap-1.5">
-                    <Link
-                        href={`/erp/finance/payment-voucher/${row.original.id}`}
-                        transitionTypes={["nav-forward"]}
-                    >
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="View Details">
-                            <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                    </Link>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handlePrint(row.original)}
-                        className="h-7 w-7 hover:bg-muted text-primary"
-                        title="Print Voucher"
-                    >
-                        <Printer className="h-3.5 w-3.5" />
-                    </Button>
-                    {row.original.status === "draft" && (
+            cell: ({ row }) => {
+                const st = (row.original.status || "draft").toLowerCase();
+                const isDraft = st === "draft";
+                const isPendingCheck = st === "pending_check" || st === "pending";
+                const isApproved = st === "approved";
+                const isRejected = st === "rejected";
+
+                return (
+                    <div className="flex items-center gap-1.5">
+                        <Link
+                            href={`/erp/finance/payment-voucher/${row.original.id}`}
+                            transitionTypes={["nav-forward"]}
+                        >
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="View Details">
+                                <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                        </Link>
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleUpdateStatus(row.original.id, "pending_check")}
-                            className="h-7 w-7 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600"
-                            title="Submit for Check"
+                            onClick={() => handlePrint(row.original)}
+                            className="h-7 w-7 hover:bg-muted text-primary"
+                            title="Print Voucher"
                         >
-                            <Send className="h-3.5 w-3.5" />
+                            <Printer className="h-3.5 w-3.5" />
                         </Button>
-                    )}
-                    {row.original.status === "pending_check" && (
-                        <>
+                        {isDraft && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUpdateStatus(row.original.id, "pending_check")}
+                                className="h-7 w-7 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600"
+                                title="Submit for Check"
+                            >
+                                <Send className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
+                        {isPendingCheck && (
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -333,41 +342,32 @@ export function PaymentVoucherList({
                             >
                                 <FileCheck className="h-3.5 w-3.5" />
                             </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleUpdateStatus(row.original.id, "rejected")}
-                                className="h-7 w-7 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
-                                title="Reject Voucher"
-                            >
-                                <XCircle className="h-3.5 w-3.5" />
-                            </Button>
-                        </>
-                    )}
-                    {row.original.status === "pending_approval" && (permissions?.canApprove ?? true) && (
-                        <>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleUpdateStatus(row.original.id, "approved")}
-                                className="h-7 w-7 hover:bg-green-50 dark:hover:bg-green-950/20 text-green-600"
-                                title="Authorize & Approve"
-                            >
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleUpdateStatus(row.original.id, "rejected")}
-                                className="h-7 w-7 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
-                                title="Reject Voucher"
-                            >
-                                <XCircle className="h-3.5 w-3.5" />
-                            </Button>
-                        </>
-                    )}
-                </div>
-            )
+                        )}
+                        {!isApproved && !isRejected && (
+                            <>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleUpdateStatus(row.original.id, "approved")}
+                                    className="h-7 w-7 hover:bg-green-50 dark:hover:bg-green-950/20 text-green-600"
+                                    title="Authorize & Approve"
+                                >
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleUpdateStatus(row.original.id, "rejected")}
+                                    className="h-7 w-7 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
+                                    title="Reject Voucher"
+                                >
+                                    <XCircle className="h-3.5 w-3.5" />
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                );
+            }
         }
     ], [permissions, handlePrint, handleUpdateStatus]);
 
