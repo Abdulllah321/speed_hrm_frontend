@@ -194,6 +194,26 @@ export async function deleteJournalVoucher(id: string) {
     }
 }
 
+export async function updateJournalVoucherStatus(id: string, status: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected", remarks?: string) {
+    try {
+        const response = await authFetch(`/finance/journal-voucher/${id}/status`, {
+            method: "PATCH",
+            body: JSON.stringify({ status, remarks }),
+        });
+
+        if (!response.ok) {
+            const err = response.data || {};
+            return { status: false, message: err.message || `Failed to update status: ${response.status}` };
+        }
+
+        revalidatePath("/erp/finance/journal-voucher/list");
+        revalidatePath(`/erp/finance/journal-voucher/${id}`);
+        return { status: true, message: `Journal Voucher ${status} successfully` };
+    } catch (e: any) {
+        return { status: false, message: e.message || "An unexpected error occurred" };
+    }
+}
+
 // ── Background export ─────────────────────────────────────────────────────────
 export async function queueJournalVouchersExport(opts?: {
     status?: string;

@@ -3,7 +3,7 @@
 import { useState, useEffect, use, useMemo } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { getJournalVoucher, updateJournalVoucher, JournalVoucher } from "@/lib/actions/journal-voucher";
+import { getJournalVoucher, updateJournalVoucher, updateJournalVoucherStatus, JournalVoucher } from "@/lib/actions/journal-voucher";
 import { JournalVoucherPrint, numberToWords } from "../components/journal-voucher-print";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,13 +36,14 @@ function folio(id: string) {
   return id.replace(/-/g, "").slice(-5).toUpperCase();
 }
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, { label: string; icon: any; cls: string }> = {
   approved:         { label: "Approved", icon: CheckCircle2, cls: "bg-green-500/10 text-green-600 border-green-200 dark:border-green-800" },
   pending_approval: { label: "Pending Approval", icon: Clock, cls: "bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800" },
   pending_check:    { label: "Pending Check", icon: Clock,    cls: "bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-800" },
+  pending:          { label: "Pending Check", icon: Clock,    cls: "bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-800" },
   draft:            { label: "Draft", icon: Clock,            cls: "bg-slate-500/10 text-slate-600 border-slate-200 dark:border-slate-800" },
   rejected:         { label: "Rejected", icon: XCircle,       cls: "bg-red-500/10 text-red-600 border-red-200 dark:border-red-800" },
-} as const;
+};
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function JournalVoucherDetailPage({
@@ -90,7 +91,7 @@ export default function JournalVoucherDetailPage({
     if (!voucher) return;
     try {
       setActionPending(true);
-      const res = await updateJournalVoucher(voucher.id, { status: newStatus });
+      const res = await updateJournalVoucherStatus(voucher.id, newStatus);
       if (res.status) {
         toast.success(`Journal Voucher status updated to ${newStatus}`);
         setVoucher((prev) => prev ? { ...prev, status: newStatus } : null);
@@ -149,7 +150,8 @@ export default function JournalVoucherDetailPage({
   const creditRows = voucher.details.filter((d) => Number(d.credit) > 0);
   const totalDebit = debitRows.reduce((s, d) => s + (Number(d.debit) || 0), 0);
   const totalCredit = creditRows.reduce((s, c) => s + (Number(c.credit) || 0), 0);
-  const statusCfg = STATUS_CONFIG[voucher.status] ?? STATUS_CONFIG.pending;
+  const statusKey = (voucher.status || "draft").toLowerCase();
+  const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.draft;
   const StatusIcon = statusCfg.icon;
 
   return (
