@@ -1785,7 +1785,7 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.view"],
           },
           {
-            title: "Overall Available + Reserved Stock",
+            title: "Overall Available Stock",
             href: "/erp/reports/overall-available-reserved-stock",
             permissions: ["erp.report.view"],
           },
