@@ -672,12 +672,12 @@ export function CreateAllowanceClient({
                         ? selectedAllowanceHead.amount.toString()
                         : "0.00"
                     }
-                    disabled={isPending || !!selectedAllowanceHead.amount}
+                    disabled={isPending}
                     required
                   />
                   {selectedAllowanceHead.amount && (
                     <p className="text-xs text-muted-foreground">
-                      Fixed amount: {selectedAllowanceHead.amount} (pre-filled from allowance type)
+                      Default amount: {selectedAllowanceHead.amount} (pre-filled from allowance type, you can modify it)
                     </p>
                   )}
                 </div>
@@ -705,12 +705,12 @@ export function CreateAllowanceClient({
                         ? selectedAllowanceHead.percentage.toString()
                         : "0.00"
                     }
-                    disabled={isPending || !!selectedAllowanceHead.percentage}
+                    disabled={isPending}
                     required
                   />
                   {selectedAllowanceHead.percentage && (
                     <p className="text-xs text-muted-foreground">
-                      Fixed percentage: {selectedAllowanceHead.percentage}% (pre-filled from allowance type). Amount will be calculated based on each employee's salary.
+                      Default percentage: {selectedAllowanceHead.percentage}% (pre-filled from allowance type, you can modify it). Amount will be calculated based on each employee's salary.
                     </p>
                   )}
                 </div>
