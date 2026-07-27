@@ -66,9 +66,10 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
   const currentDepartment = useWatch({ control, name: "department" });
 
   // Filter departments based on selected allocation
-  // In edit mode, always include the current department even if it doesn't match the allocation filter
+  // If an allocation is selected, show departments matching that allocation, or departments with no allocation assigned.
+  // In edit mode, always include the current department.
   const filteredDepartments = allocation
-    ? departments.filter((d) => d.allocationId === allocation || (mode === "edit" && d.id === currentDepartment))
+    ? departments.filter((d) => !d.allocationId || d.allocationId === allocation || (mode === "edit" && d.id === currentDepartment))
     : departments;
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -120,8 +121,8 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
               // Reset dependent field
               form.setValue("subDepartment", "");
             }}
-            placeholder={allocation || mode === "edit" ? "Select Department" : "Select Allocation first"}
-            disabled={isPending || (!allocation && mode !== "edit") || loadingData}
+            placeholder="Select Department"
+            disabled={isPending || loadingData}
           />
         )} />
         {errors?.department && <p className="text-xs text-red-500">{errors.department.message}</p>}
