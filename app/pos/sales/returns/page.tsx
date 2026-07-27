@@ -135,7 +135,8 @@ interface LoadedOrder {
 
 export default function ReturnsPage() {
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const activeLocationId = user?.terminal?.location?.id || user?.locationId;
   const canReturn = hasPermission("pos.return.create");
   const canExchange = hasPermission("pos.exchange.create");
   const canClaim = hasPermission("pos.claim.create");
@@ -469,6 +470,7 @@ export default function ReturnsPage() {
                   quantity: l.returnQty,
                 })),
                 reason: notes || undefined,
+                returnLocationId: activeLocationId,
               },
             });
           } else {
@@ -491,6 +493,7 @@ export default function ReturnsPage() {
                       quantity: l.returnQty,
                     })),
                     reason: notes || undefined,
+                    returnLocationId: activeLocationId,
                   },
                 },
               );
@@ -536,6 +539,8 @@ export default function ReturnsPage() {
                       : l.unitPrice,
                 })),
                 reason: notes || undefined,
+                returnLocationId: activeLocationId,
+                exchangeLocationId: activeLocationId,
               },
             });
           } else {
@@ -563,6 +568,8 @@ export default function ReturnsPage() {
                         : l.unitPrice,
                   })),
                   reason: notes || undefined,
+                  returnLocationId: activeLocationId,
+                  exchangeLocationId: activeLocationId,
                 },
               },
             );
@@ -589,6 +596,7 @@ export default function ReturnsPage() {
                 items,
                 reason: notes || undefined,
                 managerUserId,
+                returnLocationId: activeLocationId,
               },
             });
           } else {
@@ -619,6 +627,7 @@ export default function ReturnsPage() {
                     items,
                     reason: notes || undefined,
                     managerUserId,
+                    returnLocationId: activeLocationId,
                   },
                 },
               );
@@ -823,6 +832,24 @@ export default function ReturnsPage() {
 
         {loadedOrders.length > 0 && (
           <>
+            {loadedOrders.some(
+              (o) => o.locationId && o.locationId !== activeLocationId,
+            ) && (
+              <div className="flex items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 shadow-sm animate-in fade-in duration-200">
+                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+                <div>
+                  <span className="font-bold">⚡ Cross-Location Return:</span> You are processing this return at{" "}
+                  <strong className="underline">{user?.terminal?.location?.name || "Current Outlet"}</strong> for receipt(s) originally sold at{" "}
+                  <strong className="underline">
+                    {loadedOrders
+                      .map((o) => o.locationName || "Original Branch")
+                      .join(", ")}
+                  </strong>
+                  . An automated Stock Transfer Note (STN) will be generated for the original selling store.
+                </div>
+              </div>
+            )}
+
             {mode === "" ? (
               <div className="rounded-xl border bg-card p-8 text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <div className="space-y-2">
