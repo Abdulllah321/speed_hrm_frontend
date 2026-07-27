@@ -93,7 +93,9 @@ export function MultiSelect({
   };
 
   const selectAll = () => {
-    onValueChange(filteredOptions.map((option) => option.value));
+    const allFilteredValues = filteredOptions.map((option) => option.value);
+    const combined = Array.from(new Set([...value, ...allFilteredValues]));
+    onValueChange(combined);
   };
 
   const clearAll = () => {
@@ -179,7 +181,7 @@ export function MultiSelect({
             className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        {showSelectAll && !onSearch && (
+        {showSelectAll && (
           <div className="flex items-center justify-between p-2 border-b bg-muted/50">
             <span className="text-xs text-muted-foreground">
               {filteredOptions.length} items
@@ -190,6 +192,7 @@ export function MultiSelect({
                 size="sm"
                 className="h-7 text-xs"
                 onClick={selectAll}
+                type="button"
               >
                 Select All
               </Button>
@@ -198,6 +201,7 @@ export function MultiSelect({
                 size="sm"
                 className="h-7 text-xs"
                 onClick={clearAll}
+                type="button"
               >
                 Clear
               </Button>
