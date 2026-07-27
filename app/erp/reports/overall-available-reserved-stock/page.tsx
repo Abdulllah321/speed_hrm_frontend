@@ -10,16 +10,12 @@ import {
   Search,
   Filter,
   Layers,
-  ChevronDown,
-  ChevronRight,
   Download,
-  Building2,
-  Store,
   DollarSign,
   Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -72,7 +68,7 @@ export default function OverallAvailableReservedStockPage() {
   const [reportData, setReportData] = useState<StockNode[]>([]);
   const [grandTotals, setGrandTotals] = useState<any>(null);
   const [warehouses, setWarehouses] = useState<{ id: string; name: string; code?: string }[]>([]);
-  const [stockLocations, setStockLocations] = useState<{ id: string; name: string; code?: string }[]>([]);
+  const [stockLocations, setStockLocations] = useState<{ id: string; name: string; code?: string; shortCode?: string }[]>([]);
 
   // Filter state
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>([]);
@@ -261,7 +257,7 @@ export default function OverallAvailableReservedStockPage() {
   const formatPrice = (val?: number) => (!val || val === 0 ? "-" : `Rs. ${val.toLocaleString()}`);
 
   const warehouseOptions = warehouses.map((w) => ({ label: w.name, value: w.id }));
-  const locationOptions = stockLocations.map((l) => ({ label: l.name, value: l.id }));
+  const locationOptions = stockLocations.map((l) => ({ label: l.shortCode ? `${l.shortCode} (${l.name})` : l.name, value: l.id }));
 
   return (
     <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
@@ -435,14 +431,14 @@ export default function OverallAvailableReservedStockPage() {
                   {/* Warehouses Columns */}
                   {warehouses.map((wh) => (
                     <th key={wh.id} className="p-3 font-bold text-right border-b border-slate-800 text-blue-300 bg-slate-950">
-                      WH: {wh.name}
+                      WH {wh.name}
                     </th>
                   ))}
 
-                  {/* Stock Locations Columns */}
+                  {/* Stock Locations Columns (Short Code directly, NO LOC prefix) */}
                   {stockLocations.map((loc) => (
                     <th key={loc.id} className="p-3 font-bold text-right border-b border-slate-800 text-emerald-300 bg-slate-950">
-                      LOC: {loc.name}
+                      {loc.shortCode || loc.code || loc.name}
                     </th>
                   ))}
 
