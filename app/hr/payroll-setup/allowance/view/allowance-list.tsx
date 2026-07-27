@@ -5,7 +5,7 @@ import DataTable from "@/components/common/data-table";
 import { columns, type AllowanceRow } from "./columns";
 import { AllowanceFilters } from "./allowance-filters";
 import { Button } from "@/components/ui/button";
-import { Printer, Download, Plus } from "lucide-react";
+import { Printer, Download, Plus, Upload } from "lucide-react";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
 import { getAllowanceHeads, type Allowance, type AllowanceHead } from "@/lib/actions/allowance";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
+import { AllowanceBulkUploadModal } from "@/components/allowance/allowance-bulk-upload-modal";
 
 interface AllowanceListProps {
   initialData?: Allowance[];
@@ -33,6 +34,7 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
   const { hasPermission } = useAuth();
   const canCreate = hasPermission("hr.allowance.create");
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [uploadDialog, setUploadDialog] = useState(false);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
   const [allowanceHeads, setAllowanceHeads] = useState<AllowanceHead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,12 +262,18 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
         </div>
         <div className="flex gap-2 flex-wrap">
           {canCreate && (
-            <Link href="/hr/payroll-setup/allowance/create">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Allowance
+            <>
+              <Link href="/hr/payroll-setup/allowance/create">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Allowance
+                </Button>
+              </Link>
+              <Button variant="secondary" onClick={() => setUploadDialog(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import Excel
               </Button>
-            </Link>
+            </>
           )}
           <Button variant="secondary" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
@@ -299,6 +307,14 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
           { key: "allowanceHeadName", label: "Allowance Type" },
         ]}
         tableId="allowance-list"
+      />
+
+      <AllowanceBulkUploadModal
+        open={uploadDialog}
+        onOpenChange={setUploadDialog}
+        onSuccess={() => {
+          router.refresh();
+        }}
       />
     </div>
   );
