@@ -22,12 +22,8 @@ export default function EditJournalVoucherPage({
   useEffect(() => {
     getJournalVoucher(id).then((res) => {
       if (res.status && res.data) {
-        if (res.data.status !== "pending") {
-          toast.error("Voucher can only be edited when status is pending");
-          router.push(`/erp/finance/journal-voucher/${id}`);
-        } else {
+       
           setVoucher(res.data);
-        }
       } else {
         toast.error(res.message || "Failed to load journal voucher");
       }
