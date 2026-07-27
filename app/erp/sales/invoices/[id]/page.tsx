@@ -124,11 +124,14 @@ interface InvoiceCategoryGroup {
   subCategories: InvoiceSubCategoryGroup[];
 }
 
-function groupInvoiceItems(items: any[], defaultTaxRate: number = 18, baseMarginPct: number = 0, cashMarginPct: number = 0): InvoiceCategoryGroup[] {
-  if (!items || items.length === 0) return []
-
-  const totalMarginPct = baseMarginPct + cashMarginPct;
-  const marginMultiplier = totalMarginPct > 0 ? (1 - totalMarginPct / 100) : 1;
+function groupInvoiceItems(
+  items: any[], 
+  defaultTaxRate: number = 18, 
+  baseMarginPct: number = 0, 
+  cashMarginPct: number = 0,
+  orderDiscountAmount: number = 0
+): InvoiceCategoryGroup[] {
+  if (!items || items.length === 0) return [];
 
   const categoryMap = new Map<string, InvoiceCategoryGroup>();
 
@@ -143,18 +146,28 @@ function groupInvoiceItems(items: any[], defaultTaxRate: number = 18, baseMargin
 
     const qty = Number(item.quantity || 0);
     const grossSellingPrice = Number(item.salePrice || item.unitPrice || 0);
-    // Apply margin deduction to arrive at net selling price for display
+    const itemTaxRate = Number(itemObj.taxRate1 ?? item.taxRate ?? defaultTaxRate ?? 18);
+
     const sellingPrice = grossSellingPrice;
-    const discount = Number(item.discount || 0);
-    const grossValueExclTax = item.valueExclTax !== undefined ? Number(item.valueExclTax) : qty * grossSellingPrice;
-    // Apply combined margin deduction to the item value
-    const valueExclTax = Math.round(grossValueExclTax * marginMultiplier);
+
+    // 1. Value Excluding Sales Tax (WOST): Retail / (1 + TaxRate/100) * qty
+    const wostUnitPrice = grossSellingPrice / (1 + itemTaxRate / 100);
+    const wostTotal = wostUnitPrice * qty;
+    const valueExclTax = Math.round(wostTotal);
+
+    // 2. Discount: item.discount (stored in DB)
+    const discount = Math.round(Number(item.discount || 0));
+
+    // 3. Tax Base
     const taxableAmt = Math.max(0, valueExclTax - discount);
-    const itemTaxRate = Number(item.taxRate || defaultTaxRate || 18);
-    const salesTax = item.salesTax !== undefined ? Number(item.salesTax) : Math.round(taxableAmt * (itemTaxRate / 100));
+
+    // 4. Sales Tax
+    const salesTax = Math.round(taxableAmt * (itemTaxRate / 100));
     const addTax = Number(item.addTax || 0);
     const taxPayable = salesTax + addTax;
-    const valueInclTax = item.valueInclTax !== undefined ? Number(item.valueInclTax) : (taxableAmt + taxPayable);
+
+    // 5. Value Including Sales Tax: item.total (stored in DB) or taxableAmt + taxPayable
+    const valueInclTax = item.total !== undefined ? Math.round(Number(item.total)) : (taxableAmt + taxPayable);
 
     if (!categoryMap.has(catName)) {
       categoryMap.set(catName, {
@@ -345,11 +358,18 @@ export default function SalesInvoiceViewPage() {
     );
   }
 
-  // Get customer margins from invoice -> customer or from salesOrder
-  const baseMarginPct = Number(invoice.customer?.baseMargin ?? invoice.salesOrder?.baseMargin ?? 0);
-  const cashMarginPct = Number(invoice.customer?.cashMargin ?? invoice.salesOrder?.cashMargin ?? 0);
+  // Get customer margins and discounts from invoice -> customer or salesOrder
+  const baseMarginPct = Number(invoice.baseMargin ?? invoice.customer?.baseMargin ?? invoice.salesOrder?.baseMargin ?? 0);
+  const cashMarginPct = Number(invoice.cashMargin ?? invoice.customer?.cashMargin ?? invoice.salesOrder?.cashMargin ?? 0);
+  const orderDiscountAmount = Number(invoice.discount ?? invoice.salesOrder?.discount ?? 0);
 
-  const groupedData = groupInvoiceItems(invoice.items || [], invoice.taxRate || 0, baseMarginPct, cashMarginPct);
+  const groupedData = groupInvoiceItems(
+    invoice.items || [], 
+    invoice.taxRate || 0, 
+    baseMarginPct, 
+    cashMarginPct,
+    orderDiscountAmount
+  );
 
   let grandQty = 0;
   let grandExclTax = 0;
@@ -369,7 +389,6 @@ export default function SalesInvoiceViewPage() {
     grandValueInclTax += cat.totalValueInclTax;
   });
 
-  // Use invoice.grandTotal from DB as the authoritative total (already has margins applied)
   const invoiceGrandTotal = Number(invoice.grandTotal || grandValueInclTax);
   const advanceIncomeTax = Math.round(invoiceGrandTotal * 0.005);
   const netTotal = invoiceGrandTotal + advanceIncomeTax;
@@ -579,7 +598,7 @@ export default function SalesInvoiceViewPage() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Gross Total:</span>
+                  <span>Gross Total (WOST):</span>
                   <span>{formatCurrency((Number(invoice.subtotal) || 0) + (Number(invoice.baseMarginAmount) || 0) + (Number(invoice.cashMarginAmount) || 0))}</span>
                 </div>
                 {(Number(invoice.baseMarginAmount) > 0 || Number(invoice.baseMargin) > 0) && (
@@ -596,21 +615,21 @@ export default function SalesInvoiceViewPage() {
                 )}
                 <div className="flex justify-between font-semibold border-t border-b py-1">
                   <span>Net Subtotal:</span>
-                  <span>{formatCurrency(invoice.subtotal || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tax ({invoice.taxRate || 0}%):</span>
-                  <span>{formatCurrency(invoice.taxAmount || 0)}</span>
+                  <span>{formatCurrency(Number(invoice.subtotal) || 0)}</span>
                 </div>
                 {Number(invoice.discount) > 0 && (
                   <div className="flex justify-between text-amber-600">
-                    <span>Discount:</span>
-                    <span>-{formatCurrency(invoice.discount || 0)}</span>
+                    <span>Additional Discount:</span>
+                    <span>-{formatCurrency(Number(invoice.discount || 0))}</span>
                   </div>
                 )}
+                <div className="flex justify-between">
+                  <span>Tax (Item-wise FBR):</span>
+                  <span>{formatCurrency(Number(invoice.taxAmount) || 0)}</span>
+                </div>
                 <div className="flex justify-between font-bold text-xl border-t pt-2 text-primary">
                   <span>Grand Total:</span>
-                  <span>{formatCurrency(invoice.grandTotal || 0)}</span>
+                  <span>{formatCurrency(Number(invoice.grandTotal) || 0)}</span>
                 </div>
               </div>
             </CardContent>

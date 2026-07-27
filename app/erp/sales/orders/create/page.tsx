@@ -543,7 +543,6 @@ export default function CreateSalesOrderPage() {
             </div>
           </CardContent>
         </Card>
-
         {/* Selected Items */}
         {selectedItems.length > 0 && (
           <Card>
@@ -551,66 +550,81 @@ export default function CreateSalesOrderPage() {
               <CardTitle>Selected Items ({selectedItems.length})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">                 <Table>
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Sale Price</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Tax Rate</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead></TableHead>
+                    <TableRow className="bg-muted/50 text-xs">
+                      <TableHead className="w-[200px]">Item</TableHead>
+                      <TableHead className="w-[110px]">Retail Price</TableHead>
+                      <TableHead className="w-[90px]">Qty</TableHead>
+                      <TableHead className="text-right w-[120px]">WOST (Excl. Tax)</TableHead>
+                      <TableHead className="text-right w-[120px]">Discount</TableHead>
+                      <TableHead className="text-right w-[120px]">Sales Tax</TableHead>
+                      <TableHead className="text-right w-[120px]">Total (Incl. Tax)</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {itemDetails.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{item.sku}</div>
-                            <div className="text-sm text-muted-foreground">{item.description}</div>
-                            <div className="text-xs text-muted-foreground">Stock: {item.availableStock}</div>
-                          </div>
-                        </TableCell>
+                    {itemDetails.map((item) => {
+                      const totalItemDiscount = item.marginDiscount + (item.afterDiscount - item.discountedBase) + (item.discount || 0);
+                      return (
+                        <TableRow key={item.id} className="text-xs">
+                          <TableCell>
+                            <div>
+                              <div className="font-semibold text-sm">{item.sku}</div>
+                              <div className="text-xs text-muted-foreground line-clamp-1">{item.description}</div>
+                              <div className="text-[10px] text-muted-foreground mt-0.5">Stock: {item.availableStock}</div>
+                            </div>
+                          </TableCell>
 
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={item.salePrice}
-                            onChange={(e) => updateItem(item.id, 'salePrice', Number(e.target.value))}
-                            className="w-24"
-                            min="0"
-                            step="0.01"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
-                            className="w-20"
-                            min="1"
-                            max={item.availableStock}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-mono text-xs bg-muted px-2 py-1 rounded border">
-                            {item.taxRate}%
-                          </span>
-                        </TableCell>
-                        <TableCell>{formatCurrency(item.itemTotal)}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeItem(item.id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={item.salePrice}
+                              onChange={(e) => updateItem(item.id, 'salePrice', Number(e.target.value))}
+                              className="w-24 h-8 text-xs font-medium"
+                              min="0"
+                              step="0.01"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
+                              className="w-16 h-8 text-xs font-medium"
+                              min="1"
+                              max={item.availableStock}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(item.wostTotal)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-amber-600">
+                            {totalItemDiscount > 0 ? `-${formatCurrency(totalItemDiscount)}` : 'PKR 0'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-blue-600">
+                            <div>+{formatCurrency(item.itemTaxAmount)}</div>
+                            <span className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 inline-block mt-0.5 font-sans">
+                              {item.taxRate}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-bold text-sm text-primary">
+                            {formatCurrency(item.itemTotal)}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeItem(item.id)}
+                              className="text-red-600 h-8 w-8 p-0"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
