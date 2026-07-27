@@ -1785,6 +1785,11 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.view"],
           },
           {
+            title: "Overall Available + Reserved Stock",
+            href: "/erp/reports/overall-available-reserved-stock",
+            permissions: ["erp.report.view"],
+          },
+          {
             title: "Claim Register",
             href: "/erp/reports/claim-register",
             permissions: ["erp.report.view"],
@@ -1797,21 +1802,6 @@ export const menuData: MenuItem[] = [
           {
             title: "Voucher Register (All Vouchers)",
             href: "/erp/reports/voucher-register",
-            permissions: ["erp.report.view"],
-          },
-          {
-            title: "Gift Voucher Sale Register",
-            href: "/erp/reports/gift-voucher-sale-register",
-            permissions: ["erp.report.view"],
-          },
-          {
-            title: "Corporate Voucher Report",
-            href: "/erp/reports/corporate-voucher-report",
-            permissions: ["erp.report.view"],
-          },
-          {
-            title: "Credit Voucher Report",
-            href: "/erp/reports/credit-voucher-report",
             permissions: ["erp.report.view"],
           },
         ],

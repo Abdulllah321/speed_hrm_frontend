@@ -14,6 +14,7 @@ import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
     Download,
@@ -38,7 +39,6 @@ import {
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { cn, getApiBaseUrl, formatCurrency } from "@/lib/utils";
-import { Label } from "@/components/ui/label";
 
 export default function OverallAvailableReservedStockReportPage() {
     const [locations, setLocations] = useState<Location[]>([]);
@@ -547,7 +547,7 @@ export default function OverallAvailableReservedStockReportPage() {
         return parts.length > 0 ? parts.join(" | ") : "All Warehouses & Outlets";
     };
 
-    const colSpanTotal = 7 + (includeCosting ? 2 : 0) + warehousesList.length + stockLocationsList.length + 2;
+    const colSpanTotal = 9 + (includeCosting ? 2 : 0) + warehousesList.length + stockLocationsList.length;
 
     return (
         <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
@@ -926,7 +926,7 @@ export default function OverallAvailableReservedStockReportPage() {
                 </div>
 
                 <div ref={parentRef} className="overflow-auto max-h-[750px] relative">
-                    <table className="w-full text-xs text-left border-collapse min-w-[2200px]">
+                    <table className="w-full text-xs text-left border-collapse min-w-[2400px]">
                         <thead className="bg-slate-900 text-slate-100 sticky top-0 z-20 shadow-md">
                             <tr>
                                 <th className="p-3 font-bold border-b border-slate-800 uppercase min-w-[280px]">GPC / Category / Product</th>
@@ -937,6 +937,8 @@ export default function OverallAvailableReservedStockReportPage() {
                                 <th className="p-3 font-bold text-right border-b border-slate-800 uppercase text-purple-300">Stock Reserved</th>
                                 <th className="p-3 font-bold text-right border-b border-slate-800 uppercase text-emerald-400">Total</th>
                                 <th className="p-3 font-bold text-right border-b border-slate-800 uppercase">Selling Price</th>
+                                <th className="p-3 font-bold text-right border-b border-slate-800 uppercase text-amber-300">Discount %</th>
+                                <th className="p-3 font-bold text-right border-b border-slate-800 uppercase text-cyan-300">Tax %</th>
                                 <th className="p-3 font-bold text-right border-b border-slate-800 uppercase text-indigo-300">Value (Rs.)</th>
                                 {includeCosting && (
                                     <>
@@ -998,6 +1000,8 @@ export default function OverallAvailableReservedStockReportPage() {
                                                     <td className="p-2.5 text-right text-purple-300">{formatVal(val.reserved)}</td>
                                                     <td className="p-2.5 text-right text-emerald-400 font-black">{formatVal(val.total)}</td>
                                                     <td className="p-2.5 text-right text-slate-400">-</td>
+                                                    <td className="p-2.5 text-right text-slate-400">-</td>
+                                                    <td className="p-2.5 text-right text-slate-400">-</td>
                                                     <td className="p-2.5 text-right text-indigo-300 font-black">{formatPriceVal(val.value)}</td>
                                                     {includeCosting && (
                                                         <>
@@ -1025,6 +1029,8 @@ export default function OverallAvailableReservedStockReportPage() {
                                                     <td className="p-2 text-right">{formatVal(val.transit)}</td>
                                                     <td className="p-2 text-right text-purple-300">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-extrabold">{formatVal(val.total)}</td>
+                                                    <td className="p-2 text-right text-slate-400">-</td>
+                                                    <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right font-extrabold">{formatPriceVal(val.value)}</td>
                                                     {includeCosting && (
@@ -1054,6 +1060,8 @@ export default function OverallAvailableReservedStockReportPage() {
                                                     <td className="p-2 text-right text-purple-200">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-extrabold">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right text-slate-400">-</td>
+                                                    <td className="p-2 text-right text-slate-400">-</td>
+                                                    <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right font-extrabold">{formatPriceVal(val.value)}</td>
                                                     {includeCosting && (
                                                         <>
@@ -1082,6 +1090,8 @@ export default function OverallAvailableReservedStockReportPage() {
                                                     <td className="p-2 text-right text-purple-200">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-extrabold">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right text-slate-400">-</td>
+                                                    <td className="p-2 text-right text-slate-400">-</td>
+                                                    <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right font-extrabold">{formatPriceVal(val.value)}</td>
                                                     {includeCosting && (
                                                         <>
@@ -1109,6 +1119,8 @@ export default function OverallAvailableReservedStockReportPage() {
                                                     <td className="p-2 text-right">{formatVal(val.transit)}</td>
                                                     <td className="p-2 text-right text-purple-200">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-extrabold">{formatVal(val.total)}</td>
+                                                    <td className="p-2 text-right text-slate-400">-</td>
+                                                    <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right text-slate-400">-</td>
                                                     <td className="p-2 text-right font-extrabold">{formatPriceVal(val.value)}</td>
                                                     {includeCosting && (
@@ -1140,6 +1152,8 @@ export default function OverallAvailableReservedStockReportPage() {
                                                     <td className="p-2 text-right text-purple-600 dark:text-purple-400">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right text-emerald-600 dark:text-emerald-400 font-black">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right">{formatPriceVal(val.unitPrice)}</td>
+                                                    <td className="p-2 text-right text-amber-600 dark:text-amber-400 font-extrabold">{val.discountRate ? val.discountRate.toFixed(2) : "-"}</td>
+                                                    <td className="p-2 text-right text-cyan-600 dark:text-cyan-400 font-extrabold">{val.taxRate ? val.taxRate : "-"}</td>
                                                     <td className="p-2 text-right text-indigo-600 dark:text-indigo-400 font-black">{formatPriceVal(val.value)}</td>
                                                     {includeCosting && (
                                                         <>
@@ -1170,6 +1184,8 @@ export default function OverallAvailableReservedStockReportPage() {
                                                     <td className="p-2 text-right text-purple-600 dark:text-purple-400">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-black text-emerald-600 dark:text-emerald-400">{formatVal(val.total)}</td>
                                                     <td className="p-2 text-right text-slate-400">-</td>
+                                                    <td className="p-2 text-right text-amber-600 dark:text-amber-400">{val.discountRate ? val.discountRate.toFixed(2) : "-"}</td>
+                                                    <td className="p-2 text-right text-cyan-600 dark:text-cyan-400">{val.taxRate ? val.taxRate : "-"}</td>
                                                     <td className="p-2 text-right font-extrabold">{formatPriceVal(val.value)}</td>
                                                     {includeCosting && (
                                                         <>
@@ -1210,6 +1226,8 @@ export default function OverallAvailableReservedStockReportPage() {
                                     <td className="p-3 text-right">{formatVal(grandTotals.transit)}</td>
                                     <td className="p-3 text-right text-purple-300">{formatVal(grandTotals.reserved)}</td>
                                     <td className="p-3 text-right text-emerald-400 font-black">{formatVal(grandTotals.total)}</td>
+                                    <td className="p-3 text-right text-slate-400">-</td>
+                                    <td className="p-3 text-right text-slate-400">-</td>
                                     <td className="p-3 text-right text-slate-400">-</td>
                                     <td className="p-3 text-right text-indigo-300 font-black">{formatPriceVal(grandTotals.value)}</td>
                                     {includeCosting && (
