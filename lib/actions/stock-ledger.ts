@@ -421,8 +421,7 @@ export async function getAvailableStockSummaryReportExportStatus(jobId: string):
 export async function getOverallAvailableReservedStockReport(filters: {
     locationId?: string;
     warehouseId?: string;
-    startDate?: string;
-    endDate?: string;
+    asOfDate?: string;
     summaryOnly?: boolean;
     showBrand?: boolean;
     showDivision?: boolean;
@@ -437,8 +436,7 @@ export async function getOverallAvailableReservedStockReport(filters: {
         const queryParams = new URLSearchParams();
         if (filters.locationId) queryParams.append("locationId", filters.locationId);
         if (filters.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
-        if (filters.startDate) queryParams.append("startDate", filters.startDate);
-        if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.asOfDate) queryParams.append("asOfDate", filters.asOfDate);
         if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
         if (filters.showBrand !== undefined) queryParams.append("showBrand", String(filters.showBrand));
         if (filters.showDivision !== undefined) queryParams.append("showDivision", String(filters.showDivision));
@@ -463,8 +461,7 @@ export async function getOverallAvailableReservedStockReport(filters: {
 export async function queueOverallAvailableReservedStockReportExport(filters: {
     locationId?: string;
     warehouseId?: string;
-    startDate?: string;
-    endDate?: string;
+    asOfDate?: string;
     format: "xlsx" | "pdf";
     summaryOnly?: boolean;
     showBrand?: boolean;

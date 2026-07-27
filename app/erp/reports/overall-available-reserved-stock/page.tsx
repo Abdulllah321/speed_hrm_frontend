@@ -10,7 +10,7 @@ import {
 } from "@/lib/actions/stock-ledger";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -37,7 +37,7 @@ import {
     DollarSign
 } from "lucide-react";
 import { toast } from "sonner";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import { format } from "date-fns";
 import { cn, getApiBaseUrl, formatCurrency } from "@/lib/utils";
 
 export default function OverallAvailableReservedStockReportPage() {
@@ -48,10 +48,7 @@ export default function OverallAvailableReservedStockReportPage() {
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>([]);
 
-    const [dateRange, setDateRange] = useState<DateRange>({
-        from: startOfMonth(new Date()),
-        to: endOfMonth(new Date()),
-    });
+    const [asOfDate, setAsOfDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
     const [searchQuery, setSearchQuery] = useState("");
     const [includeCosting, setIncludeCosting] = useState(true);
@@ -144,14 +141,13 @@ export default function OverallAvailableReservedStockReportPage() {
     }, [selectedWarehouseIds]);
 
     const fetchReport = useCallback(() => {
-        if (!dateRange.from || !dateRange.to) return;
+        if (!asOfDate) return;
 
         startTransition(async () => {
             const result = await getOverallAvailableReservedStockReport({
                 locationId: locationParam,
                 warehouseId: warehouseParam,
-                startDate: dateRange.from?.toISOString(),
-                endDate: dateRange.to?.toISOString(),
+                asOfDate: asOfDate ? new Date(asOfDate).toISOString() : undefined,
                 summaryOnly,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
@@ -177,7 +173,7 @@ export default function OverallAvailableReservedStockReportPage() {
                 toast.error("Failed to load overall available stock report data");
             }
         });
-    }, [locationParam, warehouseParam, dateRange, groupingLevels, summaryOnly, includeCosting]);
+    }, [locationParam, warehouseParam, asOfDate, groupingLevels, summaryOnly, includeCosting]);
 
     useEffect(() => {
         fetchReport();
@@ -248,7 +244,7 @@ export default function OverallAvailableReservedStockReportPage() {
     }, [pdfExportState, pdfJobId]);
 
     const handleExportExcelClick = async () => {
-        if (!dateRange.from || !dateRange.to) return;
+        if (!asOfDate) return;
 
         if (exportState === "completed" && exportJobId) {
             const base = getApiBaseUrl();
@@ -266,8 +262,7 @@ export default function OverallAvailableReservedStockReportPage() {
             const res = await queueOverallAvailableReservedStockReportExport({
                 locationId: locationParam,
                 warehouseId: warehouseParam,
-                startDate: dateRange.from.toISOString(),
-                endDate: dateRange.to.toISOString(),
+                asOfDate: asOfDate ? new Date(asOfDate).toISOString() : undefined,
                 format: "xlsx",
                 summaryOnly,
                 showBrand: groupingLevels.brand,
@@ -297,7 +292,7 @@ export default function OverallAvailableReservedStockReportPage() {
     };
 
     const handleExportPdfClick = async () => {
-        if (!dateRange.from || !dateRange.to) return;
+        if (!asOfDate) return;
 
         if (pdfExportState === "completed" && pdfJobId) {
             const base = getApiBaseUrl();
@@ -315,8 +310,7 @@ export default function OverallAvailableReservedStockReportPage() {
             const res = await queueOverallAvailableReservedStockReportExport({
                 locationId: locationParam,
                 warehouseId: warehouseParam,
-                startDate: dateRange.from.toISOString(),
-                endDate: dateRange.to.toISOString(),
+                asOfDate: asOfDate ? new Date(asOfDate).toISOString() : undefined,
                 format: "pdf",
                 summaryOnly,
                 showBrand: groupingLevels.brand,
@@ -556,11 +550,11 @@ export default function OverallAvailableReservedStockReportPage() {
                 <div>
                     <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2 text-slate-800 dark:text-slate-100">
                         <TrendingUp className="h-8 w-8 text-primary" />
-                        Overall Available + Reserved Stock Report
+                        Overall Available Stock Report
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5 font-medium">
                         <Store className="h-4 w-4 text-primary/70" />
-                        Comprehensive stock valuation and warehouse/location balance report for <span className="text-foreground font-semibold">{getSelectedLocationText()}</span>
+                        Stock valuation and balance report as of <span className="text-foreground font-semibold">{asOfDate ? format(new Date(asOfDate), "dd MMM yyyy") : "Today"}</span> for <span className="text-foreground font-semibold">{getSelectedLocationText()}</span>
                     </p>
                 </div>
 
@@ -650,20 +644,17 @@ export default function OverallAvailableReservedStockReportPage() {
                         />
                     </div>
 
-                    {/* Date period picker */}
-                    <div className="flex flex-col gap-1.5">
+                    {/* Single As of Date Picker */}
+                    <div className="flex flex-col gap-1.5 min-w-[200px]">
                         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
                             <Calendar className="h-3.5 w-3.5 text-primary" />
-                            As of Period
+                            As of Date
                         </span>
-                        <DateRangePicker
-                            initialDateFrom={dateRange.from}
-                            initialDateTo={dateRange.to}
-                            onUpdate={({ range }: { range: DateRange }) => {
-                                if (range) {
-                                    setDateRange(range);
-                                }
-                            }}
+                        <DatePicker
+                            value={asOfDate}
+                            onChange={(val) => setAsOfDate(val || format(new Date(), "yyyy-MM-dd"))}
+                            placeholder="Select As of Date"
+                            className="bg-background h-10"
                         />
                     </div>
 
