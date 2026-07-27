@@ -418,3 +418,87 @@ export async function getAvailableStockSummaryReportExportStatus(jobId: string):
     }
 }
 
+export async function getOverallAvailableReservedStockReport(filters: {
+    locationId?: string;
+    warehouseId?: string;
+    startDate?: string;
+    endDate?: string;
+    summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+    includeCosting?: boolean;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        if (filters.locationId) queryParams.append("locationId", filters.locationId);
+        if (filters.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
+        if (filters.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
+        if (filters.showBrand !== undefined) queryParams.append("showBrand", String(filters.showBrand));
+        if (filters.showDivision !== undefined) queryParams.append("showDivision", String(filters.showDivision));
+        if (filters.showCategory !== undefined) queryParams.append("showCategory", String(filters.showCategory));
+        if (filters.showGender !== undefined) queryParams.append("showGender", String(filters.showGender));
+        if (filters.showSilhouette !== undefined) queryParams.append("showSilhouette", String(filters.showSilhouette));
+        if (filters.showArticle !== undefined) queryParams.append("showArticle", String(filters.showArticle));
+        if (filters.showVariant !== undefined) queryParams.append("showVariant", String(filters.showVariant));
+        if (filters.includeCosting !== undefined) queryParams.append("includeCosting", String(filters.includeCosting));
+
+        const queryString = queryParams.toString();
+        const url = `/stock-ledger/overall-available-reserved-stock${queryString ? `?${queryString}` : ""}`;
+
+        const response = await authFetch(url, { method: "GET" });
+        return response.data;
+    } catch (error) {
+        console.error("Get overall available reserved stock report error:", error);
+        return { status: false, data: [], message: "Failed to fetch overall available reserved stock report" };
+    }
+}
+
+export async function queueOverallAvailableReservedStockReportExport(filters: {
+    locationId?: string;
+    warehouseId?: string;
+    startDate?: string;
+    endDate?: string;
+    format: "xlsx" | "pdf";
+    summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+    includeCosting?: boolean;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const url = `/stock-ledger/overall-available-reserved-stock/export/queue`;
+        const response = await authFetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Queue overall available reserved stock report export error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getOverallAvailableReservedStockReportExportStatus(jobId: string): Promise<{ status: boolean; data?: { state: string; progress: number }; message?: string }> {
+    try {
+        const url = `/stock-ledger/overall-available-reserved-stock/export/${jobId}/status`;
+        const response = await authFetch(url, { method: "GET" });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Get overall available reserved stock report status error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+
