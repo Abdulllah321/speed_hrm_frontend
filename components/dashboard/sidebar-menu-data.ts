@@ -1769,7 +1769,7 @@ export const menuData: MenuItem[] = [
     title: "Reports",
     icon: TrendingUp,
     environment: "ERP",
-    permissions: ["pos.dashboard.view"],
+    permissions: ["erp.report.view"],
     children: [
       {
         title: "ERP Reports",
