@@ -73,6 +73,7 @@ const loanRequestFormSchema = z.object({
     .string()
     .max(2000, "Additional details must not exceed 2000 characters")
     .optional(),
+  disbursementType: z.string().min(1, "Disbursement method is required"),
 });
 
 type LoanRequestFormData = z.infer<typeof loanRequestFormSchema>;
@@ -108,6 +109,7 @@ export default function CreateLoanRequestPage() {
       numberOfInstallments: "",
       reason: "",
       additionalDetails: "",
+      disbursementType: "with_payroll",
     },
     mode: "onBlur",
   });
@@ -292,6 +294,7 @@ export default function CreateLoanRequestPage() {
         numberOfInstallments: data.numberOfInstallments ? parseInt(data.numberOfInstallments) : undefined,
         reason: data.reason,
         additionalDetails: data.additionalDetails || undefined,
+        disbursementType: data.disbursementType,
       });
 
       if (result.status) {
@@ -569,30 +572,61 @@ export default function CreateLoanRequestPage() {
                 />
               </div>
 
-              {/* Number of Installments */}
-              <FormField
-                control={form.control}
-                name="numberOfInstallments"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Installments</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="120"
-                        placeholder="e.g., 12"
-                        disabled={form.formState.isSubmitting || submitting}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Number of months for repayment (1-120, optional)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Number of Installments & Disbursement Method */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="numberOfInstallments"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Number of Installments</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="120"
+                          placeholder="e.g., 12"
+                          disabled={form.formState.isSubmitting || submitting}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Number of months for repayment (1-120, optional)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="disbursementType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Disbursement Method <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Autocomplete
+                          options={[
+                            { value: "with_payroll", label: "With Payroll/Salary" },
+                            { value: "separately", label: "Separately (Off-payroll)" },
+                          ]}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select method"
+                          disabled={form.formState.isSubmitting || submitting}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        How the loan will be paid to employee
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* Reason Field */}
               <FormField
