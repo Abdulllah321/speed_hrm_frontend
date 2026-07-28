@@ -8,11 +8,22 @@ export interface LoanRequest {
     id: string;
     employeeId: string;
     employeeName: string;
+    fatherHusbandName?: string;
+    joiningDate?: string;
+    employeeSalary?: number | string;
     department?: {
       id: string;
       name: string;
     };
     subDepartment?: {
+      id: string;
+      name: string;
+    };
+    designation?: {
+      id: string;
+      name: string;
+    };
+    location?: {
       id: string;
       name: string;
     };
@@ -118,6 +129,7 @@ export async function createLoanRequest(data: {
   numberOfInstallments?: number;
   reason: string;
   additionalDetails?: string;
+  disbursementType?: string;
 }): Promise<{ status: boolean; data?: LoanRequest | LoanRequest[]; message?: string }> {
   try {
     const loanRequests = data.employeeIds.map((employeeId) => ({
@@ -129,6 +141,7 @@ export async function createLoanRequest(data: {
       numberOfInstallments: data.numberOfInstallments,
       reason: data.reason,
       additionalDetails: data.additionalDetails,
+      disbursementType: data.disbursementType,
     }));
     const res = await authFetch(`/loan-requests`, {
       method: "POST",
@@ -159,6 +172,7 @@ export async function updateLoanRequest(
     reason?: string;
     additionalDetails?: string;
     status?: string;
+    disbursementType?: string;
   }
 ): Promise<{ status: boolean; data?: LoanRequest; message?: string }> {
   try {
