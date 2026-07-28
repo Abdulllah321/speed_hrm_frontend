@@ -42,6 +42,8 @@ export type PayrollReportRow = {
     overtimeBreakup: any[];
     bonusBreakup: any[];
     incrementBreakup: any[];
+    incrementArrears: number;
+    incrementArrearsMonths?: string;
     accountNumber: string | null;
     bankName: string | null;
     paymentMode: string | null;
@@ -152,6 +154,12 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                             <span className="text-right">{Math.round(Number(a.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     ))}
+                    {data.incrementArrears > 0 && (
+                        <div className="flex justify-between items-center gap-2 text-green-600 font-semibold">
+                            <span className="shrink-0">Increment Arrears (+):</span>
+                            <span className="text-right">{Math.round(Number(data.incrementArrears || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        </div>
+                    )}
                     {data.overtimeAmount > 0 && (
                         <div className="flex justify-between items-center gap-2">
                             <span className="font-bold shrink-0">Overtime:</span>
