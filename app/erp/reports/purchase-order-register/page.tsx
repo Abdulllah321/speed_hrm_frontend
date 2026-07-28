@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -552,4 +552,3 @@ export default function PurchaseOrderRegisterPage() {
     </PermissionGuard>
   );
 }
-import React from 'react';
