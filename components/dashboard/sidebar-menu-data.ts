@@ -1815,6 +1815,11 @@ export const menuData: MenuItem[] = [
             href: "/erp/reports/purchase-invoice-register",
             permissions: ["erp.report.view"],
           },
+          {
+            title: "Purchase Return Register",
+            href: "/erp/reports/purchase-return-register",
+            permissions: ["erp.report.view"],
+          },
         ],
       },
 

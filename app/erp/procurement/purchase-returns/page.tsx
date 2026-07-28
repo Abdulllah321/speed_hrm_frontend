@@ -85,14 +85,21 @@ export default function PurchaseReturnsPage() {
             <h1 className="text-2xl font-bold">Purchase Returns</h1>
             <p className="text-gray-600">Manage purchase returns and refunds</p>
           </div>
-          <PermissionGuard permissions="erp.procurement.pret.create" fallback={null}>
-            <Link href="/erp/procurement/purchase-returns/create" transitionTypes={["nav-forward"]}>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Return
+          <div className="flex items-center gap-3">
+            <Link href="/erp/reports/purchase-return-register">
+              <Button variant="outline" className="border-purple-600 text-purple-600 hover:bg-purple-50 font-bold">
+                PR Register Report
               </Button>
             </Link>
-          </PermissionGuard>
+            <PermissionGuard permissions="erp.procurement.pret.create" fallback={null}>
+              <Link href="/erp/procurement/purchase-returns/create" transitionTypes={["nav-forward"]}>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Return
+                </Button>
+              </Link>
+            </PermissionGuard>
+          </div>
         </div>
 
         {/* Status Filter */}
