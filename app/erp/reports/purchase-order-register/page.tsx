@@ -1,12 +1,15 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import React, { useEffect, useState, useTransition, useCallback, useMemo, useRef } from "react";
+import Link from "next/link";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   ArrowLeft,
   Box,
@@ -17,6 +20,7 @@ import {
   Layers,
   Loader2,
   Package,
+  Printer,
   RefreshCw,
   Search,
   ShoppingBag,
@@ -24,10 +28,10 @@ import {
   SlidersHorizontal,
   Store,
   TrendingUp,
-} from 'lucide-react';
-import { authFetch } from '@/lib/auth';
-import { getApiBaseUrl } from '@/lib/utils';
-import { PermissionGuard } from '@/components/auth/permission-guard';
+} from "lucide-react";
+import { toast } from "sonner";
+import { authFetch } from "@/lib/auth";
+import { cn, getApiBaseUrl } from "@/lib/utils";
 
 export interface PoRegisterGrnInfo {
   grnNumber: string;
@@ -38,32 +42,45 @@ export interface PoRegisterGrnInfo {
 export interface PoRegisterVariantRow {
   color: string;
   size: string;
+  barCode: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
 }
 
-export interface PoRegisterProductGroup {
-  articleCode: string;
-  articleName: string;
-  divisionName?: string;
-  genderName?: string;
-  silhouetteName?: string;
+export interface PoRegisterArticleGroup {
+  sku: string;
+  description: string;
   variants: PoRegisterVariantRow[];
   totalQuantity: number;
   totalAmount: number;
 }
 
-export interface PoRegisterSubcategoryGroup {
-  subCategoryName: string;
-  products: PoRegisterProductGroup[];
+export interface PoRegisterSilhouetteGroup {
+  silhouetteName: string;
+  articles: PoRegisterArticleGroup[];
+  totalQuantity: number;
+  totalAmount: number;
+}
+
+export interface PoRegisterGenderGroup {
+  genderName: string;
+  silhouettes: PoRegisterSilhouetteGroup[];
   totalQuantity: number;
   totalAmount: number;
 }
 
 export interface PoRegisterCategoryGroup {
   categoryName: string;
-  subcategories: PoRegisterSubcategoryGroup[];
+  subCategoryName: string;
+  genders: PoRegisterGenderGroup[];
+  totalQuantity: number;
+  totalAmount: number;
+}
+
+export interface PoRegisterDivisionGroup {
+  divisionName: string;
+  categories: PoRegisterCategoryGroup[];
   totalQuantity: number;
   totalAmount: number;
 }
@@ -71,32 +88,25 @@ export interface PoRegisterCategoryGroup {
 export interface PoRegisterDocumentGroup {
   poId: string;
   poNumber: string;
-  docNoDisplay: string;
   orderDate: string;
   supplierName: string;
   supplierLocation: string;
+  brandsDisplay: string;
   orderType?: string;
   goodsType?: string;
   status: string;
   grns: PoRegisterGrnInfo[];
-  categories: PoRegisterCategoryGroup[];
-  totalQuantity: number;
-  totalAmount: number;
-}
-
-export interface PoRegisterBrandGroup {
-  brandId: string;
-  brandName: string;
-  documents: PoRegisterDocumentGroup[];
+  divisions: PoRegisterDivisionGroup[];
   totalQuantity: number;
   totalAmount: number;
 }
 
 export interface PoRegisterReportResult {
-  brands: PoRegisterBrandGroup[];
+  documents: PoRegisterDocumentGroup[];
   grandTotals: {
     quantity: number;
     amount: number;
+    totalDocuments: number;
   };
   startDate: string;
   endDate: string;
@@ -111,6 +121,8 @@ export interface PoRegisterReportResult {
 }
 
 export default function PurchaseOrderRegisterPage() {
+  const { user } = useAuth();
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth(); // 0-indexed; July = 6
@@ -120,12 +132,12 @@ export default function PurchaseOrderRegisterPage() {
 
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
-  const [selectedBrand, setSelectedBrand] = useState('ALL');
-  const [selectedVendor, setSelectedVendor] = useState('ALL');
-  const [orderType, setOrderType] = useState('ALL');
-  const [goodsType, setGoodsType] = useState('ALL');
-  const [status, setStatus] = useState('ALL');
-  const [search, setSearch] = useState('');
+  const [selectedBrand, setSelectedBrand] = useState("ALL");
+  const [selectedVendor, setSelectedVendor] = useState("ALL");
+  const [orderType, setOrderType] = useState("ALL");
+  const [goodsType, setGoodsType] = useState("ALL");
+  const [status, setStatus] = useState("ALL");
+  const [search, setSearch] = useState("");
 
   // Report Hierarchy Configuration State
   const [hierarchyLevels, setHierarchyLevels] = useState({
@@ -144,11 +156,15 @@ export default function PurchaseOrderRegisterPage() {
   const [reportData, setReportData] = useState<PoRegisterReportResult | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Export State
-  const [exportState, setExportState] = useState<'idle' | 'queueing' | 'processing' | 'completed' | 'failed'>('idle');
-  const [exportFormat, setExportFormat] = useState<'xlsx' | 'pdf'>('xlsx');
-  const [exportProgress, setExportProgress] = useState(0);
+  // Excel Export Background Queue States
   const [exportJobId, setExportJobId] = useState<string | null>(null);
+  const [exportState, setExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
+  const [exportProgress, setExportProgress] = useState<number>(0);
+
+  // PDF Export Background Queue States
+  const [pdfJobId, setPdfJobId] = useState<string | null>(null);
+  const [pdfExportState, setPdfExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
+  const [pdfExportProgress, setPdfExportProgress] = useState<number>(0);
 
   useEffect(() => {
     fetchOptions();
@@ -159,8 +175,8 @@ export default function PurchaseOrderRegisterPage() {
     try {
       const baseUrl = getApiBaseUrl();
       const [brandRes, vendorRes] = await Promise.all([
-        authFetch(`${baseUrl}/master/brand`),
-        authFetch(`${baseUrl}/vendors`),
+        authFetch(`/master/brand`),
+        authFetch(`/vendors`),
       ]);
 
       if (brandRes.ok && brandRes.data) {
@@ -172,165 +188,366 @@ export default function PurchaseOrderRegisterPage() {
         setVendors(vList);
       }
     } catch (err) {
-      console.error('Error fetching filter options:', err);
+      console.error("Error fetching filter options:", err);
     }
   };
 
   const fetchReport = async () => {
     try {
       setLoading(true);
-      const baseUrl = getApiBaseUrl();
       const params = new URLSearchParams();
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-      if (selectedBrand && selectedBrand !== 'ALL') params.append('brandId', selectedBrand);
-      if (selectedVendor && selectedVendor !== 'ALL') params.append('vendorId', selectedVendor);
-      if (orderType && orderType !== 'ALL') params.append('orderType', orderType);
-      if (goodsType && goodsType !== 'ALL') params.append('goodsType', goodsType);
-      if (status && status !== 'ALL') params.append('status', status);
-      if (search) params.append('search', search);
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+      if (selectedBrand && selectedBrand !== "ALL") params.append("brandId", selectedBrand);
+      if (selectedVendor && selectedVendor !== "ALL") params.append("vendorId", selectedVendor);
+      if (orderType && orderType !== "ALL") params.append("orderType", orderType);
+      if (goodsType && goodsType !== "ALL") params.append("goodsType", goodsType);
+      if (status && status !== "ALL") params.append("status", status);
+      if (search) params.append("search", search);
 
-      const res = await authFetch(`${baseUrl}/purchase-order/register-report?${params.toString()}`);
+      const res = await authFetch(`/api/purchase-order/register-report?${params.toString()}`);
       if (res.ok && res.data) {
         setReportData(res.data);
+      } else {
+        toast.error("Failed to load PO Register report data");
       }
     } catch (err) {
-      console.error('Error fetching PO Register report data:', err);
+      console.error("Error fetching PO Register report data:", err);
+      toast.error("Error connecting to server");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExport = async (format: 'xlsx' | 'pdf') => {
-    try {
-      setExportFormat(format);
-      setExportState('queueing');
-      setExportProgress(0);
+  // Poll Excel Export Job Status
+  useEffect(() => {
+    if (exportState !== "queueing" && exportState !== "processing") return;
+    if (!exportJobId) return;
 
+    const interval = setInterval(async () => {
+      try {
+        const res = await authFetch(`/api/purchase-order/register-report/export/${exportJobId}/status`);
+        if (res.ok && res.data) {
+          const { state, progress } = res.data;
+          setExportProgress(progress || 0);
+
+          if (state === "completed") {
+            setExportState("completed");
+            toast.success("Excel Export generated successfully! Ready to download.");
+            clearInterval(interval);
+          } else if (state === "failed") {
+            setExportState("failed");
+            toast.error("Excel export generation failed.");
+            clearInterval(interval);
+          } else {
+            setExportState("processing");
+          }
+        }
+      } catch (err) {
+        console.error("Error checking job status:", err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [exportState, exportJobId]);
+
+  // Poll PDF Export Job Status
+  useEffect(() => {
+    if (pdfExportState !== "queueing" && pdfExportState !== "processing") return;
+    if (!pdfJobId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await authFetch(`/api/purchase-order/register-report/export/${pdfJobId}/status`);
+        if (res.ok && res.data) {
+          const { state, progress } = res.data;
+          setPdfExportProgress(progress || 0);
+
+          if (state === "completed") {
+            setPdfExportState("completed");
+            toast.success("PDF Report generated successfully! Ready to download.");
+            clearInterval(interval);
+          } else if (state === "failed") {
+            setPdfExportState("failed");
+            toast.error("PDF generation failed.");
+            clearInterval(interval);
+          } else {
+            setPdfExportState("processing");
+          }
+        }
+      } catch (err) {
+        console.error("Error checking PDF job status:", err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [pdfExportState, pdfJobId]);
+
+  const handleExportExcelClick = async () => {
+    if (exportState === "completed" && exportJobId) {
       const baseUrl = getApiBaseUrl();
-      const res = await authFetch(`${baseUrl}/purchase-order/register-report/export`, {
-        method: 'POST',
+      window.open(`${baseUrl}/api/purchase-order/register-report/export/${exportJobId}/download`, "_blank");
+      setExportState("idle");
+      setExportJobId(null);
+      setExportProgress(0);
+      return;
+    }
+
+    setExportState("queueing");
+    setExportProgress(0);
+    try {
+      const res = await authFetch(`/api/purchase-order/register-report/export`, {
+        method: "POST",
         body: JSON.stringify({
           startDate,
           endDate,
-          brandId: selectedBrand !== 'ALL' ? selectedBrand : undefined,
-          vendorId: selectedVendor !== 'ALL' ? selectedVendor : undefined,
-          orderType: orderType !== 'ALL' ? orderType : undefined,
-          goodsType: goodsType !== 'ALL' ? goodsType : undefined,
-          status: status !== 'ALL' ? status : undefined,
-          format,
+          brandId: selectedBrand !== "ALL" ? selectedBrand : undefined,
+          vendorId: selectedVendor !== "ALL" ? selectedVendor : undefined,
+          orderType: orderType !== "ALL" ? orderType : undefined,
+          goodsType: goodsType !== "ALL" ? goodsType : undefined,
+          status: status !== "ALL" ? status : undefined,
+          format: "xlsx",
           search: search || undefined,
         }),
       });
 
       if (res.ok && res.data?.jobId) {
-        const jobId = res.data.jobId;
-        setExportJobId(jobId);
-        setExportState('processing');
-
-        const interval = setInterval(async () => {
-          try {
-            const statusRes = await authFetch(`${baseUrl}/purchase-order/register-report/export/${jobId}/status`);
-            if (statusRes.ok && statusRes.data) {
-              setExportProgress(statusRes.data.progress || 0);
-              if (statusRes.data.state === 'completed') {
-                setExportState('completed');
-                clearInterval(interval);
-                window.open(`${baseUrl}/purchase-order/register-report/export/${jobId}/download`, '_blank');
-              } else if (statusRes.data.state === 'failed') {
-                setExportState('failed');
-                clearInterval(interval);
-              }
-            }
-          } catch (e) {
-            console.error('Error checking export status:', e);
-          }
-        }, 2000);
+        setExportJobId(res.data.jobId);
+        setExportState("processing");
+        toast.info("Excel export queued in background...");
       } else {
-        setExportState('failed');
+        setExportState("failed");
+        toast.error("Failed to queue Excel export");
       }
     } catch (err) {
-      console.error('Error initiating export:', err);
-      setExportState('failed');
+      setExportState("failed");
+      toast.error("Error queueing Excel export");
     }
   };
 
-  const handleDownloadCompleted = () => {
-    if (exportJobId) {
+  const handleExportPdfClick = async () => {
+    if (pdfExportState === "completed" && pdfJobId) {
       const baseUrl = getApiBaseUrl();
-      window.open(`${baseUrl}/purchase-order/register-report/export/${exportJobId}/download`, '_blank');
+      window.open(`${baseUrl}/api/purchase-order/register-report/export/${pdfJobId}/download`, "_blank");
+      setPdfExportState("idle");
+      setPdfJobId(null);
+      setPdfExportProgress(0);
+      return;
+    }
+
+    setPdfExportState("queueing");
+    setPdfExportProgress(0);
+    try {
+      const res = await authFetch(`/api/purchase-order/register-report/export`, {
+        method: "POST",
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          brandId: selectedBrand !== "ALL" ? selectedBrand : undefined,
+          vendorId: selectedVendor !== "ALL" ? selectedVendor : undefined,
+          orderType: orderType !== "ALL" ? orderType : undefined,
+          goodsType: goodsType !== "ALL" ? goodsType : undefined,
+          status: status !== "ALL" ? status : undefined,
+          format: "pdf",
+          search: search || undefined,
+        }),
+      });
+
+      if (res.ok && res.data?.jobId) {
+        setPdfJobId(res.data.jobId);
+        setPdfExportState("processing");
+        toast.info("PDF generation queued headlessly...");
+      } else {
+        setPdfExportState("failed");
+        toast.error("Failed to queue PDF export");
+      }
+    } catch (err) {
+      setPdfExportState("failed");
+      toast.error("Error queueing PDF export");
     }
   };
 
   const toggleHierarchy = (key: keyof typeof hierarchyLevels) => {
-    if (key === 'brand') return; // Brand is required
+    if (key === "brand") return;
     setHierarchyLevels((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Flatten nested tree for TanStack virtualization
+  const flatRows = useMemo(() => {
+    const rows: any[] = [];
+    if (!reportData || !Array.isArray(reportData.documents)) return rows;
+
+    for (const doc of reportData.documents) {
+      rows.push({
+        id: `doc-${doc.poId}`,
+        type: "doc-header",
+        doc,
+      });
+
+      for (const div of doc.divisions) {
+        if (hierarchyLevels.division && div.divisionName) {
+          rows.push({
+            id: `div-${doc.poId}-${div.divisionName}`,
+            type: "division",
+            label: div.divisionName,
+            totals: { quantity: div.totalQuantity, amount: div.totalAmount },
+          });
+        }
+
+        for (const cat of div.categories) {
+          if (hierarchyLevels.category) {
+            rows.push({
+              id: `cat-${doc.poId}-${cat.categoryName}`,
+              type: "category",
+              label: cat.categoryName,
+              subCategoryName: cat.subCategoryName,
+              totals: { quantity: cat.totalQuantity, amount: cat.totalAmount },
+            });
+          }
+
+          for (const gen of cat.genders) {
+            if (hierarchyLevels.gender && gen.genderName && gen.genderName !== "UNASSIGNED") {
+              rows.push({
+                id: `gen-${doc.poId}-${gen.genderName}`,
+                type: "gender",
+                label: gen.genderName,
+                totals: { quantity: gen.totalQuantity, amount: gen.totalAmount },
+              });
+            }
+
+            for (const sil of gen.silhouettes) {
+              if (hierarchyLevels.silhouette && sil.silhouetteName && sil.silhouetteName !== "GENERAL") {
+                rows.push({
+                  id: `sil-${doc.poId}-${sil.silhouetteName}`,
+                  type: "silhouette",
+                  label: sil.silhouetteName,
+                  totals: { quantity: sil.totalQuantity, amount: sil.totalAmount },
+                });
+              }
+
+              for (const art of sil.articles) {
+                if (hierarchyLevels.article) {
+                  rows.push({
+                    id: `art-${doc.poId}-${art.sku}`,
+                    type: "article",
+                    sku: art.sku,
+                    description: art.description,
+                    totals: { quantity: art.totalQuantity, amount: art.totalAmount },
+                  });
+                }
+
+                if (hierarchyLevels.variant) {
+                  for (const v of art.variants) {
+                    rows.push({
+                      id: `var-${doc.poId}-${art.sku}-${v.color}-${v.size}-${v.barCode}`,
+                      type: "variant",
+                      color: v.color,
+                      size: v.size,
+                      barCode: v.barCode,
+                      quantity: v.quantity,
+                      unitPrice: v.unitPrice,
+                      lineTotal: v.lineTotal,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      rows.push({
+        id: `doc-total-${doc.poId}`,
+        type: "doc-total",
+        poNumber: doc.poNumber,
+        totals: { quantity: doc.totalQuantity, amount: doc.totalAmount },
+      });
+    }
+
+    return rows;
+  }, [reportData, hierarchyLevels]);
+
+  // Virtualization setup
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: flatRows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => {
+      const row = flatRows[index];
+      if (row?.type === "doc-header") return 64;
+      if (row?.type === "category" || row?.type === "article") return 36;
+      return 30;
+    },
+    overscan: 15,
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const paddingBottom = virtualItems.length > 0 ? totalSize - virtualItems[virtualItems.length - 1].end : 0;
+
   return (
     <PermissionGuard permissions="erp.procurement.po.read">
-      <div className="p-6 space-y-6">
-        {/* Top Header Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="space-y-6 p-1 sm:p-6 max-w-[1600px] mx-auto">
+        {/* Top Bar Navigation & Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5">
           <div className="flex items-center gap-3">
             <Link href="/erp/procurement/purchase-order">
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" className="h-9 w-9">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 Purchase Order Register Report
               </h1>
-              <p className="text-sm text-slate-500">
-                Hierarchical PO ledger with financial year defaults, GRN tracking, and customizable nesting structure.
+              <p className="text-sm text-muted-foreground font-medium">
+                Virtualized PO ledger grouped by Division &rarr; Category &rarr; Gender &rarr; Silhouette &rarr; SKU &rarr; Variant.
               </p>
             </div>
           </div>
 
-          {/* Export Action Buttons */}
+          {/* Action Export Buttons */}
           <div className="flex items-center gap-2">
-            {exportState === 'completed' ? (
-              <Button onClick={handleDownloadCompleted} className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
-                <Download className="mr-2 h-4 w-4" /> Download {exportFormat.toUpperCase()}
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => handleExport('xlsx')}
-                  disabled={exportState === 'queueing' || exportState === 'processing'}
-                  className="border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-400"
-                >
-                  {exportState === 'processing' && exportFormat === 'xlsx' ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating {exportProgress}%
-                    </>
-                  ) : (
-                    <>
-                      <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" /> Export Excel
-                    </>
-                  )}
-                </Button>
+            <Button
+              variant={exportState === "completed" ? "default" : "outline"}
+              size="sm"
+              onClick={handleExportExcelClick}
+              disabled={exportState === "queueing" || exportState === "processing"}
+              className={cn(
+                "h-9 font-bold text-xs gap-1.5 transition-all shadow-xs",
+                exportState === "completed" && "bg-emerald-600 hover:bg-emerald-700 text-white"
+              )}
+            >
+              {exportState === "queueing" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {exportState === "processing" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {exportState === "idle" && <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+              {exportState === "queueing" && "Queueing..."}
+              {exportState === "processing" && `Generating ${exportProgress}%`}
+              {exportState === "completed" && "Download Excel"}
+              {exportState === "failed" && "Retry Excel Export"}
+              {exportState === "idle" && "Export Excel"}
+            </Button>
 
-                <Button
-                  variant="outline"
-                  onClick={() => handleExport('pdf')}
-                  disabled={exportState === 'queueing' || exportState === 'processing'}
-                  className="border-rose-600 text-rose-700 hover:bg-rose-50 dark:border-rose-500 dark:text-rose-400"
-                >
-                  {exportState === 'processing' && exportFormat === 'pdf' ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating {exportProgress}%
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="mr-2 h-4 w-4 text-rose-600" /> Export PDF
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
+            <Button
+              variant={pdfExportState === "completed" ? "default" : "outline"}
+              size="sm"
+              onClick={handleExportPdfClick}
+              disabled={pdfExportState === "queueing" || pdfExportState === "processing"}
+              className={cn(
+                "h-9 font-bold text-xs gap-1.5 transition-all shadow-xs",
+                pdfExportState === "completed" && "bg-rose-600 hover:bg-rose-700 text-white"
+              )}
+            >
+              {pdfExportState === "queueing" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {pdfExportState === "processing" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {pdfExportState === "idle" && <FileText className="h-3.5 w-3.5 text-rose-600" />}
+              {pdfExportState === "queueing" && "Queueing..."}
+              {pdfExportState === "processing" && `Generating ${pdfExportProgress}%`}
+              {pdfExportState === "completed" && "Download PDF"}
+              {pdfExportState === "failed" && "Retry PDF Export"}
+              {pdfExportState === "idle" && "Export PDF"}
+            </Button>
           </div>
         </div>
 
@@ -346,98 +563,98 @@ export default function PurchaseOrderRegisterPage() {
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {/* Brand */}
               <div
-                onClick={() => toggleHierarchy('brand')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-not-allowed select-none transition-all ${
+                onClick={() => toggleHierarchy("brand")}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-not-allowed select-none transition-all",
                   hierarchyLevels.brand
-                    ? 'bg-slate-100 border-slate-300 text-slate-700 opacity-80 dark:bg-slate-800 dark:text-slate-300'
-                    : 'bg-white border-slate-200 text-slate-400'
-                }`}
+                    ? "bg-slate-100 border-slate-300 text-slate-700 opacity-80 dark:bg-slate-800 dark:text-slate-300"
+                    : "bg-white border-slate-200 text-slate-400"
+                )}
               >
                 <input type="checkbox" checked={hierarchyLevels.brand} readOnly className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
                 <Layers className="h-3.5 w-3.5 text-purple-600" />
                 <span>Brand</span>
               </div>
 
-              {/* Division */}
               <div
-                onClick={() => toggleHierarchy('division')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                onClick={() => toggleHierarchy("division")}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all",
                   hierarchyLevels.division
-                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
-                }`}
+                    ? "bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300"
+                    : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800"
+                )}
               >
                 <input type="checkbox" checked={hierarchyLevels.division} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
                 <Folder className="h-3.5 w-3.5 text-purple-600" />
                 <span>Division</span>
               </div>
 
-              {/* Category */}
               <div
-                onClick={() => toggleHierarchy('category')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                onClick={() => toggleHierarchy("category")}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all",
                   hierarchyLevels.category
-                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
-                }`}
+                    ? "bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300"
+                    : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800"
+                )}
               >
                 <input type="checkbox" checked={hierarchyLevels.category} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
                 <ShoppingCart className="h-3.5 w-3.5 text-purple-600" />
                 <span>Category</span>
               </div>
 
-              {/* Gender */}
               <div
-                onClick={() => toggleHierarchy('gender')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                onClick={() => toggleHierarchy("gender")}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all",
                   hierarchyLevels.gender
-                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
-                }`}
+                    ? "bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300"
+                    : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800"
+                )}
               >
                 <input type="checkbox" checked={hierarchyLevels.gender} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
                 <Store className="h-3.5 w-3.5 text-purple-600" />
                 <span>Gender</span>
               </div>
 
-              {/* Silhouette */}
               <div
-                onClick={() => toggleHierarchy('silhouette')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                onClick={() => toggleHierarchy("silhouette")}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all",
                   hierarchyLevels.silhouette
-                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
-                }`}
+                    ? "bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300"
+                    : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800"
+                )}
               >
                 <input type="checkbox" checked={hierarchyLevels.silhouette} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
                 <TrendingUp className="h-3.5 w-3.5 text-purple-600" />
                 <span>Silhouette</span>
               </div>
 
-              {/* Article */}
               <div
-                onClick={() => toggleHierarchy('article')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                onClick={() => toggleHierarchy("article")}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all",
                   hierarchyLevels.article
-                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
-                }`}
+                    ? "bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300"
+                    : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800"
+                )}
               >
                 <input type="checkbox" checked={hierarchyLevels.article} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
                 <ShoppingBag className="h-3.5 w-3.5 text-purple-600" />
                 <span>Article</span>
               </div>
 
-              {/* Variant (Sizes) */}
               <div
-                onClick={() => toggleHierarchy('variant')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                onClick={() => toggleHierarchy("variant")}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all",
                   hierarchyLevels.variant
-                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
-                }`}
+                    ? "bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300"
+                    : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800"
+                )}
               >
                 <input type="checkbox" checked={hierarchyLevels.variant} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
                 <Box className="h-3.5 w-3.5 text-purple-600" />
@@ -546,7 +763,7 @@ export default function PurchaseOrderRegisterPage() {
                 <div className="relative mt-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Search PO #, Supplier, Article..."
+                    placeholder="Search PO #, Supplier, SKU..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="h-9 pl-9 text-xs"
@@ -563,175 +780,215 @@ export default function PurchaseOrderRegisterPage() {
           </CardContent>
         </Card>
 
-        {/* Visual Report Card Preview */}
-        <Card className="bg-white border border-slate-200 shadow-sm p-6 text-slate-900 font-sans">
-          {loading ? (
-            <div className="flex justify-center items-center h-48">
-              <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
-            </div>
-          ) : !reportData || reportData.brands.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
-              No purchase order records match the selected filter criteria.
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {/* Report Header Title */}
-              <div className="relative text-center border-b pb-4">
-                <h2 className="text-xl font-bold text-red-600 underline tracking-wide">
-                  Purchase Order Register
-                </h2>
-                <div className="absolute right-0 top-0 text-red-600 font-bold underline text-sm">
-                  {reportData.startDate} - {reportData.endDate}
-                </div>
+        {/* TanStack Virtualized Table Preview Card */}
+        <Card className="bg-white border border-slate-200 shadow-sm text-slate-900 font-sans overflow-hidden">
+          <CardHeader className="border-b bg-slate-50/60 pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+                Purchase Order Register Preview ({reportData?.grandTotals?.totalDocuments || 0} Documents)
+              </CardTitle>
+              <div className="text-xs font-bold text-red-600 underline">
+                {startDate} - {endDate}
               </div>
-
-              {/* Brands Hierarchy Loop */}
-              {reportData.brands.map((brand) => (
-                <div key={brand.brandId} className="space-y-6">
-                  {/* Brand Level Header */}
-                  {hierarchyLevels.brand && (
-                    <div className="text-center">
-                      <h3 className="text-lg font-bold text-teal-700 border-b-2 border-teal-700 inline-block px-8 pb-1 tracking-wider uppercase">
-                        {brand.brandName}
-                      </h3>
-                    </div>
-                  )}
-
-                  {/* Documents Loop */}
-                  {brand.documents.map((doc) => (
-                    <div key={doc.poId} className="space-y-3">
-                      {/* Document Card Header Box */}
-                      <div className="border border-slate-900 bg-slate-50/50 p-2.5 flex flex-wrap items-center justify-between gap-4 text-xs">
-                        <div className="flex items-center gap-6">
-                          <div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase block">Document #</span>
-                            <span className="text-red-600 font-bold text-base underline">{doc.docNoDisplay}</span>
-                            <span className="text-slate-500 text-[11px] ml-1.5">({doc.poNumber})</span>
-                          </div>
-
-                          <div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase block">Date</span>
-                            <span className="font-semibold text-slate-800">{doc.orderDate}</span>
-                          </div>
-
-                          <div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase block">Supplier</span>
-                            <span className="font-semibold text-slate-900">{doc.supplierName}</span>
-                            <span className="text-slate-500 ml-2">({doc.supplierLocation})</span>
-                          </div>
-
-                          <div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase block">GRN Info</span>
-                            {doc.grns && doc.grns.length > 0 ? (
-                              <div className="flex flex-wrap gap-1 mt-0.5">
-                                {doc.grns.map((g, gIdx) => (
-                                  <Badge key={gIdx} variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-bold">
-                                    <Package className="h-3 w-3 mr-1" /> {g.grnNumber} ({g.status})
-                                  </Badge>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 italic text-[11px]">No GRN Generated</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {doc.orderType && <Badge variant="outline" className="text-[10px] font-semibold">{doc.orderType}</Badge>}
-                          {doc.goodsType && <Badge variant="outline" className="text-[10px] font-semibold">{doc.goodsType}</Badge>}
-                          <Badge className="text-[10px] font-semibold bg-slate-800 text-white">{doc.status}</Badge>
-                        </div>
-                      </div>
-
-                      {/* Main Report Table */}
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs border-collapse">
-                          <thead>
-                            <tr className="border-b border-slate-900 text-left font-bold text-slate-800">
-                              <th className="py-1.5 px-2 w-[55%]">GPC / Category / Product</th>
-                              <th className="py-1.5 px-2 text-center w-[20%]">Color</th>
-                              <th className="py-1.5 px-2 text-center w-[12%]">Size</th>
-                              <th className="py-1.5 px-2 text-right w-[13%]">Quantity</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {doc.categories.map((cat, catIdx) => (
-                              <React.Fragment key={catIdx}>
-                                {/* Category Header (Green) */}
-                                {hierarchyLevels.category && (
-                                  <tr className="border-b border-slate-100">
-                                    <td className="py-1 px-2 font-bold text-emerald-700 uppercase">
-                                      {cat.categoryName}
-                                    </td>
-                                    <td></td>
-                                    <td></td>
-                                    <td className="py-1 px-2 text-right font-bold text-emerald-700">
-                                      {cat.totalQuantity.toLocaleString()}
-                                    </td>
-                                  </tr>
-                                )}
-
-                                {cat.subcategories.map((subCat, subIdx) => (
-                                  <React.Fragment key={subIdx}>
-                                    {/* Subcategory Header (Purple) */}
-                                    <tr className="border-b border-slate-100">
-                                      <td className="py-1 pl-6 pr-2 font-bold text-purple-700 uppercase">
-                                        {subCat.subCategoryName}
-                                      </td>
-                                      <td></td>
-                                      <td></td>
-                                      <td className="py-1 px-2 text-right font-bold text-purple-700">
-                                        {subCat.totalQuantity.toLocaleString()}
-                                      </td>
-                                    </tr>
-
-                                    {subCat.products.map((prod, prodIdx) => (
-                                      <React.Fragment key={prodIdx}>
-                                        {/* Product / Article Header (Blue) */}
-                                        {hierarchyLevels.article && (
-                                          <tr>
-                                            <td className="py-1 pl-12 pr-2 font-bold text-blue-600">
-                                              <div className="underline">{prod.articleCode}</div>
-                                              <div className="text-[11px]">{prod.articleName}</div>
-                                              <div className="flex gap-2 text-[10px] font-normal text-slate-500">
-                                                {hierarchyLevels.division && prod.divisionName && <span>Div: {prod.divisionName}</span>}
-                                                {hierarchyLevels.gender && prod.genderName && <span>Gender: {prod.genderName}</span>}
-                                                {hierarchyLevels.silhouette && prod.silhouetteName && <span>Sil: {prod.silhouetteName}</span>}
-                                              </div>
-                                            </td>
-                                            <td></td>
-                                            <td></td>
-                                            <td className="py-1 px-2 text-right font-bold text-blue-600 align-top">
-                                              {prod.totalQuantity.toLocaleString()}
-                                            </td>
-                                          </tr>
-                                        )}
-
-                                        {/* Variant Detail Rows */}
-                                        {hierarchyLevels.variant &&
-                                          prod.variants.map((v, vIdx) => (
-                                            <tr key={vIdx} className="hover:bg-slate-50 border-b border-slate-50">
-                                              <td className="py-0.5 pl-16"></td>
-                                              <td className="py-0.5 text-center text-slate-700 font-medium">{v.color}</td>
-                                              <td className="py-0.5 text-center text-slate-700 font-medium">{v.size}</td>
-                                              <td className="py-0.5 text-right font-semibold text-slate-900 pr-2">{v.quantity.toLocaleString()}</td>
-                                            </tr>
-                                          ))}
-                                      </React.Fragment>
-                                    ))}
-                                  </React.Fragment>
-                                ))}
-                              </React.Fragment>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
             </div>
-          )}
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="flex justify-center items-center h-56">
+                <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+              </div>
+            ) : !reportData || flatRows.length === 0 ? (
+              <div className="text-center py-16 text-slate-500 text-sm font-medium">
+                No purchase order records match the selected filter criteria.
+              </div>
+            ) : (
+              <div ref={parentRef} className="overflow-auto max-h-[750px] relative">
+                <table className="w-full text-xs border-collapse table-fixed">
+                  <colgroup>
+                    <col style={{ width: "45%" }} />
+                    <col style={{ width: "15%" }} />
+                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "15%" }} />
+                    <col style={{ width: "13%" }} />
+                  </colgroup>
+                  <thead className="sticky top-0 z-20 bg-slate-100 border-b border-slate-900 text-left font-bold text-slate-800 shadow-xs">
+                    <tr>
+                      <th className="py-2.5 px-3">GPC / Category / Product Description</th>
+                      <th className="py-2.5 px-3 text-center">Color</th>
+                      <th className="py-2.5 px-3 text-center">Size</th>
+                      <th className="py-2.5 px-3 text-center">Barcode</th>
+                      <th className="py-2.5 px-3 text-right">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paddingTop > 0 && (
+                      <tr>
+                        <td colSpan={5} style={{ height: `${paddingTop}px` }} />
+                      </tr>
+                    )}
+                    {virtualItems.map((virtualRow) => {
+                      const row = flatRows[virtualRow.index];
+                      if (!row) return null;
+
+                      if (row.type === "doc-header") {
+                        const { doc } = row;
+                        return (
+                          <tr key={row.id} className="bg-slate-50 border-t-2 border-slate-900">
+                            <td colSpan={5} className="p-2.5">
+                              <div className="border border-slate-900 bg-white p-3 flex flex-wrap items-center justify-between gap-4 text-xs shadow-xs rounded-xs">
+                                <div className="flex items-center gap-6">
+                                  <div>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Document #</span>
+                                    <span className="text-red-600 font-bold text-base underline">{doc.poNumber}</span>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Brands</span>
+                                    <span className="font-bold text-teal-700 text-sm uppercase">{doc.brandsDisplay}</span>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Date</span>
+                                    <span className="font-semibold text-slate-800">{doc.orderDate}</span>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Supplier</span>
+                                    <span className="font-semibold text-slate-900">{doc.supplierName}</span>
+                                    <span className="text-slate-500 ml-1.5">({doc.supplierLocation})</span>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">GRN Info</span>
+                                    {doc.grns && doc.grns.length > 0 ? (
+                                      <div className="flex flex-wrap gap-1 mt-0.5">
+                                        {doc.grns.map((g: any, gIdx: number) => (
+                                          <Badge key={gIdx} variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-bold">
+                                            <Package className="h-3 w-3 mr-1" /> {g.grnNumber} ({g.status})
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <span className="text-slate-400 italic text-[11px]">No GRN Generated</span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {doc.orderType && <Badge variant="outline" className="text-[10px] font-semibold">{doc.orderType}</Badge>}
+                                  {doc.goodsType && <Badge variant="outline" className="text-[10px] font-semibold">{doc.goodsType}</Badge>}
+                                  <Badge className="text-[10px] font-semibold bg-slate-900 text-white">{doc.status}</Badge>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (row.type === "division") {
+                        return (
+                          <tr key={row.id} className="bg-slate-100/60 border-b border-slate-200">
+                            <td className="py-1.5 px-3 font-bold text-slate-700 uppercase" colSpan={4}>
+                              Division: {row.label}
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-bold text-slate-700">
+                              {row.totals.quantity.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (row.type === "category") {
+                        return (
+                          <tr key={row.id} className="border-b border-slate-200 bg-emerald-50/30">
+                            <td className="py-1.5 px-3 font-bold text-emerald-700 uppercase" colSpan={4}>
+                              {row.label}
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-bold text-emerald-700">
+                              {row.totals.quantity.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (row.type === "gender") {
+                        return (
+                          <tr key={row.id} className="border-b border-slate-100 bg-purple-50/20">
+                            <td className="py-1 px-4 font-semibold text-purple-700 uppercase" colSpan={4}>
+                              Gender: {row.label}
+                            </td>
+                            <td className="py-1 px-3 text-right font-semibold text-purple-700">
+                              {row.totals.quantity.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (row.type === "silhouette") {
+                        return (
+                          <tr key={row.id} className="border-b border-slate-100">
+                            <td className="py-1 pl-6 pr-3 font-medium text-slate-600 uppercase" colSpan={4}>
+                              Silhouette: {row.label}
+                            </td>
+                            <td className="py-1 px-3 text-right font-medium text-slate-600">
+                              {row.totals.quantity.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (row.type === "article") {
+                        return (
+                          <tr key={row.id} className="bg-blue-50/20 border-b border-slate-100">
+                            <td className="py-1.5 pl-8 pr-3 font-bold text-blue-600" colSpan={4}>
+                              <span className="underline mr-2">SKU: {row.sku}</span>
+                              <span className="text-slate-800 text-xs font-bold">{row.description}</span>
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-bold text-blue-600">
+                              {row.totals.quantity.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (row.type === "variant") {
+                        return (
+                          <tr key={row.id} className="hover:bg-slate-50 border-b border-slate-100 text-slate-700">
+                            <td className="py-1 pl-12 pr-3"></td>
+                            <td className="py-1 px-3 text-center font-medium">{row.color}</td>
+                            <td className="py-1 px-3 text-center font-medium">{row.size}</td>
+                            <td className="py-1 px-3 text-center text-slate-500 font-mono text-[11px]">{row.barCode}</td>
+                            <td className="py-1 px-3 text-right font-bold text-slate-900">{row.quantity.toLocaleString()}</td>
+                          </tr>
+                        );
+                      }
+
+                      if (row.type === "doc-total") {
+                        return (
+                          <tr key={row.id} className="bg-slate-100 border-b-2 border-slate-400 font-bold text-slate-900">
+                            <td colSpan={4} className="py-2 px-3 text-right text-red-600 uppercase">
+                              Total for PO #{row.poNumber}
+                            </td>
+                            <td className="py-2 px-3 text-right text-red-600 text-sm">
+                              {row.totals.quantity.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return null;
+                    })}
+                    {paddingBottom > 0 && (
+                      <tr>
+                        <td colSpan={5} style={{ height: `${paddingBottom}px` }} />
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
         </Card>
       </div>
     </PermissionGuard>
