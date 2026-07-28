@@ -324,219 +324,286 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
           <title>Loan Request - ${loanRequestDetails.employee?.employeeName || record.empName}</title>
           <style>
             @media print {
-              @page { margin: 20mm; }
+              @page { margin: 15mm; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             }
             body {
               font-family: Arial, sans-serif;
-              padding: 20px;
+              padding: 10px;
+              color: #000;
+              line-height: 1.3;
+            }
+            .outer-border {
+              border: 4px double #000;
+              padding: 15px;
               max-width: 800px;
               margin: 0 auto;
             }
             .header {
               text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #000;
-              padding-bottom: 20px;
+              margin-bottom: 20px;
             }
             .header h1 {
+              margin: 0 0 5px 0;
+              font-size: 20px;
+              font-weight: bold;
+              letter-spacing: 0.5px;
+            }
+            .header h2 {
               margin: 0;
-              font-size: 24px;
-            }
-            .info-section {
-              margin-bottom: 25px;
-            }
-            .info-section h2 {
               font-size: 18px;
-              margin-bottom: 15px;
-              border-bottom: 1px solid #ccc;
-              padding-bottom: 5px;
+              font-weight: bold;
+              text-decoration: underline;
+              letter-spacing: 0.5px;
             }
-            .info-grid {
+            .section {
+              border: 2px solid #000;
+              margin-bottom: 15px;
+              padding: 12px;
+            }
+            .section-title {
+              font-size: 14px;
+              font-weight: bold;
+              text-decoration: underline;
+              margin-top: 0;
+              margin-bottom: 15px;
+            }
+            .form-row {
+              display: flex;
+              align-items: center;
+              margin-bottom: 12px;
+              flex-wrap: wrap;
+            }
+            .form-label {
+              font-size: 13px;
+              font-weight: normal;
+              margin-right: 5px;
+            }
+            .form-box {
+              border: 1.5px solid #000;
+              padding: 4px 8px;
+              font-size: 13px;
+              min-height: 18px;
+              display: inline-block;
+            }
+            .form-line {
+              border-bottom: 1.5px solid #000;
+              flex-grow: 1;
+              padding: 2px 5px;
+              font-size: 13px;
+              min-height: 18px;
+            }
+            .flex-grow-1 {
+              flex-grow: 1;
+            }
+            .grid-2 {
               display: grid;
               grid-template-columns: 1fr 1fr;
               gap: 15px;
-              margin-bottom: 15px;
             }
-            .info-item {
+            .sec-statement {
+              font-size: 13px;
+              margin: 15px 0;
+            }
+            .sig-row {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 40px;
               margin-bottom: 10px;
             }
-            .info-label {
-              font-weight: bold;
-              color: #666;
-              font-size: 12px;
-              text-transform: uppercase;
-              margin-bottom: 3px;
+            .sig-box {
+              text-align: center;
+              width: 200px;
             }
-            .info-value {
-              font-size: 14px;
+            .sig-line {
+              border-top: 1.5px dotted #000;
+              margin-bottom: 4px;
             }
-            .reason-box {
-              background: #f5f5f5;
-              padding: 15px;
-              border-radius: 5px;
-              margin-top: 10px;
-            }
-            .footer {
-              margin-top: 40px;
-              padding-top: 20px;
-              border-top: 1px solid #ccc;
-              font-size: 12px;
-              color: #666;
-            }
-            .badge {
-              display: inline-block;
-              padding: 4px 12px;
-              border-radius: 4px;
+            .sig-text {
               font-size: 12px;
               font-weight: bold;
             }
-            .badge-approved {
-              background: #10b981;
-              color: white;
+            .recommendation-lines {
+              margin-top: 15px;
+              margin-bottom: 40px;
             }
-            .badge-pending {
-              background: #6b7280;
-              color: white;
+            .rec-line {
+              border-bottom: 1.5px solid #000;
+              height: 24px;
+              margin-bottom: 10px;
             }
-            .badge-rejected {
-              background: #ef4444;
-              color: white;
+            .ceo-sig-container {
+              display: flex;
+              justify-content: flex-end;
             }
-            .badge-disbursed {
-              background: #3b82f6;
-              color: white;
+            .ceo-sig-box {
+              text-align: center;
+              width: 200px;
             }
-            .badge-completed {
-              background: #10b981;
-              color: white;
+            .ceo-sig-line {
+              border-top: 1.5px solid #000;
+              margin-bottom: 4px;
             }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>Loan Request</h1>
-            <p>Generated on ${format(new Date(), "MMMM dd, yyyy 'at' hh:mm a")}</p>
-          </div>
-
-          <div class="info-section">
-            <h2>Employee Information</h2>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-label">Employee ID</div>
-                <div class="info-value">${loanRequestDetails.employee?.employeeId || record.empId}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Employee Name</div>
-                <div class="info-value">${loanRequestDetails.employee?.employeeName || record.empName}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Department</div>
-                <div class="info-value">${loanRequestDetails.employee?.department?.name || "—"}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Sub Department</div>
-                <div class="info-value">${loanRequestDetails.employee?.subDepartment?.name || "—"}</div>
-              </div>
+          <div class="outer-border">
+            <div class="header">
+              <h1>SPEED (PRIVATE) LIMITED</h1>
+              <h2>LOAN APPLICATION FORM</h2>
             </div>
-          </div>
 
-          <div class="info-section">
-            <h2>Loan Details</h2>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-label">Loan Type</div>
-                <div class="info-value">${loanRequestDetails.loanType?.name || record.loanType}</div>
+            <!-- Employee Section -->
+            <div class="section">
+              <div class="section-title">To be filled in by Employee.</div>
+              
+              <div class="grid-2" style="margin-bottom: 12px;">
+                <div class="form-row" style="margin-bottom: 0;">
+                  <span class="form-label" style="min-width: 130px;">Name of Employee :</span>
+                  <span class="form-box flex-grow-1" style="min-width: 150px;">${loanRequestDetails.employee?.employeeName || record.empName}</span>
+                </div>
+                <div class="form-row" style="margin-bottom: 0;">
+                  <span class="form-label" style="min-width: 50px;">S/o :</span>
+                  <span class="form-box flex-grow-1" style="min-width: 150px;">${loanRequestDetails.employee?.fatherHusbandName || "—"}</span>
+                </div>
               </div>
-              <div class="info-item">
-                <div class="info-label">Amount</div>
-                <div class="info-value">${new Intl.NumberFormat("en-PK", {
-      style: "currency",
-      currency: "PKR",
-      minimumFractionDigits: 0,
-    }).format(typeof loanRequestDetails.amount === 'string' ? parseFloat(loanRequestDetails.amount) : loanRequestDetails.amount)}</div>
+
+              <div class="form-row">
+                <span class="form-label" style="min-width: 130px;">Date of Joining :</span>
+                <span class="form-line">${loanRequestDetails.employee?.joiningDate ? format(new Date(loanRequestDetails.employee.joiningDate), "dd-MM-yyyy") : "—"}</span>
               </div>
-              <div class="info-item">
-                <div class="info-label">Requested Date</div>
-                <div class="info-value">${format(new Date(loanRequestDetails.requestedDate), "MMMM dd, yyyy")}</div>
+
+              <div class="grid-2" style="margin-bottom: 12px;">
+                <div class="form-row" style="margin-bottom: 0;">
+                  <span class="form-label" style="min-width: 130px;">Designation :</span>
+                  <span class="form-line flex-grow-1">${loanRequestDetails.employee?.designation?.name || "—"}</span>
+                </div>
+                <div class="form-row" style="margin-bottom: 0;">
+                  <span class="form-label" style="min-width: 70px;">Location :</span>
+                  <span class="form-line flex-grow-1">${loanRequestDetails.employee?.location?.name || "—"}</span>
+                </div>
               </div>
-              <div class="info-item">
-                <div class="info-label">Repayment Start</div>
-                <div class="info-value">${formatMonthYear(loanRequestDetails.repaymentStartMonthYear)}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Number of Installments</div>
-                <div class="info-value">${loanRequestDetails.numberOfInstallments || "—"}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Status</div>
-                <div class="info-value">
-                  <span class="badge badge-${loanRequestDetails.status === 'approved' || loanRequestDetails.status === 'completed' ? 'approved' : loanRequestDetails.status === 'disbursed' ? 'disbursed' : loanRequestDetails.status === 'pending' ? 'pending' : 'rejected'}">
-                    ${loanRequestDetails.status}
+
+              <div class="grid-2" style="margin-bottom: 12px;">
+                <div class="form-row" style="margin-bottom: 0;">
+                  <span class="form-label" style="min-width: 130px;">Loan Requested :</span>
+                  <span class="form-box flex-grow-1" style="min-width: 120px; font-weight: bold;">
+                    ${new Intl.NumberFormat("en-PK", { minimumFractionDigits: 0 }).format(typeof loanRequestDetails.amount === 'string' ? parseFloat(loanRequestDetails.amount) : loanRequestDetails.amount)}
+                  </span>
+                </div>
+                <div class="form-row" style="margin-bottom: 0;">
+                  <span class="form-label" style="min-width: 140px;">Monthly Installment :</span>
+                  <span class="form-box flex-grow-1" style="min-width: 100px;">
+                    ${loanRequestDetails.amount && loanRequestDetails.numberOfInstallments ? new Intl.NumberFormat("en-PK", { minimumFractionDigits: 0 }).format(Math.round((typeof loanRequestDetails.amount === 'string' ? parseFloat(loanRequestDetails.amount) : loanRequestDetails.amount) / loanRequestDetails.numberOfInstallments)) : "—"}
                   </span>
                 </div>
               </div>
-              <div class="info-item">
-                <div class="info-label">Approval Status</div>
-                <div class="info-value">
-                  <span class="badge badge-${loanRequestDetails.approvalStatus === 'approved' ? 'approved' : loanRequestDetails.approvalStatus === 'pending' ? 'pending' : 'rejected'}">
-                    ${loanRequestDetails.approvalStatus}
-                  </span>
+
+              <div class="form-row" style="align-items: flex-start;">
+                <span class="form-label" style="min-width: 130px; margin-top: 4px;">Reason :</span>
+                <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                  <span class="form-line" style="line-height: 1.5; min-height: 48px;">${loanRequestDetails.reason}</span>
+                </div>
+              </div>
+
+              <div class="sec-statement">
+                This loan is secured against my Provident Fund Contributions.
+              </div>
+
+              <div class="sig-row">
+                <div class="sig-box">
+                  <div class="sig-line"></div>
+                  <div class="sig-text">Employee's Signature</div>
+                </div>
+                <div class="sig-box">
+                  <div class="sig-line"></div>
+                  <div class="sig-text">Head of Department</div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="info-section">
-            <h2>Reason</h2>
-            <div class="reason-box">
-              ${loanRequestDetails.reason.replace(/\n/g, '<br>')}
-            </div>
-          </div>
+            <!-- Finance Section -->
+            <div class="section">
+              <div class="section-title">To be filled in by Finance</div>
+              
+              <div class="grid-2">
+                <!-- Finance Left Column -->
+                <div>
+                  <div class="form-row">
+                    <span class="form-label" style="min-width: 180px;">Gross Salary</span>
+                    <span class="form-box" style="width: 120px; text-align: right;">
+                      ${loanRequestDetails.employee?.employeeSalary ? new Intl.NumberFormat("en-PK", { minimumFractionDigits: 0 }).format(Number(loanRequestDetails.employee.employeeSalary)) : ""}
+                    </span>
+                  </div>
+                  <div class="form-row">
+                    <span class="form-label" style="min-width: 180px;">Take-home Salary</span>
+                    <span class="form-box" style="width: 120px; text-align: right;">
+                      ${loanRequestDetails.employee?.employeeSalary ? new Intl.NumberFormat("en-PK", { minimumFractionDigits: 0 }).format(Number(loanRequestDetails.employee.employeeSalary)) : ""}
+                    </span>
+                  </div>
+                  <div class="form-row">
+                    <span class="form-label" style="min-width: 180px;">P.F. Contribution-Own</span>
+                    <span class="form-box" style="width: 120px;"></span>
+                  </div>
+                  <div class="form-row">
+                    <span class="form-label" style="min-width: 180px;">P.F. Contribution-Company's</span>
+                    <span class="form-box" style="width: 120px;"></span>
+                  </div>
+                  <div class="form-row">
+                    <span class="form-label" style="min-width: 180px;">Total P.F. Contribution</span>
+                    <span class="form-line" style="width: 120px;"></span>
+                  </div>
+                </div>
 
-          ${loanRequestDetails.additionalDetails ? `
-          <div class="info-section">
-            <h2>Additional Details</h2>
-            <div class="reason-box">
-              ${loanRequestDetails.additionalDetails.replace(/\n/g, '<br>')}
-            </div>
-          </div>
-          ` : ''}
-
-          ${loanRequestDetails.rejectionReason ? `
-          <div class="info-section">
-            <h2>Rejection Reason</h2>
-            <div class="reason-box">
-              ${loanRequestDetails.rejectionReason.replace(/\n/g, '<br>')}
-            </div>
-          </div>
-          ` : ''}
-
-          <div class="info-section">
-            <h2>Audit Information</h2>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-label">Created By</div>
-                <div class="info-value">${loanRequestDetails.createdBy ? `${loanRequestDetails.createdBy.firstName} ${loanRequestDetails.createdBy.lastName}` : "—"}</div>
+                <!-- Finance Right Column -->
+                <div>
+                  <div class="form-row">
+                    <span class="form-label" style="min-width: 180px;">Monthly Installment (${loanRequestDetails.numberOfInstallments || 12})</span>
+                    <span class="form-box" style="width: 120px; text-align: right;">
+                      ${loanRequestDetails.amount && loanRequestDetails.numberOfInstallments ? new Intl.NumberFormat("en-PK", { minimumFractionDigits: 0 }).format(Math.round((typeof loanRequestDetails.amount === 'string' ? parseFloat(loanRequestDetails.amount) : loanRequestDetails.amount) / loanRequestDetails.numberOfInstallments)) : ""}
+                    </span>
+                  </div>
+                  <div class="form-row">
+                    <span class="form-label" style="min-width: 180px;">20% Take-home Salary</span>
+                    <span class="form-box" style="width: 120px; text-align: right;">
+                      ${loanRequestDetails.employee?.employeeSalary ? new Intl.NumberFormat("en-PK", { minimumFractionDigits: 0 }).format(Math.round(Number(loanRequestDetails.employee.employeeSalary) * 0.2)) : ""}
+                    </span>
+                  </div>
+                  <div class="form-row">
+                    <span class="form-label" style="min-width: 180px;">Current Loan Balance, if any</span>
+                    <span class="form-box" style="width: 120px;"></span>
+                  </div>
+                  <div class="form-row">
+                    <span class="form-label" style="min-width: 180px;">Aggregate Loan Balance</span>
+                    <span class="form-box" style="width: 120px;"></span>
+                  </div>
+                </div>
               </div>
-              <div class="info-item">
-                <div class="info-label">Created At</div>
-                <div class="info-value">${format(new Date(loanRequestDetails.createdAt), "MMMM dd, yyyy 'at' hh:mm a")}</div>
-              </div>
-              ${loanRequestDetails.approvedBy ? `
-              <div class="info-item">
-                <div class="info-label">Approved By</div>
-                <div class="info-value">${loanRequestDetails.approvedBy.firstName} ${loanRequestDetails.approvedBy.lastName}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Approved At</div>
-                <div class="info-value">${loanRequestDetails.approvedAt ? format(new Date(loanRequestDetails.approvedAt), "MMMM dd, yyyy 'at' hh:mm a") : "—"}</div>
-              </div>
-              ` : ''}
-            </div>
-          </div>
 
-          <div class="footer">
-            <p>This is a system-generated document.</p>
+              <div style="display: flex; justify-content: flex-end; margin-top: 30px;">
+                <div style="text-align: center; width: 200px;">
+                  <div style="border-top: 1.5px solid #000; margin-bottom: 4px;"></div>
+                  <div style="font-size: 12px; font-weight: bold;">G.M. Finance</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recommendations Section -->
+            <div class="section" style="min-height: 120px; margin-bottom: 0;">
+              <div class="form-label" style="font-weight: bold; margin-bottom: 10px;">Recommendations :</div>
+              <div class="recommendation-lines">
+                <div class="rec-line"></div>
+                <div class="rec-line"></div>
+                <div class="rec-line"></div>
+              </div>
+
+              <div class="ceo-sig-container">
+                <div class="ceo-sig-box">
+                  <div class="ceo-sig-line"></div>
+                  <div class="sig-text">Chief Executive Officer</div>
+                </div>
+              </div>
+            </div>
           </div>
         </body>
       </html>

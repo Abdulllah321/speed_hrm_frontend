@@ -49,7 +49,7 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
         departmentId: "all",
         subDepartmentId: "all",
         locationId: "all",
-        monthYear: format(new Date(), "yyyy-MM"),
+        monthYear: [format(new Date(), "yyyy-MM")] as string | string[],
     });
 
     const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
@@ -113,8 +113,8 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
 
     const handleSearch = () => {
         startTransition(async () => {
-            if (!filters.monthYear) {
-                toast.error("Please select a month/year");
+            if (!filters.monthYear || (Array.isArray(filters.monthYear) && filters.monthYear.length === 0)) {
+                toast.error("Please select at least one month/year");
                 return;
             }
 
@@ -124,10 +124,11 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
                 : (selectedEmployeeIds.length > 0 ? selectedEmployeeIds.join(",") : "all");
             
             try {
-                const [year, month] = filters.monthYear.split("-");
+                const monthsYears = Array.isArray(filters.monthYear)
+                    ? filters.monthYear.join(",")
+                    : filters.monthYear;
                 const result = await getPayrollReport({
-                    month,
-                    year,
+                    monthsYears,
                     departmentId: filters.departmentId,
                     subDepartmentId: filters.subDepartmentId,
                     employeeId: effectiveEmployeeId,
@@ -380,22 +381,43 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
             ? "All Locations" 
             : locations.find(l => l.id === filters.locationId)?.name || "";
 
-        const getFormattedMonthYear = (monthYearStr: string) => {
-            if (!monthYearStr) return "";
-            try {
-                const [year, month] = monthYearStr.split("-");
-                const date = new Date(Number(year), Number(month) - 1, 1);
-                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-            } catch (e) {
-                return monthYearStr;
+        const getFormattedMonthYear = (monthYearVal: string | string[]) => {
+            if (!monthYearVal) return "";
+            const array = Array.isArray(monthYearVal) ? monthYearVal : [monthYearVal];
+            if (array.length === 0) return "";
+            const formatSingle = (str: string) => {
+                try {
+                    const [year, month] = str.split("-");
+                    const date = new Date(Number(year), Number(month) - 1, 1);
+                    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                } catch (e) {
+                    return str;
+                }
+            };
+            if (array.length <= 3) {
+                return array.map(formatSingle).join(", ");
             }
+            return `${array.slice(0, 3).map(formatSingle).join(", ")} (+${array.length - 3} more)`;
         };
         const formattedMonthYear = getFormattedMonthYear(filters.monthYear);
+        const joinedMonthYear = Array.isArray(filters.monthYear) ? filters.monthYear.join(", ") : filters.monthYear;
+
+        const getFormattedRowMonth = (row: any) => {
+            const m = row.payroll?.month;
+            const y = row.payroll?.year;
+            if (!m || !y) return "—";
+            const monthNames = [
+                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+            ];
+            const idx = parseInt(m) - 1;
+            return `${monthNames[idx] || m} ${y}`;
+        };
 
         const printContent = `
       <html>
         <head>
-          <title>Payroll Report - ${filters.monthYear}</title>
+          <title>Payroll Report - ${joinedMonthYear}</title>
           <style>
             @page { size: A4 portrait; margin: 4mm; }
             body { font-family: Arial, sans-serif; font-size: 7px; margin: 0; padding: 0; color: #111; width: 100%; }
@@ -426,7 +448,7 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
         <body>
           <div class="header-info">
             <span>${new Date().toLocaleDateString()}</span>
-            <span>Payroll Report - ${filters.monthYear}</span>
+            <span>Payroll Report - ${joinedMonthYear}</span>
           </div>
           
           <div style="text-align: center; margin-bottom: 10px;">
@@ -439,6 +461,7 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
             <thead>
               <tr>
                 <th style="width: 3%">S.No</th>
+                <th style="width: 8%">Month</th>
                 <th style="width: 16%">Employee Name</th>
                 <th style="width: 7%">Basic Salary</th>
                 ${hasHouseRent ? `<th style="width: 7%">House Rent</th>` : ''}
@@ -470,6 +493,7 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
                   return `
                     <tr>
                       <td class="text-center">${i + 1}</td>
+                      <td class="no-wrap">${getFormattedRowMonth(row)}</td>
                       <td class="no-wrap"><b>${row.employee?.employeeName || ''}</b></td>
                       <td class="text-right">${Math.round(basic).toLocaleString()}</td>
                       ${hasHouseRent ? `<td class="text-right">${houseRent > 0 ? Math.round(houseRent).toLocaleString() : '0'}</td>` : ''}
@@ -495,7 +519,7 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
                   `;
               }).join('')}
               <tr class="font-bold total-row">
-                <td colspan="2" class="text-right"><b>Grand Total:</b></td>
+                <td colspan="3" class="text-right"><b>Grand Total:</b></td>
                 <td class="text-right"><b>${Math.round(columnTotals.basicSalary).toLocaleString()}</b></td>
                 ${hasHouseRent ? `<td class="text-right"><b>${Math.round(columnTotals.houseRent).toLocaleString()}</b></td>` : ''}
                 ${hasUtility ? `<td class="text-right"><b>${Math.round(columnTotals.utility).toLocaleString()}</b></td>` : ''}
@@ -580,10 +604,11 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
             toast.info("Fetching all records for export...");
 
             // Fetch ALL records matching current filters for the selected month
-            const [year, month] = filters.monthYear.split("-");
+            const monthsYears = Array.isArray(filters.monthYear)
+                ? filters.monthYear.join(",")
+                : filters.monthYear;
             const result = await getPayrollReport({
-                month,
-                year,
+                monthsYears,
                 departmentId: filters.departmentId !== "all" ? filters.departmentId : undefined,
                 subDepartmentId: filters.subDepartmentId !== "all" ? filters.subDepartmentId : undefined,
                 employeeId: selectedEmployeeIds.length > 0 ? selectedEmployeeIds.join(",") : undefined,
@@ -697,7 +722,10 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
             link.href = URL.createObjectURL(blob);
             
             // Generate filename based on selected month
-            link.download = `payroll-report-${filters.monthYear}-detailed.csv`;
+            const filenameSuffix = Array.isArray(filters.monthYear)
+                ? filters.monthYear.join("_")
+                : filters.monthYear;
+            link.download = `payroll-report-${filenameSuffix}-detailed.csv`;
             link.click();
 
             toast.success(`Exported ${exportData.length} records successfully`);
@@ -771,8 +799,8 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
                             <Label>Month/Year</Label>
                             <MonthYearPicker
                                 value={filters.monthYear}
-                                onChange={(val) => setFilters(p => ({ ...p, monthYear: val as string }))}
-                                multiple={false}
+                                onChange={(val) => setFilters(p => ({ ...p, monthYear: val as string[] }))}
+                                multiple={true}
                                 placeholder="Select month and year"
                             />
                         </div>

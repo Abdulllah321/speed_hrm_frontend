@@ -143,6 +143,12 @@ export function PayslipTemplate({ data }: PayslipTemplateProps) {
                                     <td className="p-1 pr-2 text-right font-bold">{totalAllowances.toLocaleString()}</td>
                                 </tr>
                             )}
+                            {Number(data.incrementArrears) > 0 && (
+                                <tr className="border-t text-green-600 font-semibold">
+                                    <td className="p-1 pl-2">Increment Arrears {data.incrementArrearsMonths ? `(${data.incrementArrearsMonths})` : ''} (+)</td>
+                                    <td className="p-1 pr-2 text-right font-bold">{Number(data.incrementArrears).toLocaleString()}</td>
+                                </tr>
+                            )}
                             {Number(data.overtimeAmount) > 0 && (
                                 <tr className="border-t">
                                     <td className="p-1 pl-2">Overtime</td>

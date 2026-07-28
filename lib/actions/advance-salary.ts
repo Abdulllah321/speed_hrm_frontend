@@ -34,6 +34,7 @@ export interface AdvanceSalary {
   approvedAt?: string;
   rejectionReason?: string;
   status: string;
+  disbursementType?: string;
   createdById?: string;
   createdBy?: {
     id: string;
@@ -109,6 +110,7 @@ export async function createAdvanceSalary(data: {
   neededOn: string;
   deductionMonthYear: string;
   reason: string;
+  disbursementType?: string;
 }): Promise<{ status: boolean; data?: AdvanceSalary[]; message?: string }> {
   try {
     const [year, month] = data.deductionMonthYear.split("-");
@@ -122,6 +124,7 @@ export async function createAdvanceSalary(data: {
       deductionYear,
       deductionMonthYear: data.deductionMonthYear,
       reason: data.reason,
+      disbursementType: data.disbursementType,
     }));
     const res = await authFetch(`/advance-salaries`, {
       method: "POST",
@@ -149,6 +152,7 @@ export async function updateAdvanceSalary(
     deductionMonthYear?: string;
     reason?: string;
     status?: string;
+    disbursementType?: string;
   }
 ): Promise<{ status: boolean; data?: AdvanceSalary; message?: string }> {
   try {
@@ -157,6 +161,7 @@ export async function updateAdvanceSalary(
     if (data.neededOn !== undefined) updateData.neededOn = data.neededOn;
     if (data.reason !== undefined) updateData.reason = data.reason;
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.disbursementType !== undefined) updateData.disbursementType = data.disbursementType;
     if (data.deductionMonthYear !== undefined) {
       const [year, month] = data.deductionMonthYear.split("-");
       updateData.deductionMonth = month.padStart(2, "0");

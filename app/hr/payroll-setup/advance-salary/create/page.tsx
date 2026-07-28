@@ -60,6 +60,7 @@ const advanceSalaryFormSchema = z.object({
     .min(1, "Reason is required")
     .min(10, "Reason must be at least 10 characters")
     .max(500, "Reason must not exceed 500 characters"),
+  disbursementType: z.string().min(1, "Disbursement method is required"),
 });
 
 type AdvanceSalaryFormData = z.infer<typeof advanceSalaryFormSchema>;
@@ -90,6 +91,7 @@ export default function CreateAdvanceSalaryPage() {
       neededOn: "",
       deductionMonthYear: "",
       reason: "",
+      disbursementType: "with_payroll",
     },
     mode: "onBlur",
   });
@@ -185,6 +187,7 @@ export default function CreateAdvanceSalaryPage() {
         neededOn: data.neededOn,
         deductionMonthYear: data.deductionMonthYear,
         reason: data.reason,
+        disbursementType: data.disbursementType,
       });
 
       if (result.status) {
@@ -366,8 +369,8 @@ export default function CreateAdvanceSalaryPage() {
                 </div>
               )}
 
-              {/* Amount, Needed On, and Deduction Month-Year Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Amount, Needed On, Deduction Month-Year, and Disbursement Method Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <FormField
                   control={form.control}
                   name="amount"
@@ -436,6 +439,34 @@ export default function CreateAdvanceSalaryPage() {
                       </FormControl>
                       <FormDescription>
                         When the advance will be deducted from salary
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="disbursementType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Disbursement Method <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Autocomplete
+                          options={[
+                            { value: "with_payroll", label: "With Payroll/Salary" },
+                            { value: "separately", label: "Separately (Off-payroll)" },
+                          ]}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select method"
+                          disabled={form.formState.isSubmitting}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        How the advance will be paid to employee
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

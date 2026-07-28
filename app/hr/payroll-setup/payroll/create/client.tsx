@@ -592,6 +592,12 @@ export function GeneratePayrollClient({
                                                                     <span className="text-right">{Math.round(Number(a.amount || 0)).toLocaleString()}</span>
                                                                 </div>
                                                             ))}
+                                                            {row.incrementArrears > 0 && (
+                                                                <div className="flex justify-between items-center gap-2 text-green-600 font-semibold">
+                                                                    <span className="shrink-0">Increment Arrears (+):</span>
+                                                                    <span className="text-right">{Math.round(Number(row.incrementArrears || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            )}
                                                             {row.overtimeAmount > 0 && (
                                                                 <div className="flex justify-between items-center gap-2">
                                                                     <span className="font-bold shrink-0">Overtime:</span>
