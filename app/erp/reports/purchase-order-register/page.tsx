@@ -28,6 +28,8 @@ import {
   SlidersHorizontal,
   Store,
   TrendingUp,
+  Coins,
+  FileCheck2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/auth";
@@ -173,7 +175,6 @@ export default function PurchaseOrderRegisterPage() {
 
   const fetchOptions = async () => {
     try {
-      const baseUrl = getApiBaseUrl();
       const [brandRes, vendorRes] = await Promise.all([
         authFetch(`/master/brand`),
         authFetch(`/vendors`),
@@ -372,6 +373,16 @@ export default function PurchaseOrderRegisterPage() {
     setHierarchyLevels((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const formatVal = (val: number) => {
+    if (val === 0 || val === null || val === undefined) return "-";
+    return val.toLocaleString();
+  };
+
+  const formatPriceVal = (val: number) => {
+    if (val === 0 || val === null || val === undefined) return "-";
+    return `Rs. ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   // Flatten nested tree for TanStack virtualization
   const flatRows = useMemo(() => {
     const rows: any[] = [];
@@ -444,9 +455,8 @@ export default function PurchaseOrderRegisterPage() {
                       color: v.color,
                       size: v.size,
                       barCode: v.barCode,
-                      quantity: v.quantity,
                       unitPrice: v.unitPrice,
-                      lineTotal: v.lineTotal,
+                      totals: { quantity: v.quantity, amount: v.lineTotal },
                     });
                   }
                 }
@@ -472,19 +482,26 @@ export default function PurchaseOrderRegisterPage() {
   const rowVirtualizer = useVirtualizer({
     count: flatRows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: (index) => {
-      const row = flatRows[index];
-      if (row?.type === "doc-header") return 64;
-      if (row?.type === "category" || row?.type === "article") return 36;
-      return 30;
-    },
-    overscan: 15,
+    estimateSize: () => 40,
+    overscan: 20,
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
   const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
   const paddingBottom = virtualItems.length > 0 ? totalSize - virtualItems[virtualItems.length - 1].end : 0;
+
+  // Active distinct brands count
+  const distinctBrandsCount = useMemo(() => {
+    if (!reportData || !reportData.documents) return 0;
+    const bSet = new Set<string>();
+    reportData.documents.forEach((d) => {
+      if (d.brandsDisplay) {
+        d.brandsDisplay.split("|").forEach((b) => bSet.add(b.trim()));
+      }
+    });
+    return bSet.size;
+  }, [reportData]);
 
   return (
     <PermissionGuard permissions="erp.procurement.po.read">
@@ -549,6 +566,65 @@ export default function PurchaseOrderRegisterPage() {
               {pdfExportState === "idle" && "Export PDF"}
             </Button>
           </div>
+        </div>
+
+        {/* Top KPI Cards Banner */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Documents</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                  {reportData?.grandTotals?.totalDocuments || 0}
+                </h3>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-between justify-center text-blue-600 dark:text-blue-400">
+                <FileCheck2 className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Ordered Qty</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                  {formatVal(reportData?.grandTotals?.quantity || 0)}
+                </h3>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <Package className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total PO Value</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                  {formatPriceVal(reportData?.grandTotals?.amount || 0)}
+                </h3>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                <Coins className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Active Brands</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                  {distinctBrandsCount}
+                </h3>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <Layers className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Report Hierarchy Configuration Bar */}
@@ -781,10 +857,10 @@ export default function PurchaseOrderRegisterPage() {
         </Card>
 
         {/* TanStack Virtualized Table Preview Card */}
-        <Card className="bg-white border border-slate-200 shadow-sm text-slate-900 font-sans overflow-hidden">
-          <CardHeader className="border-b bg-slate-50/60 pb-3">
+        <Card className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm text-slate-900 dark:text-slate-100 font-sans overflow-hidden">
+          <CardHeader className="border-b bg-slate-50/60 dark:bg-slate-900/60 pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+              <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
                 Purchase Order Register Preview ({reportData?.grandTotals?.totalDocuments || 0} Documents)
               </CardTitle>
               <div className="text-xs font-bold text-red-600 underline">
@@ -806,25 +882,27 @@ export default function PurchaseOrderRegisterPage() {
               <div ref={parentRef} className="overflow-auto max-h-[750px] relative">
                 <table className="w-full text-xs border-collapse table-fixed">
                   <colgroup>
-                    <col style={{ width: "45%" }} />
-                    <col style={{ width: "15%" }} />
+                    <col style={{ width: "42%" }} />
                     <col style={{ width: "12%" }} />
-                    <col style={{ width: "15%" }} />
-                    <col style={{ width: "13%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "14%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "12%" }} />
                   </colgroup>
-                  <thead className="sticky top-0 z-20 bg-slate-100 border-b border-slate-900 text-left font-bold text-slate-800 shadow-xs">
+                  <thead className="sticky top-0 z-20 bg-slate-900 text-slate-100 border-b border-slate-800 text-left font-bold shadow-xs">
                     <tr>
                       <th className="py-2.5 px-3">GPC / Category / Product Description</th>
                       <th className="py-2.5 px-3 text-center">Color</th>
                       <th className="py-2.5 px-3 text-center">Size</th>
                       <th className="py-2.5 px-3 text-center">Barcode</th>
                       <th className="py-2.5 px-3 text-right">Quantity</th>
+                      <th className="py-2.5 px-3 text-right">Line Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paddingTop > 0 && (
                       <tr>
-                        <td colSpan={5} style={{ height: `${paddingTop}px` }} />
+                        <td colSpan={6} style={{ height: `${paddingTop}px` }} />
                       </tr>
                     )}
                     {virtualItems.map((virtualRow) => {
@@ -834,51 +912,56 @@ export default function PurchaseOrderRegisterPage() {
                       if (row.type === "doc-header") {
                         const { doc } = row;
                         return (
-                          <tr key={row.id} className="bg-slate-50 border-t-2 border-slate-900">
-                            <td colSpan={5} className="p-2.5">
-                              <div className="border border-slate-900 bg-white p-3 flex flex-wrap items-center justify-between gap-4 text-xs shadow-xs rounded-xs">
-                                <div className="flex items-center gap-6">
+                          <tr
+                            key={virtualRow.key}
+                            ref={rowVirtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            className="bg-slate-900 text-slate-100 font-bold border-b border-slate-800 border-t-2 border-t-slate-700"
+                          >
+                            <td colSpan={6} className="p-3">
+                              <div className="flex flex-wrap items-center justify-between gap-4 text-xs">
+                                <div className="flex flex-wrap items-center gap-6">
                                   <div>
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Document #</span>
-                                    <span className="text-red-600 font-bold text-base underline">{doc.poNumber}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase block">PO Number</span>
+                                    <span className="text-rose-400 font-black text-sm underline">{doc.poNumber}</span>
                                   </div>
 
                                   <div>
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Brands</span>
-                                    <span className="font-bold text-teal-700 text-sm uppercase">{doc.brandsDisplay}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Brands</span>
+                                    <span className="font-bold text-indigo-300 text-sm uppercase tracking-wide">{doc.brandsDisplay}</span>
                                   </div>
 
                                   <div>
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Date</span>
-                                    <span className="font-semibold text-slate-800">{doc.orderDate}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Date</span>
+                                    <span className="font-semibold text-slate-200">{doc.orderDate}</span>
                                   </div>
 
                                   <div>
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Supplier</span>
-                                    <span className="font-semibold text-slate-900">{doc.supplierName}</span>
-                                    <span className="text-slate-500 ml-1.5">({doc.supplierLocation})</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Supplier</span>
+                                    <span className="font-semibold text-slate-100">{doc.supplierName}</span>
+                                    <span className="text-slate-400 ml-1.5">({doc.supplierLocation})</span>
                                   </div>
 
                                   <div>
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase block">GRN Info</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase block">GRN Info</span>
                                     {doc.grns && doc.grns.length > 0 ? (
                                       <div className="flex flex-wrap gap-1 mt-0.5">
                                         {doc.grns.map((g: any, gIdx: number) => (
-                                          <Badge key={gIdx} variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-bold">
+                                          <Badge key={gIdx} variant="outline" className="bg-sky-950 text-sky-300 border-sky-800 text-[10px] font-bold">
                                             <Package className="h-3 w-3 mr-1" /> {g.grnNumber} ({g.status})
                                           </Badge>
                                         ))}
                                       </div>
                                     ) : (
-                                      <span className="text-slate-400 italic text-[11px]">No GRN Generated</span>
+                                      <span className="text-slate-500 italic text-[11px]">No GRN Generated</span>
                                     )}
                                   </div>
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  {doc.orderType && <Badge variant="outline" className="text-[10px] font-semibold">{doc.orderType}</Badge>}
-                                  {doc.goodsType && <Badge variant="outline" className="text-[10px] font-semibold">{doc.goodsType}</Badge>}
-                                  <Badge className="text-[10px] font-semibold bg-slate-900 text-white">{doc.status}</Badge>
+                                  {doc.orderType && <Badge variant="outline" className="text-[10px] font-semibold border-slate-700 text-slate-300">{doc.orderType}</Badge>}
+                                  {doc.goodsType && <Badge variant="outline" className="text-[10px] font-semibold border-slate-700 text-slate-300">{doc.goodsType}</Badge>}
+                                  <Badge className="text-[10px] font-bold bg-slate-800 text-emerald-400 border border-slate-700">{doc.status}</Badge>
                                 </div>
                               </div>
                             </td>
@@ -888,90 +971,125 @@ export default function PurchaseOrderRegisterPage() {
 
                       if (row.type === "division") {
                         return (
-                          <tr key={row.id} className="bg-slate-100/60 border-b border-slate-200">
-                            <td className="py-1.5 px-3 font-bold text-slate-700 uppercase" colSpan={4}>
-                              Division: {row.label}
+                          <tr
+                            key={virtualRow.key}
+                            ref={rowVirtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            className="bg-slate-800 text-slate-100 font-bold text-[11px] border-b border-slate-700"
+                          >
+                            <td colSpan={4} className="p-2 pl-4 text-blue-300">
+                              DIVISION: {row.label}
                             </td>
-                            <td className="py-1.5 px-3 text-right font-bold text-slate-700">
-                              {row.totals.quantity.toLocaleString()}
-                            </td>
+                            <td className="p-2 text-right">{formatVal(row.totals.quantity)}</td>
+                            <td className="p-2 text-right text-emerald-400 font-bold">{formatPriceVal(row.totals.amount)}</td>
                           </tr>
                         );
                       }
 
                       if (row.type === "category") {
                         return (
-                          <tr key={row.id} className="border-b border-slate-200 bg-emerald-50/30">
-                            <td className="py-1.5 px-3 font-bold text-emerald-700 uppercase" colSpan={4}>
-                              {row.label}
+                          <tr
+                            key={virtualRow.key}
+                            ref={rowVirtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            className="bg-slate-700 text-slate-100 font-semibold text-[11px] border-b border-slate-600"
+                          >
+                            <td colSpan={4} className="p-2 pl-8 text-emerald-300">
+                              CATEGORY: {row.label}
                             </td>
-                            <td className="py-1.5 px-3 text-right font-bold text-emerald-700">
-                              {row.totals.quantity.toLocaleString()}
-                            </td>
+                            <td className="p-2 text-right font-bold text-emerald-300">{formatVal(row.totals.quantity)}</td>
+                            <td className="p-2 text-right font-bold text-emerald-400">{formatPriceVal(row.totals.amount)}</td>
                           </tr>
                         );
                       }
 
                       if (row.type === "gender") {
                         return (
-                          <tr key={row.id} className="border-b border-slate-100 bg-purple-50/20">
-                            <td className="py-1 px-4 font-semibold text-purple-700 uppercase" colSpan={4}>
-                              Gender: {row.label}
+                          <tr
+                            key={virtualRow.key}
+                            ref={rowVirtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            className="bg-slate-600 text-slate-100 font-medium text-[11px] border-b border-slate-500"
+                          >
+                            <td colSpan={4} className="p-2 pl-12 text-rose-200">
+                              GENDER: {row.label}
                             </td>
-                            <td className="py-1 px-3 text-right font-semibold text-purple-700">
-                              {row.totals.quantity.toLocaleString()}
-                            </td>
+                            <td className="p-2 text-right font-semibold text-rose-200">{formatVal(row.totals.quantity)}</td>
+                            <td className="p-2 text-right font-semibold text-rose-200">{formatPriceVal(row.totals.amount)}</td>
                           </tr>
                         );
                       }
 
                       if (row.type === "silhouette") {
                         return (
-                          <tr key={row.id} className="border-b border-slate-100">
-                            <td className="py-1 pl-6 pr-3 font-medium text-slate-600 uppercase" colSpan={4}>
-                              Silhouette: {row.label}
+                          <tr
+                            key={virtualRow.key}
+                            ref={rowVirtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            className="bg-slate-500 text-slate-100 font-medium text-[11px] border-b border-slate-400"
+                          >
+                            <td colSpan={4} className="p-2 pl-16 text-amber-200">
+                              SILHOUETTE: {row.label}
                             </td>
-                            <td className="py-1 px-3 text-right font-medium text-slate-600">
-                              {row.totals.quantity.toLocaleString()}
-                            </td>
+                            <td className="p-2 text-right font-semibold text-amber-200">{formatVal(row.totals.quantity)}</td>
+                            <td className="p-2 text-right font-semibold text-amber-200">{formatPriceVal(row.totals.amount)}</td>
                           </tr>
                         );
                       }
 
                       if (row.type === "article") {
                         return (
-                          <tr key={row.id} className="bg-blue-50/20 border-b border-slate-100">
-                            <td className="py-1.5 pl-8 pr-3 font-bold text-blue-600" colSpan={4}>
-                              <span className="underline mr-2">SKU: {row.sku}</span>
-                              <span className="text-slate-800 text-xs font-bold">{row.description}</span>
+                          <tr
+                            key={virtualRow.key}
+                            ref={rowVirtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold border-b border-slate-200 dark:border-slate-700 hover:bg-slate-200/60 dark:hover:bg-slate-700/60"
+                          >
+                            <td className="p-2 pl-20 font-mono text-xs" colSpan={4}>
+                              SKU: <span className="text-primary font-bold">{row.sku}</span> ({row.description})
                             </td>
-                            <td className="py-1.5 px-3 text-right font-bold text-blue-600">
-                              {row.totals.quantity.toLocaleString()}
-                            </td>
+                            <td className="p-2 text-right text-primary font-bold">{formatVal(row.totals.quantity)}</td>
+                            <td className="p-2 text-right font-extrabold text-emerald-600 dark:text-emerald-400">{formatPriceVal(row.totals.amount)}</td>
                           </tr>
                         );
                       }
 
                       if (row.type === "variant") {
                         return (
-                          <tr key={row.id} className="hover:bg-slate-50 border-b border-slate-100 text-slate-700">
-                            <td className="py-1 pl-12 pr-3"></td>
-                            <td className="py-1 px-3 text-center font-medium">{row.color}</td>
-                            <td className="py-1 px-3 text-center font-medium">{row.size}</td>
-                            <td className="py-1 px-3 text-center text-slate-500 font-mono text-[11px]">{row.barCode}</td>
-                            <td className="py-1 px-3 text-right font-bold text-slate-900">{row.quantity.toLocaleString()}</td>
+                          <tr
+                            key={virtualRow.key}
+                            ref={rowVirtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            className="bg-background hover:bg-slate-50 dark:hover:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+                          >
+                            <td className="p-2 pl-24 italic text-muted-foreground">
+                              &mdash; Variant Detail
+                            </td>
+                            <td className="p-2 text-center font-semibold text-foreground">{row.color}</td>
+                            <td className="p-2 text-center font-bold text-foreground">{row.size}</td>
+                            <td className="p-2 text-center text-slate-500 dark:text-slate-400 font-mono text-[11px]">{row.barCode}</td>
+                            <td className="p-2 text-right font-bold text-foreground">{formatVal(row.totals.quantity)}</td>
+                            <td className="p-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">{formatPriceVal(row.totals.amount)}</td>
                           </tr>
                         );
                       }
 
                       if (row.type === "doc-total") {
                         return (
-                          <tr key={row.id} className="bg-slate-100 border-b-2 border-slate-400 font-bold text-slate-900">
-                            <td colSpan={4} className="py-2 px-3 text-right text-red-600 uppercase">
-                              Total for PO #{row.poNumber}
+                          <tr
+                            key={virtualRow.key}
+                            ref={rowVirtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            className="bg-slate-900 text-slate-100 font-black border-b border-slate-800 text-right"
+                          >
+                            <td colSpan={4} className="p-2.5 text-right text-rose-400 uppercase tracking-wide">
+                              TOTAL FOR PO #{row.poNumber}
                             </td>
-                            <td className="py-2 px-3 text-right text-red-600 text-sm">
-                              {row.totals.quantity.toLocaleString()}
+                            <td className="p-2.5 text-right text-rose-400 text-sm font-black">
+                              {formatVal(row.totals.quantity)}
+                            </td>
+                            <td className="p-2.5 text-right text-emerald-400 text-sm font-black">
+                              {formatPriceVal(row.totals.amount)}
                             </td>
                           </tr>
                         );
@@ -981,7 +1099,7 @@ export default function PurchaseOrderRegisterPage() {
                     })}
                     {paddingBottom > 0 && (
                       <tr>
-                        <td colSpan={5} style={{ height: `${paddingBottom}px` }} />
+                        <td colSpan={6} style={{ height: `${paddingBottom}px` }} />
                       </tr>
                     )}
                   </tbody>
