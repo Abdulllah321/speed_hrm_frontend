@@ -1801,13 +1801,18 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.view"],
           },
           {
-            title: "Voucher Register (All Vouchers)",
+            title: "Voucher Register",
             href: "/erp/reports/voucher-register",
             permissions: ["erp.report.view"],
           },
           {
-            title: "Purchase Order Register",
+            title: "PO Register",
             href: "/erp/reports/purchase-order-register",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Purchase Invoice Register",
+            href: "/erp/reports/purchase-invoice-register",
             permissions: ["erp.report.view"],
           },
         ],
