@@ -205,7 +205,7 @@ export default function PurchaseOrderRegisterPage() {
       if (status && status !== "ALL") params.append("status", status);
       if (search) params.append("search", search);
 
-      const res = await authFetch(`/api/purchase-order/register-report?${params.toString()}`);
+      const res = await authFetch(`/purchase-order/register-report?${params.toString()}`);
       if (res.ok && res.data) {
         setReportData(res.data);
       } else {
@@ -226,7 +226,7 @@ export default function PurchaseOrderRegisterPage() {
 
     const interval = setInterval(async () => {
       try {
-        const res = await authFetch(`/api/purchase-order/register-report/export/${exportJobId}/status`);
+        const res = await authFetch(`/purchase-order/register-report/export/${exportJobId}/status`);
         if (res.ok && res.data) {
           const { state, progress } = res.data;
           setExportProgress(progress || 0);
@@ -258,7 +258,7 @@ export default function PurchaseOrderRegisterPage() {
 
     const interval = setInterval(async () => {
       try {
-        const res = await authFetch(`/api/purchase-order/register-report/export/${pdfJobId}/status`);
+        const res = await authFetch(`/purchase-order/register-report/export/${pdfJobId}/status`);
         if (res.ok && res.data) {
           const { state, progress } = res.data;
           setPdfExportProgress(progress || 0);
@@ -286,7 +286,7 @@ export default function PurchaseOrderRegisterPage() {
   const handleExportExcelClick = async () => {
     if (exportState === "completed" && exportJobId) {
       const baseUrl = getApiBaseUrl();
-      window.open(`${baseUrl}/api/purchase-order/register-report/export/${exportJobId}/download`, "_blank");
+      window.open(`${baseUrl}/purchase-order/register-report/export/${exportJobId}/download`, "_blank");
       setExportState("idle");
       setExportJobId(null);
       setExportProgress(0);
@@ -296,7 +296,7 @@ export default function PurchaseOrderRegisterPage() {
     setExportState("queueing");
     setExportProgress(0);
     try {
-      const res = await authFetch(`/api/purchase-order/register-report/export`, {
+      const res = await authFetch(`/purchase-order/register-report/export`, {
         method: "POST",
         body: JSON.stringify({
           startDate,
@@ -328,7 +328,7 @@ export default function PurchaseOrderRegisterPage() {
   const handleExportPdfClick = async () => {
     if (pdfExportState === "completed" && pdfJobId) {
       const baseUrl = getApiBaseUrl();
-      window.open(`${baseUrl}/api/purchase-order/register-report/export/${pdfJobId}/download`, "_blank");
+      window.open(`${baseUrl}/purchase-order/register-report/export/${pdfJobId}/download`, "_blank");
       setPdfExportState("idle");
       setPdfJobId(null);
       setPdfExportProgress(0);
@@ -338,7 +338,7 @@ export default function PurchaseOrderRegisterPage() {
     setPdfExportState("queueing");
     setPdfExportProgress(0);
     try {
-      const res = await authFetch(`/api/purchase-order/register-report/export`, {
+      const res = await authFetch(`/purchase-order/register-report/export`, {
         method: "POST",
         body: JSON.stringify({
           startDate,
