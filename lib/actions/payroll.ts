@@ -75,6 +75,7 @@ export async function confirmPayroll(data: {
 export async function getPayrollReport(filters: {
     month?: string;
     year?: string;
+    monthsYears?: string;
     departmentId?: string;
     subDepartmentId?: string;
     employeeId?: string;
@@ -84,6 +85,7 @@ export async function getPayrollReport(filters: {
         const queryParams = new URLSearchParams();
         if (filters.month && filters.month !== 'all') queryParams.append("month", filters.month);
         if (filters.year && filters.year !== 'all') queryParams.append("year", filters.year);
+        if (filters.monthsYears) queryParams.append("monthsYears", filters.monthsYears);
         if (filters.departmentId && filters.departmentId !== 'all') queryParams.append("departmentId", filters.departmentId);
         if (filters.subDepartmentId && filters.subDepartmentId !== 'all') queryParams.append("subDepartmentId", filters.subDepartmentId);
         if (filters.employeeId && filters.employeeId !== 'all') queryParams.append("employeeId", filters.employeeId);
