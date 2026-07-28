@@ -787,6 +787,7 @@ export const menuData: MenuItem[] = [
       { title: "Dashboard", href: "/erp/inventory" },
       {
         title: "Warehouse WMS",
+        permissions: ["erp.warehouse.read", "erp.warehouse.create"],
         children: [
           { title: "Dashboard", href: "/erp/inventory/warehouse" },
           { title: "Warehouse", href: "/erp/inventory/warehouse/add" },
