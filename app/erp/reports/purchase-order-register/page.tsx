@@ -190,7 +190,7 @@ export default function PurchaseOrderRegisterPage() {
       if (status && status !== 'ALL') params.append('status', status);
       if (search) params.append('search', search);
 
-      const res = await authFetch(`${baseUrl}/api/purchase-order/register-report?${params.toString()}`);
+      const res = await authFetch(`${baseUrl}/purchase-order/register-report?${params.toString()}`);
       if (res.ok && res.data) {
         setReportData(res.data);
       }
@@ -208,7 +208,7 @@ export default function PurchaseOrderRegisterPage() {
       setExportProgress(0);
 
       const baseUrl = getApiBaseUrl();
-      const res = await authFetch(`${baseUrl}/api/purchase-order/register-report/export`, {
+      const res = await authFetch(`${baseUrl}/purchase-order/register-report/export`, {
         method: 'POST',
         body: JSON.stringify({
           startDate,
@@ -230,13 +230,13 @@ export default function PurchaseOrderRegisterPage() {
 
         const interval = setInterval(async () => {
           try {
-            const statusRes = await authFetch(`${baseUrl}/api/purchase-order/register-report/export/${jobId}/status`);
+            const statusRes = await authFetch(`${baseUrl}/purchase-order/register-report/export/${jobId}/status`);
             if (statusRes.ok && statusRes.data) {
               setExportProgress(statusRes.data.progress || 0);
               if (statusRes.data.state === 'completed') {
                 setExportState('completed');
                 clearInterval(interval);
-                window.open(`${baseUrl}/api/purchase-order/register-report/export/${jobId}/download`, '_blank');
+                window.open(`${baseUrl}/purchase-order/register-report/export/${jobId}/download`, '_blank');
               } else if (statusRes.data.state === 'failed') {
                 setExportState('failed');
                 clearInterval(interval);
@@ -258,7 +258,7 @@ export default function PurchaseOrderRegisterPage() {
   const handleDownloadCompleted = () => {
     if (exportJobId) {
       const baseUrl = getApiBaseUrl();
-      window.open(`${baseUrl}/api/purchase-order/register-report/export/${exportJobId}/download`, '_blank');
+      window.open(`${baseUrl}/purchase-order/register-report/export/${exportJobId}/download`, '_blank');
     }
   };
 
