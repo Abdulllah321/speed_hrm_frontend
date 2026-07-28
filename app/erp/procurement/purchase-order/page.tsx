@@ -40,20 +40,27 @@ export default function PurchaseOrderList() {
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Purchase Orders</h1>
-                {canCreate && (
-                    <div className="flex gap-2">
-                        <Link href="/erp/procurement/purchase-order/create" transitionTypes={["nav-forward"]}>
-                            <Button variant="secondary">
-                                <Plus className="mr-2 h-4 w-4" /> Create Direct PO
-                            </Button>
-                        </Link>
-                        <Link href="/erp/procurement/purchase-order/pending" transitionTypes={["nav-forward"]}>
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" /> From Quotations
-                            </Button>
-                        </Link>
-                    </div>
-                )}
+                <div className="flex gap-2">
+                    <Link href="/erp/reports/purchase-order-register" transitionTypes={["nav-forward"]}>
+                        <Button variant="outline" className="border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-400">
+                            PO Register Report
+                        </Button>
+                    </Link>
+                    {canCreate && (
+                        <>
+                            <Link href="/erp/procurement/purchase-order/create" transitionTypes={["nav-forward"]}>
+                                <Button variant="secondary">
+                                    <Plus className="mr-2 h-4 w-4" /> Create Direct PO
+                                </Button>
+                            </Link>
+                            <Link href="/erp/procurement/purchase-order/pending" transitionTypes={["nav-forward"]}>
+                                <Button>
+                                    <Plus className="mr-2 h-4 w-4" /> From Quotations
+                                </Button>
+                            </Link>
+                        </>
+                    )}
+                </div>
             </div>
 
             <Card>
