@@ -7,10 +7,33 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, FileSpreadsheet, FileText, Loader2, RefreshCw, Search } from 'lucide-react';
+import {
+  ArrowLeft,
+  Box,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Folder,
+  Layers,
+  Loader2,
+  Package,
+  RefreshCw,
+  Search,
+  ShoppingBag,
+  ShoppingCart,
+  SlidersHorizontal,
+  Store,
+  TrendingUp,
+} from 'lucide-react';
 import { authFetch } from '@/lib/auth';
 import { getApiBaseUrl } from '@/lib/utils';
 import { PermissionGuard } from '@/components/auth/permission-guard';
+
+export interface PoRegisterGrnInfo {
+  grnNumber: string;
+  status: string;
+  receivedDate: string;
+}
 
 export interface PoRegisterVariantRow {
   color: string;
@@ -23,6 +46,9 @@ export interface PoRegisterVariantRow {
 export interface PoRegisterProductGroup {
   articleCode: string;
   articleName: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   variants: PoRegisterVariantRow[];
   totalQuantity: number;
   totalAmount: number;
@@ -52,6 +78,7 @@ export interface PoRegisterDocumentGroup {
   orderType?: string;
   goodsType?: string;
   status: string;
+  grns: PoRegisterGrnInfo[];
   categories: PoRegisterCategoryGroup[];
   totalQuantity: number;
   totalAmount: number;
@@ -85,17 +112,31 @@ export interface PoRegisterReportResult {
 
 export default function PurchaseOrderRegisterPage() {
   const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const today = now.toISOString().slice(0, 10);
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-indexed; July = 6
+  const fyStartYear = currentMonth >= 6 ? currentYear : currentYear - 1;
+  const defaultStartDate = new Date(fyStartYear, 6, 1).toISOString().slice(0, 10);
+  const defaultEndDate = now.toISOString().slice(0, 10);
 
-  const [startDate, setStartDate] = useState(firstDay);
-  const [endDate, setEndDate] = useState(today);
+  const [startDate, setStartDate] = useState(defaultStartDate);
+  const [endDate, setEndDate] = useState(defaultEndDate);
   const [selectedBrand, setSelectedBrand] = useState('ALL');
   const [selectedVendor, setSelectedVendor] = useState('ALL');
   const [orderType, setOrderType] = useState('ALL');
   const [goodsType, setGoodsType] = useState('ALL');
   const [status, setStatus] = useState('ALL');
   const [search, setSearch] = useState('');
+
+  // Report Hierarchy Configuration State
+  const [hierarchyLevels, setHierarchyLevels] = useState({
+    brand: true,
+    division: true,
+    category: true,
+    gender: true,
+    silhouette: true,
+    article: true,
+    variant: true,
+  });
 
   const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
@@ -195,7 +236,6 @@ export default function PurchaseOrderRegisterPage() {
               if (statusRes.data.state === 'completed') {
                 setExportState('completed');
                 clearInterval(interval);
-                // Trigger auto download
                 window.open(`${baseUrl}/api/purchase-order/register-report/export/${jobId}/download`, '_blank');
               } else if (statusRes.data.state === 'failed') {
                 setExportState('failed');
@@ -222,10 +262,15 @@ export default function PurchaseOrderRegisterPage() {
     }
   };
 
+  const toggleHierarchy = (key: keyof typeof hierarchyLevels) => {
+    if (key === 'brand') return; // Brand is required
+    setHierarchyLevels((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <PermissionGuard permissions="erp.procurement.po.read">
       <div className="p-6 space-y-6">
-        {/* Header Bar */}
+        {/* Top Header Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
             <Link href="/erp/procurement/purchase-order">
@@ -238,7 +283,7 @@ export default function PurchaseOrderRegisterPage() {
                 Purchase Order Register Report
               </h1>
               <p className="text-sm text-slate-500">
-                Hierarchical PO ledger grouped by Brand, Document, Category, Subcategory, Article & Variant details.
+                Hierarchical PO ledger with financial year defaults, GRN tracking, and customizable nesting structure.
               </p>
             </div>
           </div>
@@ -289,6 +334,119 @@ export default function PurchaseOrderRegisterPage() {
           </div>
         </div>
 
+        {/* Report Hierarchy Configuration Bar */}
+        <Card className="border border-slate-200 dark:border-slate-800 shadow-sm rounded-xl overflow-hidden bg-white dark:bg-slate-950">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-semibold text-sm">
+              <SlidersHorizontal className="h-4 w-4 text-purple-600" />
+              <span>Report Hierarchy Configuration</span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Customize the nesting structure. Check the levels you want to group and report by.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {/* Brand */}
+              <div
+                onClick={() => toggleHierarchy('brand')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-not-allowed select-none transition-all ${
+                  hierarchyLevels.brand
+                    ? 'bg-slate-100 border-slate-300 text-slate-700 opacity-80 dark:bg-slate-800 dark:text-slate-300'
+                    : 'bg-white border-slate-200 text-slate-400'
+                }`}
+              >
+                <input type="checkbox" checked={hierarchyLevels.brand} readOnly className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
+                <Layers className="h-3.5 w-3.5 text-purple-600" />
+                <span>Brand</span>
+              </div>
+
+              {/* Division */}
+              <div
+                onClick={() => toggleHierarchy('division')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                  hierarchyLevels.division
+                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
+                }`}
+              >
+                <input type="checkbox" checked={hierarchyLevels.division} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
+                <Folder className="h-3.5 w-3.5 text-purple-600" />
+                <span>Division</span>
+              </div>
+
+              {/* Category */}
+              <div
+                onClick={() => toggleHierarchy('category')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                  hierarchyLevels.category
+                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
+                }`}
+              >
+                <input type="checkbox" checked={hierarchyLevels.category} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
+                <ShoppingCart className="h-3.5 w-3.5 text-purple-600" />
+                <span>Category</span>
+              </div>
+
+              {/* Gender */}
+              <div
+                onClick={() => toggleHierarchy('gender')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                  hierarchyLevels.gender
+                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
+                }`}
+              >
+                <input type="checkbox" checked={hierarchyLevels.gender} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
+                <Store className="h-3.5 w-3.5 text-purple-600" />
+                <span>Gender</span>
+              </div>
+
+              {/* Silhouette */}
+              <div
+                onClick={() => toggleHierarchy('silhouette')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                  hierarchyLevels.silhouette
+                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
+                }`}
+              >
+                <input type="checkbox" checked={hierarchyLevels.silhouette} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
+                <TrendingUp className="h-3.5 w-3.5 text-purple-600" />
+                <span>Silhouette</span>
+              </div>
+
+              {/* Article */}
+              <div
+                onClick={() => toggleHierarchy('article')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                  hierarchyLevels.article
+                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
+                }`}
+              >
+                <input type="checkbox" checked={hierarchyLevels.article} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
+                <ShoppingBag className="h-3.5 w-3.5 text-purple-600" />
+                <span>Article</span>
+              </div>
+
+              {/* Variant (Sizes) */}
+              <div
+                onClick={() => toggleHierarchy('variant')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
+                  hierarchyLevels.variant
+                    ? 'bg-purple-50 border-purple-300 text-purple-900 shadow-xs dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-300'
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'
+                }`}
+              >
+                <input type="checkbox" checked={hierarchyLevels.variant} onChange={() => {}} className="rounded border-slate-300 text-purple-600 accent-purple-600 h-3.5 w-3.5" />
+                <Box className="h-3.5 w-3.5 text-purple-600" />
+                <span>Variant (Sizes)</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Filters Card */}
         <Card className="border-slate-200 dark:border-slate-800">
           <CardHeader className="pb-3">
@@ -297,7 +455,7 @@ export default function PurchaseOrderRegisterPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label className="text-xs">Start Date</Label>
+                <Label className="text-xs">Start Date (Financial Year Start)</Label>
                 <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 mt-1" />
               </div>
 
@@ -371,7 +529,7 @@ export default function PurchaseOrderRegisterPage() {
                   onChange={(e) => setStatus(e.target.value)}
                   className="w-full h-9 mt-1 rounded-md border border-slate-200 dark:border-slate-800 bg-background px-3 text-xs"
                 >
-                  <option value="ALL">All Statuses</option>
+                  <option value="ALL">All Statuses (Open & Closed)</option>
                   <option value="DRAFT">DRAFT</option>
                   <option value="PENDING_CHECKER">PENDING CHECKER</option>
                   <option value="PENDING_AUTHORIZER">PENDING AUTHORIZER</option>
@@ -384,7 +542,7 @@ export default function PurchaseOrderRegisterPage() {
               </div>
 
               <div>
-                <Label className="text-xs">Search</Label>
+                <Label className="text-xs">Quick Search</Label>
                 <div className="relative mt-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
@@ -431,11 +589,13 @@ export default function PurchaseOrderRegisterPage() {
               {reportData.brands.map((brand) => (
                 <div key={brand.brandId} className="space-y-6">
                   {/* Brand Level Header */}
-                  <div className="text-center">
-                    <h3 className="text-lg font-bold text-teal-700 border-b-2 border-teal-700 inline-block px-8 pb-1 tracking-wider uppercase">
-                      {brand.brandName}
-                    </h3>
-                  </div>
+                  {hierarchyLevels.brand && (
+                    <div className="text-center">
+                      <h3 className="text-lg font-bold text-teal-700 border-b-2 border-teal-700 inline-block px-8 pb-1 tracking-wider uppercase">
+                        {brand.brandName}
+                      </h3>
+                    </div>
+                  )}
 
                   {/* Documents Loop */}
                   {brand.documents.map((doc) => (
@@ -458,6 +618,21 @@ export default function PurchaseOrderRegisterPage() {
                             <span className="text-[10px] font-bold text-slate-500 uppercase block">Supplier</span>
                             <span className="font-semibold text-slate-900">{doc.supplierName}</span>
                             <span className="text-slate-500 ml-2">({doc.supplierLocation})</span>
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase block">GRN Info</span>
+                            {doc.grns && doc.grns.length > 0 ? (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {doc.grns.map((g, gIdx) => (
+                                  <Badge key={gIdx} variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-bold">
+                                    <Package className="h-3 w-3 mr-1" /> {g.grnNumber} ({g.status})
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic text-[11px]">No GRN Generated</span>
+                            )}
                           </div>
                         </div>
 
@@ -483,16 +658,18 @@ export default function PurchaseOrderRegisterPage() {
                             {doc.categories.map((cat, catIdx) => (
                               <React.Fragment key={catIdx}>
                                 {/* Category Header (Green) */}
-                                <tr className="border-b border-slate-100">
-                                  <td className="py-1 px-2 font-bold text-emerald-700 uppercase">
-                                    {cat.categoryName}
-                                  </td>
-                                  <td></td>
-                                  <td></td>
-                                  <td className="py-1 px-2 text-right font-bold text-emerald-700">
-                                    {cat.totalQuantity.toLocaleString()}
-                                  </td>
-                                </tr>
+                                {hierarchyLevels.category && (
+                                  <tr className="border-b border-slate-100">
+                                    <td className="py-1 px-2 font-bold text-emerald-700 uppercase">
+                                      {cat.categoryName}
+                                    </td>
+                                    <td></td>
+                                    <td></td>
+                                    <td className="py-1 px-2 text-right font-bold text-emerald-700">
+                                      {cat.totalQuantity.toLocaleString()}
+                                    </td>
+                                  </tr>
+                                )}
 
                                 {cat.subcategories.map((subCat, subIdx) => (
                                   <React.Fragment key={subIdx}>
@@ -511,27 +688,35 @@ export default function PurchaseOrderRegisterPage() {
                                     {subCat.products.map((prod, prodIdx) => (
                                       <React.Fragment key={prodIdx}>
                                         {/* Product / Article Header (Blue) */}
-                                        <tr>
-                                          <td className="py-1 pl-12 pr-2 font-bold text-blue-600">
-                                            <div className="underline">{prod.articleCode}</div>
-                                            <div className="text-[11px]">{prod.articleName}</div>
-                                          </td>
-                                          <td></td>
-                                          <td></td>
-                                          <td className="py-1 px-2 text-right font-bold text-blue-600 align-top">
-                                            {prod.totalQuantity.toLocaleString()}
-                                          </td>
-                                        </tr>
+                                        {hierarchyLevels.article && (
+                                          <tr>
+                                            <td className="py-1 pl-12 pr-2 font-bold text-blue-600">
+                                              <div className="underline">{prod.articleCode}</div>
+                                              <div className="text-[11px]">{prod.articleName}</div>
+                                              <div className="flex gap-2 text-[10px] font-normal text-slate-500">
+                                                {hierarchyLevels.division && prod.divisionName && <span>Div: {prod.divisionName}</span>}
+                                                {hierarchyLevels.gender && prod.genderName && <span>Gender: {prod.genderName}</span>}
+                                                {hierarchyLevels.silhouette && prod.silhouetteName && <span>Sil: {prod.silhouetteName}</span>}
+                                              </div>
+                                            </td>
+                                            <td></td>
+                                            <td></td>
+                                            <td className="py-1 px-2 text-right font-bold text-blue-600 align-top">
+                                              {prod.totalQuantity.toLocaleString()}
+                                            </td>
+                                          </tr>
+                                        )}
 
                                         {/* Variant Detail Rows */}
-                                        {prod.variants.map((v, vIdx) => (
-                                          <tr key={vIdx} className="hover:bg-slate-50 border-b border-slate-50">
-                                            <td className="py-0.5 pl-16"></td>
-                                            <td className="py-0.5 text-center text-slate-700 font-medium">{v.color}</td>
-                                            <td className="py-0.5 text-center text-slate-700 font-medium">{v.size}</td>
-                                            <td className="py-0.5 text-right font-semibold text-slate-900 pr-2">{v.quantity.toLocaleString()}</td>
-                                          </tr>
-                                        ))}
+                                        {hierarchyLevels.variant &&
+                                          prod.variants.map((v, vIdx) => (
+                                            <tr key={vIdx} className="hover:bg-slate-50 border-b border-slate-50">
+                                              <td className="py-0.5 pl-16"></td>
+                                              <td className="py-0.5 text-center text-slate-700 font-medium">{v.color}</td>
+                                              <td className="py-0.5 text-center text-slate-700 font-medium">{v.size}</td>
+                                              <td className="py-0.5 text-right font-semibold text-slate-900 pr-2">{v.quantity.toLocaleString()}</td>
+                                            </tr>
+                                          ))}
                                       </React.Fragment>
                                     ))}
                                   </React.Fragment>
