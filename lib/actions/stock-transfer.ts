@@ -40,6 +40,7 @@ export async function getStockTransfers(filters?: {
 }
 
 export async function queueDeliveryNotesExport(filters?: {
+    reportType?: 'summary' | 'detailed';
     warehouseId?: string;
     status?: string;
     transferType?: string;
@@ -49,6 +50,7 @@ export async function queueDeliveryNotesExport(filters?: {
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const queryParams = new URLSearchParams();
+        if (filters?.reportType) queryParams.append("reportType", filters.reportType);
         if (filters?.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
         if (filters?.status) queryParams.append("status", filters.status);
         if (filters?.transferType) queryParams.append("transferType", filters.transferType);
@@ -69,4 +71,17 @@ export async function queueDeliveryNotesExport(filters?: {
         return { status: false, message: "Failed to connect to server" };
     }
 }
+
+export async function checkDeliveryNotesExportStatus(jobId: string): Promise<{ status: boolean; data?: { state: string; progress: number }; message?: string }> {
+    try {
+        const response = await authFetch(`/transfer-request/export/${jobId}/status`, {
+            method: "GET",
+        });
+        return response.data ?? { status: false, message: "Failed to fetch job status" };
+    } catch (error) {
+        console.error("Check delivery notes export status error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
 

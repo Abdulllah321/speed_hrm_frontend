@@ -25,7 +25,10 @@ import {
     Loader2,
     Download,
     Search,
-    RefreshCw
+    RefreshCw,
+    ChevronDown,
+    FileSpreadsheet,
+    FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -38,9 +41,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { getStockTransfers, queueDeliveryNotesExport } from "@/lib/actions/stock-transfer";
+import { getStockTransfers, queueDeliveryNotesExport, checkDeliveryNotesExportStatus } from "@/lib/actions/stock-transfer";
 import { Warehouse } from "@/lib/actions/warehouse";
 import { cn } from "@/lib/utils";
 
@@ -65,7 +74,11 @@ export function StockTransferHistoryList({
     const router = useRouter();
     const [entries, setEntries] = React.useState<any[]>(initialEntries);
     const [loading, setLoading] = React.useState(false);
-    const [isExporting, setIsExporting] = React.useState(false);
+
+    // Export state tracking per AGENTS.md rules
+    const [exportState, setExportState] = React.useState<'idle' | 'queueing' | 'generating' | 'completed' | 'failed'>('idle');
+    const [exportJobId, setExportJobId] = React.useState<string | null>(null);
+    const [exportProgress, setExportProgress] = React.useState<number>(0);
 
     // Filter states
     const [search, setSearch] = React.useState(initialFilters?.search || "");
@@ -79,6 +92,35 @@ export function StockTransferHistoryList({
     React.useEffect(() => {
         setEntries(initialEntries);
     }, [initialEntries]);
+
+    // Poll export status every 2 seconds when generating
+    React.useEffect(() => {
+        if (!exportJobId || exportState !== 'generating') return;
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await checkDeliveryNotesExportStatus(exportJobId);
+                if (res.status && res.data) {
+                    const { state, progress } = res.data;
+                    setExportProgress(progress || 0);
+
+                    if (state === 'completed' || progress >= 100) {
+                        setExportState('completed');
+                        clearInterval(interval);
+                        toast.success("Delivery Note export ready to download!");
+                    } else if (state === 'failed') {
+                        setExportState('failed');
+                        clearInterval(interval);
+                        toast.error("Delivery Note export generation failed.");
+                    }
+                }
+            } catch (err) {
+                console.error("Export status polling error:", err);
+            }
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [exportJobId, exportState]);
 
     const applyFilters = async () => {
         setLoading(true);
@@ -143,12 +185,24 @@ export function StockTransferHistoryList({
         }
     };
 
-    const handleExport = async () => {
-        if (isExporting) return;
-        setIsExporting(true);
-        const toastId = toast.loading("Queuing delivery notes export job...");
+    const handleExport = async (reportType: 'summary' | 'detailed' = 'detailed') => {
+        if (exportState === 'completed' && exportJobId) {
+            // Direct browser download via window.open for CORS safety
+            const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+            const downloadUrl = `${apiBase}/api/transfer-request/export/${exportJobId}/download`;
+            window.open(downloadUrl, "_blank");
+            setExportState('idle');
+            setExportJobId(null);
+            setExportProgress(0);
+            return;
+        }
+
+        setExportState('queueing');
+        setExportProgress(0);
+        const toastId = toast.loading(`Queuing ${reportType === 'summary' ? 'summary preview' : 'detailed'} export job...`);
         try {
             const activeFilters = {
+                reportType,
                 search: search.trim() || undefined,
                 status: status !== "all" ? status : undefined,
                 transferType: transferType !== "all" ? transferType : undefined,
@@ -159,16 +213,18 @@ export function StockTransferHistoryList({
 
             const result = await queueDeliveryNotesExport(activeFilters);
             toast.dismiss(toastId);
-            if (result.status && result.data) {
-                toast.success("Excel export job successfully queued! Check your notification bell in a moment to download.");
+            if (result.status && result.data?.jobId) {
+                setExportJobId(result.data.jobId);
+                setExportState('generating');
+                toast.info(`Exporting ${reportType === 'summary' ? 'summary preview' : 'detailed line items'} in background...`);
             } else {
+                setExportState('failed');
                 toast.error(result.message || "Failed to queue export job.");
             }
         } catch (error: any) {
             toast.dismiss(toastId);
+            setExportState('failed');
             toast.error(error.message || "Export failed. Please try again.");
-        } finally {
-            setIsExporting(false);
         }
     };
 
@@ -296,20 +352,53 @@ export function StockTransferHistoryList({
                             </Button>
                         </div>
 
-                        <Button
-                            variant="outline"
-                            onClick={handleExport}
-                            disabled={isExporting || entries.length === 0}
-                            size="sm"
-                            className="border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 font-bold shadow-xs"
-                        >
-                            {isExporting ? (
+                        {exportState === 'queueing' || exportState === 'generating' ? (
+                            <Button variant="outline" disabled size="sm" className="border-emerald-500/40 text-emerald-700 font-bold shadow-xs">
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
+                                {exportState === 'queueing' ? "Queueing..." : `Generating ${exportProgress}%`}
+                            </Button>
+                        ) : exportState === 'completed' ? (
+                            <Button
+                                variant="default"
+                                onClick={() => handleExport('detailed')}
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs"
+                            >
                                 <Download className="h-4 w-4 mr-2" />
-                            )}
-                            {isExporting ? "Exporting..." : "Export to Excel"}
-                        </Button>
+                                Download Excel
+                            </Button>
+                        ) : (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        disabled={entries.length === 0}
+                                        size="sm"
+                                        className="border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 font-bold shadow-xs gap-1"
+                                    >
+                                        <Download className="h-4 w-4 mr-1" />
+                                        {exportState === 'failed' ? "Retry Export" : "Export to Excel"}
+                                        <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-60">
+                                    <DropdownMenuItem onClick={() => handleExport('summary')} className="cursor-pointer font-medium p-2.5">
+                                        <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-600 shrink-0" />
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold text-sm">Summary / Preview</span>
+                                            <span className="text-[10px] text-muted-foreground">1 row per Delivery Note (STN, Out, In, Status, Qty)</span>
+                                        </div>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleExport('detailed')} className="cursor-pointer font-medium p-2.5">
+                                        <FileText className="h-4 w-4 mr-2 text-blue-600 shrink-0" />
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold text-sm">Detailed Item Breakdown</span>
+                                            <span className="text-[10px] text-muted-foreground">Itemized line-by-line (SKU, Color, Size, Qty)</span>
+                                        </div>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                     </div>
                 </CardContent>
             </Card>
