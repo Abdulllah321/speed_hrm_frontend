@@ -872,12 +872,14 @@ export default function GrossSalesSummaryReport() {
 
             {/* Virtualized Hierarchical Table */}
             <div ref={parentRef} className="overflow-auto max-h-[700px] border rounded-xl shadow-sm bg-background no-print">
-                <table className="w-full text-left border-collapse min-w-[1600px]">
+                <table className="w-full text-left border-collapse min-w-[1800px]">
                     <thead>
                         <tr className="bg-slate-900 text-slate-100 border-b text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
                             <th className="p-3 w-[340px] border-r bg-slate-900 text-slate-100">GPC / Category / Product</th>
                             <th className="p-3 w-[80px] border-r text-center bg-slate-900 text-slate-100">Size</th>
                             <th className="p-3 w-[100px] border-r text-center bg-slate-900 text-slate-100">Color</th>
+                            <th className="p-3 w-[120px] border-r text-center bg-slate-900 text-slate-100">HS CODE</th>
+                            <th className="p-3 w-[130px] border-r text-center bg-slate-900 text-slate-100">Barcode</th>
                             <th className="p-3 w-[70px] border-r text-right bg-slate-900 text-slate-100">Qty</th>
                             <th className="p-3 w-[110px] border-r text-right bg-slate-900 text-slate-100">Retail Price</th>
                             <th className="p-3 w-[120px] border-r text-right bg-slate-900 text-slate-100">Total Price WOST</th>
@@ -893,7 +895,7 @@ export default function GrossSalesSummaryReport() {
                     <tbody className="divide-y text-xs">
                         {isPending ? (
                             <tr>
-                                <td colSpan={13} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={15} className="p-8 text-center text-muted-foreground font-medium">
                                     <div className="flex items-center justify-center gap-2">
                                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                         Compiling Gross Sales hierarchical nodes...
@@ -902,7 +904,7 @@ export default function GrossSalesSummaryReport() {
                             </tr>
                         ) : flatRows.length === 0 ? (
                             <tr>
-                                <td colSpan={13} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={15} className="p-8 text-center text-muted-foreground font-medium">
                                     No sales records found matching search or period filters.
                                 </td>
                             </tr>
@@ -910,7 +912,7 @@ export default function GrossSalesSummaryReport() {
                             <>
                                 {paddingTop > 0 && (
                                     <tr>
-                                        <td colSpan={13} style={{ height: `${paddingTop}px` }} />
+                                        <td colSpan={15} style={{ height: `${paddingTop}px` }} />
                                     </tr>
                                 )}
                                 {virtualItems.map((virtualRow) => {
@@ -963,6 +965,16 @@ export default function GrossSalesSummaryReport() {
                                                 {(row.type === "variant" || row.type === "invoice") ? row.color : "-"}
                                             </td>
 
+                                            {/* HS CODE */}
+                                            <td className="p-2 border-r text-center font-mono text-[11px]">
+                                                {row.hsCode || "-"}
+                                            </td>
+
+                                            {/* Barcode */}
+                                            <td className="p-2 border-r text-center font-mono text-[11px]">
+                                                {row.barcode || "-"}
+                                            </td>
+
                                             {/* Qty */}
                                             <td className="p-2 border-r text-right font-bold text-slate-900 dark:text-slate-50">
                                                 {formatVal(row.qty)}
@@ -998,7 +1010,6 @@ export default function GrossSalesSummaryReport() {
                                                 {formatPriceVal(row.salesTaxAmount)}
                                             </td>
 
-
                                             {/* Total Tax */}
                                             <td className="p-2 border-r text-right">
                                                 {formatPriceVal(row.totalTax)}
@@ -1018,7 +1029,7 @@ export default function GrossSalesSummaryReport() {
                                 })}
                                 {paddingBottom > 0 && (
                                     <tr>
-                                        <td colSpan={13} style={{ height: `${paddingBottom}px` }} />
+                                        <td colSpan={15} style={{ height: `${paddingBottom}px` }} />
                                     </tr>
                                 )}
                             </>
@@ -1035,6 +1046,8 @@ export default function GrossSalesSummaryReport() {
                             <th className="p-1 border text-left">GPC / Category / Product</th>
                             <th className="p-1 border text-center">Size</th>
                             <th className="p-1 border text-center">Color</th>
+                            <th className="p-1 border text-center">HS CODE</th>
+                            <th className="p-1 border text-center">Barcode</th>
                             <th className="p-1 border text-right">Qty</th>
                             <th className="p-1 border text-right">Retail</th>
                             <th className="p-1 border text-right">Total WOST</th>
@@ -1054,6 +1067,8 @@ export default function GrossSalesSummaryReport() {
                                     <td className="p-1 border">{"  ".repeat(row.depth || 0) + row.label}</td>
                                     <td className="p-1 border text-center">{row.type === "variant" ? row.size : "-"}</td>
                                     <td className="p-1 border text-center">{row.type === "variant" ? row.color : "-"}</td>
+                                    <td className="p-1 border text-center">{row.hsCode || "-"}</td>
+                                    <td className="p-1 border text-center">{row.barcode || "-"}</td>
                                     <td className="p-1 border text-right">{row.qty}</td>
                                     <td className="p-1 border text-right">{row.type === "variant" ? formatPriceVal(row.retailPrice) : "-"}</td>
                                     <td className="p-1 border text-right">{formatPriceVal(row.totalPriceWost)}</td>

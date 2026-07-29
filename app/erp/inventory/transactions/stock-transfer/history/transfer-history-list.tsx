@@ -119,7 +119,7 @@ export function StockTransferHistoryList({ initialEntries }: StockTransferHistor
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-1.5 text-xs font-semibold">
                                             <Badge variant="outline" className="px-1.5 py-0 h-5 bg-background">FROM</Badge>
-                                            <span className="text-muted-foreground">{transfer.fromWarehouse?.name}</span>
+                                            <span className="text-muted-foreground">{transfer.fromLocation?.name || transfer.fromWarehouse?.name || '—'}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5 text-xs font-semibold">
                                             <Badge variant="outline" className="px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">TO</Badge>

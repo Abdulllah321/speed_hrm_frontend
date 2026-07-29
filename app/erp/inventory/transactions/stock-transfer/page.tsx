@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { warehouseApi, inventoryApi, locationApi, brandApi, categoryApi, silhouetteApi, genderApi, Warehouse, WarehouseLocation, stockRequisitionApi, transferRequestApi } from '@/lib/api';
 import { createTransferRequest, createReturnTransferRequest, createOutletToOutletTransferRequest } from '@/lib/actions/transfer-request';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History, RotateCcw, Trash2, Plus, CheckCircle2, Info, Loader2, WarehouseIcon, ArrowDown, Filter, X, ChevronDown, ChevronRight, ScanBarcode, Volume2, VolumeX, Keyboard, Sparkles, Printer } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History, RotateCcw, Trash2, Plus, CheckCircle2, Info, Loader2, WarehouseIcon, ArrowDown, Filter, X, ChevronDown, ChevronRight, ScanBarcode, Volume2, VolumeX, Keyboard, Sparkles, Printer, Truck, Bike, User } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -39,6 +39,16 @@ function StockTransferContent() {
     const [destLocationId, setDestLocationId] = useState<string>('');
     const [transferMode, setTransferMode] = useState<'WAREHOUSE_TO_OUTLET' | 'OUTLET_TO_WAREHOUSE' | 'OUTLET_TO_OUTLET'>('WAREHOUSE_TO_OUTLET');
     const [nextTransferNumber, setNextTransferNumber] = useState<string>('');
+
+    // Dispatch & Courier State
+    const [dispatchType, setDispatchType] = useState<'COURIER' | 'SELF' | 'RIDER'>('COURIER');
+    const [courierName, setCourierName] = useState<string>('Leopard Courier');
+    const [customCourierName, setCustomCourierName] = useState<string>('');
+    const [trackingNumber, setTrackingNumber] = useState<string>('');
+    const [riderName, setRiderName] = useState<string>('');
+    const [riderPhone, setRiderPhone] = useState<string>('');
+    const [vehicleNumber, setVehicleNumber] = useState<string>('');
+    const [receiverPerson, setReceiverPerson] = useState<string>('');
 
     // Item Selection State
     const [selectedItems, setSelectedItems] = useState<Array<{
@@ -693,6 +703,20 @@ function StockTransferContent() {
 
             let stnId: string | undefined;
 
+            const finalCourier = dispatchType === 'COURIER'
+                ? (courierName === 'Other Courier' ? customCourierName : courierName)
+                : undefined;
+
+            const dispatchPayload = {
+                dispatchType,
+                courierName: finalCourier,
+                trackingNumber: dispatchType === 'COURIER' ? trackingNumber : undefined,
+                riderName: dispatchType === 'RIDER' ? riderName : undefined,
+                riderPhone: dispatchType === 'RIDER' ? riderPhone : undefined,
+                vehicleNumber: (dispatchType === 'RIDER' || dispatchType === 'SELF') ? vehicleNumber : undefined,
+                receiverPerson: dispatchType === 'SELF' ? receiverPerson : undefined,
+            };
+
             if (activeRequisitionId) {
                 const res = await stockRequisitionApi.convertToSTN(activeRequisitionId, {
                     items: itemsToTransfer,
@@ -710,7 +734,8 @@ function StockTransferContent() {
                         fromWarehouseId: selectedWarehouseId,
                         toLocationId: destLocationId,
                         items: itemsToTransfer,
-                        notes: globalNotes
+                        notes: globalNotes,
+                        ...dispatchPayload
                     });
                     toast.success('Transfer request created! Awaiting shop acceptance.');
                     stnId = (res as any)?.id;
@@ -719,7 +744,8 @@ function StockTransferContent() {
                         fromLocationId: destLocationId,
                         fromWarehouseId: selectedWarehouseId,
                         items: itemsToTransfer,
-                        notes: globalNotes
+                        notes: globalNotes,
+                        ...dispatchPayload
                     });
                     toast.success('Return request created! Awaiting outlet manager approval.');
                 } else if (transferMode === 'OUTLET_TO_OUTLET') {
@@ -727,7 +753,8 @@ function StockTransferContent() {
                         fromLocationId: sourceLocationId,
                         toLocationId: destLocationId,
                         items: itemsToTransfer,
-                        notes: globalNotes
+                        notes: globalNotes,
+                        ...dispatchPayload
                     });
                     toast.success('Outlet transfer request created! Awaiting dual approval.');
                 }
@@ -991,6 +1018,117 @@ function StockTransferContent() {
                                 </div>
                             </>
                         )}
+
+                        {/* Courier & Dispatch Section */}
+                        <div className="pt-4 border-t mt-4 space-y-3">
+                            <div className="flex items-center gap-1.5 font-bold text-xs text-purple-700 uppercase tracking-wider">
+                                <Truck className="h-4 w-4" />
+                                <span>Courier & Dispatch Details</span>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs">Dispatch Method</Label>
+                                <Select
+                                    value={dispatchType}
+                                    onValueChange={(val: any) => setDispatchType(val)}
+                                >
+                                    <SelectTrigger className="h-9">
+                                        <SelectValue placeholder="Select Method" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="COURIER">Courier (Leopard / TCS)</SelectItem>
+                                        <SelectItem value="RIDER">Rider / Driver</SelectItem>
+                                        <SelectItem value="SELF">Self Handover</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {dispatchType === 'COURIER' && (
+                                <div className="space-y-2 bg-purple-50/50 p-2.5 rounded-md border border-purple-200">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs">Courier Company</Label>
+                                        <Select
+                                            value={courierName}
+                                            onValueChange={(val) => setCourierName(val)}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs bg-white">
+                                                <SelectValue placeholder="Courier Provider" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Leopard Courier">Leopard Courier</SelectItem>
+                                                <SelectItem value="TCS">TCS</SelectItem>
+                                                <SelectItem value="M&P Express">M&P Express</SelectItem>
+                                                <SelectItem value="CallCourier">CallCourier</SelectItem>
+                                                <SelectItem value="Trax Courier">Trax Courier</SelectItem>
+                                                <SelectItem value="PostEx">PostEx</SelectItem>
+                                                <SelectItem value="Pakistan Post">Pakistan Post</SelectItem>
+                                                <SelectItem value="DHL">DHL</SelectItem>
+                                                <SelectItem value="Other Courier">Other Courier</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {courierName === 'Other Courier' && (
+                                        <Input
+                                            placeholder="Specify Courier Name"
+                                            value={customCourierName}
+                                            onChange={(e) => setCustomCourierName(e.target.value)}
+                                            className="h-8 text-xs bg-white"
+                                        />
+                                    )}
+
+                                    <div className="space-y-1">
+                                        <Label className="text-xs">Tracking / Invoice / CN #</Label>
+                                        <Input
+                                            placeholder="e.g. LPD-8912345"
+                                            value={trackingNumber}
+                                            onChange={(e) => setTrackingNumber(e.target.value)}
+                                            className="h-8 text-xs bg-white font-mono"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {dispatchType === 'RIDER' && (
+                                <div className="space-y-2 bg-blue-50/50 p-2.5 rounded-md border border-blue-200">
+                                    <Input
+                                        placeholder="Rider Name"
+                                        value={riderName}
+                                        onChange={(e) => setRiderName(e.target.value)}
+                                        className="h-8 text-xs bg-white"
+                                    />
+                                    <Input
+                                        placeholder="Rider Phone"
+                                        value={riderPhone}
+                                        onChange={(e) => setRiderPhone(e.target.value)}
+                                        className="h-8 text-xs bg-white"
+                                    />
+                                    <Input
+                                        placeholder="Vehicle / Bike No"
+                                        value={vehicleNumber}
+                                        onChange={(e) => setVehicleNumber(e.target.value)}
+                                        className="h-8 text-xs bg-white"
+                                    />
+                                </div>
+                            )}
+
+                            {dispatchType === 'SELF' && (
+                                <div className="space-y-2 bg-slate-50 p-2.5 rounded-md border border-slate-200">
+                                    <Input
+                                        placeholder="Handed Over Person Name"
+                                        value={receiverPerson}
+                                        onChange={(e) => setReceiverPerson(e.target.value)}
+                                        className="h-8 text-xs bg-white"
+                                    />
+                                    <Input
+                                        placeholder="Vehicle No (Optional)"
+                                        value={vehicleNumber}
+                                        onChange={(e) => setVehicleNumber(e.target.value)}
+                                        className="h-8 text-xs bg-white"
+                                    />
+                                </div>
+                            )}
+                        </div>
 
                         <div className="pt-4 border-t mt-4">
                             <Label htmlFor="global-notes">Global Notes</Label>
@@ -1656,7 +1794,7 @@ function StockTransferContent() {
                                             <TableRow key={req.id} className="hover:bg-amber-50/10 transition-colors">
                                                 <TableCell className="font-bold text-indigo-600">{req.requisitionNo}</TableCell>
                                                 <TableCell>{new Date(req.requisitionDate).toLocaleDateString()}</TableCell>
-                                                <TableCell className="font-medium text-xs">{req.fromWarehouse?.name}</TableCell>
+                                                <TableCell className="font-medium text-xs">{req.fromLocation?.name || req.fromWarehouse?.name || '—'}</TableCell>
                                                 <TableCell className="font-medium text-xs">{req.toLocation?.name}</TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">

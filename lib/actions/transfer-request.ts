@@ -152,3 +152,30 @@ export async function acknowledgeClaimTransfer(id: string, userId?: string) {
         return { status: false, message: error instanceof Error ? error.message : "Failed to acknowledge claim" };
     }
 }
+
+export async function updateTransferDispatchDetails(id: string, dispatchData: {
+    dispatchType?: string;
+    courierName?: string;
+    trackingNumber?: string;
+    dispatchDate?: string;
+    estimatedDeliveryDate?: string;
+    riderName?: string;
+    riderPhone?: string;
+    vehicleNumber?: string;
+    receiverPerson?: string;
+    shippingCost?: number;
+    dispatchNotes?: string;
+}) {
+    try {
+        const response = await authFetch(`/transfer-request/${id}/dispatch`, {
+            method: "PATCH",
+            body: JSON.stringify(dispatchData),
+        });
+        revalidatePath("/erp/inventory/transactions/delivery-note");
+        revalidatePath("/erp/inventory/transactions/stock-transfer");
+        return response.data ?? { status: false, message: "Failed to update dispatch details" };
+    } catch (error) {
+        console.error("Update transfer dispatch details error:", error);
+        return { status: false, message: error instanceof Error ? error.message : "Failed to update dispatch details" };
+    }
+}

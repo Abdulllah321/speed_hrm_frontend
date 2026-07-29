@@ -86,10 +86,42 @@ export default function EditPurchaseReturnPage() {
 
       const advRate = Number(data.purchaseInvoice?.advanceTaxRate || 0.5);
 
+      let invoiceItems: any[] = data.purchaseInvoice?.items || [];
+
+      // Fallback: If purchaseInvoice items are not directly included, fetch from eligibleInvoices
+      if (invoiceItems.length === 0 && (data.purchaseInvoiceId || data.purchaseInvoice?.id)) {
+        try {
+          const eligibleDocs = await purchaseReturnApi.getEligibleInvoices();
+          const targetId = data.purchaseInvoiceId || data.purchaseInvoice?.id;
+          const doc = eligibleDocs.find((d: any) => d.id === targetId);
+          if (doc?.items) {
+            invoiceItems = doc.items;
+          }
+        } catch (e) {
+          console.error('Error fetching fallback invoice items:', e);
+        }
+      }
+
       let formItems: any[] = [];
 
-      if (data.purchaseInvoice?.items && data.purchaseInvoice.items.length > 0) {
-        formItems = data.purchaseInvoice.items.map((invItem: any) => {
+      const getItemSize = (item: any) => {
+        if (typeof item?.item?.size === 'object' && item?.item?.size?.name) return item.item.size.name;
+        if (typeof item?.item?.size === 'string') return item.item.size;
+        if (typeof item?.size === 'object' && item?.size?.name) return item.size.name;
+        if (typeof item?.size === 'string') return item.size;
+        return '';
+      };
+
+      const getItemColor = (item: any) => {
+        if (typeof item?.item?.color === 'object' && item?.item?.color?.name) return item.item.color.name;
+        if (typeof item?.item?.color === 'string') return item.item.color;
+        if (typeof item?.color === 'object' && item?.color?.name) return item.color.name;
+        if (typeof item?.color === 'string') return item.color;
+        return '';
+      };
+
+      if (invoiceItems.length > 0) {
+        formItems = invoiceItems.map((invItem: any) => {
           const existingReturnItem = (data.items || []).find(
             (retItem: any) => retItem.purchaseInvoiceItemId === invItem.id || retItem.itemId === invItem.itemId
           );
@@ -104,7 +136,7 @@ export default function EditPurchaseReturnPage() {
           const taxAmt = valExcl * taxRate / 100;
           const valIncl = valExcl + taxAmt;
           const itemAdv = valIncl * advRate / 100;
-          const lineTotal = valIncl + itemAdv;
+          const lineTotal = returnQty > 0 ? (valIncl + itemAdv) : 0;
 
           return {
             sourceItemType: 'INVOICE_ITEM',
@@ -119,10 +151,10 @@ export default function EditPurchaseReturnPage() {
             taxAmount: Number(invItem.taxAmount || 0),
             discountRate: discRate,
             discountAmount: Number(invItem.discountAmount || 0),
-            size: invItem.item?.size?.name || invItem.size || '',
-            color: invItem.item?.color?.name || invItem.color || '',
+            size: getItemSize(invItem),
+            color: getItemColor(invItem),
             returnQty: returnQty,
-            lineTotal: existingReturnItem ? Number(existingReturnItem.lineTotal) : lineTotal,
+            lineTotal: lineTotal,
             reason: existingReturnItem?.reason || '',
           };
         });
@@ -153,8 +185,8 @@ export default function EditPurchaseReturnPage() {
             unitPrice: unitPrice,
             taxRate: taxRate,
             discountRate: discRate,
-            size: item.item?.size?.name || item.size || '',
-            color: item.item?.color?.name || item.color || '',
+            size: getItemSize(item),
+            color: getItemColor(item),
             returnQty: returnQty,
             lineTotal: Number(item.lineTotal || lineTotal),
             reason: item.reason || '',

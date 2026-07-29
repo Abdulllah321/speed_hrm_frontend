@@ -28,12 +28,17 @@ import {
     RefreshCw,
     ChevronDown,
     FileSpreadsheet,
-    FileText
+    FileText,
+    Truck,
+    User,
+    Bike,
+    Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -47,9 +52,17 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { getStockTransfers, queueDeliveryNotesExport, checkDeliveryNotesExportStatus } from "@/lib/actions/stock-transfer";
+import { updateTransferDispatchDetails } from "@/lib/actions/transfer-request";
 import { Warehouse } from "@/lib/actions/warehouse";
 import { cn } from "@/lib/utils";
 
@@ -60,11 +73,24 @@ interface StockTransferHistoryListProps {
         warehouseId?: string;
         status?: string;
         transferType?: string;
+        dispatchType?: string;
         search?: string;
         dateFrom?: string;
         dateTo?: string;
     };
 }
+
+const COMMON_COURIERS = [
+    "Leopard Courier",
+    "TCS",
+    "M&P Express",
+    "CallCourier",
+    "Trax Courier",
+    "PostEx",
+    "Pakistan Post",
+    "DHL",
+    "Other Courier",
+];
 
 export function StockTransferHistoryList({ 
     initialEntries,
@@ -84,9 +110,29 @@ export function StockTransferHistoryList({
     const [search, setSearch] = React.useState(initialFilters?.search || "");
     const [status, setStatus] = React.useState(initialFilters?.status || "all");
     const [transferType, setTransferType] = React.useState(initialFilters?.transferType || "all");
+    const [dispatchTypeFilter, setDispatchTypeFilter] = React.useState(initialFilters?.dispatchType || "all");
     const [warehouseId, setWarehouseId] = React.useState(initialFilters?.warehouseId || "all");
     const [dateFrom, setDateFrom] = React.useState(initialFilters?.dateFrom || "");
     const [dateTo, setDateTo] = React.useState(initialFilters?.dateTo || "");
+
+    // Dispatch Modal State
+    const [isDispatchModalOpen, setIsDispatchModalOpen] = React.useState(false);
+    const [selectedTransfer, setSelectedTransfer] = React.useState<any | null>(null);
+    const [savingDispatch, setSavingDispatch] = React.useState(false);
+    const [dispatchForm, setDispatchForm] = React.useState({
+        dispatchType: "COURIER",
+        courierName: "Leopard Courier",
+        customCourierName: "",
+        trackingNumber: "",
+        dispatchDate: "",
+        estimatedDeliveryDate: "",
+        riderName: "",
+        riderPhone: "",
+        vehicleNumber: "",
+        receiverPerson: "",
+        shippingCost: "",
+        dispatchNotes: "",
+    });
 
     // Keep state in sync with initialEntries when props update
     React.useEffect(() => {
@@ -129,6 +175,7 @@ export function StockTransferHistoryList({
                 search: search.trim() || undefined,
                 status: status !== "all" ? status : undefined,
                 transferType: transferType !== "all" ? transferType : undefined,
+                dispatchType: dispatchTypeFilter !== "all" ? dispatchTypeFilter : undefined,
                 warehouseId: warehouseId !== "all" ? warehouseId : undefined,
                 dateFrom: dateFrom || undefined,
                 dateTo: dateTo || undefined,
@@ -142,6 +189,7 @@ export function StockTransferHistoryList({
                 if (activeFilters.search) params.set("search", activeFilters.search);
                 if (activeFilters.status) params.set("status", activeFilters.status);
                 if (activeFilters.transferType) params.set("transferType", activeFilters.transferType);
+                if (activeFilters.dispatchType) params.set("dispatchType", activeFilters.dispatchType);
                 if (activeFilters.warehouseId) params.set("warehouseId", activeFilters.warehouseId);
                 if (activeFilters.dateFrom) params.set("dateFrom", activeFilters.dateFrom);
                 if (activeFilters.dateTo) params.set("dateTo", activeFilters.dateTo);
@@ -164,6 +212,7 @@ export function StockTransferHistoryList({
         setSearch("");
         setStatus("all");
         setTransferType("all");
+        setDispatchTypeFilter("all");
         setWarehouseId("all");
         setDateFrom("");
         setDateTo("");
@@ -185,9 +234,66 @@ export function StockTransferHistoryList({
         }
     };
 
+    const openDispatchModal = (transfer: any) => {
+        setSelectedTransfer(transfer);
+        const existingCourierName = transfer.courierName || "Leopard Courier";
+        const isStandard = COMMON_COURIERS.includes(existingCourierName);
+        setDispatchForm({
+            dispatchType: transfer.dispatchType || "COURIER",
+            courierName: isStandard ? existingCourierName : "Other Courier",
+            customCourierName: isStandard ? "" : existingCourierName,
+            trackingNumber: transfer.trackingNumber || "",
+            dispatchDate: transfer.dispatchDate ? new Date(transfer.dispatchDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+            estimatedDeliveryDate: transfer.estimatedDeliveryDate ? new Date(transfer.estimatedDeliveryDate).toISOString().slice(0, 10) : "",
+            riderName: transfer.riderName || "",
+            riderPhone: transfer.riderPhone || "",
+            vehicleNumber: transfer.vehicleNumber || "",
+            receiverPerson: transfer.receiverPerson || "",
+            shippingCost: transfer.shippingCost ? String(transfer.shippingCost) : "",
+            dispatchNotes: transfer.dispatchNotes || "",
+        });
+        setIsDispatchModalOpen(true);
+    };
+
+    const handleSaveDispatchDetails = async () => {
+        if (!selectedTransfer) return;
+        setSavingDispatch(true);
+        try {
+            const finalCourierName = dispatchForm.dispatchType === "COURIER"
+                ? (dispatchForm.courierName === "Other Courier" ? dispatchForm.customCourierName : dispatchForm.courierName)
+                : undefined;
+
+            const res = await updateTransferDispatchDetails(selectedTransfer.id, {
+                dispatchType: dispatchForm.dispatchType,
+                courierName: finalCourierName,
+                trackingNumber: dispatchForm.trackingNumber || undefined,
+                dispatchDate: dispatchForm.dispatchDate || undefined,
+                estimatedDeliveryDate: dispatchForm.estimatedDeliveryDate || undefined,
+                riderName: dispatchForm.riderName || undefined,
+                riderPhone: dispatchForm.riderPhone || undefined,
+                vehicleNumber: dispatchForm.vehicleNumber || undefined,
+                receiverPerson: dispatchForm.receiverPerson || undefined,
+                shippingCost: dispatchForm.shippingCost ? parseFloat(dispatchForm.shippingCost) : undefined,
+                dispatchNotes: dispatchForm.dispatchNotes || undefined,
+            });
+
+            if (res.status) {
+                toast.success("Courier & Dispatch details updated!");
+                setIsDispatchModalOpen(false);
+                setEntries(prev => prev.map(item => item.id === selectedTransfer.id ? { ...item, ...res.data } : item));
+            } else {
+                toast.error(res.message || "Failed to update dispatch details");
+            }
+        } catch (err: any) {
+            console.error("Save dispatch details error:", err);
+            toast.error("An error occurred while saving dispatch details");
+        } finally {
+            setSavingDispatch(false);
+        }
+    };
+
     const handleExport = async (reportType: 'summary' | 'detailed' = 'detailed') => {
         if (exportState === 'completed' && exportJobId) {
-            // Direct browser download via window.open for CORS safety
             const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
             const downloadUrl = `${apiBase}/api/transfer-request/export/${exportJobId}/download`;
             window.open(downloadUrl, "_blank");
@@ -206,6 +312,7 @@ export function StockTransferHistoryList({
                 search: search.trim() || undefined,
                 status: status !== "all" ? status : undefined,
                 transferType: transferType !== "all" ? transferType : undefined,
+                dispatchType: dispatchTypeFilter !== "all" ? dispatchTypeFilter : undefined,
                 warehouseId: warehouseId !== "all" ? warehouseId : undefined,
                 dateFrom: dateFrom || undefined,
                 dateTo: dateTo || undefined,
@@ -228,29 +335,78 @@ export function StockTransferHistoryList({
         }
     };
 
-    const getStatusBadge = (status: string) => {
-        switch (status.toUpperCase()) {
+    const getStatusBadge = (statusStr: string) => {
+        switch (statusStr.toUpperCase()) {
             case 'PENDING':
                 return (
                     <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100/80 border-orange-200 gap-1 capitalize">
-                        <Clock className="h-3 w-3" /> {status.toLowerCase()}
+                        <Clock className="h-3 w-3" /> {statusStr.toLowerCase()}
                     </Badge>
                 );
             case 'COMPLETED':
                 return (
                     <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200 gap-1 capitalize">
-                        <CheckCircle2 className="h-3 w-3" /> {status.toLowerCase()}
+                        <CheckCircle2 className="h-3 w-3" /> {statusStr.toLowerCase()}
                     </Badge>
                 );
             case 'CANCELLED':
                 return (
                     <Badge variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200 gap-1 capitalize">
-                        <XCircle className="h-3 w-3" /> {status.toLowerCase()}
+                        <XCircle className="h-3 w-3" /> {statusStr.toLowerCase()}
                     </Badge>
                 );
             default:
-                return <Badge variant="outline" className="capitalize">{status.toLowerCase()}</Badge>;
+                return <Badge variant="outline" className="capitalize">{statusStr.toLowerCase()}</Badge>;
         }
+    };
+
+    const getDispatchBadge = (transfer: any) => {
+        const dType = transfer.dispatchType || 'UNASSIGNED';
+        if (dType === 'COURIER') {
+            return (
+                <div className="flex flex-col gap-0.5">
+                    <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200 gap-1 w-fit">
+                        <Truck className="h-3 w-3" /> {transfer.courierName || 'Courier'}
+                    </Badge>
+                    {transfer.trackingNumber && (
+                        <span className="text-[11px] font-mono text-muted-foreground font-semibold">
+                            CN: {transfer.trackingNumber}
+                        </span>
+                    )}
+                </div>
+            );
+        } else if (dType === 'RIDER') {
+            return (
+                <div className="flex flex-col gap-0.5">
+                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200 gap-1 w-fit">
+                        <Bike className="h-3 w-3" /> {transfer.riderName || 'Rider'}
+                    </Badge>
+                    {transfer.riderPhone && (
+                        <span className="text-[11px] font-mono text-muted-foreground">
+                            {transfer.riderPhone}
+                        </span>
+                    )}
+                </div>
+            );
+        } else if (dType === 'SELF') {
+            return (
+                <div className="flex flex-col gap-0.5">
+                    <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 gap-1 w-fit">
+                        <User className="h-3 w-3" /> Self Handover
+                    </Badge>
+                    {transfer.receiverPerson && (
+                        <span className="text-[11px] text-muted-foreground">
+                            {transfer.receiverPerson}
+                        </span>
+                    )}
+                </div>
+            );
+        }
+        return (
+            <Badge variant="outline" className="text-muted-foreground text-xs font-normal">
+                Unassigned
+            </Badge>
+        );
     };
 
     return (
@@ -258,14 +414,14 @@ export function StockTransferHistoryList({
             {/* Filter Bar */}
             <Card className="border-2 shadow-xs">
                 <CardContent className="p-4 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="search" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Search Request No</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
+                        <div className="space-y-1.5 lg:col-span-1">
+                            <Label htmlFor="search" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Search Request / CN</Label>
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     id="search"
-                                    placeholder="TR-..."
+                                    placeholder="TR-... or Leopard CN"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="pl-9"
@@ -295,10 +451,25 @@ export function StockTransferHistoryList({
                                     <SelectValue placeholder="Select Type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Types</SelectItem>
+                                    <SelectItem value="all">All Transfer Types</SelectItem>
                                     <SelectItem value="WAREHOUSE_TO_OUTLET">Warehouse to Outlet</SelectItem>
                                     <SelectItem value="OUTLET_TO_WAREHOUSE">Outlet to Warehouse</SelectItem>
                                     <SelectItem value="OUTLET_TO_OUTLET">Outlet to Outlet</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Dispatch Mode</Label>
+                            <Select value={dispatchTypeFilter} onValueChange={setDispatchTypeFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="All Modes" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Modes</SelectItem>
+                                    <SelectItem value="COURIER">Courier (Leopard / TCS)</SelectItem>
+                                    <SelectItem value="RIDER">Rider / Driver</SelectItem>
+                                    <SelectItem value="SELF">Self Handover</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -386,14 +557,14 @@ export function StockTransferHistoryList({
                                         <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-600 shrink-0" />
                                         <div className="flex flex-col">
                                             <span className="font-semibold text-sm">Summary / Preview</span>
-                                            <span className="text-[10px] text-muted-foreground">1 row per Delivery Note (STN, Out, In, Status, Qty)</span>
+                                            <span className="text-[10px] text-muted-foreground">1 row per Delivery Note (STN, Courier, Status, Qty)</span>
                                         </div>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => handleExport('detailed')} className="cursor-pointer font-medium p-2.5">
                                         <FileText className="h-4 w-4 mr-2 text-blue-600 shrink-0" />
                                         <div className="flex flex-col">
-                                            <span className="font-semibold text-sm">Detailed Item Breakdown</span>
-                                            <span className="text-[10px] text-muted-foreground">Itemized line-by-line (SKU, Color, Size, Qty)</span>
+                                            <span className="font-semibold text-sm">Detailed Breakdown</span>
+                                            <span className="text-[10px] text-muted-foreground">Line items with Courier & Tracking Info</span>
                                         </div>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -412,6 +583,7 @@ export function StockTransferHistoryList({
                                 <TableHead className="font-bold"><Hash className="h-4 w-4 inline mr-1" /> Request No</TableHead>
                                 <TableHead className="font-bold"><Calendar className="h-4 w-4 inline mr-1" /> Date</TableHead>
                                 <TableHead className="font-bold"><ArrowRightLeft className="h-4 w-4 inline mr-1" /> Transfer Path</TableHead>
+                                <TableHead className="font-bold"><Truck className="h-4 w-4 inline mr-1" /> Courier / Dispatch</TableHead>
                                 <TableHead className="font-bold"><Package className="h-4 w-4 inline mr-1" /> Item Details</TableHead>
                                 <TableHead className="font-bold text-center">Qty</TableHead>
                                 <TableHead className="font-bold">Status</TableHead>
@@ -421,7 +593,7 @@ export function StockTransferHistoryList({
                         <TableBody>
                             {entries.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                                         No delivery notes found
                                     </TableCell>
                                 </TableRow>
@@ -456,7 +628,7 @@ export function StockTransferHistoryList({
                                                     <>
                                                         <div className="flex items-center gap-1.5 text-xs font-semibold">
                                                             <Badge variant="outline" className="px-1.5 py-0 h-5 bg-background">FROM</Badge>
-                                                            <span className="text-muted-foreground">{transfer.fromWarehouse?.name}</span>
+                                                            <span className="text-muted-foreground">{transfer.fromLocation?.name || transfer.fromWarehouse?.name || '—'}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1.5 text-xs font-semibold">
                                                             <Badge variant="outline" className="px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">TO</Badge>
@@ -465,6 +637,9 @@ export function StockTransferHistoryList({
                                                     </>
                                                 )}
                                             </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {getDispatchBadge(transfer)}
                                         </TableCell>
                                         <TableCell>
                                             {transfer.items.map((item: any, idx: number) => (
@@ -485,12 +660,23 @@ export function StockTransferHistoryList({
                                             {getStatusBadge(transfer.status)}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="outline" size="sm" asChild>
-                                                <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`} target="_blank">
-                                                    <Printer className="h-4 w-4 mr-2" />
-                                                    Print
-                                                </Link>
-                                            </Button>
+                                            <div className="flex justify-end gap-1.5">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => openDispatchModal(transfer)}
+                                                    className="border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-900 dark:text-purple-300 dark:hover:bg-purple-950"
+                                                >
+                                                    <Truck className="h-3.5 w-3.5 mr-1" />
+                                                    Courier / Dispatch
+                                                </Button>
+                                                <Button variant="outline" size="sm" asChild>
+                                                    <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`} target="_blank">
+                                                        <Printer className="h-4 w-4 mr-1" />
+                                                        Print
+                                                    </Link>
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -499,6 +685,179 @@ export function StockTransferHistoryList({
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Courier & Dispatch Edit Modal */}
+            <Dialog open={isDispatchModalOpen} onOpenChange={setIsDispatchModalOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-purple-700">
+                            <Truck className="h-5 w-5" />
+                            Manage Courier & Dispatch Details
+                        </DialogTitle>
+                        <p className="text-xs text-muted-foreground">
+                            Update shipping, tracking invoice #, or rider info for transfer <span className="font-bold font-mono text-foreground">{selectedTransfer?.requestNo}</span>
+                        </p>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold uppercase text-muted-foreground">Dispatch Mode</Label>
+                            <Select
+                                value={dispatchForm.dispatchType}
+                                onValueChange={(val) => setDispatchForm(prev => ({ ...prev, dispatchType: val }))}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Mode" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="COURIER">Courier (Leopard / TCS / M&P)</SelectItem>
+                                    <SelectItem value="RIDER">Rider / Internal Driver</SelectItem>
+                                    <SelectItem value="SELF">Self Handover / Pickup</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {dispatchForm.dispatchType === "COURIER" && (
+                            <>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Courier Provider</Label>
+                                    <Select
+                                        value={dispatchForm.courierName}
+                                        onValueChange={(val) => setDispatchForm(prev => ({ ...prev, courierName: val }))}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Courier" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {COMMON_COURIERS.map((c) => (
+                                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {dispatchForm.courierName === "Other Courier" && (
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Custom Courier Name</Label>
+                                        <Input
+                                            placeholder="Enter courier name"
+                                            value={dispatchForm.customCourierName}
+                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, customCourierName: e.target.value }))}
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Tracking / Invoice / CN Number</Label>
+                                    <Input
+                                        placeholder="e.g. LPD-98471203"
+                                        value={dispatchForm.trackingNumber}
+                                        onChange={(e) => setDispatchForm(prev => ({ ...prev, trackingNumber: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Dispatch Date</Label>
+                                        <Input
+                                            type="date"
+                                            value={dispatchForm.dispatchDate}
+                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, dispatchDate: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Est. Delivery</Label>
+                                        <Input
+                                            type="date"
+                                            value={dispatchForm.estimatedDeliveryDate}
+                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, estimatedDeliveryDate: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {dispatchForm.dispatchType === "RIDER" && (
+                            <>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Rider Name</Label>
+                                        <Input
+                                            placeholder="e.g. Muhammad Ali"
+                                            value={dispatchForm.riderName}
+                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, riderName: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Rider Phone</Label>
+                                        <Input
+                                            placeholder="0300-1234567"
+                                            value={dispatchForm.riderPhone}
+                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, riderPhone: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Vehicle / Bike No</Label>
+                                    <Input
+                                        placeholder="e.g. LEK-1234"
+                                        value={dispatchForm.vehicleNumber}
+                                        onChange={(e) => setDispatchForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {dispatchForm.dispatchType === "SELF" && (
+                            <>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Receiver Person Name</Label>
+                                    <Input
+                                        placeholder="Handed over to..."
+                                        value={dispatchForm.receiverPerson}
+                                        onChange={(e) => setDispatchForm(prev => ({ ...prev, receiverPerson: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Vehicle No (Optional)</Label>
+                                    <Input
+                                        placeholder="e.g. LEB-5678"
+                                        value={dispatchForm.vehicleNumber}
+                                        onChange={(e) => setDispatchForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold uppercase text-muted-foreground">Dispatch Notes / Remarks</Label>
+                            <Textarea
+                                placeholder="Any instructions or comments..."
+                                value={dispatchForm.dispatchNotes}
+                                onChange={(e) => setDispatchForm(prev => ({ ...prev, dispatchNotes: e.target.value }))}
+                                rows={2}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setIsDispatchModalOpen(false)} disabled={savingDispatch}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSaveDispatchDetails} disabled={savingDispatch} className="bg-purple-600 hover:bg-purple-700 text-white font-bold">
+                            {savingDispatch ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="h-4 w-4 mr-2" /> Save Courier Info
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

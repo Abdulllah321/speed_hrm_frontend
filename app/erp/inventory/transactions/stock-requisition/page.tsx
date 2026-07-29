@@ -738,7 +738,7 @@ export default function StockRequisitionPage() {
                       <TableRow key={req.id} className="hover:bg-indigo-50/20 transition-colors">
                         <TableCell className="font-bold text-indigo-600">{req.requisitionNo}</TableCell>
                         <TableCell>{new Date(req.requisitionDate).toLocaleDateString()}</TableCell>
-                        <TableCell className="font-medium">{req.fromWarehouse?.name}</TableCell>
+                        <TableCell className="font-medium">{req.fromLocation?.name || req.fromWarehouse?.name || '—'}</TableCell>
                         <TableCell className="font-medium">{req.toLocation?.name}</TableCell>
                         <TableCell>{req.brand?.name || '-'}</TableCell>
                         <TableCell>
@@ -1071,8 +1071,8 @@ export default function StockRequisitionPage() {
               {/* SRN Metadata Info */}
               <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border text-sm">
                 <div>
-                  <span className="text-muted-foreground block text-xs">FROM WAREHOUSE</span>
-                  <span className="font-semibold text-gray-800">{selectedRequisition.fromWarehouse?.name}</span>
+                  <span className="text-muted-foreground block text-xs">FROM LOCATION / WAREHOUSE</span>
+                  <span className="font-semibold text-gray-800">{selectedRequisition.fromLocation?.name || selectedRequisition.fromWarehouse?.name || '—'}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-xs">TO OUTLET / SHOP</span>

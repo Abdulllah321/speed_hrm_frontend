@@ -520,11 +520,13 @@ export default function SalesRegisterReportPage() {
 
             {/* Virtualized Scrolling Table */}
             <div ref={parentRef} className="overflow-auto max-h-[700px] border rounded-xl shadow-sm bg-background no-print">
-                <table className="w-full text-left border-collapse min-w-[2200px]">
+                <table className="w-full text-left border-collapse min-w-[2400px]">
                     <thead>
                         <tr className="bg-slate-800 text-slate-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
                             <th className="p-3 w-[150px] border-r bg-slate-800">CM #</th>
                             <th className="p-3 w-[110px] border-r bg-slate-800">Date</th>
+                            <th className="p-3 w-[140px] border-r text-center bg-slate-800">HS CODE</th>
+                            <th className="p-3 w-[160px] border-r text-center bg-slate-800">Barcode</th>
                             <th className="p-3 w-[110px] border-r text-right bg-slate-800">Gross Sale</th>
                             <th className="p-3 w-[120px] border-r text-right bg-slate-800">Gross WOST</th>
                             <th className="p-3 w-[100px] border-r text-right bg-rose-900/10">Disc</th>
@@ -556,7 +558,7 @@ export default function SalesRegisterReportPage() {
                     <tbody className="divide-y text-xs font-medium">
                         {isPending ? (
                             <tr>
-                                <td colSpan={28} className="p-8 text-center text-muted-foreground">
+                                <td colSpan={30} className="p-8 text-center text-muted-foreground">
                                     <div className="flex items-center justify-center gap-2">
                                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                         Loading detailed sales transactions and payments...
@@ -565,7 +567,7 @@ export default function SalesRegisterReportPage() {
                             </tr>
                         ) : reportData.length === 0 ? (
                             <tr>
-                                <td colSpan={28} className="p-8 text-center text-muted-foreground">
+                                <td colSpan={30} className="p-8 text-center text-muted-foreground">
                                     No sales memos or returns found for this criteria.
                                 </td>
                             </tr>
@@ -573,7 +575,7 @@ export default function SalesRegisterReportPage() {
                             <>
                                 {paddingTop > 0 && (
                                     <tr>
-                                        <td colSpan={28} style={{ height: `${paddingTop}px` }} />
+                                        <td colSpan={30} style={{ height: `${paddingTop}px` }} />
                                     </tr>
                                 )}
                                 {virtualItems.map((virtualRow) => {
@@ -592,6 +594,8 @@ export default function SalesRegisterReportPage() {
                                         >
                                             <td className="p-3 border-r font-bold">{row.cmNo}</td>
                                             <td className="p-3 border-r">{format(new Date(row.date), "dd-MM-yyyy")}</td>
+                                            <td className="p-3 border-r text-center font-mono text-[10px]">{row.hsCode || "-"}</td>
+                                            <td className="p-3 border-r text-center font-mono text-[10px]">{row.barcodes || row.barcode || "-"}</td>
                                             <td className="p-3 border-r text-right">{formatVal(row.grossSale)}</td>
                                             <td className="p-3 border-r text-right">{formatVal(row.grossSaleWost)}</td>
                                             <td className="p-3 border-r text-right text-rose-600">{formatVal(row.disc)}</td>
@@ -629,7 +633,7 @@ export default function SalesRegisterReportPage() {
                                 })}
                                 {paddingBottom > 0 && (
                                     <tr>
-                                        <td colSpan={28} style={{ height: `${paddingBottom}px` }} />
+                                        <td colSpan={30} style={{ height: `${paddingBottom}px` }} />
                                     </tr>
                                 )}
                             </>
@@ -643,6 +647,8 @@ export default function SalesRegisterReportPage() {
                                 <td colSpan={2} className="p-3 border-r text-left uppercase tracking-wider font-black bg-slate-800">
                                     GRAND TOTALS
                                 </td>
+                                <td className="p-3 border-r text-center font-bold bg-slate-800">-</td>
+                                <td className="p-3 border-r text-center font-bold bg-slate-800">-</td>
                                 <td className="p-3 border-r text-right font-black bg-slate-800">{formatVal(grandTotals.grossSale)}</td>
                                 <td className="p-3 border-r text-right font-black bg-slate-800">{formatVal(grandTotals.grossSaleWost)}</td>
                                 <td className="p-3 border-r text-right font-bold bg-rose-700/30 text-rose-250">{formatVal(grandTotals.disc)}</td>

@@ -427,8 +427,8 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
         <div className="grid grid-cols-2 gap-x-12 gap-y-2.5 text-[13px] border-b pb-5 mb-6">
           <div className="space-y-1.5">
             <div className="flex">
-              <span className="font-semibold w-36 text-gray-600">From Warehouse :</span>
-              <span className="font-bold text-gray-800">{transfer.fromWarehouse?.name || '-'}</span>
+              <span className="font-semibold w-36 text-gray-600">From Location/WH :</span>
+              <span className="font-bold text-gray-800">{transfer.fromLocation?.name || transfer.fromWarehouse?.name || '-'}</span>
             </div>
             <div className="flex">
               <span className="font-semibold w-36 text-gray-600">To Location :</span>
@@ -454,6 +454,36 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
               <span className="font-semibold w-36 text-gray-600">Remarks :</span>
               <span className="font-medium text-gray-800">{transfer.notes || '-'}</span>
             </div>
+            {transfer.dispatchType && (
+              <div className="flex">
+                <span className="font-semibold w-36 text-gray-600">Dispatch Mode :</span>
+                <span className="font-bold text-purple-700">{transfer.dispatchType}</span>
+              </div>
+            )}
+            {transfer.courierName && (
+              <div className="flex">
+                <span className="font-semibold w-36 text-gray-600">Courier Company :</span>
+                <span className="font-bold text-gray-800">{transfer.courierName}</span>
+              </div>
+            )}
+            {transfer.trackingNumber && (
+              <div className="flex">
+                <span className="font-semibold w-36 text-gray-600">Tracking / CN # :</span>
+                <span className="font-mono font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded border">{transfer.trackingNumber}</span>
+              </div>
+            )}
+            {transfer.riderName && (
+              <div className="flex">
+                <span className="font-semibold w-36 text-gray-600">Rider Info :</span>
+                <span className="font-bold text-gray-800">{transfer.riderName} {transfer.riderPhone ? `(${transfer.riderPhone})` : ''}</span>
+              </div>
+            )}
+            {transfer.receiverPerson && (
+              <div className="flex">
+                <span className="font-semibold w-36 text-gray-600">Handover Person :</span>
+                <span className="font-bold text-gray-800">{transfer.receiverPerson}</span>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5 text-right flex flex-col items-end justify-start">

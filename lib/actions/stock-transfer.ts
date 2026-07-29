@@ -6,6 +6,7 @@ export async function getStockTransfers(filters?: {
     warehouseId?: string;
     status?: string;
     transferType?: string;
+    dispatchType?: string;
     search?: string;
     dateFrom?: string;
     dateTo?: string;
@@ -15,6 +16,7 @@ export async function getStockTransfers(filters?: {
         if (filters?.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
         if (filters?.status) queryParams.append("status", filters.status);
         if (filters?.transferType) queryParams.append("transferType", filters.transferType);
+        if (filters?.dispatchType) queryParams.append("dispatchType", filters.dispatchType);
         if (filters?.search) queryParams.append("search", filters.search);
         if (filters?.dateFrom) queryParams.append("dateFrom", filters.dateFrom);
         if (filters?.dateTo) queryParams.append("dateTo", filters.dateTo);
@@ -44,6 +46,7 @@ export async function queueDeliveryNotesExport(filters?: {
     warehouseId?: string;
     status?: string;
     transferType?: string;
+    dispatchType?: string;
     search?: string;
     dateFrom?: string;
     dateTo?: string;
@@ -54,6 +57,7 @@ export async function queueDeliveryNotesExport(filters?: {
         if (filters?.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
         if (filters?.status) queryParams.append("status", filters.status);
         if (filters?.transferType) queryParams.append("transferType", filters.transferType);
+        if (filters?.dispatchType) queryParams.append("dispatchType", filters.dispatchType);
         if (filters?.search) queryParams.append("search", filters.search);
         if (filters?.dateFrom) queryParams.append("dateFrom", filters.dateFrom);
         if (filters?.dateTo) queryParams.append("dateTo", filters.dateTo);
