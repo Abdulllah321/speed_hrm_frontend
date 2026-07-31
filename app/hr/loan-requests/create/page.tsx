@@ -45,6 +45,17 @@ const loanRequestFormSchema = z.object({
       },
       "Amount must be a positive number"
     ),
+  paidAmount: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const num = parseFloat(val);
+        return !isNaN(num) && num >= 0;
+      },
+      "Paid amount must be 0 or positive"
+    ),
   requestedDate: z.string().min(1, "Requested date is required"),
   repaymentStartMonthYear: z
     .string()
@@ -104,6 +115,7 @@ export default function CreateLoanRequestPage() {
       employeeId: "",
       loanTypeId: "",
       amount: "",
+      paidAmount: "0",
       requestedDate: "",
       repaymentStartMonthYear: undefined,
       numberOfInstallments: "",
@@ -289,6 +301,7 @@ export default function CreateLoanRequestPage() {
         employeeIds: [data.employeeId], // Convert single employeeId to array for API
         loanTypeId: data.loanTypeId,
         amount: parseFloat(data.amount),
+        paidAmount: data.paidAmount ? parseFloat(data.paidAmount) : 0,
         requestedDate: data.requestedDate,
         repaymentStartMonthYear: data.repaymentStartMonthYear || undefined,
         numberOfInstallments: data.numberOfInstallments ? parseInt(data.numberOfInstallments) : undefined,
@@ -501,8 +514,8 @@ export default function CreateLoanRequestPage() {
                 )}
               />
 
-              {/* Amount, Requested Date, and Repayment Start Month-Year Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Amount, Initial Paid Amount, Requested Date, and Repayment Start Month-Year Row */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <FormField
                   control={form.control}
                   name="amount"
@@ -510,6 +523,29 @@ export default function CreateLoanRequestPage() {
                     <FormItem>
                       <FormLabel>
                         Loan Amount <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          disabled={form.formState.isSubmitting || submitting}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="paidAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Already Paid Amount
                       </FormLabel>
                       <FormControl>
                         <Input

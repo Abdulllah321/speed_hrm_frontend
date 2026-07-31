@@ -159,8 +159,8 @@ export default async function ViewLoanRequestPage() {
             loanRequest.status === 'completed' ? 'Completed' :
               loanRequest.status === 'cancelled' ? 'Cancelled' :
                 loanRequest.status === 'rejected' ? 'Rejected' : 'Pending',
-        paidAmount: paymentProgress.paidAmount,
-        remainingAmount: paymentProgress.remainingAmount,
+        paidAmount: loanRequest.paidAmount !== undefined ? Number(loanRequest.paidAmount) : paymentProgress.paidAmount,
+        remainingAmount: loanRequest.remainingAmount !== undefined ? Number(loanRequest.remainingAmount) : paymentProgress.remainingAmount,
         createdById: loanRequest.createdById,
       };
     });
@@ -171,8 +171,8 @@ export default async function ViewLoanRequestPage() {
         ? parseFloat(loanRequest.amount)
         : loanRequest.amount;
 
-      const paidAmount = loanRequest.paidAmount || 0;
-      const remainingAmount = Math.max(0, loanAmount - paidAmount);
+      const paidAmount = loanRequest.paidAmount !== undefined ? Number(loanRequest.paidAmount) : (loanRequest.paidAmount || 0);
+      const remainingAmount = loanRequest.remainingAmount !== undefined ? Number(loanRequest.remainingAmount) : Math.max(0, loanAmount - paidAmount);
 
       // Estimate paid installments (since we don't track installments in payroll yet)
       const totalInstallments = loanRequest.numberOfInstallments || 1;

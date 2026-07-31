@@ -96,6 +96,17 @@ const editLoanRequestSchema = z.object({
       },
       "Amount must be a positive number"
     ),
+  paidAmount: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const num = parseFloat(val);
+        return !isNaN(num) && num >= 0;
+      },
+      "Paid amount must be 0 or a positive number"
+    ),
   requestedDate: z.string().min(1, "Requested date is required"),
   repaymentStartMonthYear: z
     .string()
@@ -204,6 +215,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
           form.reset({
             loanTypeId: data.loanTypeId,
             amount: typeof data.amount === 'string' ? data.amount : data.amount.toString(),
+            paidAmount: data.paidAmount !== undefined ? data.paidAmount.toString() : "0",
             requestedDate: data.requestedDate,
             repaymentStartMonthYear: data.repaymentStartMonthYear || undefined,
             numberOfInstallments: data.numberOfInstallments?.toString() || "",
@@ -279,6 +291,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
       const result = await updateLoanRequest(record.id, {
         loanTypeId: data.loanTypeId,
         amount: parseFloat(data.amount),
+        paidAmount: data.paidAmount ? parseFloat(data.paidAmount) : 0,
         requestedDate: data.requestedDate,
         repaymentStartMonthYear: data.repaymentStartMonthYear || undefined,
         numberOfInstallments: data.numberOfInstallments ? parseInt(data.numberOfInstallments) : undefined,
@@ -999,6 +1012,30 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
                       <FormItem>
                         <FormLabel>
                           Amount <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            disabled={isPending}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Paid Amount */}
+                  <FormField
+                    control={form.control}
+                    name="paidAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Paid Amount
                         </FormLabel>
                         <FormControl>
                           <Input

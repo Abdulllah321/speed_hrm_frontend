@@ -124,6 +124,7 @@ export async function createLoanRequest(data: {
   employeeIds: string[];
   loanTypeId: string;
   amount: number;
+  paidAmount?: number;
   requestedDate: string;
   repaymentStartMonthYear?: string;
   numberOfInstallments?: number;
@@ -136,6 +137,7 @@ export async function createLoanRequest(data: {
       employeeId,
       loanTypeId: data.loanTypeId,
       amount: data.amount,
+      paidAmount: data.paidAmount,
       requestedDate: data.requestedDate,
       repaymentStartMonthYear: data.repaymentStartMonthYear,
       numberOfInstallments: data.numberOfInstallments,
@@ -166,6 +168,7 @@ export async function updateLoanRequest(
   data: {
     loanTypeId?: string;
     amount?: number;
+    paidAmount?: number;
     requestedDate?: string;
     repaymentStartMonthYear?: string;
     numberOfInstallments?: number;
