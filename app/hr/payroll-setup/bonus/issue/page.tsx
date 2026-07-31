@@ -349,10 +349,7 @@ export default function IssueBonusPage() {
   const bonusTypeOptions = useMemo(() => {
     return bonusTypes.map((bt) => ({
       value: bt.id,
-      label: `${bt.name} (${bt.calculationType === "Amount"
-        ? `Fixed: ${bt.amount || "N/A"}`
-        : `Percentage: ${bt.percentage || "N/A"}%`
-        })`,
+      label: bt.name,
     }));
   }, [bonusTypes]);
 
@@ -732,7 +729,7 @@ export default function IssueBonusPage() {
                   control={form.control}
                   name="bonusTypeId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className={selectedBonusType ? "md:col-span-2" : ""}>
                       <FormLabel className="flex items-center gap-2">
                         <Gift className="h-4 w-4" />
                         Bonus Type <span className="text-destructive">*</span>
@@ -756,6 +753,13 @@ export default function IssueBonusPage() {
                           />
                         )}
                       </FormControl>
+                      {selectedBonusType && (
+                        <p className="text-xs text-muted-foreground">
+                          {selectedBonusType.calculationType === "Amount"
+                            ? `Default: PKR ${selectedBonusType.amount?.toLocaleString() ?? "N/A"}`
+                            : `Default: ${selectedBonusType.percentage ?? "N/A"}%`}
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -793,8 +797,7 @@ export default function IssueBonusPage() {
                     name="amount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4" />
+                        <FormLabel>
                           Bonus Amount{" "}
                           <span className="text-destructive">*</span>
                         </FormLabel>
@@ -810,11 +813,7 @@ export default function IssueBonusPage() {
                             }
                             disabled={
                               form.formState.isSubmitting ||
-                              submitting ||
-                              (calculationType === "Amount" &&
-                                selectedBonusType?.calculationType === "Amount" &&
-                                !!selectedBonusType.amount &&
-                                !selectedBonusType.name?.toLowerCase().includes("performance"))
+                              submitting
                             }
                             {...field}
                           />
@@ -822,9 +821,8 @@ export default function IssueBonusPage() {
                         <FormDescription>
                           {calculationType === "Amount" &&
                           selectedBonusType.calculationType === "Amount" &&
-                          selectedBonusType.amount &&
-                          !selectedBonusType.name?.toLowerCase().includes("performance")
-                            ? `Fixed amount: ${selectedBonusType.amount} (pre-filled from bonus type)`
+                          selectedBonusType.amount
+                            ? `Bonus amount: ${selectedBonusType.amount} (pre-filled from bonus type, editable)`
                             : "Enter the bonus amount per employee"}
                         </FormDescription>
                         <FormMessage />
@@ -855,11 +853,7 @@ export default function IssueBonusPage() {
                             }
                             disabled={
                               form.formState.isSubmitting ||
-                              submitting ||
-                              (calculationType === "Percentage" &&
-                                selectedBonusType?.calculationType === "Percentage" &&
-                                !!selectedBonusType.percentage &&
-                                !selectedBonusType.name?.toLowerCase().includes("performance"))
+                              submitting
                             }
                             {...field}
                           />
@@ -867,9 +861,8 @@ export default function IssueBonusPage() {
                         <FormDescription>
                           {calculationType === "Percentage" &&
                           selectedBonusType.calculationType === "Percentage" &&
-                          selectedBonusType.percentage &&
-                          !selectedBonusType.name?.toLowerCase().includes("performance")
-                            ? `Fixed percentage: ${selectedBonusType.percentage}% (pre-filled from bonus type). Amount will be calculated based on each employee's salary.`
+                          selectedBonusType.percentage
+                            ? `Bonus percentage: ${selectedBonusType.percentage}% (pre-filled from bonus type, editable). Amount will be calculated based on each employee's salary.`
                             : "Enter the bonus percentage (0-100%). Amount will be calculated based on each employee's salary."}
                         </FormDescription>
                         <FormMessage />
