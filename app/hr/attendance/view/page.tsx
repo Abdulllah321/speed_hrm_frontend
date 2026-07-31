@@ -234,13 +234,25 @@ function ViewEmployeeAttendanceDetailPage() {
     return days.map((date, index) => {
       const dayOfWeek = format(date, 'EEEE');
       const holidayInfo = isHolidayDate(date);
-      const isWeeklyOffDay = isWeekend(date); // TODO: Check employee's working hours policy for custom weekly offs
 
       // Find attendance record for this date
       const attendanceRecord = attendanceRecords.find((record) => {
         const recordDate = new Date(record.date);
         return isSameDay(recordDate, date);
       });
+
+      // Use backend resolved off/holiday status if present
+      const isWeeklyOffDay = attendanceRecord && ('isWeeklyOff' in attendanceRecord)
+        ? !!(attendanceRecord as any).isWeeklyOff
+        : isWeekend(date);
+
+      const isHolidayDay = attendanceRecord && ('isHoliday' in attendanceRecord)
+        ? !!(attendanceRecord as any).isHoliday
+        : holidayInfo.isHoliday;
+
+      const holidayName = attendanceRecord && ('notes' in attendanceRecord) && (attendanceRecord as any).isHoliday
+        ? attendanceRecord.notes
+        : holidayInfo.name;
 
       let status: DailyAttendanceRecord["status"] = "absent";
       let isOvertime = false;
@@ -257,8 +269,8 @@ function ViewEmployeeAttendanceDetailPage() {
           dayOfWeek,
           serialNo: index + 1,
           status: "not-joined" as any, // Adding a custom status for UI
-          isHoliday: holidayInfo.isHoliday,
-          holidayName: holidayInfo.name,
+          isHoliday: isHolidayDay,
+          holidayName: holidayName || undefined,
           isWeeklyOff: isWeeklyOffDay,
           isOvertime: false,
         };
@@ -280,7 +292,7 @@ function ViewEmployeeAttendanceDetailPage() {
         } else if (recordStatus === 'on-leave' || recordStatus === 'leave') {
           status = "leave";
           isOvertime = false;
-        } else if ((holidayInfo.isHoliday || isWeeklyOffDay) && (attendanceRecord.checkIn || attendanceRecord.checkOut)) {
+        } else if ((isHolidayDay || isWeeklyOffDay) && (attendanceRecord.checkIn || attendanceRecord.checkOut)) {
           // Employee worked on a holiday or weekly off (only if they have clock times)
           isOvertime = true;
           status = "present";
@@ -295,7 +307,7 @@ function ViewEmployeeAttendanceDetailPage() {
         }
       } else {
         // No attendance record
-        if (holidayInfo.isHoliday) {
+        if (isHolidayDay) {
           status = "holiday";
         } else if (isWeeklyOffDay) {
           status = "weekly-off";
@@ -314,8 +326,8 @@ function ViewEmployeeAttendanceDetailPage() {
         checkOut: attendanceRecord?.checkOut || null,
         workingHours: attendanceRecord?.workingHours || null,
         overtimeHours: attendanceRecord?.overtimeHours || null,
-        isHoliday: holidayInfo.isHoliday,
-        holidayName: holidayInfo.name,
+        isHoliday: isHolidayDay,
+        holidayName: holidayName,
         isWeeklyOff: isWeeklyOffDay,
         isOvertime,
         notes: attendanceRecord?.notes || null,

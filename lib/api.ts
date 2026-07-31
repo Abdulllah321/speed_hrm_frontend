@@ -121,6 +121,11 @@ export interface Employee {
   accountTitle?: string;
   accountType?: string;
   employeeSalary?: number;
+  eobi?: boolean;
+  eobiId?: string;
+  eobiCode?: string;
+  eobiNumber?: string;
+  eobiRegion?: string;
   department?: { id: string; name: string } | string;
   subDepartment?: { id: string; name: string } | string;
   designation?: { id: string; name: string } | string;
