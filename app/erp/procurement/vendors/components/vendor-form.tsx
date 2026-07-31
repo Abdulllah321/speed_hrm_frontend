@@ -1,10 +1,9 @@
 "use client";
 
 import { createVendor, updateVendor } from "@/lib/actions/procurement";
-import { getChartOfAccounts, ChartOfAccount } from "@/lib/actions/chart-of-account";
 
-import { useState, useEffect } from "react";
-import { useForm, SubmitHandler, Controller } from "react-hook-form";
+import { useState } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { vendorSchema, type VendorFormValues } from "@/lib/validations/vendor";
 import { Button } from "@/components/ui/button";
@@ -23,8 +22,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Autocomplete } from "@/components/ui/autocomplete";
-import { MultiSelect } from "@/components/ui/multi-select";
+
 
 interface VendorFormProps {
     initialData?: any;
@@ -35,21 +33,13 @@ interface VendorFormProps {
 export function VendorForm({ initialData, id, readOnly = false }: VendorFormProps) {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
-    const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
-
-    useEffect(() => {
-        getChartOfAccounts().then(res => {
-            if (res.status && Array.isArray(res.data)) {
-                setAccounts(res.data);
-            }
-        });
-    }, []);
 
     const form = useForm<VendorFormValues>({
         resolver: zodResolver(vendorSchema) as any,
         defaultValues: {
             type: initialData?.type ? (initialData.type === "LOCAL" ? "local" : "import") : "local",
             code: initialData?.code || "",
+            code2: initialData?.code2 || "",
             name: initialData?.name || "",
             address: initialData?.address || "",
             contactNo: initialData?.contactNo || initialData?.contactNumber || "",
@@ -61,7 +51,6 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
             pra: initialData?.praNo || "",
             ict: initialData?.ictNo || "",
             brand: initialData?.brand || "",
-            chartOfAccountIds: initialData?.chartOfAccounts ? initialData.chartOfAccounts.map((acc: any) => acc.id) : (initialData?.chartOfAccountId ? [initialData.chartOfAccountId] : []),
         },
     });
 
@@ -142,6 +131,10 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
                                 <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
                             )}
                         </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground uppercase font-semibold">GL Code 2</Label>
+                            <Input {...form.register("code2")} placeholder="Enter GL Code 2" disabled={readOnly} />
+                        </div>
                     </div>
 
                     <div className="space-y-1">
@@ -159,29 +152,7 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
                         </div>
                     </div>
 
-                    <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground uppercase font-semibold">Chart of Account <span className="text-destructive">*</span></Label>
-                        <Controller
-                            control={form.control}
-                            name="chartOfAccountIds"
-                            render={({ field }) => (
-                                <MultiSelect
-                                    options={accounts.map((acc) => ({
-                                        value: acc.id,
-                                        label: `${acc.code} - ${acc.name}`,
-                                    }))}
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                    placeholder="Select Accounts"
-                                    searchPlaceholder="Search accounts..."
-                                    disabled={readOnly}
-                                />
-                            )}
-                        />
-                        {form.formState.errors.chartOfAccountIds && (
-                            <p className="text-xs text-destructive">{form.formState.errors.chartOfAccountIds.message}</p>
-                        )}
-                    </div>
+
 
                     {/* Tax & Registration Details - Common for Both */}
                     <div className="space-y-6 border-t pt-6">
@@ -255,6 +226,10 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
                                     {form.formState.errors.brand && (
                                         <p className="text-xs text-destructive">{form.formState.errors.brand.message}</p>
                                     )}
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground uppercase font-semibold">GL Code 2 (Import)</Label>
+                                    <Input {...form.register("code2")} placeholder="Enter GL Code for Import" disabled={readOnly} />
                                 </div>
                             </div>
                         </div>

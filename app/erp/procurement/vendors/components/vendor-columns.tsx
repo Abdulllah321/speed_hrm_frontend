@@ -18,22 +18,24 @@ import { useAuth } from "@/components/providers/auth-provider";
 export type VendorRow = {
   id: string;
   code: string;
+  code2?: string;
   name: string;
   type: "LOCAL" | "INTERNATIONAL";
   contactNo?: string;
   address?: string;
   nature?: string;
   brand?: string;
-  chartOfAccounts?: {
-    code: string;
-    name: string;
-  }[];
 };
 
 export const columns: ColumnDef<VendorRow>[] = [
   {
     accessorKey: "code",
     header: "Code",
+  },
+  {
+    accessorKey: "code2",
+    header: "GL Code 2",
+    cell: ({ row }) => row.original.code2 || "-",
   },
   {
     accessorKey: "name",

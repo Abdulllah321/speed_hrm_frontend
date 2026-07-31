@@ -1,9 +1,8 @@
 "use client";
 
 import { updateVendor } from "@/lib/actions/procurement";
-import { getChartOfAccounts, ChartOfAccount } from "@/lib/actions/chart-of-account";
-import { useState, useEffect, startTransition, addTransitionType } from "react";
-import { useForm, SubmitHandler, Controller } from "react-hook-form";
+import { useState, startTransition, addTransitionType } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { vendorSchema, type VendorFormValues } from "@/lib/validations/vendor";
 import { Button } from "@/components/ui/button";
@@ -22,15 +21,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Autocomplete } from "@/components/ui/autocomplete";
-import { MultiSelect } from "@/components/ui/multi-select";
+
 
 interface VendorEditFormProps {
     vendor: any;
-    accounts: ChartOfAccount[];
 }
 
-export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
+export function VendorEditForm({ vendor }: VendorEditFormProps) {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
 
@@ -39,6 +36,7 @@ export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
         defaultValues: {
             type: vendor.type === "LOCAL" ? "local" : "import",
             code: vendor.code || "",
+            code2: vendor.code2 || "",
             name: vendor.name || "",
             address: vendor.address || "",
             contactNo: vendor.contactNo || "",
@@ -50,7 +48,6 @@ export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
             pra: vendor.praNo || "",
             ict: vendor.ictNo || "",
             brand: vendor.brand || "",
-            chartOfAccountIds: vendor.chartOfAccounts ? vendor.chartOfAccounts.map((acc: any) => acc.id) : (vendor.chartOfAccountId ? [vendor.chartOfAccountId] : []),
         },
     });
 
@@ -120,6 +117,10 @@ export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
                                     <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
                                 )}
                             </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground uppercase font-semibold">GL Code 2</Label>
+                                <Input {...form.register("code2")} placeholder="Enter GL Code 2" />
+                            </div>
                         </div>
 
                         <div className="space-y-1">
@@ -137,28 +138,7 @@ export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
                             </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Chart of Account <span className="text-destructive">*</span></Label>
-                            <Controller
-                                control={form.control}
-                                name="chartOfAccountIds"
-                                render={({ field }) => (
-                                    <MultiSelect
-                                        options={accounts.map((acc) => ({
-                                            value: acc.id,
-                                            label: `${acc.code} - ${acc.name}`,
-                                        }))}
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                        placeholder="Select Accounts"
-                                        searchPlaceholder="Search accounts..."
-                                    />
-                                )}
-                            />
-                            {form.formState.errors.chartOfAccountIds && (
-                                <p className="text-xs text-destructive">{form.formState.errors.chartOfAccountIds.message}</p>
-                            )}
-                        </div>
+
 
                         {/* Tax & Registration Details - Common for Both */}
                         <div className="space-y-6 border-t pt-6">
@@ -232,6 +212,10 @@ export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
                                         {form.formState.errors.brand && (
                                             <p className="text-xs text-destructive">{form.formState.errors.brand.message}</p>
                                         )}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground uppercase font-semibold">GL Code 2 (Import)</Label>
+                                        <Input {...form.register("code2")} placeholder="Enter GL Code for Import" />
                                     </div>
                                 </div>
                             </div>
