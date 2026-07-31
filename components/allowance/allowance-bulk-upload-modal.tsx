@@ -221,15 +221,26 @@ export function AllowanceBulkUploadModal({
                     const rowNum = idx + 2; // header is row 1
 
                     // Find header mappings
-                    const empIdKey = findKey(row, ['empid', 'employeeid', 'employee_id', 'code', 'emp_id']);
-                    const nameKey = findKey(row, ['name', 'employeename', 'employee_name']);
-                    const typeKey = findKey(row, ['allowancetype', 'type', 'allowancehead', 'allowance_type', 'allowance_head', 'allowanceheadname']);
+                    const empIdKey = findKey(row, ['identity', 'empid', 'employeeid', 'employee_id', 'code', 'emp_id']);
+                    const nameKey = findKey(row, ['__empty', 'name', 'employeename', 'employee_name']);
+                    const typeKey = findKey(row, ['allowance', 'allowancetype', 'type', 'allowancehead', 'allowance_type', 'allowance_head', 'allowanceheadname']);
                     const amountKey = findKey(row, ['amount', 'value', 'allowanceamount', 'allowance_amount']);
                     const monthKey = findKey(row, ['month', 'monthyear', 'month_year', 'period', 'date']);
                     const taxableKey = findKey(row, ['istaxable', 'taxable', 'is_taxable']);
                     const notesKey = findKey(row, ['notes', 'remarks', 'note', 'remark']);
 
                     const rawEmpId = empIdKey ? String(row[empIdKey]).trim() : '';
+                    if (
+                        !rawEmpId || 
+                        rawEmpId.toLowerCase() === 'employee id' || 
+                        rawEmpId.toLowerCase() === 'employeeid' || 
+                        rawEmpId.toLowerCase() === 'empid' || 
+                        rawEmpId.toLowerCase() === 'emp id' || 
+                        rawEmpId.toLowerCase() === 'identity'
+                    ) {
+                        return; // Skip sub-header row or empty rows
+                    }
+
                     const rawName = nameKey ? String(row[nameKey]).trim() : '';
                     const rawType = typeKey ? String(row[typeKey]).trim() : '';
                     const rawAmount = amountKey ? String(row[amountKey]).trim() : '';
@@ -238,11 +249,6 @@ export function AllowanceBulkUploadModal({
                     const rawNotes = notesKey ? String(row[notesKey]).trim() : '';
 
                     // 1. Validate Employee ID existence
-                    if (!rawEmpId) {
-                        validationErrors.push({ row: rowNum, empId: '—', field: 'emp ID', reason: 'Employee ID is required.' });
-                        return;
-                    }
-
                     const employee = employees.find(e => 
                         e.employeeId.trim().toLowerCase() === rawEmpId.toLowerCase() || 
                         e.id.toLowerCase() === rawEmpId.toLowerCase()
@@ -384,13 +390,27 @@ export function AllowanceBulkUploadModal({
     };
 
     const downloadTemplate = () => {
-        const headers = ["emp ID", "name", "allowance type", "amount", "month", "is taxable", "notes"];
-        const exampleRow = ["EMP-00123", "John Doe", "Fuel Allowance", "2500", "2026-07", "true", "Monthly fuel allowance"];
-        const csvContent = [headers.join(","), exampleRow.join(",")].join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const data = [
+            ["IDENTITY", "", "EMPLOYMENT", "Allowance", "Amount", "Taxable", "Month"],
+            ["Employee ID", "Employee Name", "Department", "Type", "", "", ""],
+            ["EMP-001", "John Doe", "A.S.S.", "Incentive", "5000", "true", "2026-07"]
+        ];
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        
+        // Horizontal merge of Col 0 & Col 1 for row 0
+        ws['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "allowance_bulk_import_template.csv";
+        link.download = "incentive_bulk_import_template.xlsx";
         link.click();
     };
 

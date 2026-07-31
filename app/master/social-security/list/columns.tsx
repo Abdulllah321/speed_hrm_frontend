@@ -78,11 +78,20 @@ export const columns: ColumnDef<SocialSecurityInstitutionRow>[] = [
     cell: ({ row }) => row.original.province || "—"
   },
   {
-    header: "Rate (%)",
+    header: "Amount",
     accessorKey: "contributionRate",
     size: 100,
     enableSorting: true,
-    cell: ({ row }) => row.original.contributionRate ? `${row.original.contributionRate}%` : "0%"
+    cell: ({ row }) => {
+      const amount = Number(row.original.contributionRate || 0);
+      const formatted = new Intl.NumberFormat("en-PK", {
+        style: "currency",
+        currency: "PKR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount);
+      return <div className="font-medium">{formatted}</div>;
+    }
   },
   {
     header: "Status",
@@ -218,7 +227,7 @@ function RowActions({ row }: { row: Row<SocialSecurityInstitutionRow> }) {
                   <Input name="contactNumber" defaultValue={institution.contactNumber || ""} disabled={isPending} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Contribution Rate (%)</Label>
+                  <Label>Contribution Amount</Label>
                   <Input name="contributionRate" type="number" step="0.01" defaultValue={institution.contributionRate} disabled={isPending} />
                 </div>
                 <div className="space-y-2 col-span-2">

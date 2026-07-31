@@ -159,7 +159,7 @@ export function SocialSecurityList({ initialInstitutions, newItemId }: SocialSec
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Rate (%)</Label>
+                    <Label className="text-xs">Contribution Amount</Label>
                     <Input
                       type="number"
                       step="0.01"
