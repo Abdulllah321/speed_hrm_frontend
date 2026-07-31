@@ -449,6 +449,20 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
               <Input placeholder="AA001" {...register("eobiCode")} disabled={isPending} />
             </div>
             <div className="space-y-2">
+              <Label>EOBI Region <span className="text-destructive">*</span></Label>
+              <Controller name="eobiRegion" control={control} render={({ field }) => (
+                <Select value={field.value || "Punjab"} onValueChange={field.onChange} disabled={isPending}>
+                  <SelectTrigger><SelectValue placeholder="Select Region" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Punjab">Punjab</SelectItem>
+                    <SelectItem value="Sindh">Sindh</SelectItem>
+                    <SelectItem value="Islamabad">Islamabad</SelectItem>
+                  </SelectContent>
+                </Select>
+              )} />
+              {errors?.eobiRegion && <p className="text-xs text-red-500">{errors.eobiRegion.message}</p>}
+            </div>
+            <div className="space-y-2">
               <Label>EOBI Document</Label>
               <Input
                 type="file"

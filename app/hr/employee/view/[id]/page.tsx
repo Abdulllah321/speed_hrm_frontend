@@ -614,7 +614,8 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                 ...(employee.eobi ? [
                   { label: "EOBI ID", value: employee.eobiId || "N/A" },
                   { label: "EOBI Code", value: employee.eobiCode || "N/A" },
-                  { label: "EOBI Number", value: employee.eobiNumber || "N/A" }
+                  { label: "EOBI Number", value: employee.eobiNumber || "N/A" },
+                  { label: "EOBI Region", value: (employee as any).eobiRegion || "Punjab" }
                 ] : []),
                 ...(employee.eobi && employee.eobiDocumentUrl ? [{
                   label: "EOBI Document",
