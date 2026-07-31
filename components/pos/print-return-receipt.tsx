@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,55 @@ import type { PosSettings } from "@/hooks/use-pos-settings";
 import { POS_SETTINGS_DEFAULTS } from "@/hooks/use-pos-settings";
 import { useAuth } from "@/components/providers/auth-provider";
 import { printThermal } from "@/lib/utils/print";
+
+// ── Barcode helper ───────────────────────────────────────────────────────────
+
+function BarcodeImg({ value, height = 36, fontSize = 9, displayValue = true }: { value: string; height?: number; fontSize?: number; displayValue?: boolean }) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [dataUrl, setDataUrl] = useState<string>("");
+
+    const render = useCallback(() => {
+        if (!canvasRef.current || !value) return;
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const JsBarcode = require("jsbarcode");
+            JsBarcode(canvasRef.current, value, {
+                format: "CODE128",
+                width: 1.5,
+                height,
+                displayValue,
+                fontSize,
+                margin: 4,
+                background: "#ffffff",
+                lineColor: "#000000",
+                textAlign: "center",
+                font: "monospace",
+            });
+            setDataUrl(canvasRef.current.toDataURL("image/png"));
+        } catch {
+            // jsbarcode not available (SSR) — ignore
+        }
+    }, [value, height, fontSize, displayValue]);
+
+    useEffect(() => {
+        render();
+    }, [render]);
+
+    if (!value) return null;
+
+    return (
+        <div style={{ textAlign: "center", lineHeight: 0, marginTop: 4, marginBottom: 2 }}>
+            <canvas ref={canvasRef} style={{ display: "none" }} />
+            {dataUrl && (
+                <img
+                    src={dataUrl}
+                    alt={`Barcode: ${value}`}
+                    style={{ maxWidth: "100%", height: `${height + fontSize + 10}px`, objectFit: "contain" }}
+                />
+            )}
+        </div>
+    );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -375,6 +424,7 @@ function ReturnBody({
             <div className="text-center space-y-0.5">
                 <p className="font-bold text-sm tracking-widest uppercase">{isRefund ? "Refund Voucher" : "Sales Return"}</p>
                 <p className="font-black text-2xl tracking-wider">*{returnRef}*</p>
+                <BarcodeImg value={returnRef} height={32} fontSize={8} />
             </div>
 
             <Separator />
@@ -561,6 +611,7 @@ function ReturnBody({
                         <p className="font-bold text-xs uppercase tracking-wide text-zinc-900">Exchange Voucher Issued</p>
                         <div className="bg-white border-2 border-zinc-955 rounded px-2 py-2">
                             <p className="font-black text-2xl tracking-widest text-zinc-955">{exchangeVoucher.code}</p>
+                            <BarcodeImg value={exchangeVoucher.code} height={32} fontSize={8} />
                         </div>
                         <div className="text-[10px] space-y-0.5 pt-1">
                             <p className="font-semibold text-zinc-900">Value: <span className="font-black text-base text-zinc-955">Rs. {fmt(Number(exchangeVoucher.faceValue))}</span></p>

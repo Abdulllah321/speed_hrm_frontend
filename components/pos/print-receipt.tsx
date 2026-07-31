@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
@@ -23,6 +23,57 @@ import { printThermal } from "@/lib/utils/print";
 import jsPDF from "jspdf";
 import * as htmlToImage from "html-to-image";
 import { toast } from "sonner";
+
+// ── Barcode helper ───────────────────────────────────────────────────────────
+
+function BarcodeImg({ value, height = 36, fontSize = 9, displayValue = true }: { value: string; height?: number; fontSize?: number; displayValue?: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [dataUrl, setDataUrl] = useState<string>("");
+
+  const render = useCallback(() => {
+    if (!canvasRef.current || !value) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const JsBarcode = require("jsbarcode");
+      JsBarcode(canvasRef.current, value, {
+        format: "CODE128",
+        width: 1.5,
+        height,
+        displayValue,
+        fontSize,
+        margin: 4,
+        background: "#ffffff",
+        lineColor: "#000000",
+        textAlign: "center",
+        font: "monospace",
+      });
+      setDataUrl(canvasRef.current.toDataURL("image/png"));
+    } catch {
+      // jsbarcode not available (SSR) — ignore
+    }
+  }, [value, height, fontSize, displayValue]);
+
+  useEffect(() => {
+    render();
+  }, [render]);
+
+  if (!value) return null;
+
+  return (
+    <div style={{ textAlign: "center", lineHeight: 0, marginTop: 4, marginBottom: 2 }}>
+      {/* Hidden canvas used to generate the barcode PNG */}
+      <canvas ref={canvasRef} style={{ display: "none" }} />
+      {/* Rendered as <img> so it survives html-to-image / print snapshots */}
+      {dataUrl && (
+        <img
+          src={dataUrl}
+          alt={`Barcode: ${value}`}
+          style={{ maxWidth: "100%", height: `${height + fontSize + 10}px`, objectFit: "contain" }}
+        />
+      )}
+    </div>
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -826,6 +877,9 @@ function ReceiptBody({
           <p className="font-black text-2xl tracking-wider">
             *{order?.orderNumber ?? ""}*
           </p>
+          {order?.orderNumber && (
+            <BarcodeImg value={order.orderNumber} height={32} fontSize={8} />
+          )}
         </div>
       ) : (
         <div className="text-center">
@@ -1138,6 +1192,7 @@ function ReceiptBody({
                 <p className="font-black text-xl tracking-widest text-zinc-950">
                   {voucher.code}
                 </p>
+                <BarcodeImg value={voucher.code} height={32} fontSize={8} />
                 <p className="font-semibold text-sm text-zinc-900">
                   Value:{" "}
                   <span className="font-black text-base text-zinc-950">
@@ -1417,9 +1472,12 @@ function A4InvoiceBody({
           <div className="border border-black rounded p-3 mb-4 text-[10px] max-w-sm">
             <p className="font-bold uppercase mb-1">Credit Voucher Issued</p>
             {creditVouchers.map((v, i) => (
-              <div key={i} className="flex justify-between font-mono py-0.5">
-                <span>{v.code}</span>
-                <span>Rs. {fmtDec(Number(v.faceValue))}</span>
+              <div key={i} className="py-1 space-y-1">
+                <div className="flex justify-between font-mono">
+                  <span>{v.code}</span>
+                  <span>Rs. {fmtDec(Number(v.faceValue))}</span>
+                </div>
+                <BarcodeImg value={v.code} height={28} fontSize={7} />
               </div>
             ))}
           </div>
@@ -1444,6 +1502,11 @@ function A4InvoiceBody({
               <p className="font-mono font-bold text-sm border-t border-b border-black py-1 px-8 inline-block bg-white min-w-[220px]">
                 {fbrInvoiceNumber || order?.fbrInvoiceNumber || "—"}
               </p>
+              {(fbrInvoiceNumber || order?.fbrInvoiceNumber) && (
+                <div className="mt-1">
+                  <BarcodeImg value={fbrInvoiceNumber || order?.fbrInvoiceNumber} height={36} fontSize={9} />
+                </div>
+              )}
             </div>
 
             <div className="flex justify-between items-end">
