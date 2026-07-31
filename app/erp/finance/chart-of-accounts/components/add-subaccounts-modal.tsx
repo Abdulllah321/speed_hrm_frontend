@@ -163,7 +163,7 @@ export function AddSubAccountsModal({
           allSuppliers = suppRes;
         }
         
-        setSuppliers(allSuppliers.filter(s => s.type !== 'IMPORT'));
+        setSuppliers(allSuppliers);
         setMerchandise(allSuppliers.filter(s => s.type === 'IMPORT'));
 
         if (Array.isArray(custRes)) {
@@ -215,6 +215,7 @@ export function AddSubAccountsModal({
     return arr.filter(
       (item) =>
         item.name?.toLowerCase().includes(query) ||
+        item.brand?.toLowerCase().includes(query) ||
         item.code?.toLowerCase().includes(query) || 
         item.employeeId?.toLowerCase().includes(query) ||
         item.employeeName?.toLowerCase().includes(query)
@@ -396,8 +397,11 @@ export function AddSubAccountsModal({
         
         arr.forEach((item) => {
           if (selected[typeMap].has(item.id)) {
+            const rawName = typeMap === 'merchandise'
+              ? (item.brand || item.name || "")
+              : (item.name || item.employeeName || "");
             itemsToCreate.push({
-              name: (item.name || item.employeeName || "").toUpperCase(),
+              name: rawName.toUpperCase(),
               code: (item[itemCodeKey] || "").toUpperCase(),
               type: typeStr,
               referenceId: item.id,
@@ -585,7 +589,9 @@ export function AddSubAccountsModal({
                           </div>
                         ) : (
                           filteredItems.map((item) => {
-                            const itemName = item.name || item.employeeName;
+                            const itemName = activeTab === 'merchandise'
+                              ? (item.brand || item.name)
+                              : (item.name || item.employeeName);
                             const itemCode = item.code || item.employeeId;
                             const isEditing = editingPayeeId === item.id;
                             
