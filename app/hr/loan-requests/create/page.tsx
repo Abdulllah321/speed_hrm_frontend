@@ -508,8 +508,7 @@ export default function CreateLoanRequestPage() {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
+                      <FormLabel>
                         Loan Amount <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>

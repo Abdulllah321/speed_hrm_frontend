@@ -250,6 +250,26 @@ export function HeaderNotifications() {
       return;
     }
 
+    // cpr-tax-export.ready
+    if (n.actionType === "cpr-tax-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/cpr-taxes/export/${jobId}/download`,
+            `cpr-taxes-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("CPR Tax export download failed:", e);
+      }
+      return;
+    }
+
     // employee-export.ready
     if (n.actionType === "employee-export.ready" && n.actionPayload) {
       try {
@@ -507,6 +527,26 @@ export function HeaderNotifications() {
         }
       } catch (e) {
         console.error("Receipt Voucher export download failed:", e);
+      }
+      return;
+    }
+
+    // loan-request-export.ready
+    if (n.actionType === "loan-request-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/loan-requests/export/${jobId}/download`,
+            `employee-loan-account-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Loan request export download failed:", e);
       }
       return;
     }

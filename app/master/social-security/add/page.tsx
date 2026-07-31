@@ -178,11 +178,11 @@ export default function AddSocialSecurityPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Contribution Rate (%)</Label>
+                    <Label>Contribution Amount</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      placeholder="6.0"
+                      placeholder="e.g. 500"
                       value={institution.contributionRate}
                       onChange={(e) => updateField(institution.id, "contributionRate", e.target.value)}
                       disabled={isPending}

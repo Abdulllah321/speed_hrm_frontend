@@ -36,6 +36,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EOBI, updateEOBI, deleteEOBI } from "@/lib/actions/eobi";
 import { useAuth } from "@/components/providers/auth-provider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export type EOBIRow = EOBI & { id: string };
 
@@ -59,6 +60,7 @@ export const columns: ColumnDef<EOBIRow>[] = [
   { header: "Employer Contribution", accessorKey: "employerContribution", size: 150, enableSorting: true, cell: ({ row }) => row.original.employerContribution.toLocaleString() },
   { header: "Employee Contribution", accessorKey: "employeeContribution", size: 150, enableSorting: true, cell: ({ row }) => row.original.employeeContribution.toLocaleString() },
   { header: "Year & Month", accessorKey: "yearMonth", size: 150, enableSorting: true },
+  { header: "Region", accessorKey: "region", size: 120, enableSorting: true, cell: ({ row }) => row.original.region || "Punjab" },
   { header: "Created By", accessorKey: "createdBy", size: 120, enableSorting: true, cell: ({ row }) => row.original.createdBy || "—" },
   { header: "Created At", accessorKey: "createdAt", size: 120, cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(), enableSorting: true },
   { id: "actions", header: () => <span className="sr-only">Actions</span>, cell: ({ row }) => <RowActions row={row} />, size: 60, enableHiding: false },
@@ -116,7 +118,17 @@ function RowActions({ row }: { row: Row<EOBIRow> }) {
             <div className="space-y-4 py-4">
               <div className="space-y-2"><Label>Employer Contribution</Label><Input name="employerContribution" type="number" defaultValue={e.employerContribution} disabled={isPending} required /></div>
               <div className="space-y-2"><Label>Employee Contribution</Label><Input name="employeeContribution" type="number" defaultValue={e.employeeContribution} disabled={isPending} required /></div>
-              <div className="space-y-2"><Label>Year & Month</Label><Input name="yearMonth" defaultValue={e.yearMonth} disabled={isPending} required /></div>
+              <div className="space-y-2">
+                <Label>Region</Label>
+                <Select name="region" defaultValue={e.region || "Punjab"} disabled={isPending}>
+                  <SelectTrigger><SelectValue placeholder="Select Region" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Punjab">Punjab</SelectItem>
+                    <SelectItem value="Sindh">Sindh</SelectItem>
+                    <SelectItem value="Islamabad">Islamabad</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>Cancel</Button>

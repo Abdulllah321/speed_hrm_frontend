@@ -32,6 +32,7 @@ export interface Employee {
   employeeSalary: number;
   eobi: boolean;
   eobiNumber?: string | null;
+  eobiRegion?: string | null;
   providentFund: boolean;
   overtimeApplicable: boolean;
   daysOff?: string | null;

@@ -11,6 +11,7 @@ export interface EOBI {
   employerContribution: number;
   employeeContribution: number;
   yearMonth: string;
+  region: string;
   status: string;
   createdBy?: string;
   createdAt: string;
@@ -31,13 +32,14 @@ export async function createEOBI(formData: FormData): Promise<{ status: boolean;
   const name = formData.get("name") as string;
   const amount = parseFloat(formData.get("amount") as string);
   const yearMonth = formData.get("yearMonth") as string;
+  const region = formData.get("region") as string;
   if (!name?.trim() || isNaN(amount) || !yearMonth?.trim()) {
     return { status: false, message: "All fields are required" };
   }
   try {
     const res = await authFetch(`/eobis`, {
       method: "POST",
-      body: JSON.stringify({ name, amount, yearMonth }),
+      body: JSON.stringify({ name, amount, yearMonth, region }),
     });
     const data = res.data;
     if (data.status) revalidatePath("/master/eobi");
@@ -54,7 +56,8 @@ export async function createEOBIs(
     eobiCode?: string; 
     employerContribution: number; 
     employeeContribution: number; 
-    yearMonth: string 
+    yearMonth: string;
+    region: string;
   }[]): Promise<{ status: boolean; message: string }> {
   if (!items.length) return { status: false, message: "At least one EOBI is required" };
   try {
@@ -77,6 +80,7 @@ export async function updateEOBI(id: string, formData: FormData): Promise<{ stat
   const employerContribution = parseFloat(formData.get("employerContribution") as string);
   const employeeContribution = parseFloat(formData.get("employeeContribution") as string);
   const yearMonth = formData.get("yearMonth") as string;
+  const region = formData.get("region") as string;
   if (!name?.trim()) return { status: false, message: "Name is required" };
   if (isNaN(employerContribution) || isNaN(employeeContribution)) {
     return { status: false, message: "Employer and Employee contributions are required" };
@@ -91,7 +95,8 @@ export async function updateEOBI(id: string, formData: FormData): Promise<{ stat
         eobiCode: eobiCode || undefined, 
         employerContribution, 
         employeeContribution, 
-        yearMonth 
+        yearMonth,
+        region
       }),
     });
     const data = res.data;
@@ -138,7 +143,8 @@ export async function updateEOBIs(
     eobiCode?: string; 
     employerContribution: number; 
     employeeContribution: number; 
-    yearMonth: string 
+    yearMonth: string;
+    region: string;
   }[]): Promise<{ status: boolean; message: string }> {
   if (!items.length) return { status: false, message: "No items to update" };
   try {

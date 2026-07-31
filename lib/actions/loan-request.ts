@@ -243,3 +243,16 @@ export async function deleteLoanRequest(id: string): Promise<{ status: boolean; 
     return { status: false, message: error instanceof Error ? error.message : "Failed to delete loan request" };
   }
 }
+
+// Queue loan request Excel export (background job)
+export async function queueLoanRequestExport(): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+  try {
+    const res = await authFetch(`/loan-requests/export`, {
+      method: 'POST',
+    });
+    return res.data ?? { status: false, message: 'No response from server' };
+  } catch (error) {
+    console.error('Queue loan request export error:', error);
+    return { status: false, message: 'Failed to connect to server' };
+  }
+}

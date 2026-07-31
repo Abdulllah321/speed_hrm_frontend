@@ -6,6 +6,7 @@ export interface EOBIEmployee {
     id: string;
     employeeId: string;
     employeeName: string;
+    eobiRegion?: string | null;
     department: string;
     subDepartment: string;
     designation: string;

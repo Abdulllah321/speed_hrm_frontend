@@ -1508,6 +1508,22 @@ export const menuData: MenuItem[] = [
           },
         ],
       },
+      {
+        title: "CPR Tax Form",
+        permissions: ["hr.payroll.read", "hr.payroll.create"],
+        children: [
+          {
+            title: "Create",
+            href: "/hr/payroll-setup/cpr-tax/create",
+            permissions: ["hr.payroll.create"],
+          },
+          {
+            title: "View",
+            href: "/hr/payroll-setup/cpr-tax/view",
+            permissions: ["hr.payroll.read"],
+          },
+        ],
+      },
     ],
   },
   // {

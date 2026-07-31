@@ -1,14 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import DataTable from "@/components/common/data-table";
 import { Button } from "@/components/ui/button";
-import { Printer, Download, Plus } from "lucide-react";
+import { Printer, Plus, FileSpreadsheet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getColumns, type LoanRequestRow } from "./columns";
+import { queueLoanRequestExport } from "@/lib/actions/loan-request";
 
 interface LoanRequestListProps {
   initialData?: LoanRequestRow[];
@@ -335,56 +337,23 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
     }, 250);
   };
 
-  const handleExportCSV = () => {
-    if (data.length === 0) {
-      toast.error("No data to export");
-      return;
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const result = await queueLoanRequestExport();
+      if (result.status) {
+        toast.success("Export queued! You'll receive a notification when your Employee Loan Account file is ready.");
+      } else {
+        toast.error(result.message || "Failed to queue export");
+      }
+    } catch (error) {
+      toast.error("Failed to queue export");
+    } finally {
+      setIsExporting(false);
     }
-
-    const headers = [
-      "S.No",
-      "Employee ID",
-      "Employee Name",
-      "Department",
-      "Loan Type",
-      "Amount",
-      "Requested Date",
-      "Repayment Start",
-      "Installments",
-      "Approval Status",
-      "Status"
-    ];
-
-    const csvRows = [
-      headers.join(","),
-      ...data.map((row) =>
-        [
-          row.sNo,
-          `"${row.empId}"`,
-          `"${row.empName}"`,
-          `"${row.department}"`,
-          `"${row.loanType}"`,
-          row.amount,
-          `"${row.requestedDate}"`,
-          `"${row.repaymentStartMonthYear}"`,
-          row.numberOfInstallments === "—" ? "" : row.numberOfInstallments,
-          `"${row.approvalStatus}"`,
-          `"${row.status}"`,
-        ].join(",")
-      ),
-    ];
-
-    const csvContent = csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `loan-requests-${format(new Date(), "yyyy-MM-dd")}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("CSV exported successfully");
   };
 
   return (
@@ -409,9 +378,13 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
             <Printer className="h-4 w-4 mr-2" />
             Print
           </Button>
-          <Button variant="secondary" onClick={handleExportCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
+          <Button variant="secondary" onClick={handleExportExcel} disabled={isExporting}>
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+            )}
+            {isExporting ? "Exporting..." : "Export Excel"}
           </Button>
         </div>
       </div>
