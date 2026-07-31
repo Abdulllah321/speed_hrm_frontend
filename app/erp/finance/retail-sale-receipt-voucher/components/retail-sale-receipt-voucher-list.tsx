@@ -280,11 +280,64 @@ export function RetailSaleReceiptVoucherList({
                 </CardContent>
             </Card>
 
-            {/* Print Container */}
+            {/* Print Portal Container */}
             {mounted && printingVoucher && createPortal(
-                <div className="fixed inset-0 bg-white z-[9999] overflow-auto p-8 print:p-0 print:static">
-                    <RetailSaleReceiptVoucherPrint voucher={printingVoucher} />
-                </div>,
+                <>
+                    <style dangerouslySetInnerHTML={{ __html: `
+                        @media print {
+                          body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            background: white !important;
+                            color: black !important;
+                          }
+                          body > *:not(#rsrv-print-section) {
+                            display: none !important;
+                          }
+                          #rsrv-print-section, #rsrv-print-section * {
+                            visibility: visible !important;
+                          }
+                          #rsrv-print-section {
+                            display: block !important;
+                            position: relative !important;
+                            left: 0 !important;
+                            top: 0 !important;
+                            width: 100% !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            background: white !important;
+                            color: black !important;
+                            z-index: 99999 !important;
+                          }
+                          tr {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                          }
+                          thead {
+                            display: table-header-group;
+                          }
+                          tfoot {
+                            display: table-footer-group;
+                          }
+                          @page {
+                            margin: 10mm;
+                            size: A4 portrait;
+                          }
+                        }
+                    `}} />
+                    <div 
+                        id="rsrv-print-section" 
+                        style={{
+                            position: "fixed",
+                            left: "-9999px",
+                            top: 0,
+                            pointerEvents: "none",
+                        }}
+                        aria-hidden="true"
+                    >
+                        <RetailSaleReceiptVoucherPrint voucher={printingVoucher} />
+                    </div>
+                </>,
                 document.body
             )}
         </div>
