@@ -21,6 +21,8 @@ export interface UseEmployeeDropdownOptions {
   selectedIds?: string[];
   limit?: number;
   providentFundOnly?: boolean;
+  status?: string;
+  isActive?: boolean;
 }
 
 export function useEmployeeDropdown({
@@ -30,6 +32,8 @@ export function useEmployeeDropdown({
   selectedIds = [],
   limit = 100,
   providentFundOnly = false,
+  status,
+  isActive,
 }: UseEmployeeDropdownOptions = {}) {
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -49,10 +53,10 @@ export function useEmployeeDropdown({
     setPage(1);
     setSearchResults([]);
     setSearchInput("");
-  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, providentFundOnly]);
+  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, providentFundOnly, status, isActive]);
 
   useEffect(() => {
-    const filterKey = `${normalizedDepartmentId}|${normalizedSubDepartmentId}|${normalizedLocationId}|${debouncedSearch}|${providentFundOnly}`;
+    const filterKey = `${normalizedDepartmentId}|${normalizedSubDepartmentId}|${normalizedLocationId}|${debouncedSearch}|${providentFundOnly}|${status}|${isActive}`;
     const filtersChanged = filterKey !== filterKeyRef.current;
     filterKeyRef.current = filterKey;
 
@@ -73,6 +77,8 @@ export function useEmployeeDropdown({
           page: fetchPage,
           limit,
           providentFund: providentFundOnly || undefined,
+          status,
+          isActive,
         });
 
         if (result.status && result.data) {
@@ -106,7 +112,7 @@ export function useEmployeeDropdown({
     };
 
     fetchEmployees();
-  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, debouncedSearch, page, limit, providentFundOnly]);
+  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, debouncedSearch, page, limit, providentFundOnly, status, isActive]);
 
   const displayEmployees = useMemo(() => {
     const map = new Map<string, EmployeeDropdownOption>();

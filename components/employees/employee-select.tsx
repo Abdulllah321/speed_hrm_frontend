@@ -26,6 +26,9 @@ export interface EmployeeSelectProps {
   className?: string;
   selectedLabel?: string;
   providentFundOnly?: boolean;
+  status?: string;
+  isActive?: boolean;
+  limit?: number;
 }
 
 export function EmployeeSelect({
@@ -42,19 +45,24 @@ export function EmployeeSelect({
   className,
   selectedLabel,
   providentFundOnly = false,
+  status,
+  isActive,
+  limit = 1000,
 }: EmployeeSelectProps) {
   const normalizedDepartmentId = normalizeFilterId(departmentId);
   const normalizedSubDepartmentId = normalizeFilterId(subDepartmentId);
 
   const fetchData = useCallback(
-    async ({ page, limit, search }: { page: number; limit: number; search: string }) => {
+    async ({ page, limit: fetchLimit, search }: { page: number; limit: number; search: string }) => {
       const result = await getEmployeesForDropdown({
         page,
-        limit,
+        limit: fetchLimit,
         search: search || undefined,
         departmentId: normalizedDepartmentId,
         subDepartmentId: normalizedSubDepartmentId,
         providentFund: providentFundOnly || undefined,
+        status,
+        isActive,
       });
 
       if (!result.status || !result.data) {
@@ -70,7 +78,7 @@ export function EmployeeSelect({
         data: options,
       };
     },
-    [normalizedDepartmentId, normalizedSubDepartmentId, includeAllOption, allOptionLabel, providentFundOnly]
+    [normalizedDepartmentId, normalizedSubDepartmentId, includeAllOption, allOptionLabel, providentFundOnly, status, isActive]
   );
 
   const mapOption = useCallback(
@@ -94,6 +102,7 @@ export function EmployeeSelect({
       disabled={disabled}
       className={className}
       selectedLabel={selectedLabel}
+      limit={limit}
     />
   );
 }

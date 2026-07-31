@@ -43,6 +43,7 @@ export interface InfiniteAutocompleteProps {
   disabled?: boolean
   className?: string
   selectedLabel?: string // Optional initial label if item not in first page
+  limit?: number
 }
 
 // Marquee text — infinite loop on hover, only when content overflows
@@ -102,6 +103,7 @@ export function InfiniteAutocomplete({
   disabled = false,
   className,
   selectedLabel: initialLabel,
+  limit = 1000,
 }: InfiniteAutocompleteProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -114,6 +116,7 @@ export function InfiniteAutocomplete({
   const [isFetchingMore, setIsFetchingMore] = React.useState(false)
 
   const loadMoreRef = React.useRef<HTMLDivElement>(null)
+  const commandListRef = React.useRef<HTMLDivElement>(null)
 
   // Initial load or search change
   React.useEffect(() => {
@@ -122,7 +125,7 @@ export function InfiniteAutocomplete({
     const loadInitial = async () => {
       setIsLoading(true)
       try {
-        const result = await fetchData({ page: 1, limit: 50, search: debouncedSearch })
+        const result = await fetchData({ page: 1, limit, search: debouncedSearch })
         if (result.status && result.data) {
           setItems(result.data.map(mapOption))
           setPage(1)
@@ -136,7 +139,7 @@ export function InfiniteAutocomplete({
     }
 
     loadInitial()
-  }, [open, debouncedSearch, fetchData, mapOption])
+  }, [open, debouncedSearch, fetchData, mapOption, limit])
 
   // Load more when scrolling
   React.useEffect(() => {
@@ -149,7 +152,7 @@ export function InfiniteAutocomplete({
             setIsFetchingMore(true)
             try {
               const nextPage = page + 1
-              const result = await fetchData({ page: nextPage, limit: 50, search: debouncedSearch })
+              const result = await fetchData({ page: nextPage, limit, search: debouncedSearch })
               if (result.status && result.data) {
                 const newOptions = result.data.map(mapOption)
                 setItems(prev => {
@@ -169,7 +172,7 @@ export function InfiniteAutocomplete({
           loadMore()
         }
       },
-      { threshold: 0, rootMargin: "100px" }
+      { root: commandListRef.current, threshold: 0, rootMargin: "100px" }
     )
 
     const currentRef = loadMoreRef.current
@@ -182,7 +185,7 @@ export function InfiniteAutocomplete({
         observer.unobserve(currentRef)
       }
     }
-  }, [open, hasMore, isLoading, isFetchingMore, page, debouncedSearch, fetchData, mapOption])
+  }, [open, hasMore, isLoading, isFetchingMore, page, debouncedSearch, fetchData, mapOption, limit])
 
   const selectedOption = items.find((option) => option.value === value)
   const displayLabel = selectedOption?.label || initialLabel || value || placeholder
@@ -233,7 +236,7 @@ export function InfiniteAutocomplete({
             value={search}
             onValueChange={setSearch}
           />
-          <CommandList className="max-h-[300px]">
+          <CommandList ref={commandListRef} className="max-h-[300px]">
              {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
