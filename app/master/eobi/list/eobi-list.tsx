@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface EOBIListProps {
   initialEOBIs: EOBI[];
@@ -129,8 +130,15 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
                     <Input type="number" value={row.employeeContribution} onChange={(e) => updateEditRow(row.id, "employeeContribution", parseFloat(e.target.value))} disabled={isPending} />
                   </div>
                   <div className="col-span-2">
-                    <Label className="text-xs">Year & Month</Label>
-                    <Input value={row.yearMonth} onChange={(e) => updateEditRow(row.id, "yearMonth", e.target.value)} disabled={isPending} />
+                    <Label className="text-xs">Region</Label>
+                    <Select value={row.region || "Punjab"} onValueChange={(val) => updateEditRow(row.id, "region", val)} disabled={isPending}>
+                      <SelectTrigger><SelectValue placeholder="Select Region" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Punjab">Punjab</SelectItem>
+                        <SelectItem value="Sindh">Sindh</SelectItem>
+                        <SelectItem value="Islamabad">Islamabad</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

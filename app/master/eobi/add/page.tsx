@@ -12,12 +12,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { createEOBIs } from "@/lib/actions/eobi";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AddEOBIPage() {
   const router = useRouter();
@@ -25,7 +24,7 @@ export default function AddEOBIPage() {
   const [formData, setFormData] = useState({
     employerContribution: "",
     employeeContribution: "",
-    selectedMonths: [] as string[], // Array of "YYYY-MM" format
+    region: "Punjab",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,11 +32,6 @@ export default function AddEOBIPage() {
 
     if (!formData.employerContribution || !formData.employeeContribution) {
       toast.error("Please fill in all required fields");
-      return;
-    }
-
-    if (formData.selectedMonths.length === 0) {
-      toast.error("Please select at least one month");
       return;
     }
 
@@ -50,16 +44,15 @@ export default function AddEOBIPage() {
     }
 
     // Create EOBI records for each selected month
-    const items = formData.selectedMonths.map((monthYear) => {
-      const [year, month] = monthYear.split("-").map(Number);
-      const formattedMonthYear = format(new Date(year, month - 1, 1), "MMMM yyyy");
-      return {
-        name: `EOBI ${formattedMonthYear}`,
+    const items = [
+      {
+        name: `EOBI (${formData.region})`,
         employerContribution,
         employeeContribution,
-        yearMonth: formattedMonthYear, // Store as "MMMM yyyy" format
-      };
-    });
+        yearMonth: "Continuous",
+        region: formData.region,
+      },
+    ];
 
     startTransition(async () => {
       const result = await createEOBIs(items);
@@ -128,27 +121,25 @@ export default function AddEOBIPage() {
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label htmlFor="monthYear">
-                    Month-Year <span className="text-destructive">*</span>
+                  <Label htmlFor="region">
+                    Region <span className="text-destructive">*</span>
                   </Label>
-                  <MonthYearPicker
-                    value={formData.selectedMonths}
-                    onChange={(val) => {
-                      const months = Array.isArray(val) ? val : (val ? [val] : []);
-                      setFormData((prev) => ({ ...prev, selectedMonths: months }));
-                    }}
+                  <Select
+                    value={formData.region}
+                    onValueChange={(val) => setFormData((prev) => ({ ...prev, region: val }))}
                     disabled={isPending}
-                    placeholder="Select month(s) and year"
-                    fromYear={2020}
-                    toYear={2030}
-                    multiple={true}
-                  />
-                  {formData.selectedMonths.length > 0 && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {formData.selectedMonths.length} month(s) selected
-                    </p>
-                  )}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select EOBI Region" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Punjab">Punjab</SelectItem>
+                      <SelectItem value="Sindh">Sindh</SelectItem>
+                      <SelectItem value="Islamabad">Islamabad</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
               </div>
             </div>
             <div className="flex gap-2 justify-end">
@@ -169,7 +160,7 @@ export default function AddEOBIPage() {
                 {isPending && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
-                Create {formData.selectedMonths.length > 0 ? `${formData.selectedMonths.length} EOBI(s)` : "EOBI"}
+                Create EOBI
               </Button>
             </div>
           </form>

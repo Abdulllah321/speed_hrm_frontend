@@ -168,6 +168,10 @@ export function CreateAllowanceClient({
       const allowanceHead = allowanceHeads.find((h) => h.id === formData.allowanceType);
       setSelectedAllowanceHead(allowanceHead || null);
 
+      const isRecurring = formData.allowanceTypeCategory === "recurring";
+      const allowanceHeadName = allowanceHead?.name || "";
+      const shouldBeTaxable = isRecurring && allowanceHeadName.toLowerCase() !== "incentive";
+
       // Special handling for Incentive - allow user to choose
       if (allowanceHead?.name === "Incentive") {
         // Don't auto-fill, let user choose Amount or Percentage
@@ -175,24 +179,27 @@ export function CreateAllowanceClient({
           ...prev,
           allowanceAmount: "",
           allowancePercentage: "",
+          isTaxable: shouldBeTaxable ? true : prev.isTaxable,
         }));
       } else if (allowanceHead?.calculationType === "Amount") {
         setFormData((prev) => ({
           ...prev,
           allowancePercentage: "",
           allowanceAmount: allowanceHead.amount ? allowanceHead.amount.toString() : "",
+          isTaxable: shouldBeTaxable ? true : prev.isTaxable,
         }));
       } else if (allowanceHead?.calculationType === "Percentage") {
         setFormData((prev) => ({
           ...prev,
           allowanceAmount: "",
           allowancePercentage: allowanceHead.percentage ? allowanceHead.percentage.toString() : "",
+          isTaxable: shouldBeTaxable ? true : prev.isTaxable,
         }));
       }
     } else {
       setSelectedAllowanceHead(null);
     }
-  }, [formData.allowanceType, allowanceHeads]);
+  }, [formData.allowanceType, allowanceHeads, formData.allowanceTypeCategory]);
 
   // Allowance head options for Autocomplete
   const allowanceHeadOptions = useMemo(() => {
@@ -605,8 +612,7 @@ export function CreateAllowanceClient({
                   </div>
                   {incentiveCalculationType === "Amount" ? (
                     <div className="space-y-2">
-                      <Label htmlFor="allowanceAmount" className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
+                      <Label htmlFor="allowanceAmount">
                         Allowance Amount <span className="text-destructive">*</span>
                       </Label>
                       <Input
@@ -654,8 +660,7 @@ export function CreateAllowanceClient({
                 </>
               ) : selectedAllowanceHead?.calculationType === "Amount" ? (
                 <div className="space-y-2">
-                  <Label htmlFor="allowanceAmount" className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
+                  <Label htmlFor="allowanceAmount">
                     Allowance Amount <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -784,7 +789,16 @@ export function CreateAllowanceClient({
                 <Select
                   value={formData.allowanceTypeCategory}
                   onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, allowanceTypeCategory: value }))
+                    setFormData((prev) => {
+                      const isRecurring = value === "recurring";
+                      const allowanceHeadName = selectedAllowanceHead?.name || "";
+                      const shouldBeTaxable = isRecurring && allowanceHeadName.toLowerCase() !== "incentive";
+                      return {
+                        ...prev,
+                        allowanceTypeCategory: value,
+                        isTaxable: shouldBeTaxable ? true : prev.isTaxable,
+                      };
+                    })
                   }
                   disabled={isPending}
                 >

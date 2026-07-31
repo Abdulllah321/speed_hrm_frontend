@@ -26,7 +26,7 @@ export const columns: ColumnDef<EOBIEmployee>[] = [
             <div className="space-y-1">
                 <div className="font-medium">{row.original.employeeName}</div>
                 <div className="text-xs text-muted-foreground">
-                    {row.original.employeeId}
+                    {row.original.employeeId} • <span className="font-semibold text-blue-600 dark:text-blue-400">{row.original.eobiRegion || "Punjab"}</span>
                 </div>
                 <div className="text-xs text-muted-foreground">
                     {row.original.department}
