@@ -740,7 +740,7 @@ export const menuData: MenuItem[] = [
         ],
       },
       {
-        title: "Retail Sale Receipt Voucher",
+        title: "RS RV List",
         permissions: ["erp.finance.receipt-voucher.read"],
         children: [
           {
