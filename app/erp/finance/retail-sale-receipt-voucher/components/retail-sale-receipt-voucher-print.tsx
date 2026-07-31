@@ -1,3 +1,4 @@
+"use client"
 import { useState, useEffect } from "react";
 import { ReceiptVoucher } from "@/lib/actions/receipt-voucher";
 import { format } from "date-fns";
