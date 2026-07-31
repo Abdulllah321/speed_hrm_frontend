@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import Link from "next/link";
-import { Printer, Download, Eye, CheckCircle2, XCircle, Store, Building2, Plus } from "lucide-react";
-import { ReceiptVoucher, updateReceiptVoucherStatus, queueReceiptVouchersExport } from "@/lib/actions/receipt-voucher";
+import { Printer, Download, Eye, CheckCircle2, XCircle, Store, Building2, Plus, FileCheck, CheckSquare, Loader2 } from "lucide-react";
+import { ReceiptVoucher, updateReceiptVoucherStatus, bulkUpdateReceiptVoucherStatus, queueReceiptVouchersExport } from "@/lib/actions/receipt-voucher";
 import { RetailSaleReceiptVoucherPrint } from "./retail-sale-receipt-voucher-print";
 import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import DataTable from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
@@ -27,11 +29,14 @@ export function RetailSaleReceiptVoucherList({
         canApprove: boolean;
     };
 }) {
+    const [statusTab, setStatusTab] = useState<string>("all");
     const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
     const [toDate, setToDate] = useState<Date | undefined>(undefined);
     const [vouchers, setVouchers] = useState<ReceiptVoucher[]>(initialData);
     const [printingVoucher, setPrintingVoucher] = useState<ReceiptVoucher | null>(null);
     const [isExporting, setIsExporting] = useState(false);
+    const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -60,6 +65,7 @@ export function RetailSaleReceiptVoucherList({
         try {
             const result = await queueReceiptVouchersExport({
                 type: "rs_rv",
+                status: statusTab !== "all" ? statusTab : undefined,
                 dateFrom: fromDate ? fromDate.toISOString().split("T")[0] : undefined,
                 dateTo: toDate ? toDate.toISOString().split("T")[0] : undefined,
             });
@@ -75,11 +81,14 @@ export function RetailSaleReceiptVoucherList({
         }
     };
 
-    const handleUpdateStatus = async (id: string, newStatus: "approved" | "rejected") => {
+    const handleUpdateStatus = async (
+        id: string,
+        newStatus: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected"
+    ) => {
         try {
             const res = await updateReceiptVoucherStatus(id, newStatus);
             if (res.status) {
-                toast.success(`Voucher ${newStatus} successfully`);
+                toast.success(`Voucher status updated to ${newStatus.replace(/_/g, " ")}`);
                 setVouchers(prev => prev.map(v => v.id === id ? { ...v, status: newStatus } : v));
             } else {
                 toast.error(res.message || "Failed to update status");
@@ -89,25 +98,123 @@ export function RetailSaleReceiptVoucherList({
         }
     };
 
-    const filteredData = vouchers.filter(v => {
-        if (fromDate) {
-            const vDate = new Date(v.rvDate);
-            if (vDate < fromDate) return false;
+    const handleBulkUpdateStatus = async (
+        newStatus: "pending_approval" | "approved" | "rejected"
+    ) => {
+        if (selectedIds.length === 0) return;
+        setIsBulkProcessing(true);
+        try {
+            const res = await bulkUpdateReceiptVoucherStatus(selectedIds, newStatus);
+            if (res.status) {
+                toast.success(res.message);
+                setVouchers(prev =>
+                    prev.map(v => (selectedIds.includes(v.id) ? { ...v, status: newStatus } : v))
+                );
+                setSelectedIds([]);
+            } else {
+                toast.error(res.message || "Bulk update failed");
+            }
+        } catch {
+            toast.error("An error occurred during bulk operation");
+        } finally {
+            setIsBulkProcessing(false);
         }
-        if (toDate) {
-            const vDate = new Date(v.rvDate);
-            if (vDate > toDate) return false;
+    };
+
+    // Filter data
+    const filteredData = useMemo(() => {
+        return vouchers.filter(v => {
+            const st = (v.status || "draft").toLowerCase();
+            if (statusTab === "pending_check" && st !== "pending_check" && st !== "pending") return false;
+            if (statusTab === "pending_approval" && st !== "pending_approval") return false;
+            if (statusTab === "approved" && st !== "approved") return false;
+            if (statusTab === "rejected" && st !== "rejected") return false;
+
+            if (fromDate) {
+                const vDate = new Date(v.rvDate);
+                if (vDate < fromDate) return false;
+            }
+            if (toDate) {
+                const vDate = new Date(v.rvDate);
+                if (vDate > toDate) return false;
+            }
+            return true;
+        });
+    }, [vouchers, statusTab, fromDate, toDate]);
+
+    // Status tab counts
+    const counts = useMemo(() => {
+        let pendingCheck = 0;
+        let pendingApproval = 0;
+        let approved = 0;
+        let rejected = 0;
+
+        vouchers.forEach(v => {
+            const st = (v.status || "draft").toLowerCase();
+            if (st === "pending_check" || st === "pending") pendingCheck++;
+            else if (st === "pending_approval") pendingApproval++;
+            else if (st === "approved") approved++;
+            else if (st === "rejected") rejected++;
+        });
+
+        return {
+            all: vouchers.length,
+            pendingCheck,
+            pendingApproval,
+            approved,
+            rejected,
+        };
+    }, [vouchers]);
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedIds(filteredData.map(v => v.id));
+        } else {
+            setSelectedIds([]);
         }
-        return true;
-    });
+    };
+
+    const handleSelectOne = (id: string, checked: boolean) => {
+        if (checked) {
+            setSelectedIds(prev => [...prev, id]);
+        } else {
+            setSelectedIds(prev => prev.filter(i => i !== id));
+        }
+    };
+
+    const isAllSelected = filteredData.length > 0 && selectedIds.length === filteredData.length;
 
     const columns: ColumnDef<ReceiptVoucher>[] = [
+        {
+            id: "select",
+            header: () => (
+                <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    aria-label="Select all"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={selectedIds.includes(row.original.id)}
+                    onCheckedChange={(checked) => handleSelectOne(row.original.id, !!checked)}
+                    aria-label="Select row"
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        },
         {
             accessorKey: "rvNo",
             header: "RSRV No",
             cell: ({ row }) => (
                 <div className="font-semibold text-blue-700 font-mono text-xs">
-                    {row.original.rvNo}
+                    <Link
+                        href={`/erp/finance/retail-sale-receipt-voucher/${row.original.id}`}
+                        className="hover:underline"
+                    >
+                        {row.original.rvNo}
+                    </Link>
                     {row.original.folio && (
                         <div className="text-[10px] text-gray-500 font-sans">
                             Folio: <span className="font-mono text-gray-700">{row.original.folio}</span>
@@ -162,14 +269,32 @@ export function RetailSaleReceiptVoucherList({
             accessorKey: "status",
             header: "Status",
             cell: ({ row }) => {
-                const st = row.original.status;
-                let badgeClass = "bg-gray-100 text-gray-800 border-gray-300";
-                if (st === "approved") badgeClass = "bg-green-50 text-green-700 border-green-200";
-                if (st === "rejected") badgeClass = "bg-red-50 text-red-700 border-red-200";
-                if (st === "pending_check" || st === "pending_approval") badgeClass = "bg-yellow-50 text-yellow-700 border-yellow-200";
+                const st = (row.original.status || "draft").toLowerCase();
+                const isApproved = st === "approved";
+                const isPendingApproval = st === "pending_approval";
+                const isPendingCheck = st === "pending_check" || st === "pending";
+                const isRejected = st === "rejected";
+
+                let badgeClass = "bg-slate-100 text-slate-700 border-slate-300";
+                let label = "DRAFT";
+
+                if (isApproved) {
+                    badgeClass = "bg-green-50 text-green-700 border-green-200 font-bold";
+                    label = "APPROVED";
+                } else if (isPendingApproval) {
+                    badgeClass = "bg-blue-50 text-blue-700 border-blue-200 font-bold";
+                    label = "PENDING APPROVAL";
+                } else if (isPendingCheck) {
+                    badgeClass = "bg-amber-50 text-amber-700 border-amber-200 font-bold";
+                    label = "PENDING CHECK";
+                } else if (isRejected) {
+                    badgeClass = "bg-red-50 text-red-700 border-red-200 font-bold";
+                    label = "REJECTED";
+                }
+
                 return (
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${badgeClass}`}>
-                        {st.replace(/_/g, " ").toUpperCase()}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] tracking-wider uppercase border ${badgeClass}`}>
+                        {label}
                     </span>
                 );
             },
@@ -179,8 +304,23 @@ export function RetailSaleReceiptVoucherList({
             header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => {
                 const v = row.original;
+                const st = (v.status || "draft").toLowerCase();
+                const isPendingCheck = st === "pending_check" || st === "pending" || st === "draft";
+                const isPendingApproval = st === "pending_approval";
+                const isApproved = st === "approved";
+
                 return (
                     <div className="flex items-center justify-end gap-1">
+                        <Link href={`/erp/finance/retail-sale-receipt-voucher/${v.id}`}>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-600 hover:text-blue-600"
+                                title="View Details"
+                            >
+                                <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                        </Link>
                         <Button
                             variant="ghost"
                             size="icon"
@@ -190,7 +330,22 @@ export function RetailSaleReceiptVoucherList({
                         >
                             <Printer className="h-3.5 w-3.5" />
                         </Button>
-                        {permissions?.canApprove && v.status !== "approved" && (
+                        
+                        {/* Step 1: Check / Verify */}
+                        {isPendingCheck && permissions?.canApprove && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-blue-600 hover:bg-blue-50"
+                                onClick={() => handleUpdateStatus(v.id, "pending_approval")}
+                                title="Verify / Mark Checked"
+                            >
+                                <FileCheck className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
+
+                        {/* Step 2: Final Approve */}
+                        {permissions?.canApprove && !isApproved && (
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -199,6 +354,19 @@ export function RetailSaleReceiptVoucherList({
                                 title="Approve RSRV"
                             >
                                 <CheckCircle2 className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
+
+                        {/* Reject */}
+                        {permissions?.canApprove && !isApproved && st !== "rejected" && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-red-600 hover:bg-red-50"
+                                onClick={() => handleUpdateStatus(v.id, "rejected")}
+                                title="Reject RSRV"
+                            >
+                                <XCircle className="h-3.5 w-3.5" />
                             </Button>
                         )}
                     </div>
@@ -218,16 +386,18 @@ export function RetailSaleReceiptVoucherList({
                                 Retail Sale Receipt Vouchers (RSRV)
                             </CardTitle>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Daily POS outlet reconciliation receipt vouchers
+                                Daily POS outlet reconciliation receipt vouchers & verification hierarchy
                             </p>
                         </div>
                         <div className="flex gap-2">
-                            <Link href="/erp/finance/retail-sale-receipt-voucher/create">
-                                <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700">
-                                    <Plus className="w-3.5 h-3.5" />
-                                    Create RSRV
-                                </Button>
-                            </Link>
+                            {permissions?.canCreate && (
+                                <Link href="/erp/finance/retail-sale-receipt-voucher/create">
+                                    <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700">
+                                        <Plus className="w-3.5 h-3.5" />
+                                        Create RSRV
+                                    </Button>
+                                </Link>
+                            )}
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -241,7 +411,70 @@ export function RetailSaleReceiptVoucherList({
                         </div>
                     </div>
                 </CardHeader>
+
                 <CardContent className="pt-4 space-y-4">
+                    {/* Status Tabs */}
+                    <Tabs value={statusTab} onValueChange={setStatusTab} className="w-full">
+                        <TabsList className="grid grid-cols-5 w-full max-w-2xl text-xs h-9">
+                            <TabsTrigger value="all" className="text-xs">
+                                All ({counts.all})
+                            </TabsTrigger>
+                            <TabsTrigger value="pending_check" className="text-xs">
+                                Pending Check ({counts.pendingCheck})
+                            </TabsTrigger>
+                            <TabsTrigger value="pending_approval" className="text-xs">
+                                Pending Approval ({counts.pendingApproval})
+                            </TabsTrigger>
+                            <TabsTrigger value="approved" className="text-xs">
+                                Approved ({counts.approved})
+                            </TabsTrigger>
+                            <TabsTrigger value="rejected" className="text-xs">
+                                Rejected ({counts.rejected})
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+
+                    {/* Bulk Action Bar */}
+                    {selectedIds.length > 0 && permissions?.canApprove && (
+                        <div className="flex items-center justify-between bg-blue-50 p-2.5 rounded-lg border border-blue-200 text-xs">
+                            <div className="flex items-center gap-2 font-medium text-blue-900">
+                                <CheckSquare className="w-4 h-4 text-blue-600" />
+                                {selectedIds.length} voucher(s) selected
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleBulkUpdateStatus("pending_approval")}
+                                    disabled={isBulkProcessing}
+                                    className="h-7 text-xs bg-white text-blue-700 border-blue-300 hover:bg-blue-100"
+                                >
+                                    {isBulkProcessing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileCheck className="w-3.5 h-3.5 mr-1" />}
+                                    Verify Selected
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    onClick={() => handleBulkUpdateStatus("approved")}
+                                    disabled={isBulkProcessing}
+                                    className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                    {isBulkProcessing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
+                                    Approve & Post Selected
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleBulkUpdateStatus("rejected")}
+                                    disabled={isBulkProcessing}
+                                    className="h-7 text-xs bg-white text-red-600 border-red-200 hover:bg-red-50"
+                                >
+                                    <XCircle className="w-3.5 h-3.5 mr-1" />
+                                    Reject Selected
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Filters */}
                     <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-lg border text-xs">
                         <div className="flex items-center gap-2">
@@ -275,7 +508,7 @@ export function RetailSaleReceiptVoucherList({
                         columns={columns}
                         data={filteredData}
                         searchKey="rvNo"
-                        placeholder="Search RSRV number or details..."
+                        placeholder="Search RSRV number or outlet..."
                     />
                 </CardContent>
             </Card>

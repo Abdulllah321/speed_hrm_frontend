@@ -244,8 +244,41 @@ export async function updateReceiptVoucherStatus(id: string, status: "draft" | "
         }
 
         revalidatePath("/erp/finance/receipt-voucher/list");
+        revalidatePath("/erp/finance/retail-sale-receipt-voucher/list");
         revalidatePath(`/erp/finance/receipt-voucher/${id}`);
         return { status: true, message: `Receipt Voucher ${status} successfully` };
+    } catch (e: any) {
+        return { status: false, message: e.message || "An unexpected error occurred" };
+    }
+}
+
+export async function bulkUpdateReceiptVoucherStatus(
+    ids: string[],
+    status: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected",
+    remarks?: string
+) {
+    try {
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const id of ids) {
+            const res = await updateReceiptVoucherStatus(id, status, remarks);
+            if (res.status) {
+                successCount++;
+            } else {
+                failCount++;
+            }
+        }
+
+        revalidatePath("/erp/finance/receipt-voucher/list");
+        revalidatePath("/erp/finance/retail-sale-receipt-voucher/list");
+
+        return {
+            status: true,
+            message: `Bulk operation finished: ${successCount} updated successfully${failCount > 0 ? `, ${failCount} failed` : ''}.`,
+            successCount,
+            failCount,
+        };
     } catch (e: any) {
         return { status: false, message: e.message || "An unexpected error occurred" };
     }
