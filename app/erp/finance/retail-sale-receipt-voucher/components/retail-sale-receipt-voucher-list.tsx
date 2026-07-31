@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { Printer, Download, Eye, CheckCircle2, XCircle, Store, Building2 } from "lucide-react";
+import Link from "next/link";
+import { Printer, Download, Eye, CheckCircle2, XCircle, Store, Building2, Plus } from "lucide-react";
 import { ReceiptVoucher, updateReceiptVoucherStatus, queueReceiptVouchersExport } from "@/lib/actions/receipt-voucher";
 import { RetailSaleReceiptVoucherPrint } from "./retail-sale-receipt-voucher-print";
 import { format } from "date-fns";
@@ -221,6 +222,12 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                         </div>
                         <div className="flex gap-2">
+                            <Link href="/erp/finance/retail-sale-receipt-voucher/create">
+                                <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700">
+                                    <Plus className="w-3.5 h-3.5" />
+                                    Create RSRV
+                                </Button>
+                            </Link>
                             <Button
                                 variant="outline"
                                 size="sm"

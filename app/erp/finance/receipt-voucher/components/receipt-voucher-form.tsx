@@ -159,7 +159,7 @@ type InvoiceReceiptEntry = {
     receivingNow: number;
 };
 
-export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
+export function ReceiptVoucherForm({ initialData, defaultType = "bank" }: { initialData?: any; defaultType?: "bank" | "cash" | "rs_rv" }) {
     const router = useRouter();
     const isRestoring = useRef(false);
     const [isPending, setIsPending] = useState(false);
@@ -172,7 +172,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     const form = useForm<ReceiptVoucherFormValues>({
         resolver: zodResolver(receiptVoucherSchema) as any,
         defaultValues: {
-            type: initialData?.type || "bank",
+            type: initialData?.type || defaultType,
             rvNo: initialData?.rvNo || "",
             rvDate: initialData?.rvDate ? new Date(initialData.rvDate) : new Date(),
             refBillNo: initialData?.refBillNo || "",
@@ -864,8 +864,8 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                         } catch {}
                     }
                 }
-                if (initialData) {
-                    router.push("/erp/finance/receipt-voucher/list");
+                if (initialData || finalData.type === "rs_rv" || defaultType === "rs_rv") {
+                    router.push(finalData.type === "rs_rv" || defaultType === "rs_rv" ? "/erp/finance/retail-sale-receipt-voucher/list" : "/erp/finance/receipt-voucher/list");
                 } else {
                     const currentRefBillNo = form.getValues("refBillNo");
                     const currentChequeNo = form.getValues("chequeNo");

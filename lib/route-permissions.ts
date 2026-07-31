@@ -21,6 +21,7 @@ export const routePermissions: Record<string, string[]> = {
   "/erp/finance/receipt-voucher/create": ["erp.finance.receipt-voucher.create"],
   "/erp/finance/retail-sale-receipt-voucher": ["erp.finance.receipt-voucher.read"],
   "/erp/finance/retail-sale-receipt-voucher/list": ["erp.finance.receipt-voucher.read"],
+  "/erp/finance/retail-sale-receipt-voucher/create": ["erp.finance.receipt-voucher.create"],
   "/erp/finance/reports": ["finance.reports.read"], // Assuming generic for now or specific if needed
   
   // Employee Setup

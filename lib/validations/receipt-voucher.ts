@@ -19,7 +19,7 @@ export const receiptVoucherInvoiceSchema = z.object({
 });
 
 export const receiptVoucherSchema = z.object({
-    type: z.enum(["bank", "cash"]),
+    type: z.enum(["bank", "cash", "rs_rv"]),
     rvNo: z.string().min(1, "RV Number is required"),
     rvDate: z.date(),
     refBillNo: z.string().optional(),
