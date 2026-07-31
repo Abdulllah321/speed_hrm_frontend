@@ -34,17 +34,21 @@ function fmt(n: number) {
   return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
+export function RetailSaleReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
   const [printedAt, setPrintedAt] = useState<string>("");
   useEffect(() => {
     setPrintedAt(format(new Date(), "dd-MMM-yyyy hh:mm a"));
   }, []);
 
-  const isBank = voucher.type === "bank";
   const debitRows = voucher.details.filter((d) => Number(d.debit) > 0);
   const creditRows = voucher.details.filter((d) => Number(d.credit) > 0);
   const totalDebit = debitRows.reduce((s, d) => s + (Number(d.debit) || 0), 0) || Number(voucher.debitAmount) || 0;
   const totalCredit = creditRows.reduce((s, d) => s + (Number(d.credit) || 0), 0) || totalDebit;
+
+  // Extract Outlet Tag Code if present
+  const outletTag = voucher.details.find(d => d.tagAccountCode || d.tagAccountName);
+  const outletCode = outletTag?.tagAccountCode || "";
+  const outletName = outletTag?.tagAccountName || "";
 
   return (
     <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-4 sm:p-6 font-sans print:p-0 print:max-w-none box-border text-[9px] sm:text-[10px]">
@@ -90,10 +94,10 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                 <div className="w-[35%] flex flex-col justify-center">
                   <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
                     <span className="text-base sm:text-lg font-extrabold underline decoration-2 underline-offset-2 tracking-wide">
-                      {isBank ? "Bank Receipt" : "Cash Receipt"}
+                      Retail Sale Receipt
                     </span>
                     <br />
-                    <span className="text-base sm:text-lg font-extrabold tracking-wide">Voucher</span>
+                    <span className="text-base sm:text-lg font-extrabold tracking-wide">Voucher (RSRV)</span>
                   </div>
                 </div>
 
@@ -113,10 +117,10 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                        <span>{voucher.folio || voucher.id.replace(/-/g, "").slice(-5).toUpperCase()}</span>
                      </div>
                    </div>
-                   {isBank && (
-                     <div className="flex gap-1.5 mt-0.5">
-                       <span className="font-bold">Cheque #:</span>
-                       <span className="uppercase">{voucher.chequeNo || "—"}</span>
+                   {(outletCode || outletName) && (
+                     <div className="flex gap-1.5 mt-0.5 border-t border-gray-200 pt-0.5">
+                       <span className="font-bold">Outlet:</span>
+                       <span className="font-semibold text-blue-900">{outletCode ? `[${outletCode}] ` : ""}{outletName}</span>
                      </div>
                    )}
                 </div>
@@ -189,23 +193,6 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
                   <span className="w-11 sm:w-14 shrink-0 font-bold">{voucher.debitAccountCode}</span>
                   <span className="uppercase font-bold leading-tight">{voucher.debitAccountName}</span>
                 </div>
-                {(() => {
-                  const r1 = voucher.refBillNo;
-                  const r2 = (voucher as any).refBillNo2;
-                  if (!r1 && !r2) return null;
-                  return (
-                    <div className="flex gap-1 sm:gap-1.5 mt-0.5 text-[8px] text-gray-600">
-                      <span className="w-11 sm:w-14 shrink-0 font-bold whitespace-nowrap">
-                        Ref#
-                      </span>
-                      <span className="uppercase flex-1 leading-tight">
-                        {r1 || ""}
-                        {r1 && r2 ? " / " : ""}
-                        {r2 || ""}
-                      </span>
-                    </div>
-                  );
-                })()}
               </td>
               <td className="py-1 pr-1 leading-tight text-gray-700 align-top">
                 <div className="break-words">{voucher.description}</div>

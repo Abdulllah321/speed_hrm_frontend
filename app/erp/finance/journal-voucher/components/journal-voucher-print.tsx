@@ -46,11 +46,11 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
   const totalCredit = creditRows.reduce((s, c) => s + (Number(c.credit) || 0), 0);
 
   return (
-    <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-4 sm:p-6 pb-14 print:pb-16 font-sans print:p-0 print:max-w-none box-border text-[9px] sm:text-[10px]">
+    <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-4 sm:p-6 font-sans print:p-0 print:max-w-none box-border text-[9px] sm:text-[10px]">
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page {
-            margin: 10mm 10mm 16mm 10mm;
+            margin: 10mm;
           }
           body {
             margin: 0;
@@ -58,14 +58,11 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
           thead {
             display: table-header-group;
           }
-          .print-page-footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+          tfoot {
+            display: table-footer-group;
           }
           .print-page-number::after {
-            content: counter(page, decimal-leading-zero);
+            content: counter(page);
           }
         }
       `}} />
@@ -224,7 +221,7 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
             );
           })}
 
-          {/* Totals row — now a real table row so it lines up exactly under Debit/Credit columns */}
+          {/* Totals row */}
           <tr className="border-t-2 border-black">
             <td colSpan={2} className="pt-1.5 pb-0.5 pr-2 align-bottom">
               <div className="flex gap-1.5 font-bold text-[9px] sm:text-[10px]">
@@ -243,44 +240,48 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
               </div>
             </td>
           </tr>
+
+          {/* Remarks + Signatures — kept together */}
+          <tr style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+            <td colSpan={4} className="pt-2 pb-0 font-normal text-left">
+              {/* Remarks */}
+              <div className="mt-2 mb-1.5">
+                <div className="font-bold text-[10px] sm:text-[11px]">Remarks</div>
+                <p className="text-[9px] mt-px text-gray-700">{voucher.description}</p>
+              </div>
+
+              {/* Signatures */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
+                  <span className="text-[9px] font-bold text-center">PREPARED BY</span>
+                </div>
+                <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
+                  <span className="text-[9px] font-bold text-center">CHECKED BY</span>
+                </div>
+                <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
+                  <span className="text-[9px] font-bold text-center">APPROVED BY</span>
+                </div>
+              </div>
+            </td>
+          </tr>
         </tbody>
+
+        {/* Page footer — repeated at the bottom of every printed page */}
+        <tfoot className="display-table-footer-group">
+          <tr>
+            <td colSpan={4} className="pt-3 pb-0 font-normal text-left">
+              <div className="flex justify-between items-center text-[8px] sm:text-[9px] text-gray-500 border-t border-gray-300 pt-1 mt-2">
+                <div>
+                  Printed At: <span className="font-semibold">{printedAt}</span>
+                </div>
+                <div className="font-semibold">
+                  Page <span className="print-page-number"></span>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
       </table>
-
-      {/* Remarks + Signatures — kept together, never split across pages */}
-      <div style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-        {/* Remarks */}
-        <div className="mt-2 mb-1.5">
-          <div className="font-bold text-[10px] sm:text-[11px]">Remarks</div>
-          <p className="text-[9px] mt-px text-gray-700">{voucher.description}</p>
-        </div>
-
-        {/* Signatures */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
-            <span className="text-[9px] font-bold text-center">PREPARED BY</span>
-          </div>
-          <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
-            <span className="text-[9px] font-bold text-center">CHECKED BY</span>
-          </div>
-          <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
-            <span className="text-[9px] font-bold text-center">APPROVED BY</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Page footer — pinned to the bottom of every printed page, not mixed into the body content */}
-      <div className="print-page-footer flex justify-between items-center text-[8px] sm:text-[9px] text-gray-500 border-t border-gray-300 pt-1 mt-4 print:mt-0 print:px-[10mm] print:pb-2 print:bg-white">
-        <div>
-          Printed At: <span className="font-semibold">{printedAt}</span>
-        </div>
-        <div className="font-semibold">
-          Page{" "}
-          <span className="print:hidden">01</span>
-          <span className="hidden print:inline print-page-number"></span>
-        </div>
-      </div>
-
     </div>
-    
   );
 }

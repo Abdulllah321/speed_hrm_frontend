@@ -52,7 +52,7 @@ export interface ReceiptVoucher {
     createdBy: string;
 }
 
-export async function getReceiptVouchers(type?: "bank" | "cash") {
+export async function getReceiptVouchers(type?: "bank" | "cash" | "rs_rv") {
     try {
         const q = type ? `?type=${type}` : "";
         const response = await authFetch(`/finance/receipt-vouchers${q}`, { cache: 'no-store' });
@@ -85,6 +85,10 @@ export async function getReceiptVouchers(type?: "bank" | "cash") {
     } catch {
         return { status: false, data: [] };
     }
+}
+
+export async function getRsrvVouchers() {
+    return getReceiptVouchers("rs_rv");
 }
 
 export async function createReceiptVoucher(data: any) {

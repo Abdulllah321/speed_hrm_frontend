@@ -740,6 +740,17 @@ export const menuData: MenuItem[] = [
         ],
       },
       {
+        title: "Retail Sale Receipt Voucher",
+        permissions: ["erp.finance.receipt-voucher.read"],
+        children: [
+          {
+            title: "List",
+            href: "/erp/finance/retail-sale-receipt-voucher/list",
+            permissions: ["erp.finance.receipt-voucher.read"],
+          },
+        ],
+      },
+      {
         title: "Reports",
         permissions: [
           "erp.finance.general-ledger.read",
