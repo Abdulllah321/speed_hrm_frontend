@@ -176,3 +176,87 @@ export async function queueCprTaxesExport(filters?: {
     };
   }
 }
+
+export interface TaxSlabInfo {
+  minAmount: number;
+  maxAmount: number | null;
+  rate: number;
+  fixedAmount: number;
+}
+
+export interface CprTaxPreviewRecord {
+  id?: string;
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  name: string;
+  cnic: string;
+  city: string | null;
+  cprNo: string;
+  ntn: string | null;
+  carAmount: number;
+  carBenefit: number;
+  baseAnnualTaxable: number;
+  taxableAmountAnnual: number;
+  taxableAmountGross: number;
+  taxAmountAnnual: number;
+  taxAmountMonthlyTax: number;
+  taxPeriod: string;
+  paymentDate: string | null;
+  ytdTaxDeducted: number;
+  remainingMonths: number;
+  slab?: TaxSlabInfo | null;
+}
+
+// Preview CPR Tax calculation for a month
+export async function previewCprTax(data: {
+  month: string;
+  year: string;
+  departmentId?: string;
+  subDepartmentId?: string;
+  locationId?: string;
+  employeeIds?: string[];
+}): Promise<{ status: boolean; data?: CprTaxPreviewRecord[]; message?: string }> {
+  try {
+    const res = await authFetch('/cpr-tax/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errorData = res.data || { message: 'Failed to preview CPR Tax' };
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    return res.data;
+  } catch (error) {
+    console.error('Error previewing CPR Tax:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to preview CPR Tax.',
+    };
+  }
+}
+
+// Batch confirm & save CPR Tax records
+export async function confirmBatchCprTax(data: {
+  taxPeriod: string;
+  records: any[];
+}): Promise<{ status: boolean; count?: number; message?: string }> {
+  try {
+    const res = await authFetch('/cpr-tax/confirm-batch', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errorData = res.data || { message: 'Failed to confirm CPR Tax batch' };
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    return res.data;
+  } catch (error) {
+    console.error('Error confirming CPR Tax batch:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to confirm CPR Tax batch.',
+    };
+  }
+}
+
