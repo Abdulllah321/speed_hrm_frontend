@@ -576,7 +576,38 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
 
     // ── Bulk-upload modal state ────────────────────────────────────────────────
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
-    const [activeUploadId,   setActiveUploadId]   = useState<string | null>(null);
+    const [activeUploadId, setActiveUploadIdState] = useState<string | null>(null);
+
+    const handleUploadIdChange = useCallback((id: string | null) => {
+        setActiveUploadIdState(id);
+        if (typeof window !== "undefined") {
+            if (id) {
+                localStorage.setItem("sales_history_active_upload", id);
+            } else {
+                localStorage.removeItem("sales_history_active_upload");
+            }
+        }
+    }, []);
+
+    // Restore active upload ID from localStorage & check backend for running active jobs on mount
+    useEffect(() => {
+        const savedId = typeof window !== "undefined" ? localStorage.getItem("sales_history_active_upload") : null;
+        if (savedId) {
+            setActiveUploadIdState(savedId);
+        }
+
+        authFetch("/pos-sales/bulk-upload/active")
+            .then((res) => {
+                if (res.ok && res.data?.status && res.data.data?.uploadId) {
+                    const activeId = res.data.data.uploadId;
+                    setActiveUploadIdState(activeId);
+                    if (typeof window !== "undefined") {
+                        localStorage.setItem("sales_history_active_upload", activeId);
+                    }
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     // Track upload progress for the floating progress button (mirrors item-list pattern)
     const { data: uploadProgress } = useUploadProgress(activeUploadId, "sales-history");
@@ -970,7 +1001,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                 open={isBulkUploadOpen}
                 onOpenChange={setIsBulkUploadOpen}
                 uploadId={activeUploadId}
-                onUploadIdChange={setActiveUploadId}
+                onUploadIdChange={handleUploadIdChange}
                 onSuccess={fetchOrders}
             />
 
