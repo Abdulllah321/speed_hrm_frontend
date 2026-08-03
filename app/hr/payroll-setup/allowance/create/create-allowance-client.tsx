@@ -172,34 +172,18 @@ export function CreateAllowanceClient({
       const allowanceHeadName = allowanceHead?.name || "";
       const shouldBeTaxable = isRecurring && allowanceHeadName.toLowerCase() !== "incentive";
 
-      // Special handling for Incentive - allow user to choose
-      if (allowanceHead?.name === "Incentive") {
-        // Don't auto-fill, let user choose Amount or Percentage
-        setFormData((prev) => ({
-          ...prev,
-          allowanceAmount: "",
-          allowancePercentage: "",
-          isTaxable: shouldBeTaxable ? true : prev.isTaxable,
-        }));
-      } else if (allowanceHead?.calculationType === "Amount") {
-        setFormData((prev) => ({
-          ...prev,
-          allowancePercentage: "",
-          allowanceAmount: allowanceHead.amount ? allowanceHead.amount.toString() : "",
-          isTaxable: shouldBeTaxable ? true : prev.isTaxable,
-        }));
-      } else if (allowanceHead?.calculationType === "Percentage") {
-        setFormData((prev) => ({
-          ...prev,
-          allowanceAmount: "",
-          allowancePercentage: allowanceHead.percentage ? allowanceHead.percentage.toString() : "",
-          isTaxable: shouldBeTaxable ? true : prev.isTaxable,
-        }));
-      }
+      // Always clear amount/percentage so user enters custom value
+      setFormData((prev) => ({
+        ...prev,
+        allowanceAmount: "",
+        allowancePercentage: "",
+        isTaxable: shouldBeTaxable ? true : prev.isTaxable,
+      }));
     } else {
       setSelectedAllowanceHead(null);
     }
   }, [formData.allowanceType, allowanceHeads, formData.allowanceTypeCategory]);
+
 
   // Allowance head options for Autocomplete
   const allowanceHeadOptions = useMemo(() => {
@@ -293,9 +277,26 @@ export function CreateAllowanceClient({
           ? [formData.monthYear]
           : [];
     } else {
-      // For recurring, use current month as default since input is disabled
-      // This ensures at least one record is created
-      selectedMonths = [new Date().toISOString().slice(0, 7)];
+      // For recurring category, apply to all 12 months of the fiscal year (July 1 to June 30)
+      let refDate = new Date();
+      if (formData.monthYear) {
+        const mStr = Array.isArray(formData.monthYear) ? formData.monthYear[0] : formData.monthYear;
+        if (mStr && mStr.includes("-")) {
+          const [y, m] = mStr.split("-").map(Number);
+          if (y && m) refDate = new Date(y, m - 1, 1);
+        }
+      }
+      const curM = refDate.getMonth() + 1;
+      const curY = refDate.getFullYear();
+      const fiscalStartYear = curM >= 7 ? curY : curY - 1;
+
+      selectedMonths = [];
+      for (let m = 7; m <= 12; m++) {
+        selectedMonths.push(`${fiscalStartYear}-${String(m).padStart(2, "0")}`);
+      }
+      for (let m = 1; m <= 6; m++) {
+        selectedMonths.push(`${fiscalStartYear + 1}-${String(m).padStart(2, "0")}`);
+      }
     }
 
     // Create allowance items for all selected employees and months
@@ -354,8 +355,15 @@ export function CreateAllowanceClient({
 
     setEmployeeAllowances([...employeeAllowances, ...uniqueNewAllowances]);
     setHasSearched(true);
-    toast.success(`Added allowances for ${uniqueNewAllowances.length} employee-month combination(s)`);
+    if (formData.allowanceTypeCategory === "recurring") {
+      toast.success(
+        `Added recurring allowance for ${selectedEmployeeIds.length} employee(s) across all 12 fiscal months (July 1 – June 30).`
+      );
+    } else {
+      toast.success(`Added allowances for ${uniqueNewAllowances.length} employee-month combination(s)`);
+    }
   };
+
 
   const handleUpdateAllowance = (id: string, field: keyof EmployeeAllowanceItem, value: any) => {
     setEmployeeAllowances(
@@ -672,17 +680,13 @@ export function CreateAllowanceClient({
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, allowanceAmount: e.target.value }))
                     }
-                    placeholder={
-                      selectedAllowanceHead.amount
-                        ? selectedAllowanceHead.amount.toString()
-                        : "0.00"
-                    }
+                    placeholder="Enter custom allowance amount"
                     disabled={isPending}
                     required
                   />
                   {selectedAllowanceHead.amount && (
                     <p className="text-xs text-muted-foreground">
-                      Default amount: {selectedAllowanceHead.amount} (pre-filled from allowance type, you can modify it)
+                      (Head default amount: {selectedAllowanceHead.amount} — enter your custom amount above)
                     </p>
                   )}
                 </div>
@@ -705,21 +709,18 @@ export function CreateAllowanceClient({
                         setFormData((prev) => ({ ...prev, allowancePercentage: val }));
                       }
                     }}
-                    placeholder={
-                      selectedAllowanceHead.percentage
-                        ? selectedAllowanceHead.percentage.toString()
-                        : "0.00"
-                    }
+                    placeholder="Enter custom percentage"
                     disabled={isPending}
                     required
                   />
                   {selectedAllowanceHead.percentage && (
                     <p className="text-xs text-muted-foreground">
-                      Default percentage: {selectedAllowanceHead.percentage}% (pre-filled from allowance type, you can modify it). Amount will be calculated based on each employee's salary.
+                      (Head default: {selectedAllowanceHead.percentage}% — enter your custom percentage above)
                     </p>
                   )}
                 </div>
               ) : null}
+
 
             </div>
 
@@ -823,10 +824,16 @@ export function CreateAllowanceClient({
                     setFormData((prev) => ({ ...prev, monthYear: value }))
                   }
                   disabled={isPending || formData.allowanceTypeCategory === "recurring"}
-                  placeholder={formData.allowanceTypeCategory === "recurring" ? "Not required for recurring" : "Select month(s) and year"}
+                  placeholder={formData.allowanceTypeCategory === "recurring" ? "July 1 – June 30 (12 Fiscal Months)" : "Select month(s) and year"}
                   multiple={formData.allowanceTypeCategory === "specific"}
                 />
+                {formData.allowanceTypeCategory === "recurring" && (
+                  <p className="text-[11px] text-primary font-medium">
+                    Recurring allowance will apply across all 12 fiscal months (July 1 to June 30).
+                  </p>
+                )}
               </div>
+
 
               {/* Taxable Allowance */}
               <div className="space-y-2">
