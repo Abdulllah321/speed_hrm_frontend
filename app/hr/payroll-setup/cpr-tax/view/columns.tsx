@@ -32,10 +32,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MoreHorizontal, Trash2, Loader2, Pencil } from 'lucide-react';
+import { MoreHorizontal, Trash2, Loader2, Pencil, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { deleteCprTax, updateCprTax } from '@/lib/actions/cpr-tax';
+import { CprCalculationModal } from '@/components/cpr-tax/cpr-calculation-modal';
+
 
 export interface CprTaxRow {
   id: string;
@@ -285,6 +287,7 @@ function RowActions({ row }: { row: any }) {
   const [isPending, startTransition] = useTransition();
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
+  const [calcModalOpen, setCalcModalOpen] = useState(false);
 
   const [carAmount, setCarAmount] = useState(item.carAmount !== null ? String(item.carAmount) : '');
   const [cprNo, setCprNo] = useState(item.cprNo || '');
@@ -327,7 +330,17 @@ function RowActions({ row }: { row: any }) {
 
   return (
     <>
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-primary hover:bg-primary/10"
+          title="Preview Calculation Breakdown"
+          onClick={() => setCalcModalOpen(true)}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -338,6 +351,13 @@ function RowActions({ row }: { row: any }) {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setCalcModalOpen(true)}
+              className="cursor-pointer"
+            >
+              <Eye className="mr-2 h-4 w-4 text-primary" />
+              Preview Calculation
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setEditDialog(true)}
               className="cursor-pointer"
@@ -355,6 +375,13 @@ function RowActions({ row }: { row: any }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <CprCalculationModal
+        open={calcModalOpen}
+        onOpenChange={setCalcModalOpen}
+        record={item}
+      />
+
 
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
         <DialogContent className="sm:max-w-[425px]">
