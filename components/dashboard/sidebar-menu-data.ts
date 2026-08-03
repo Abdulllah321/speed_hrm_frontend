@@ -1290,6 +1290,11 @@ export const menuData: MenuItem[] = [
             permissions: ["hr.payroll.create"],
           },
           {
+            title: "Reconciliation Report",
+            href: "/hr/payroll-setup/payroll/reconciliation",
+            permissions: ["hr.payroll.read"],
+          },
+          {
             title: "Payslips Emails",
             href: "/hr/payroll-setup/payroll/payslips",
             permissions: ["hr.payroll.read"],

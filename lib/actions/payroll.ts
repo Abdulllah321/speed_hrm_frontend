@@ -223,3 +223,31 @@ export async function getPayslipDetail(detailId: string) {
         };
     }
 }
+
+export async function getPayrollReconciliation(month: string, year: string) {
+    try {
+        const response = await authFetch(`/payroll/reconciliation?month=${month}&year=${year}`, {
+            method: "GET",
+        });
+
+        const result = response.data;
+
+        if (!response.ok) {
+            return {
+                status: false,
+                message: result.message || "Failed to fetch payroll reconciliation report",
+            };
+        }
+
+        return {
+            status: true,
+            data: result,
+        };
+    } catch (error) {
+        console.error("Get payroll reconciliation error:", error);
+        return {
+            status: false,
+            message: "An error occurred while fetching payroll reconciliation report",
+        };
+    }
+}
