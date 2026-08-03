@@ -61,6 +61,7 @@ export const routePermissions: Record<string, string[]> = {
   "/hr/payroll-setup/payroll/create": ["hr.payroll.create"],
   "/hr/payroll-setup/payroll/report": ["hr.payroll.read"],
   "/hr/payroll-setup/payroll/bank-report": ["hr.payroll.read"],
+  "/hr/payroll-setup/payroll/reconciliation": ["hr.payroll.read"],
   "/hr/payroll-setup/payroll/payslips": ["hr.payroll.read"],
   "/hr/payroll-setup/cpr-tax/create": ["hr.payroll.create"],
   "/hr/payroll-setup/cpr-tax/view": ["hr.payroll.read"],
