@@ -165,6 +165,14 @@ export function StockBulkUploadModal({
         window.open(`${getApiBaseUrl()}/warehouse/stock/bulk-upload/template/download`, '_blank');
     };
 
+    const downloadSuccessReport = () => {
+        if (!activeId) return;
+        window.open(
+            `${getApiBaseUrl()}/warehouse/stock/bulk-upload/${activeId}/success-report`,
+            '_blank',
+        );
+    };
+
     const downloadErrorReport = () => {
         if (!activeId) return;
         window.open(
@@ -508,18 +516,76 @@ export function StockBulkUploadModal({
                                     </div>
                                 )}
 
-                                {/* Completion */}
+                                {/* Completion View */}
                                 {data?.status === 'completed' && (
-                                    <div className="p-8 bg-green-500/5 border-2 border-green-500/20 rounded-3xl flex flex-col items-center gap-4 text-center animate-in zoom-in-95 duration-500">
-                                        <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center shadow-lg shadow-green-500/10">
-                                            <CheckCircle2 className="h-10 w-10 text-green-600" />
+                                    <div className="space-y-4">
+                                        <div className="p-6 bg-green-500/5 border-2 border-green-500/20 rounded-3xl flex flex-col items-center gap-3 text-center animate-in zoom-in-95 duration-500">
+                                            <div className="h-14 w-14 rounded-full bg-green-500/20 flex items-center justify-center shadow-lg shadow-green-500/10">
+                                                <CheckCircle2 className="h-8 w-8 text-green-600" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <h3 className="text-xl font-black text-green-700">Stock Import Successful!</h3>
+                                                <p className="text-sm text-green-600/80 font-medium">
+                                                    {data?.successRecords} stock ledger entries posted across system locations.
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 pt-2 justify-center">
+                                                <Button
+                                                    onClick={downloadSuccessReport}
+                                                    className="font-bold bg-green-600 hover:bg-green-700 text-white shadow-md"
+                                                >
+                                                    <Download className="h-4 w-4 mr-2" /> Download Success Report (.CSV)
+                                                </Button>
+                                                {(data?.failedRecords ?? 0) > 0 && (
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={downloadErrorReport}
+                                                        className="font-bold text-destructive border-destructive/30 hover:bg-destructive/10"
+                                                    >
+                                                        <Download className="h-4 w-4 mr-2" /> Download Error Report (.CSV)
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="space-y-1">
-                                            <h3 className="text-2xl font-black text-green-700">Stock Import Successful!</h3>
-                                            <p className="text-green-600/80 font-medium">
-                                                {data?.successRecords} stock ledger entries have been posted to your system.
-                                            </p>
-                                        </div>
+
+                                        {/* Outlet Breakdown Table */}
+                                        {data.successSummary && data.successSummary.length > 0 && (
+                                            <div className="p-5 border rounded-2xl bg-card space-y-3 shadow-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="font-bold text-sm flex items-center gap-2">
+                                                        <MapPin className="h-4 w-4 text-primary" />
+                                                        Outlet & Location Breakdown ({data.successSummary.length} Locations)
+                                                    </h4>
+                                                    <span className="text-xs text-muted-foreground font-semibold">
+                                                        Successfully uploaded records
+                                                    </span>
+                                                </div>
+                                                <div className="border rounded-xl overflow-hidden">
+                                                    <Table>
+                                                        <TableHeader className="bg-muted/50">
+                                                            <TableRow>
+                                                                <TableHead className="font-black uppercase text-[10px]">Location Code</TableHead>
+                                                                <TableHead className="font-black uppercase text-[10px]">Location Name</TableHead>
+                                                                <TableHead className="text-right font-black uppercase text-[10px]">Success Records</TableHead>
+                                                                <TableHead className="text-right font-black uppercase text-[10px]">Total Qty</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {data.successSummary.map((item, idx) => (
+                                                                <TableRow key={idx}>
+                                                                    <TableCell className="font-mono text-xs font-bold text-primary">{item.locationCode}</TableCell>
+                                                                    <TableCell className="text-xs font-semibold">{item.locationName}</TableCell>
+                                                                    <TableCell className="text-right font-bold text-xs">{item.count} recs</TableCell>
+                                                                    <TableCell className="text-right font-mono font-bold text-xs text-emerald-600">
+                                                                        +{Number(item.totalQty).toFixed(2)}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

@@ -338,7 +338,7 @@ export function PaymentPanel({
                                         value={voucherCode}
                                         onChange={(e) => onVoucherCodeChange(e.target.value)}
                                         onKeyDown={(e) => e.key === "Enter" && onVoucherValidate(voucherCode)}
-                                        maxLength={10}
+                                        maxLength={25}
                                     />
                                     <div className="absolute right-2 top-2">
                                         {voucherValidating && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}

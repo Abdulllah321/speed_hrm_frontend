@@ -22,7 +22,7 @@ import {
     Loader2,
     Download,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getApiBaseUrl } from "@/lib/utils";
 import Link from "next/link";
 import { StockBulkUploadModal } from "@/components/inventory/stock-bulk-upload-modal";
 import { useUploadProgress } from "@/hooks/use-upload-progress";
@@ -549,10 +549,10 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
             <Button
                 variant="outline"
                 onClick={() => setIsBulkUploadOpen(true)}
-                className="gap-2"
+                className="gap-2 font-semibold border-primary/30 text-primary hover:bg-primary/5"
             >
                 <Upload className="h-4 w-4" />
-                Bulk Upload
+                Bulk Upload Stock
             </Button>
         </div>
     );

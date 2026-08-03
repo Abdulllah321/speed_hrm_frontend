@@ -28,6 +28,14 @@ export interface UploadStatusResponse {
     progress: number;
     jobState: string;
     errors: UploadError[];
+    successSummary?: Array<{
+        locationCode: string;
+        locationName: string;
+        count: number;
+        totalQty: number;
+    }>;
+    errorReportPath?: string | null;
+    successReportPath?: string | null;
     message?: string;
     recsPerSec?: number;
     memoryUsageMB?: number;
@@ -200,6 +208,9 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
                             updated.failedRecords = payload.failedRecords ?? updated.failedRecords;
                             updated.totalRecords = payload.totalRecords ?? updated.totalRecords;
                             updated.errors = payload.errors || updated.errors;
+                            updated.successSummary = payload.successSummary || updated.successSummary;
+                            updated.errorReportPath = payload.errorReportPath || updated.errorReportPath;
+                            updated.successReportPath = payload.successReportPath || updated.successReportPath;
                             updated.progress = 100;
                         } else if (type === 'failed') {
                             updated.status = 'failed';
