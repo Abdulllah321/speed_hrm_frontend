@@ -689,8 +689,8 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     {/* Background update upload progress button */}
                     {activeUpdateUploadId && !isBulkUpdateOpen && (
                         <Button
-                            variant={updateProgress?.status === 'failed' ? 'destructive' : updateProgress?.status === 'completed' ? 'default' : 'outline'}
-                            className={`border-primary text-primary relative overflow-hidden min-w-[180px] ${updateProgress?.status === 'failed' ? 'text-primary-foreground! bg-destructive!' : updateProgress?.status === 'completed' ? 'text-primary-foreground! bg-primary!' : ''}`}
+                            variant={updateProgress?.status === 'failed' || updateProgress?.status === 'cancelled' ? 'destructive' : updateProgress?.status === 'completed' ? 'default' : 'outline'}
+                            className={`border-primary text-primary relative overflow-hidden min-w-[180px] ${updateProgress?.status === 'failed' || updateProgress?.status === 'cancelled' ? 'text-primary-foreground! bg-destructive!' : updateProgress?.status === 'completed' ? 'text-primary-foreground! bg-primary!' : ''}`}
                             onClick={() => setIsBulkUpdateOpen(true)}
                         >
                             <div
@@ -704,14 +704,16 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                                 <span className="font-bold">
                                     {updateProgress?.status === "failed"
                                         ? "Update Failed"
-                                        : updateProgress?.status === "completed"
-                                            ? "Update Complete"
-                                            : updateProgress?.status === "validated"
-                                                ? "Val. Complete"
-                                                : updateProgress?.status === "validating"
-                                                    ? "Validating"
-                                                    : "Updating"}
-                                    {["failed", "completed", "validated"].includes(updateProgress?.status || "") ? "" : ` ${updateProgress?.progress ?? 0}%`}
+                                        : updateProgress?.status === "cancelled"
+                                            ? "Job Cancelled"
+                                            : updateProgress?.status === "completed"
+                                                ? "Update Complete"
+                                                : updateProgress?.status === "validated"
+                                                    ? "Val. Complete"
+                                                    : updateProgress?.status === "validating"
+                                                        ? "Validating"
+                                                        : "Updating"}
+                                    {["failed", "completed", "validated", "cancelled"].includes(updateProgress?.status || "") ? "" : ` ${updateProgress?.progress ?? 0}%`}
                                 </span>
                             </div>
                         </Button>
@@ -719,8 +721,8 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     {/* Background upload progress button */}
                     {activeUploadId && !isBulkUploadOpen && (
                         <Button
-                            variant={uploadProgress?.status === 'failed' ? 'destructive' : uploadProgress?.status === 'completed' ? 'default' : 'outline'}
-                            className={`border-primary text-primary relative overflow-hidden min-w-[180px] ${uploadProgress?.status === 'failed' ? 'text-destructive-foreground! bg-destructive!' : uploadProgress?.status === 'completed' ? 'text-primary-foreground! bg-primary!' : ''}`}
+                            variant={uploadProgress?.status === 'failed' || uploadProgress?.status === 'cancelled' ? 'destructive' : uploadProgress?.status === 'completed' ? 'default' : 'outline'}
+                            className={`border-primary text-primary relative overflow-hidden min-w-[180px] ${uploadProgress?.status === 'failed' || uploadProgress?.status === 'cancelled' ? 'text-destructive-foreground! bg-destructive!' : uploadProgress?.status === 'completed' ? 'text-primary-foreground! bg-primary!' : ''}`}
                             onClick={() => setIsBulkUploadOpen(true)}
                         >
                             <div
@@ -734,14 +736,16 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                                 <span className="font-bold">
                                     {uploadProgress?.status === "failed"
                                         ? "Import Failed"
-                                        : uploadProgress?.status === "completed"
-                                            ? "Import Complete"
-                                            : uploadProgress?.status === "validated"
-                                                ? "Validation Complete"
-                                                : uploadProgress?.status === "validating"
-                                                    ? "Validating"
-                                                    : "Importing"}
-                                    {["failed", "completed", "validated"].includes(uploadProgress?.status || "") ? "" : ` ${uploadProgress?.progress ?? 0}%`}
+                                        : uploadProgress?.status === "cancelled"
+                                            ? "Job Cancelled"
+                                            : uploadProgress?.status === "completed"
+                                                ? "Import Complete"
+                                                : uploadProgress?.status === "validated"
+                                                    ? "Validation Complete"
+                                                    : uploadProgress?.status === "validating"
+                                                        ? "Validating"
+                                                        : "Importing"}
+                                    {["failed", "completed", "validated", "cancelled"].includes(uploadProgress?.status || "") ? "" : ` ${uploadProgress?.progress ?? 0}%`}
                                 </span>
                             </div>
                         </Button>

@@ -144,8 +144,6 @@ export function SalesHistoryBulkUploadModal({
             const result = await response.json();
             if (result.status) {
                 toast.info('Import job cancelled');
-                onUploadIdChange?.(null);
-                setInternalUploadId(null);
             }
         } catch (error) {
             console.error('Cancel failed:', error);
@@ -495,13 +493,17 @@ export function SalesHistoryBulkUploadModal({
                                     </div>
                                 )}
 
-                                {/* Failed state */}
-                                {isFailed && (
+                                {/* Failed or Cancelled state */}
+                                {(isFailed || isCancelled) && (
                                     <div className="p-6 bg-destructive/5 border-2 border-destructive/20 rounded-2xl flex items-center gap-4">
                                         <XCircle className="h-8 w-8 text-destructive shrink-0" />
                                         <div>
-                                            <p className="font-bold text-destructive">Import Failed</p>
-                                            <p className="text-sm text-muted-foreground">{data?.message}</p>
+                                            <p className="font-bold text-destructive">
+                                                {isCancelled ? 'Import Job Cancelled' : 'Import Failed'}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {data?.message || (isCancelled ? 'The job was aborted by user.' : 'An error occurred during import.')}
+                                            </p>
                                         </div>
                                     </div>
                                 )}

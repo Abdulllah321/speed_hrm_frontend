@@ -904,12 +904,12 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                     {activeUploadId && !isBulkUploadOpen && (
                         <Button
                             variant={
-                                uploadProgress?.status === "failed"    ? "destructive" :
+                                uploadProgress?.status === "failed" || uploadProgress?.status === "cancelled" ? "destructive" :
                                 uploadProgress?.status === "completed" ? "default"     : "outline"
                             }
                             className={cn(
                                 "relative overflow-hidden min-w-48 border-primary text-primary transition-colors",
-                                uploadProgress?.status === "failed"    && "border-destructive! text-destructive-foreground! bg-destructive!",
+                                (uploadProgress?.status === "failed" || uploadProgress?.status === "cancelled") && "border-destructive! text-destructive-foreground! bg-destructive!",
                                 uploadProgress?.status === "completed" && "text-primary-foreground! bg-primary!",
                             )}
                             onClick={() => setIsBulkUploadOpen(true)}
@@ -927,11 +927,12 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                                 )}
                                 <span className="font-bold">
                                     {uploadProgress?.status === "failed"    ? "Import Failed"       :
+                                     uploadProgress?.status === "cancelled" ? "Job Cancelled"      :
                                      uploadProgress?.status === "completed" ? "Import Complete"     :
                                      uploadProgress?.status === "validated" ? "Validation Complete" :
                                      uploadProgress?.status === "validating"? "Validating"          :
                                                                               "Importing"}
-                                    {!["failed", "completed", "validated"].includes(uploadProgress?.status || "")
+                                    {!["failed", "completed", "validated", "cancelled"].includes(uploadProgress?.status || "")
                                         ? ` ${uploadProgress?.progress ?? 0}%`
                                         : ""}
                                 </span>
