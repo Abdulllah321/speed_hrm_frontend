@@ -187,6 +187,14 @@ export default function PosVouchersPage() {
     const [vouchersToPrint, setVouchersToPrint] = useState<Voucher[] | null>(null);
 
     // ── Data ─────────────────────────────────────────────────────
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(50);
+    const [total, setTotal] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("ALL");
+
+    // ── Data ─────────────────────────────────────────────────────
     const fetchVouchers = useCallback(async () => {
         setIsLoading(true);
         try {
@@ -197,11 +205,29 @@ export default function PosVouchersPage() {
             if (currentLocationId) {
                 query.append("locationId", currentLocationId);
             }
+            if (activeTab !== "ALL") {
+                query.append("voucherType", activeTab);
+            }
+            if (statusFilter !== "ALL") {
+                query.append("status", statusFilter);
+            }
+            if (search.trim() !== "") {
+                query.append("search", search.trim());
+            }
+            query.append("page", String(page));
+            query.append("limit", String(limit));
+
             const res = await authFetch(`/pos-config/vouchers?${query.toString()}`);
-            if (res.ok && res.data?.status) setVouchers(res.data.data || []);
+            if (res.ok && res.data?.status) {
+                setVouchers(res.data.data || []);
+                if (res.data.pagination) {
+                    setTotal(res.data.pagination.total);
+                    setTotalPages(res.data.pagination.totalPages);
+                }
+            }
         } catch { toast.error("Failed to load vouchers"); }
         finally { setIsLoading(false); }
-    }, [showVoided, currentLocationId]);
+    }, [showVoided, currentLocationId, activeTab, statusFilter, search, page, limit]);
 
     useEffect(() => {
         fetchVouchers();

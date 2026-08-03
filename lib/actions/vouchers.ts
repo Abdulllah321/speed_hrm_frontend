@@ -86,14 +86,36 @@ export interface VoucherValidation {
 
 export async function getVouchers(filters?: {
     voucherType?: string;
+    status?: string;
     locationId?: string;
     search?: string;
-}): Promise<{ status: boolean; data?: Voucher[]; message?: string }> {
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+    includeVoided?: boolean;
+}): Promise<{
+    status: boolean;
+    data?: Voucher[];
+    pagination?: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
+    message?: string;
+}> {
     try {
         const params = new URLSearchParams();
         if (filters?.voucherType) params.set('voucherType', filters.voucherType);
+        if (filters?.status) params.set('status', filters.status);
         if (filters?.locationId) params.set('locationId', filters.locationId);
         if (filters?.search) params.set('search', filters.search);
+        if (filters?.startDate) params.set('startDate', filters.startDate);
+        if (filters?.endDate) params.set('endDate', filters.endDate);
+        if (filters?.page) params.set('page', String(filters.page));
+        if (filters?.limit) params.set('limit', String(filters.limit));
+        if (filters?.includeVoided) params.set('includeVoided', 'true');
         const res = await authFetch(`/pos-config/vouchers?${params.toString()}`, {});
         return res.data;
     } catch {
