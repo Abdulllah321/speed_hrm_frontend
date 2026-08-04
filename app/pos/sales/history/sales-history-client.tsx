@@ -549,7 +549,7 @@ interface Props {
 
 export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPages }: Props) {
     const router = useRouter();
-    const { hasPermission } = useAuth();
+    const { hasPermission, user } = useAuth();
     const canPrint        = hasPermission("pos.sales.history.print");
     const canUpdateTender = hasPermission("pos.sales.history.update-tender");
     const canResumeHold   = hasPermission("pos.hold.resume");
@@ -622,6 +622,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                 search:    search.trim() || undefined,
                 startDate: dateRange.from?.toISOString(),
                 endDate:   dateRange.to?.toISOString(),
+                locationId: user?.locationId || undefined,
             });
             if (result.status) {
                 setOrders(result.data);

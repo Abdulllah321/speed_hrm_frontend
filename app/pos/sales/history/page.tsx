@@ -371,7 +371,7 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
 export default function SalesHistoryPage() {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
-    const { hasPermission } = useAuth();
+    const { hasPermission, user } = useAuth();
     const canPrint = hasPermission('pos.sales.history.print');
     const canUpdateTender = hasPermission('pos.sales.history.update-tender');
     const canResumeHold = hasPermission('pos.hold.resume');
@@ -414,6 +414,7 @@ export default function SalesHistoryPage() {
                     search: search.trim() || undefined,
                     startDate: dateRange.from?.toISOString(),
                     endDate: dateRange.to?.toISOString(),
+                    locationId: user?.locationId || undefined,
                 }
             });
             if (res.ok && res.data?.status) {

@@ -53,6 +53,7 @@ export async function listSalesOrders(params?: {
     search?: string;
     startDate?: string;
     endDate?: string;
+    locationId?: string;
 }): Promise<ListOrdersResult> {
     try {
         const res = await authFetch("/pos-sales/orders", {
@@ -62,6 +63,7 @@ export async function listSalesOrders(params?: {
                 search: params?.search || undefined,
                 startDate: params?.startDate || undefined,
                 endDate: params?.endDate || undefined,
+                locationId: params?.locationId || undefined,
             },
         });
 
