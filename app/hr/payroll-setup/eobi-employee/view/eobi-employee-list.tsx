@@ -7,12 +7,38 @@ import { EOBIEmployee } from "@/lib/actions/eobi-employee";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, TrendingUp, DollarSign } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { recalculateEOBIContributions } from "@/lib/actions/eobi-employee";
+
 interface EOBIEmployeeListProps {
     initialData: EOBIEmployee[];
 }
 
 export function EOBIEmployeeList({ initialData }: EOBIEmployeeListProps) {
     const [data] = useState<EOBIEmployee[]>(initialData);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const router = useRouter();
+
+    const handleSyncEOBIRates = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await recalculateEOBIContributions();
+            if (res.status) {
+                toast.success(res.message || "EOBI contributions synced with employee regions!");
+                router.refresh();
+            } else {
+                toast.error(res.message || "Failed to sync EOBI contributions.");
+            }
+        } catch (err) {
+            console.error("Sync error:", err);
+            toast.error("Failed to sync EOBI contributions.");
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     // Calculate summary statistics
     const totalEmployees = data.length;
@@ -94,11 +120,21 @@ export function EOBIEmployeeList({ initialData }: EOBIEmployeeListProps) {
 
             {/* Data Table */}
             <Card>
-                <CardHeader>
-                    <CardTitle>EOBI Employee Balances</CardTitle>
-                    <CardDescription>
-                        View total EOBI balances for all employees with EOBI enabled
-                    </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>EOBI Employee Balances</CardTitle>
+                        <CardDescription>
+                            View total EOBI balances for all employees with EOBI enabled
+                        </CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleSyncEOBIRates} disabled={isSyncing}>
+                        {isSyncing ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin text-primary" />
+                        ) : (
+                            <RefreshCw className="h-4 w-4 mr-2 text-primary" />
+                        )}
+                        Sync EOBI Rates by Region
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     <DataTable<EOBIEmployee>

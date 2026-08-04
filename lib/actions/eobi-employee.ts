@@ -75,3 +75,30 @@ export async function getEmployeeEOBIBalance(employeeId: string): Promise<{
         };
     }
 }
+
+// Recalculate EOBI contributions based on employee profiles
+export async function recalculateEOBIContributions(month?: string, year?: string): Promise<{
+    status: boolean;
+    message?: string;
+    updatedCount?: number;
+}> {
+    try {
+        const response = await authFetch(`/eobi/recalculate-contributions`, {
+            method: 'POST',
+            body: JSON.stringify({ month, year }),
+        });
+
+        if (!response.ok) {
+            const errorData = response.data || { message: "Failed to recalculate EOBI rates" };
+            return { status: false, message: errorData.message || `HTTP error! status: ${response.status}` };
+        }
+
+        return response.data;
+    } catch (error) {
+        console.error('Error recalculating EOBI contributions:', error);
+        return {
+            status: false,
+            message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        };
+    }
+}
