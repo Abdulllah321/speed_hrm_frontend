@@ -57,6 +57,8 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
     const reconnectAttemptsRef = useRef(0);
     const MAX_RECONNECT_ATTEMPTS = 8;
 
+    const lastSseTimeRef = useRef(Date.now());
+
     const stopStreaming = useCallback(() => {
         if (reconnectTimerRef.current) {
             clearTimeout(reconnectTimerRef.current);
@@ -158,6 +160,9 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
 
             eventSource.onmessage = (event) => {
                 try {
+                    // Update activity timestamp on ANY frame (including heartbeats)
+                    lastSseTimeRef.current = Date.now();
+
                     const eventData = JSON.parse(event.data);
                     const { type, data: payload } = eventData;
 
@@ -194,6 +199,7 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
                             if (payload.progress !== undefined) updated.progress = payload.progress;
                         } else if (type === 'progress') {
                             updated.progress = payload.progress ?? updated.progress;
+                            updated.totalRecords = payload.totalRecords ?? updated.totalRecords;
                             updated.processedRecords = payload.processedRecords ?? updated.processedRecords;
                             updated.successRecords = payload.successRecords ?? updated.successRecords;
                             updated.failedRecords = payload.failedRecords ?? updated.failedRecords;
@@ -264,10 +270,18 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
 
         connectSSE();
 
+        // Check every 3 seconds: ONLY poll status API if NO SSE frame or heartbeat was received for >15s
+        const pollInterval = setInterval(() => {
+            if (!isTerminalRef.current && Date.now() - lastSseTimeRef.current > 15000) {
+                fetchInitialStatus();
+            }
+        }, 3000);
+
         return () => {
+            clearInterval(pollInterval);
             stopStreaming();
         };
-    }, [uploadId, getApiEndpoint, stopStreaming]); // fetchInitialStatus removed from deps — called once on mount only
+    }, [uploadId, getApiEndpoint, stopStreaming, fetchInitialStatus]);
 
     // Speed calculation using refs to avoid stale closure issues
     useEffect(() => {
