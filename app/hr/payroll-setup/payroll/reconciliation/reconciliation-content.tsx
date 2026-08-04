@@ -237,6 +237,16 @@ export function ReconciliationContent() {
                                     </tr>
                                 )}
 
+                                {/* Upper Section Subtotal */}
+                                <tr className="font-bold bg-slate-100/70 dark:bg-slate-900/70 border-t border-slate-300">
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800 uppercase font-extrabold">TOTAL</td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800"></td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800"></td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800"></td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800 text-right font-extrabold">{formatCurrency(data.upperSubtotal?.currentAmount)}</td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800 text-right font-extrabold">{formatCurrency(data.upperSubtotal?.prevAmount)}</td>
+                                </tr>
+
                                 {/* Incoming Employees Header */}
                                 <tr className="bg-slate-100 dark:bg-slate-900 font-bold">
                                     <td colSpan={6} className="p-2 border border-slate-300 dark:border-slate-800 uppercase">ADD : INCOMING EMPLOYEES/INCREMENTS</td>
@@ -269,6 +279,17 @@ export function ReconciliationContent() {
                                         <td className="p-2 border border-slate-300 dark:border-slate-800 text-right">{formatCurrency(data.incentives.currentMonthIncentive.prevAmount)}</td>
                                     </tr>
                                 )}
+
+                                {/* Lower Section Subtotal */}
+                                <tr className="font-bold bg-slate-100/70 dark:bg-slate-900/70 border-t border-slate-300">
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800 uppercase font-extrabold">TOTAL</td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800"></td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800"></td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800"></td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800 text-right font-extrabold">{formatCurrency(data.lowerSubtotal?.currentAmount)}</td>
+                                    <td className="p-2 border border-slate-300 dark:border-slate-800 text-right font-extrabold">{formatCurrency(data.lowerSubtotal?.prevAmount)}</td>
+                                </tr>
+
 
 
                                 {/* Deductions Header */}

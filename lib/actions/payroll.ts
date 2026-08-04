@@ -120,14 +120,16 @@ export async function getPayrollReport(filters: {
 export async function getBankReport(filters: {
     month: string;
     year: string;
-    bankName: string;
+    bankName?: string;
 }) {
     try {
         const queryParams = new URLSearchParams({
             month: filters.month,
             year: filters.year,
-            bankName: filters.bankName,
         });
+        if (filters.bankName) {
+            queryParams.append("bankName", filters.bankName);
+        }
 
         const response = await authFetch(`/payroll/bank-report?${queryParams.toString()}`, {
             method: "GET",

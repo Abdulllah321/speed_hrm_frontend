@@ -1,14 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import DataTable from "@/components/common/data-table";
 import { columns, type AdvanceSalaryRow } from "./columns";
 import { Button } from "@/components/ui/button";
-import { Printer, Download } from "lucide-react";
+import { Printer, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { COMPANY_NAME } from "@/lib/utils";
+import { AdvanceSalaryBulkUploadModal } from "@/components/advance-salary/advance-salary-bulk-upload-modal";
 
 interface AdvanceSalaryListProps {
   initialData?: AdvanceSalaryRow[];
@@ -19,6 +21,7 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
   const router = useRouter();
   const { hasPermission, isAdmin } = useAuth();
   const canCreate = isAdmin() || hasPermission("hr.advance-salary.create");
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   const handlePrint = () => {
     if (data.length === 0) {
@@ -408,6 +411,12 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
           </p>
         </div>
         <div className="flex gap-2">
+          {canCreate && (
+            <Button variant="outline" onClick={() => setBulkUploadOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Upload
+            </Button>
+          )}
           <Button variant="secondary" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Print
@@ -432,6 +441,12 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
           tableId="advance-salary-list"
         />
       </div>
+
+      <AdvanceSalaryBulkUploadModal
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        onSuccess={() => router.refresh()}
+      />
     </div>
   );
 }
