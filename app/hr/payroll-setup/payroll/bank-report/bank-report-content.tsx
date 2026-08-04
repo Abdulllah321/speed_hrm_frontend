@@ -4,13 +4,13 @@ import { useState, useTransition, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Printer, FileDown } from "lucide-react";
+import { Search, Printer, FileDown, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { getBankReport } from "@/lib/actions/payroll";
 import { Bank } from "@/lib/actions/bank";
 import { format } from "date-fns";
 import { Autocomplete } from "@/components/ui/autocomplete";
+import * as XLSX from "xlsx";
 
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -25,22 +25,24 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
     const [filters, setFilters] = useState({
         monthYear: format(new Date(), "yyyy-MM"),
         chequeDate: format(new Date(), "yyyy-MM-dd"),
-        bankName: "",
+        bankName: "all",
         branchAddress: "",
     });
 
-    const handleSearch = () => {
-        if (!filters.bankName) {
-            toast.error("Please select a bank");
-            return;
-        }
+    const bankOptions = useMemo(() => {
+        return [
+            { value: "all", label: "All Banks" },
+            ...initialBanks.map(bank => ({ value: bank.name, label: bank.name }))
+        ];
+    }, [initialBanks]);
 
+    const handleSearch = () => {
         startTransition(async () => {
             const [year, month] = filters.monthYear.split("-");
             const result = await getBankReport({
                 month,
                 year,
-                bankName: filters.bankName,
+                bankName: filters.bankName === "all" ? "" : filters.bankName,
             });
 
             if (result.status) {
@@ -62,31 +64,69 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
         window.print();
     };
 
+    const handleExportExcel = () => {
+        if (data.length === 0) {
+            toast.error("No data to export");
+            return;
+        }
+
+        const exportData = data.map((item, index) => ({
+            "S. NO.": index + 1,
+            "EMP ID": item.employee?.employeeId || "N/A",
+            "NAME": item.employee?.employeeName || "N/A",
+            "BANK NAME": item.employee?.bankName || item.bankName || "N/A",
+            "ACCOUNT NO": item.employee?.accountNumber || item.accountNumber || "N/A",
+            "ACCOUNT TITLE": item.employee?.accountTitle || "N/A",
+            "NET SALARY": Number(item.netSalary) || 0,
+        }));
+
+        // Add summary row
+        exportData.push({
+            "S. NO.": "",
+            "EMP ID": "",
+            "NAME": "TOTAL",
+            "BANK NAME": "",
+            "ACCOUNT NO": "",
+            "ACCOUNT TITLE": "",
+            "NET SALARY": totalAmount,
+        } as any);
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Bank Report");
+
+        const fileName = `Bank_Report_${filters.bankName || "All"}_${filters.monthYear}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
+    };
+
     const handleExportCSV = () => {
         if (data.length === 0) {
             toast.error("No data to export");
             return;
         }
 
-        const headers = ["S.NO", "NAME", "ACCOUNT NO.", "AMOUNT RS."];
+        const headers = ["S.NO", "EMP ID", "NAME", "BANK NAME", "ACCOUNT NO.", "ACCOUNT TITLE", "NET SALARY"];
         const rows = data.map((item, index) => [
             index + 1,
-            item.employee.employeeName,
-            item.accountNumber || "N/A",
+            `"${item.employee?.employeeId || 'N/A'}"`,
+            `"${item.employee?.employeeName || 'N/A'}"`,
+            `"${item.employee?.bankName || item.bankName || 'N/A'}"`,
+            `"${item.employee?.accountNumber || item.accountNumber || 'N/A'}"`,
+            `"${item.employee?.accountTitle || 'N/A'}"`,
             item.netSalary,
         ]);
 
         const csvContent = [
             headers.join(","),
             ...rows.map(row => row.join(",")),
-            ["", "TOTAL:", "", totalAmount]
+            ["", "", "TOTAL:", "", "", "", totalAmount]
         ].join("\n");
 
         const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `bank_report_${filters.bankName}_${filters.monthYear}.csv`);
+        link.setAttribute("download", `bank_report_${filters.bankName || "All"}_${filters.monthYear}.csv`);
         link.style.visibility = "hidden";
         document.body.appendChild(link);
         link.click();
@@ -122,12 +162,12 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                             />
                         </div>
                         <div className="min-w-[250px] flex-1">
-                            <label className="text-sm font-medium mb-2 block">Select Bank <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-medium mb-2 block">Select Bank</label>
                             <Autocomplete
-                                options={initialBanks.map(bank => ({ value: bank.name, label: bank.name }))}
+                                options={bankOptions}
                                 value={filters.bankName}
                                 onValueChange={(value) => setFilters({ ...filters, bankName: value || "" })}
-                                placeholder="Select Bank"
+                                placeholder="All Banks"
                                 searchPlaceholder="Search bank..."
                             />
                         </div>
@@ -148,6 +188,10 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                                 <Printer className="h-4 w-4 mr-2" />
                                 Print
                             </Button>
+                            <Button variant="outline" onClick={handleExportExcel} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300">
+                                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                                Export Excel
+                            </Button>
                             <Button variant="outline" onClick={handleExportCSV}>
                                 <FileDown className="h-4 w-4 mr-2" />
                                 Export CSV
@@ -159,7 +203,7 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
 
             <Card className="print:shadow-none print:border-none">
                 <CardContent className="p-8 print:p-0">
-                    <div className="max-w-4xl mx-auto space-y-8 text-sm">
+                    <div className="max-w-6xl mx-auto space-y-8 text-sm">
                         {/* Header Info */}
                         <div className="flex justify-between items-start">
                             <div className="space-y-1">
@@ -169,7 +213,7 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
 
                         <div className="space-y-1">
                             <p className="font-bold text-base underline">The Manager</p>
-                            <p className="font-bold">{filters.bankName || "[Bank Name]"}</p>
+                            <p className="font-bold">{filters.bankName && filters.bankName !== "all" ? filters.bankName : "[Bank Name]"}</p>
                             <p>{filters.branchAddress || "[Branch Address]"}</p>
                         </div>
 
@@ -188,24 +232,30 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                         <table className="w-full border-collapse border border-gray-300">
                             <thead>
                                 <tr className="bg-gray-50">
-                                    <th className="border border-gray-300 px-4 py-2 text-left w-16">S. NO.</th>
-                                    <th className="border border-gray-300 px-4 py-2 text-left">NAME</th>
-                                    <th className="border border-gray-300 px-4 py-2 text-left">ACCOUNT NO.</th>
-                                    <th className="border border-gray-300 px-4 py-2 text-right">AMOUNT RS.</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-left w-12">S. NO.</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-left">EMP ID</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-left">NAME</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-left">BANK NAME</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-left">ACCOUNT NO.</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-left">ACCOUNT TITLE</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-right">NET SALARY (RS.)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {data.map((item, index) => (
                                     <tr key={item.id}>
-                                        <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
-                                        <td className="border border-gray-300 px-4 py-2 uppercase">{item.employee.employeeName}</td>
-                                        <td className="border border-gray-300 px-4 py-2 font-mono">{item.accountNumber || "N/A"}</td>
-                                        <td className="border border-gray-300 px-4 py-2 text-right">{Number(item.netSalary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td className="border border-gray-300 px-3 py-2">{index + 1}</td>
+                                        <td className="border border-gray-300 px-3 py-2 font-mono">{item.employee?.employeeId || "N/A"}</td>
+                                        <td className="border border-gray-300 px-3 py-2 uppercase font-medium">{item.employee?.employeeName || "N/A"}</td>
+                                        <td className="border border-gray-300 px-3 py-2">{item.employee?.bankName || item.bankName || "N/A"}</td>
+                                        <td className="border border-gray-300 px-3 py-2 font-mono">{item.employee?.accountNumber || item.accountNumber || "N/A"}</td>
+                                        <td className="border border-gray-300 px-3 py-2">{item.employee?.accountTitle || "N/A"}</td>
+                                        <td className="border border-gray-300 px-3 py-2 text-right font-medium">{Number(item.netSalary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     </tr>
                                 ))}
                                 {data.length === 0 && (
                                     <tr>
-                                        <td colSpan={4} className="border border-gray-300 px-4 py-8 text-center text-gray-400">
+                                        <td colSpan={7} className="border border-gray-300 px-4 py-8 text-center text-gray-400">
                                             No records found. Select criteria and click Search.
                                         </td>
                                     </tr>
@@ -213,7 +263,7 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                             </tbody>
                             <tfoot className="font-bold">
                                 <tr>
-                                    <td colSpan={3} className="border border-gray-300 px-4 py-2 text-right">TOTAL:</td>
+                                    <td colSpan={6} className="border border-gray-300 px-4 py-2 text-right">TOTAL:</td>
                                     <td className="border border-gray-300 px-4 py-2 text-right underline decoration-double">
                                         {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
@@ -251,7 +301,7 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
           .p-8.print\:p-0 {
             padding: 0 !important;
           }
-          .max-w-4xl {
+          .max-w-4xl, .max-w-6xl {
             max-width: 100% !important;
           }
           .CardContent-root, .p-8 {

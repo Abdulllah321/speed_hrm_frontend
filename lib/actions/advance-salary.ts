@@ -235,3 +235,31 @@ export async function deleteAdvanceSalary(id: string): Promise<{ status: boolean
     return { status: false, message: error instanceof Error ? error.message : "Failed to delete advance salary" };
   }
 }
+
+// Bulk create advance salaries
+export async function bulkCreateAdvanceSalaries(data: {
+  advanceSalaries: Array<{
+    employeeId: string;
+    amount: number;
+    neededOn: string;
+    deductionMonthYear: string;
+    reason: string;
+    disbursementType?: string;
+  }>;
+  isApproved?: boolean;
+}): Promise<{ status: boolean; data?: AdvanceSalary[]; message?: string }> {
+  try {
+    const res = await authFetch(`/advance-salaries/bulk`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errorData = res.data || { message: "Failed to bulk create advance salaries" };
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    return res.data;
+  } catch (error) {
+    console.error("Error in bulk create advance salaries:", error);
+    return { status: false, message: error instanceof Error ? error.message : "Failed to bulk create advance salaries" };
+  }
+}

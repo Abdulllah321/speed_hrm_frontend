@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
 import { getEmployeeById } from "@/lib/actions/employee";
 import { useEmployeeDropdown } from "@/hooks/use-employee-dropdown";
@@ -30,6 +30,7 @@ import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { createAdvanceSalary } from "@/lib/actions/advance-salary";
+import { AdvanceSalaryBulkUploadModal } from "@/components/advance-salary/advance-salary-bulk-upload-modal";
 
 // Zod validation schema
 const advanceSalaryFormSchema = z.object({
@@ -76,6 +77,7 @@ export default function CreateAdvanceSalaryPage() {
   // Check if user has permission to create advance salary for others
   const canCreateForOthers = isAdmin() || hasPermission("hr.advance-salary.create");
   
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
@@ -207,13 +209,19 @@ export default function CreateAdvanceSalaryPage() {
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <Link href="/hr/payroll-setup/advance-salary/view" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
         </Link>
+        {canCreateForOthers && (
+          <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Upload Advance Salary
+          </Button>
+        )}
       </div>
 
       <Form {...form}>
@@ -524,6 +532,17 @@ export default function CreateAdvanceSalaryPage() {
           </div>
         </form>
       </Form>
+
+      <AdvanceSalaryBulkUploadModal
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        onSuccess={() => {
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push("/hr/payroll-setup/advance-salary/view");
+          });
+        }}
+      />
     </div>
   );
 }
