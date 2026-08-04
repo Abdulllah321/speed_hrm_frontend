@@ -778,11 +778,17 @@ export function GeneratePayrollClient({
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="mt-4 flex justify-end">
+                        <div className="mt-4 flex justify-end items-center gap-8 border-t pt-4">
                             <div className="text-right">
-                                <div className="text-sm text-muted-foreground">Total Payout</div>
-                                <div className="text-2xl font-bold">
-                                    {previewData.reduce((acc, curr) => acc + (curr.netSalary || 0), 0).toLocaleString()}
+                                <div className="text-sm text-muted-foreground font-medium">Total Monthly Tax</div>
+                                <div className="text-2xl font-bold text-amber-600">
+                                    {Math.round(previewData.reduce((acc, curr) => acc + (Number(curr.taxDeduction) || 0), 0)).toLocaleString()}
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-sm text-muted-foreground font-medium">Total Payout</div>
+                                <div className="text-2xl font-bold text-green-600">
+                                    {Math.round(previewData.reduce((acc, curr) => acc + (Number(curr.netSalary) || 0), 0)).toLocaleString()}
                                 </div>
                             </div>
                         </div>
