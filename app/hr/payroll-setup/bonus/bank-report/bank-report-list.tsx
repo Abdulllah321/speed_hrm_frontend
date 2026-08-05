@@ -86,7 +86,7 @@ export function BankReportList({ initialBonuses = [], banks = [] }: BankReportLi
           sNo: employeeMap.size + 1,
           employeeId: bonus.employee?.employeeId || "",
           employeeName: bonus.employee?.employeeName || "",
-          accountNumber: bonus.employee?.accountNumber || "",
+          accountNumber: bonus.employee?.accountNumber || "Cheque",
           accountTitle: bonus.employee?.accountTitle || "",
           bonusAmount: 0,
         });
