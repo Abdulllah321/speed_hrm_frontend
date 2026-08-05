@@ -70,12 +70,20 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
             return;
         }
 
+        const getAccountNumberDisplay = (item: any) => {
+            const raw = item.employee?.accountNumber || item.accountNumber;
+            if (!raw || String(raw).trim() === "" || String(raw).trim().toUpperCase() === "N/A") {
+                return "Cheque";
+            }
+            return String(raw).trim();
+        };
+
         const exportData = data.map((item, index) => ({
             "S. NO.": index + 1,
             "EMP ID": item.employee?.employeeId || "N/A",
             "NAME": item.employee?.employeeName || "N/A",
             "BANK NAME": item.employee?.bankName || item.bankName || "N/A",
-            "ACCOUNT NO": item.employee?.accountNumber || item.accountNumber || "N/A",
+            "ACCOUNT NO": getAccountNumberDisplay(item),
             "ACCOUNT TITLE": item.employee?.accountTitle || "N/A",
             "NET SALARY": Number(item.netSalary) || 0,
         }));
@@ -105,13 +113,21 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
             return;
         }
 
+        const getAccountNumberDisplay = (item: any) => {
+            const raw = item.employee?.accountNumber || item.accountNumber;
+            if (!raw || String(raw).trim() === "" || String(raw).trim().toUpperCase() === "N/A") {
+                return "Cheque";
+            }
+            return String(raw).trim();
+        };
+
         const headers = ["S.NO", "EMP ID", "NAME", "BANK NAME", "ACCOUNT NO.", "ACCOUNT TITLE", "NET SALARY"];
         const rows = data.map((item, index) => [
             index + 1,
             `"${item.employee?.employeeId || 'N/A'}"`,
             `"${item.employee?.employeeName || 'N/A'}"`,
             `"${item.employee?.bankName || item.bankName || 'N/A'}"`,
-            `"${item.employee?.accountNumber || item.accountNumber || 'N/A'}"`,
+            `"${getAccountNumberDisplay(item)}"`,
             `"${item.employee?.accountTitle || 'N/A'}"`,
             item.netSalary,
         ]);
@@ -248,7 +264,15 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                                         <td className="border border-gray-300 px-3 py-2 font-mono">{item.employee?.employeeId || "N/A"}</td>
                                         <td className="border border-gray-300 px-3 py-2 uppercase font-medium">{item.employee?.employeeName || "N/A"}</td>
                                         <td className="border border-gray-300 px-3 py-2">{item.employee?.bankName || item.bankName || "N/A"}</td>
-                                        <td className="border border-gray-300 px-3 py-2 font-mono">{item.employee?.accountNumber || item.accountNumber || "N/A"}</td>
+                                        <td className="border border-gray-300 px-3 py-2 font-mono">
+                                            {(() => {
+                                                const raw = item.employee?.accountNumber || item.accountNumber;
+                                                if (!raw || String(raw).trim() === "" || String(raw).trim().toUpperCase() === "N/A") {
+                                                    return "Cheque";
+                                                }
+                                                return String(raw).trim();
+                                            })()}
+                                        </td>
                                         <td className="border border-gray-300 px-3 py-2">{item.employee?.accountTitle || "N/A"}</td>
                                         <td className="border border-gray-300 px-3 py-2 text-right font-medium">{Number(item.netSalary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     </tr>

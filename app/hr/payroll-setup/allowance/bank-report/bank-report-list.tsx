@@ -86,7 +86,7 @@ export function BankReportList({ initialAllowances = [], banks = [] }: BankRepor
           sNo: employeeMap.size + 1,
           employeeId: allowance.employee?.employeeId || "",
           employeeName: allowance.employee?.employeeName || "",
-          accountNumber: allowance.employee?.accountNumber || "",
+          accountNumber: allowance.employee?.accountNumber || "Cheque",
           accountTitle: allowance.employee?.accountTitle || "",
           allowanceAmount: 0,
         });
