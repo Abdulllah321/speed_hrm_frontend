@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Printer, Download, Plus, CreditCard, Wallet, Eye, CheckCircle2, XCircle, FileCheck, Send, Loader2 } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { ReceiptVoucher, updateReceiptVoucherStatus } from "@/lib/actions/receipt-voucher";
@@ -64,6 +65,8 @@ export function ReceiptVoucherList({
     const [printingVoucher, setPrintingVoucher] = useState<ReceiptVoucher | null>(null);
     const [isExporting, setIsExporting] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [selectedVoucherIds, setSelectedVoucherIds] = useState<string[]>([]);
+    const [searchTerm, setSearchTerm] = useState<string>("");
 
     useEffect(() => {
         setMounted(true);
@@ -73,13 +76,20 @@ export function ReceiptVoucherList({
         setIsExporting(true);
         try {
             const result = await queueReceiptVouchersExport({
-                type:     type,
-                status:   status !== "all" ? status : undefined,
-                dateFrom: fromDate ? fromDate.toISOString().split("T")[0] : undefined,
-                dateTo:   toDate   ? toDate.toISOString().split("T")[0]   : undefined,
+                type:        type,
+                status:      status !== "all" ? status : undefined,
+                dateFrom:    fromDate ? fromDate.toISOString().split("T")[0] : undefined,
+                dateTo:      toDate   ? toDate.toISOString().split("T")[0]   : undefined,
+                accountId:   selectedAccount !== "" && selectedAccount !== "all" ? selectedAccount : undefined,
+                search:      searchTerm.trim() ? searchTerm.trim() : undefined,
+                ids:         selectedVoucherIds.length > 0 ? selectedVoucherIds : undefined,
             });
             if (result.status) {
-                toast.success("Export queued! You'll receive a notification when your file is ready.");
+                toast.success(
+                    selectedVoucherIds.length > 0
+                        ? `Export queued for ${selectedVoucherIds.length} selected voucher(s)!`
+                        : "Export queued! You'll receive a notification when your file is ready."
+                );
             } else {
                 toast.error(result.message || "Failed to queue export.");
             }
@@ -152,6 +162,28 @@ export function ReceiptVoucherList({
     };
 
     const columns = useMemo<ColumnDef<ReceiptVoucher>[]>(() => [
+        {
+            id: "select",
+            header: ({ table }) => (
+                <Checkbox
+                    checked={
+                        table.getIsAllPageRowsSelected() ||
+                        (table.getIsSomePageRowsSelected() && "indeterminate")
+                    }
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    aria-label="Select all"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        },
         {
             accessorKey: "rvNo",
             header: "R.V. No.",
@@ -412,7 +444,11 @@ export function ReceiptVoucherList({
                         {isExporting
                             ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             : <Download className="mr-2 h-4 w-4" />}
-                        {isExporting ? "Queuing..." : "Export (xlsx)"}
+                        {isExporting
+                            ? "Queuing..."
+                            : selectedVoucherIds.length > 0
+                                ? `Export Selected (${selectedVoucherIds.length})`
+                                : "Export (xlsx)"}
                     </Button>
                 </div>
             </div>
@@ -563,6 +599,9 @@ export function ReceiptVoucherList({
                             data={filteredData}
                             searchFields={[{ key: "rvNo", label: "RV Number" }, { key: "description", label: "Description" }]}
                             tableId="receipt-voucher-list"
+                            enableRowSelection
+                            onSelectionChange={setSelectedVoucherIds}
+                            onSearchChange={setSearchTerm}
                         />
                     </CardContent>
                 </Card>

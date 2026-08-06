@@ -41,8 +41,12 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
   }, []);
 
   const isBank = voucher.type === "bank";
-  const debitRows = voucher.details.filter((d) => Number(d.debit) > 0);
-  const creditRows = voucher.details.filter((d) => Number(d.credit) > 0);
+  const debitRows = voucher.details
+    .filter((d) => Number(d.debit) > 0)
+    .sort((a, b) => Number(b.debit) - Number(a.debit));
+  const creditRows = voucher.details
+    .filter((d) => Number(d.credit) > 0)
+    .sort((a, b) => Number(b.credit) - Number(a.credit));
   const totalDebit = debitRows.reduce((s, d) => s + (Number(d.debit) || 0), 0);
   const totalCredit = Number(voucher.creditAmount) || totalDebit;
 

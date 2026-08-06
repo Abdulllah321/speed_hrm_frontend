@@ -184,6 +184,10 @@ type DataTableProps<TData extends DataTableRow> = {
   filterSlot?: React.ReactNode;
   /** Optional initial page size (defaults to 25) */
   initialPageSize?: number;
+  /** Enable row selection checkboxes */
+  enableRowSelection?: boolean;
+  /** Callback triggered when selected row IDs change */
+  onSelectionChange?: (selectedIds: string[]) => void;
   /** Enable virtualization */
   virtualized?: boolean;
 };
@@ -209,6 +213,8 @@ export default function DataTable<TData extends DataTableRow>({
   canBulkDelete = true,
   canRowEdit = true,
   canRowDelete = true,
+  enableRowSelection: enableRowSelectionProp,
+  onSelectionChange,
   manualPagination = false,
   rowCount,
   pageCount,
@@ -387,6 +393,8 @@ export default function DataTable<TData extends DataTableRow>({
     ];
   }, [columns, onRowEdit, onRowDelete, canRowEdit, canRowDelete]);
 
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
+
   const table = useReactTable({
     data,
     columns: tableColumns,
@@ -398,7 +406,8 @@ export default function DataTable<TData extends DataTableRow>({
       onSortingChangeProp?.(next);
     },
     enableSortingRemoval: false,
-    enableRowSelection: !!(onMultiDelete || onBulkEdit),
+    enableRowSelection: enableRowSelectionProp ?? !!(onMultiDelete || onBulkEdit || onSelectionChange),
+    onRowSelectionChange: setRowSelection,
     getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: (updater) => {
       const next =
@@ -471,9 +480,17 @@ export default function DataTable<TData extends DataTableRow>({
       pagination,
       columnFilters,
       columnVisibility,
+      rowSelection,
       globalFilter: globalFilterValue,
     },
   });
+
+  useEffect(() => {
+    if (onSelectionChange) {
+      const selectedRowIds = table.getSelectedRowModel().rows.map((r) => r.original.id);
+      onSelectionChange(selectedRowIds);
+    }
+  }, [rowSelection, onSelectionChange, table]);
 
   useEffect(() => {
     setData(initialData);

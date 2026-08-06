@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import Link from "next/link";
-import { Printer, Download, Eye, CheckCircle2, XCircle, Store, Building2, Plus, FileCheck, CheckSquare, Loader2 } from "lucide-react";
+import { Printer, Download, Eye, Pencil, CheckCircle2, XCircle, Store, Building2, Plus, FileCheck, CheckSquare, Loader2 } from "lucide-react";
 import { ReceiptVoucher, updateReceiptVoucherStatus, bulkUpdateReceiptVoucherStatus, queueReceiptVouchersExport } from "@/lib/actions/receipt-voucher";
 import { RetailSaleReceiptVoucherPrint } from "./retail-sale-receipt-voucher-print";
 import { format } from "date-fns";
@@ -321,6 +321,18 @@ export function RetailSaleReceiptVoucherList({
                                 <Eye className="h-3.5 w-3.5" />
                             </Button>
                         </Link>
+                        {(!permissions || permissions.canUpdate) && !isApproved && (
+                            <Link href={`/erp/finance/retail-sale-receipt-voucher/${v.id}/edit`}>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-gray-600 hover:text-amber-600"
+                                    title="Edit RSRV"
+                                >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                            </Link>
+                        )}
                         <Button
                             variant="ghost"
                             size="icon"

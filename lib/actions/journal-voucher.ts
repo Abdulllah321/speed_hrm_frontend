@@ -219,12 +219,18 @@ export async function queueJournalVouchersExport(opts?: {
     status?: string;
     dateFrom?: string;
     dateTo?: string;
+    accountId?: string;
+    search?: string;
+    ids?: string[];
 }): Promise<{ status: boolean; jobId?: string; message?: string }> {
     try {
         const params = new URLSearchParams();
-        if (opts?.status   && opts.status   !== 'all') params.set('status',   opts.status);
-        if (opts?.dateFrom)                             params.set('dateFrom', opts.dateFrom);
-        if (opts?.dateTo)                               params.set('dateTo',   opts.dateTo);
+        if (opts?.status    && opts.status    !== 'all') params.set('status',    opts.status);
+        if (opts?.dateFrom)                              params.set('dateFrom',  opts.dateFrom);
+        if (opts?.dateTo)                                params.set('dateTo',    opts.dateTo);
+        if (opts?.accountId && opts.accountId !== 'all') params.set('accountId', opts.accountId);
+        if (opts?.search    && opts.search.trim())       params.set('search',    opts.search.trim());
+        if (opts?.ids       && opts.ids.length > 0)      params.set('ids',       opts.ids.join(','));
 
         const response = await authFetch(
             `/finance/journal-vouchers/export?${params.toString()}`,

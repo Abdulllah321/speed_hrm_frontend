@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Printer, Download, Plus, CreditCard, Wallet, Eye, CheckCircle2, XCircle, FileCheck, Send, Loader2 } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { PaymentVoucher, updatePaymentVoucherStatus } from "@/lib/actions/payment-voucher";
@@ -64,6 +65,8 @@ export function PaymentVoucherList({
     const [printingVoucher, setPrintingVoucher] = useState<PaymentVoucher | null>(null);
     const [isExporting, setIsExporting] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [selectedVoucherIds, setSelectedVoucherIds] = useState<string[]>([]);
+    const [searchTerm, setSearchTerm] = useState<string>("");
 
     useEffect(() => {
         setMounted(true);
@@ -73,13 +76,20 @@ export function PaymentVoucherList({
         setIsExporting(true);
         try {
             const result = await queuePaymentVouchersExport({
-                type:     type,
-                status:   status !== "all" ? status : undefined,
-                dateFrom: fromDate ? fromDate.toISOString().split("T")[0] : undefined,
-                dateTo:   toDate   ? toDate.toISOString().split("T")[0]   : undefined,
+                type:        type,
+                status:      status !== "all" ? status : undefined,
+                dateFrom:    fromDate ? fromDate.toISOString().split("T")[0] : undefined,
+                dateTo:      toDate   ? toDate.toISOString().split("T")[0]   : undefined,
+                accountId:   selectedAccount !== "" && selectedAccount !== "all" ? selectedAccount : undefined,
+                search:      searchTerm.trim() ? searchTerm.trim() : undefined,
+                ids:         selectedVoucherIds.length > 0 ? selectedVoucherIds : undefined,
             });
             if (result.status) {
-                toast.success("Export queued! You'll receive a notification when your file is ready.");
+                toast.success(
+                    selectedVoucherIds.length > 0
+                        ? `Export queued for ${selectedVoucherIds.length} selected voucher(s)!`
+                        : "Export queued! You'll receive a notification when your file is ready."
+                );
             } else {
                 toast.error(result.message || "Failed to queue export.");
             }
@@ -153,6 +163,28 @@ export function PaymentVoucherList({
 
     const columns = useMemo<ColumnDef<PaymentVoucher>[]>(() => [
         {
+            id: "select",
+            header: ({ table }) => (
+                <Checkbox
+                    checked={
+                        table.getIsAllPageRowsSelected() ||
+                        (table.getIsSomePageRowsSelected() && "indeterminate")
+                    }
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    aria-label="Select all"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        },
+        {
             accessorKey: "pvNo",
             header: "P.V. No.",
             cell: ({ row }) => (
@@ -169,6 +201,16 @@ export function PaymentVoucherList({
             accessorKey: "pvDate",
             header: "P.V. Date",
             cell: ({ row }) => format(new Date(row.original.pvDate), "dd-MM-yyyy")
+        },
+        {
+            accessorKey: "refBillNo",
+            header: "Ref / Bill No.",
+            cell: ({ row }) => row.original.refBillNo || "-"
+        },
+        {
+            accessorKey: "description",
+            header: "Description",
+            cell: ({ row }) => <div className="truncate max-w-[150px]">{row.original.description || "-"}</div>
         },
         {
             id: "details",
@@ -248,11 +290,6 @@ export function PaymentVoucherList({
                     </div>
                 );
             }
-        },
-        {
-            accessorKey: "refBillNo",
-            header: "Ref / Bill No.",
-            cell: ({ row }) => row.original.refBillNo || "-"
         },
         {
             accessorKey: "status",
@@ -467,7 +504,11 @@ export function PaymentVoucherList({
                                     {isExporting
                                         ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         : <Download className="mr-2 h-4 w-4" />}
-                                    {isExporting ? "Queuing..." : "Export (xlsx)"}
+                                    {isExporting
+                                        ? "Queuing..."
+                                        : selectedVoucherIds.length > 0
+                                            ? `Export Selected (${selectedVoucherIds.length})`
+                                            : "Export (xlsx)"}
                                 </Button>
                             </div>
                         </div>
@@ -547,8 +588,11 @@ export function PaymentVoucherList({
                         <DataTable
                             columns={columns}
                             data={filteredData}
-                            searchFields={[{ key: "pvNo", label: "PV Number" }]}
+                            searchFields={[{ key: "pvNo", label: "PV Number" }, { key: "description", label: "Description" }]}
                             tableId="payment-voucher-list"
+                            enableRowSelection
+                            onSelectionChange={setSelectedVoucherIds}
+                            onSearchChange={setSearchTerm}
                         />
                     </CardContent>
                 </Card>

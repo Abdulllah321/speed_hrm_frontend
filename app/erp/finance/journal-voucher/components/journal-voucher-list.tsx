@@ -40,6 +40,8 @@ import DataTable from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 
+import { Checkbox } from "@/components/ui/checkbox";
+
 interface LocalDraft {
   voucherNo: string;
   updatedAt: string;
@@ -78,6 +80,8 @@ export function JournalVoucherList({
   );
   const [isExporting, setIsExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [selectedVoucherIds, setSelectedVoucherIds] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
     setMounted(true);
@@ -87,13 +91,18 @@ export function JournalVoucherList({
     setIsExporting(true);
     try {
       const result = await queueJournalVouchersExport({
-        status: status !== "all" ? status : undefined,
-        dateFrom: fromDate ? fromDate.toISOString().split("T")[0] : undefined,
-        dateTo: toDate ? toDate.toISOString().split("T")[0] : undefined,
+        status:      status !== "all" ? status : undefined,
+        dateFrom:    fromDate ? fromDate.toISOString().split("T")[0] : undefined,
+        dateTo:      toDate   ? toDate.toISOString().split("T")[0]   : undefined,
+        accountId:   selectedAccount !== "" && selectedAccount !== "all" ? selectedAccount : undefined,
+        search:      searchTerm.trim() ? searchTerm.trim() : undefined,
+        ids:         selectedVoucherIds.length > 0 ? selectedVoucherIds : undefined,
       });
       if (result.status) {
         toast.success(
-          "Export queued! You'll receive a notification when your file is ready.",
+          selectedVoucherIds.length > 0
+            ? `Export queued for ${selectedVoucherIds.length} selected voucher(s)!`
+            : "Export queued! You'll receive a notification when your file is ready.",
         );
       } else {
         toast.error(result.message || "Failed to queue export.");
@@ -177,6 +186,28 @@ export function JournalVoucherList({
   const columns = useMemo<ColumnDef<JournalVoucher>[]>(
     () => [
       {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+      {
         accessorKey: "jvNo",
         header: "J.V. No.",
         cell: ({ row }) => (
@@ -193,6 +224,15 @@ export function JournalVoucherList({
         accessorKey: "jvDate",
         header: "J.V. Date",
         cell: ({ row }) => format(new Date(row.original.jvDate), "dd-MMM-yyyy"),
+      },
+      {
+        accessorKey: "description",
+        header: "Description",
+        cell: ({ row }) => (
+          <div className="truncate max-w-[150px]">
+            {row.original.description || "-"}
+          </div>
+        ),
       },
       {
         id: "details",
@@ -486,7 +526,11 @@ export function JournalVoucherList({
               ) : (
                 <Download className="mr-2 h-4 w-4" />
               )}
-              {isExporting ? "Queuing..." : "Export (xlsx)"}
+              {isExporting
+                ? "Queuing..."
+                : selectedVoucherIds.length > 0
+                  ? `Export Selected (${selectedVoucherIds.length})`
+                  : "Export (xlsx)"}
             </Button>
           </div>
         </CardHeader>
@@ -567,8 +611,11 @@ export function JournalVoucherList({
           <DataTable
             columns={columns}
             data={filteredVouchers}
-            searchFields={[{ key: "jvNo", label: "JV Number" }]}
+            searchFields={[{ key: "jvNo", label: "JV Number" }, { key: "description", label: "Description" }]}
             tableId="journal-voucher-list"
+            enableRowSelection
+            onSelectionChange={setSelectedVoucherIds}
+            onSearchChange={setSearchTerm}
           />
         </CardContent>
       </Card>
