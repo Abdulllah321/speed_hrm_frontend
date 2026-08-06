@@ -182,7 +182,9 @@ export function RetailSaleReceiptVoucherList({
         }
     };
 
-    const isAllSelected = filteredData.length > 0 && selectedIds.length === filteredData.length;
+    const canCreate = permissions?.canCreate !== false;
+    const canUpdate = permissions?.canUpdate !== false;
+    const canApprove = permissions?.canApprove !== false;
 
     const columns: ColumnDef<ReceiptVoucher>[] = [
         {
@@ -321,7 +323,7 @@ export function RetailSaleReceiptVoucherList({
                                 <Eye className="h-3.5 w-3.5" />
                             </Button>
                         </Link>
-                        {(!permissions || permissions.canUpdate) && !isApproved && (
+                        {canUpdate && !isApproved && (
                             <Link href={`/erp/finance/retail-sale-receipt-voucher/${v.id}/edit`}>
                                 <Button
                                     variant="ghost"
@@ -344,7 +346,7 @@ export function RetailSaleReceiptVoucherList({
                         </Button>
                         
                         {/* Step 1: Check / Verify */}
-                        {isPendingCheck && permissions?.canApprove && (
+                        {isPendingCheck && canApprove && (
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -357,7 +359,7 @@ export function RetailSaleReceiptVoucherList({
                         )}
 
                         {/* Step 2: Final Approve */}
-                        {permissions?.canApprove && !isApproved && (
+                        {canApprove && !isApproved && (
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -370,7 +372,7 @@ export function RetailSaleReceiptVoucherList({
                         )}
 
                         {/* Reject */}
-                        {permissions?.canApprove && !isApproved && st !== "rejected" && (
+                        {canApprove && !isApproved && st !== "rejected" && (
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -402,7 +404,7 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                         </div>
                         <div className="flex gap-2">
-                            {permissions?.canCreate && (
+                            {canCreate && (
                                 <Link href="/erp/finance/retail-sale-receipt-voucher/create">
                                     <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700">
                                         <Plus className="w-3.5 h-3.5" />
