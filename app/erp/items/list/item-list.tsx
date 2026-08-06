@@ -48,6 +48,8 @@ interface Item {
     category?: { name: string } | null;
     division?: { name: string } | null;
     uniqueNo?: string | null;
+    size?: { name: string } | null;
+    color?: { name: string } | null;
 }
 
 // ─── Filter Sheet ─────────────────────────────────────────────────────────────
@@ -242,6 +244,40 @@ function useItemColumns(onDelete: (id: string) => void, canUpdate: boolean, canD
                     )}
                 </div>
             ),
+        },
+        {
+            accessorKey: "barCode",
+            header: "Barcode",
+            cell: ({ row }) =>
+                row.original.barCode ? (
+                    <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
+                        {row.original.barCode}
+                    </span>
+                ) : (
+                    <span className="text-muted-foreground">—</span>
+                ),
+        },
+        {
+            accessorKey: "size",
+            header: "Size",
+            cell: ({ row }) =>
+                row.original.size ? (
+                    <Badge variant="outline" className="text-xs font-medium">
+                        {row.original.size.name}
+                    </Badge>
+                ) : (
+                    <span className="text-muted-foreground">—</span>
+                ),
+        },
+        {
+            accessorKey: "color",
+            header: "Color",
+            cell: ({ row }) =>
+                row.original.color ? (
+                    <span className="text-xs">{row.original.color.name}</span>
+                ) : (
+                    <span className="text-muted-foreground">—</span>
+                ),
         },
         {
             accessorKey: "brand",
