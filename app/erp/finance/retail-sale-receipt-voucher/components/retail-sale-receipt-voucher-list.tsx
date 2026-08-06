@@ -182,6 +182,7 @@ export function RetailSaleReceiptVoucherList({
         }
     };
 
+    const isAllSelected = filteredData.length > 0 && selectedIds.length === filteredData.length;
     const canCreate = permissions?.canCreate !== false;
     const canUpdate = permissions?.canUpdate !== false;
     const canApprove = permissions?.canApprove !== false;
