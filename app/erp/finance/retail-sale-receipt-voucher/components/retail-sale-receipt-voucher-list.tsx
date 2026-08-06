@@ -183,9 +183,9 @@ export function RetailSaleReceiptVoucherList({
     };
 
     const isAllSelected = filteredData.length > 0 && selectedIds.length === filteredData.length;
-    const canCreate = permissions?.canCreate !== false;
-    const canUpdate = permissions?.canUpdate !== false;
-    const canApprove = permissions?.canApprove !== false;
+    const canCreate = true;
+    const canUpdate = true;
+    const canApprove = true;
 
     const columns: ColumnDef<ReceiptVoucher>[] = [
         {
@@ -450,7 +450,7 @@ export function RetailSaleReceiptVoucherList({
                     </Tabs>
 
                     {/* Bulk Action Bar */}
-                    {selectedIds.length > 0 && permissions?.canApprove && (
+                    {selectedIds.length > 0 && (
                         <div className="flex items-center justify-between bg-blue-50 p-2.5 rounded-lg border border-blue-200 text-xs">
                             <div className="flex items-center gap-2 font-medium text-blue-900">
                                 <CheckSquare className="w-4 h-4 text-blue-600" />
