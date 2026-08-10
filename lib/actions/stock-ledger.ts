@@ -207,6 +207,13 @@ export async function queueStockValuationReportExport(filters: {
     startDate?: string;
     endDate?: string;
     format: "xlsx" | "pdf";
+    exportType?: "hierarchical" | "flat";
+    filterBrands?: string[];
+    filterDivisions?: string[];
+    filterCategories?: string[];
+    filterGenders?: string[];
+    filterSilhouettes?: string[];
+    searchText?: string;
     summaryOnly?: boolean;
     showBrand?: boolean;
     showDivision?: boolean;
@@ -226,6 +233,13 @@ export async function queueStockValuationReportExport(filters: {
                 startDate: filters.startDate,
                 endDate: filters.endDate,
                 format: filters.format,
+                exportType: filters.exportType,
+                filterBrands: filters.filterBrands,
+                filterDivisions: filters.filterDivisions,
+                filterCategories: filters.filterCategories,
+                filterGenders: filters.filterGenders,
+                filterSilhouettes: filters.filterSilhouettes,
+                searchText: filters.searchText,
                 summaryOnly: !!filters.summaryOnly,
                 showBrand: filters.showBrand,
                 showDivision: filters.showDivision,

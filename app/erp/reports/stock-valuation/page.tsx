@@ -306,7 +306,7 @@ export default function PosStockValuationReportPage() {
         return () => clearInterval(interval);
     }, [pdfExportState, pdfJobId]);
 
-    const handleExportExcelClick = async () => {
+    const handleExportExcelClick = async (exportType: "hierarchical" | "flat" = "hierarchical") => {
         if (!dateRange.from || !dateRange.to) return;
 
         // If completed, trigger download
@@ -329,6 +329,13 @@ export default function PosStockValuationReportPage() {
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "xlsx",
+                exportType,
+                filterBrands: [...filterBrands],
+                filterDivisions: [...filterDivisions],
+                filterCategories: [...filterCategories],
+                filterGenders: [...filterGenders],
+                filterSilhouettes: [...filterSilhouettes],
+                searchText: searchText.trim(),
                 summaryOnly,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
@@ -343,7 +350,7 @@ export default function PosStockValuationReportPage() {
                 setExportJobId(res.data.jobId);
                 setExportState("processing");
                 setExportProgress(5);
-                toast.info("Background Excel generation queued.");
+                toast.info(`Background ${exportType === "flat" ? "Flat Data" : "Hierarchical"} Excel export queued.`);
             } else {
                 setExportState("failed");
                 toast.error(res.message || "Failed to queue export job.");
@@ -378,6 +385,12 @@ export default function PosStockValuationReportPage() {
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "pdf",
+                filterBrands: [...filterBrands],
+                filterDivisions: [...filterDivisions],
+                filterCategories: [...filterCategories],
+                filterGenders: [...filterGenders],
+                filterSilhouettes: [...filterSilhouettes],
+                searchText: searchText.trim(),
                 summaryOnly,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
@@ -839,7 +852,7 @@ export default function PosStockValuationReportPage() {
                     </Button>
                     <Button
                         variant={exportState === "completed" ? "default" : "outline"}
-                        onClick={handleExportExcelClick}
+                        onClick={() => handleExportExcelClick("flat")}
                         disabled={(exportState === "queueing" || exportState === "processing") || reportData.length === 0}
                         className={cn(
                             "gap-2 font-semibold transition-all",
@@ -853,7 +866,16 @@ export default function PosStockValuationReportPage() {
                         ) : (
                             <Download className="h-4 w-4" />
                         )}
-                        {getExportButtonText()}
+                        {exportState === "idle" ? "Excel (Flat Data)" : getExportButtonText()}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => handleExportExcelClick("hierarchical")}
+                        disabled={(exportState === "queueing" || exportState === "processing") || reportData.length === 0}
+                        className="gap-2 font-semibold border-emerald-500/40 text-emerald-750 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                    >
+                        <Download className="h-4 w-4" />
+                        Excel (Hierarchy)
                     </Button>
                 </div>
             </div>
