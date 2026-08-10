@@ -307,7 +307,7 @@ export function PaymentPanel({
                                     </Label>
                                     <Input className="mt-1 h-8 text-xs font-mono" maxLength={4} placeholder="••••"
                                         value={tenderCardLast4}
-                                        onChange={(e) => onTenderCardLast4Change(e.target.value.replace(/\D/, ""))} />
+                                        onChange={(e) => onTenderCardLast4Change(e.target.value.replace(/\D/g, ""))} />
                                 </div>
                                 <div>
                                     <Label className="text-xs text-muted-foreground">

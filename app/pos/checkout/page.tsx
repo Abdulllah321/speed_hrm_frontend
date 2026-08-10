@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";.
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -69,6 +69,7 @@ export interface Tender {
   slipNo?: string;
   voucherId?: string;
   voucherFaceValue?: number;
+  cardholderName?: string;
 }
 export interface Customer {
   id: string;
@@ -651,27 +652,33 @@ export default function CheckoutPage() {
       return;
     }
 
-    if ((discountMode === "alliance" || (discountMode === "manual" && selectedAlliance)) && selectedAlliance) {
+    if (
+      (discountMode === "alliance" ||
+        (discountMode === "manual" && selectedAlliance)) &&
+      selectedAlliance
+    ) {
       if (tenderMethod === "cash") {
         toast.error("Cash payment is not allowed when Alliance is selected.");
         return;
       }
-      if (!tenderCardLast4 || tenderCardLast4.trim().length !== 4) {
-        toast.error(
-          "Card number (last 4 digits) is mandatory when Alliance is selected.",
-        );
-        return;
-      }
-      if (
-        !tenderSlip ||
-        !tenderSlip.trim() ||
-        tenderSlip.trim().length !== 6 ||
-        !/^\d+$/.test(tenderSlip)
-      ) {
-        toast.error(
-          "Auth ID / Approval Code must be a 6-digit numeric code when Alliance is selected.",
-        );
-        return;
+      if (tenderMethod === "card" || tenderMethod === "bank_transfer") {
+        if (!tenderCardLast4 || tenderCardLast4.trim().length !== 4) {
+          toast.error(
+            "Card number (last 4 digits) is mandatory when Alliance is selected.",
+          );
+          return;
+        }
+        if (
+          !tenderSlip ||
+          !tenderSlip.trim() ||
+          tenderSlip.trim().length !== 6 ||
+          !/^\d+$/.test(tenderSlip)
+        ) {
+          toast.error(
+            "Auth ID / Approval Code must be a 6-digit numeric code when Alliance is selected.",
+          );
+          return;
+        }
       }
       if (
         selectedAlliance.binNumbers &&
@@ -715,18 +722,19 @@ export default function CheckoutPage() {
         amount: tenderAmount,
         cardLast4: tenderCardLast4 || undefined,
         slipNo: tenderSlip || undefined,
+        cardholderName: tenderCardholderName || undefined,
       },
     ]);
     // When paying by card with an alliance selected, sync card details into allianceMeta
     if (
       (tenderMethod === "card" || tenderMethod === "bank_transfer") &&
-      discountMode === "alliance"
+      selectedAlliance
     ) {
       setAllianceMeta((prev) => ({
         ...prev,
-        cardholderName: tenderCardholderName,
-        cardLast4: tenderCardLast4,
-        merchantSlip: tenderSlip,
+        cardholderName: tenderCardholderName || prev.cardholderName,
+        cardLast4: tenderCardLast4 || prev.cardLast4,
+        merchantSlip: tenderSlip || prev.merchantSlip,
       }));
     }
 
@@ -893,50 +901,15 @@ export default function CheckoutPage() {
       toast.error("A customer must be selected to complete this sale.");
       return;
     }
-    if ((discountMode === "alliance" || (discountMode === "manual" && selectedAlliance)) && selectedAlliance) {
+    if (
+      (discountMode === "alliance" ||
+        (discountMode === "manual" && selectedAlliance)) &&
+      selectedAlliance
+    ) {
       const hasCash = tenders.some((t) => t.method === "cash");
       if (hasCash) {
         toast.error(
           "Alliance discount cannot be applied when cash payment is selected.",
-        );
-        return;
-      }
-      const activeCardLast4 = tenderCardLast4 || allianceMeta.cardLast4;
-      if (!activeCardLast4 || activeCardLast4.trim().length !== 4) {
-        toast.error(
-          "Card number (last 4 digits) is mandatory when Alliance is selected.",
-        );
-        return;
-      }
-      const activeSlip = tenderSlip || allianceMeta.merchantSlip;
-      if (
-        !activeSlip ||
-        activeSlip.trim().length !== 6 ||
-        !/^\d+$/.test(activeSlip)
-      ) {
-        toast.error(
-          "Auth ID / Approval Code must be a 6-digit numeric code when Alliance is selected.",
-        );
-        return;
-      }
-      const cardTender = tenders.find((t) => t.method === "card");
-      if (!cardTender) {
-        toast.error("Please add the card payment to the payment list.");
-        return;
-      }
-      if (!cardTender.cardLast4 || cardTender.cardLast4.trim().length !== 4) {
-        toast.error(
-          "Card number (last 4 digits) is mandatory for card payments when Alliance is selected.",
-        );
-        return;
-      }
-      if (
-        !cardTender.slipNo ||
-        cardTender.slipNo.trim().length !== 6 ||
-        !/^\d+$/.test(cardTender.slipNo)
-      ) {
-        toast.error(
-          "Auth ID / Approval Code must be a 6-digit numeric code for card payments when Alliance is selected.",
         );
         return;
       }
@@ -947,6 +920,43 @@ export default function CheckoutPage() {
       ) {
         toast.error("Please select a BIN number for the Alliance discount.");
         return;
+      }
+
+      const cardTender = tenders.find(
+        (t) => t.method === "card" || t.method === "bank_transfer",
+      );
+      const hasCardTender = !!cardTender;
+      const hasVoucherTender = tenders.some((t) => t.method === "voucher");
+      const hasCreditTender = tenders.some((t) => t.method === "credit_account");
+
+      if (!hasCardTender && !hasVoucherTender && !hasCreditTender) {
+        toast.error(
+          "A card, bank transfer, or voucher payment is required when Alliance is selected.",
+        );
+        return;
+      }
+
+      if (hasCardTender) {
+        const activeCardLast4 =
+          cardTender.cardLast4 || allianceMeta.cardLast4 || tenderCardLast4;
+        if (!activeCardLast4 || activeCardLast4.trim().length !== 4) {
+          toast.error(
+            "Card number (last 4 digits) is mandatory for card payments when Alliance is selected.",
+          );
+          return;
+        }
+        const activeSlip =
+          cardTender.slipNo || allianceMeta.merchantSlip || tenderSlip;
+        if (
+          !activeSlip ||
+          activeSlip.trim().length !== 6 ||
+          !/^\d+$/.test(activeSlip)
+        ) {
+          toast.error(
+            "Auth ID / Approval Code must be a 6-digit numeric code for card payments when Alliance is selected.",
+          );
+          return;
+        }
       }
     }
     // Merchant required if any card / bank_transfer tender was added
@@ -1004,12 +1014,24 @@ export default function CheckoutPage() {
       }
       if (discountMode === "coupon" && appliedCoupon)
         body.couponId = appliedCoupon.id;
-      if ((discountMode === "alliance" || discountMode === "manual") && selectedAlliance) {
+      if (
+        (discountMode === "alliance" || discountMode === "manual") &&
+        selectedAlliance
+      ) {
         body.allianceId = selectedAlliance.id;
+        const cardTender = tenders.find(
+          (t) => t.method === "card" || t.method === "bank_transfer",
+        );
         body.allianceMeta = {
-          cardholderName: tenderCardholderName || allianceMeta.cardholderName,
-          cardLast4: tenderCardLast4 || allianceMeta.cardLast4,
-          merchantSlip: tenderSlip || allianceMeta.merchantSlip,
+          cardholderName:
+            cardTender?.cardholderName ||
+            tenderCardholderName ||
+            allianceMeta.cardholderName ||
+            undefined,
+          cardLast4:
+            cardTender?.cardLast4 || allianceMeta.cardLast4 || undefined,
+          merchantSlip:
+            cardTender?.slipNo || allianceMeta.merchantSlip || undefined,
           binNumber: allianceMeta.binNumber || undefined,
         };
       }
@@ -1067,6 +1089,9 @@ export default function CheckoutPage() {
     holdOrderId,
     settings.requireCustomer,
     selectedMerchant,
+    tenderCardholderName,
+    tenderCardLast4,
+    tenderSlip,
   ]);
 
   // ── Credit Sale ────────────────────────────────────────────────────
@@ -1075,29 +1100,15 @@ export default function CheckoutPage() {
       toast.error("Please select a customer for credit sale.");
       return;
     }
-    if ((discountMode === "alliance" || (discountMode === "manual" && selectedAlliance)) && selectedAlliance) {
+    if (
+      (discountMode === "alliance" ||
+        (discountMode === "manual" && selectedAlliance)) &&
+      selectedAlliance
+    ) {
       const hasCash = tenders.some((t) => t.method === "cash");
       if (hasCash) {
         toast.error(
           "Alliance discount cannot be applied when cash payment is selected.",
-        );
-        return;
-      }
-      const activeCardLast4 = tenderCardLast4 || allianceMeta.cardLast4;
-      if (!activeCardLast4 || activeCardLast4.trim().length !== 4) {
-        toast.error(
-          "Card number (last 4 digits) is mandatory when Alliance is selected.",
-        );
-        return;
-      }
-      const activeSlip = tenderSlip || allianceMeta.merchantSlip;
-      if (
-        !activeSlip ||
-        activeSlip.trim().length !== 6 ||
-        !/^\d+$/.test(activeSlip)
-      ) {
-        toast.error(
-          "Auth ID / Approval Code must be a 6-digit numeric code when Alliance is selected.",
         );
         return;
       }
@@ -1108,6 +1119,32 @@ export default function CheckoutPage() {
       ) {
         toast.error("Please select a BIN number for the Alliance discount.");
         return;
+      }
+
+      const cardTender = tenders.find(
+        (t) => t.method === "card" || t.method === "bank_transfer",
+      );
+      if (cardTender) {
+        const activeCardLast4 =
+          cardTender.cardLast4 || allianceMeta.cardLast4 || tenderCardLast4;
+        if (!activeCardLast4 || activeCardLast4.trim().length !== 4) {
+          toast.error(
+            "Card number (last 4 digits) is mandatory for card payments when Alliance is selected.",
+          );
+          return;
+        }
+        const activeSlip =
+          cardTender.slipNo || allianceMeta.merchantSlip || tenderSlip;
+        if (
+          !activeSlip ||
+          activeSlip.trim().length !== 6 ||
+          !/^\d+$/.test(activeSlip)
+        ) {
+          toast.error(
+            "Auth ID / Approval Code must be a 6-digit numeric code for card payments when Alliance is selected.",
+          );
+          return;
+        }
       }
     }
     // Merchant required if any card / bank_transfer tender was added
@@ -1168,12 +1205,24 @@ export default function CheckoutPage() {
       }
       if (discountMode === "coupon" && appliedCoupon)
         body.couponId = appliedCoupon.id;
-      if ((discountMode === "alliance" || discountMode === "manual") && selectedAlliance) {
+      if (
+        (discountMode === "alliance" || discountMode === "manual") &&
+        selectedAlliance
+      ) {
         body.allianceId = selectedAlliance.id;
+        const cardTender = tenders.find(
+          (t) => t.method === "card" || t.method === "bank_transfer",
+        );
         body.allianceMeta = {
-          cardholderName: tenderCardholderName || allianceMeta.cardholderName,
-          cardLast4: tenderCardLast4 || allianceMeta.cardLast4,
-          merchantSlip: tenderSlip || allianceMeta.merchantSlip,
+          cardholderName:
+            cardTender?.cardholderName ||
+            tenderCardholderName ||
+            allianceMeta.cardholderName ||
+            undefined,
+          cardLast4:
+            cardTender?.cardLast4 || allianceMeta.cardLast4 || undefined,
+          merchantSlip:
+            cardTender?.slipNo || allianceMeta.merchantSlip || undefined,
           binNumber: allianceMeta.binNumber || undefined,
         };
       }
