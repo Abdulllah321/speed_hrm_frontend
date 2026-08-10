@@ -9,15 +9,20 @@ import {
 } from "@/lib/actions/employee";
 import type { MultiSelectOption } from "@/components/ui/multi-select";
 
-function normalizeFilterId(value?: string) {
-  if (!value || value === "all") return undefined;
+function normalizeFilterId(value?: string | string[]) {
+  if (!value) return undefined;
+  if (Array.isArray(value)) {
+    const filtered = value.filter((v) => v && v !== "all");
+    return filtered.length > 0 ? filtered.join(",") : undefined;
+  }
+  if (value === "all") return undefined;
   return value;
 }
 
 export interface UseEmployeeDropdownOptions {
   departmentId?: string;
   subDepartmentId?: string;
-  locationId?: string;
+  locationId?: string | string[];
   selectedIds?: string[];
   limit?: number;
   providentFundOnly?: boolean;

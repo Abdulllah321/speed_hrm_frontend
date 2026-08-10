@@ -994,6 +994,16 @@ export const menuData: MenuItem[] = [
         permissions: ["erp.sales.invoice.read"],
       },
       {
+        title: "Sales Returns",
+        href: "/erp/sales/sales-returns",
+        permissions: ["erp.sales.invoice.read"],
+      },
+      {
+        title: "Credit Notes",
+        href: "/erp/sales/credit-notes",
+        permissions: ["erp.sales.invoice.read"],
+      },
+      {
         title: "Reports",
         children: [
           { title: "Sales Summary", href: "/erp/sales/reports/summary" },

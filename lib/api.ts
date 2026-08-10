@@ -819,6 +819,136 @@ export const purchaseReturnApi = {
     fetchApi<{ nextReturnNumber: string }>('/purchase/purchase-returns/next-return-number'),
 };
 
+export interface SalesReturn {
+  id: string;
+  returnNumber: string;
+  sourceType: 'DELIVERY_CHALLAN' | 'INVOICE';
+  deliveryChallanId?: string;
+  salesInvoiceId?: string;
+  customerId: string;
+  warehouseId: string;
+  returnDate: string;
+  returnType: 'DEFECTIVE' | 'EXCESS' | 'WRONG_ITEM' | 'DAMAGED' | 'SHORTAGE';
+  reason?: string;
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
+  notes?: string;
+  staxEInvoiceNumber?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  items: SalesReturnItem[];
+  salesInvoice?: any;
+  deliveryChallan?: any;
+  customer?: any;
+  warehouse?: any;
+  creditNote?: CreditNote;
+}
+
+export interface SalesReturnItem {
+  id: string;
+  salesReturnId: string;
+  sourceItemType: 'DELIVERY_CHALLAN_ITEM' | 'INVOICE_ITEM';
+  deliveryChallanItemId?: string;
+  salesInvoiceItemId?: string;
+  itemId: string;
+  description?: string;
+  returnQty: number;
+  unitPrice: number;
+  lineTotal: number;
+  reason?: string;
+  item?: MasterItem;
+}
+
+export interface CreateSalesReturnDto {
+  sourceType: 'DELIVERY_CHALLAN' | 'INVOICE';
+  deliveryChallanId?: string;
+  salesInvoiceId?: string;
+  customerId: string;
+  warehouseId: string;
+  returnType?: 'DEFECTIVE' | 'EXCESS' | 'WRONG_ITEM' | 'DAMAGED' | 'SHORTAGE';
+  reason?: string;
+  notes?: string;
+  staxEInvoiceNumber?: string;
+  items: {
+    sourceItemType: 'DELIVERY_CHALLAN_ITEM' | 'INVOICE_ITEM';
+    deliveryChallanItemId?: string;
+    salesInvoiceItemId?: string;
+    itemId: string;
+    description?: string;
+    returnQty: number;
+    unitPrice: number;
+    lineTotal: number;
+    reason?: string;
+  }[];
+}
+
+export interface UpdateSalesReturnDto extends Partial<CreateSalesReturnDto> {}
+
+export const salesReturnApi = {
+  list: (params?: { status?: string }) => {
+    const cleanParams: Record<string, string> = {};
+    if (params) {
+      Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          cleanParams[key] = val;
+        }
+      });
+    }
+    const query = new URLSearchParams(cleanParams).toString();
+    return fetchApi<SalesReturn[]>(`/sales/sales-returns?${query}`);
+  },
+  create: (data: CreateSalesReturnDto) =>
+    fetchApi<SalesReturn>('/sales/sales-returns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getById: (id: string) =>
+    fetchApi<SalesReturn>(`/sales/sales-returns/${id}`),
+  update: (id: string, data: UpdateSalesReturnDto) =>
+    fetchApi<SalesReturn>(`/sales/sales-returns/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  updateStatus: (id: string, status: string, approvedBy?: string) =>
+    fetchApi<SalesReturn>(`/sales/sales-returns/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, approvedBy }),
+    }),
+  delete: (id: string) =>
+    fetchApi(`/sales/sales-returns/${id}`, { method: 'DELETE' }),
+  getEligibleInvoices: () =>
+    fetchApi<any[]>('/sales/sales-returns/eligible-invoices'),
+  getEligibleChallans: () =>
+    fetchApi<any[]>('/sales/sales-returns/eligible-challans'),
+  getNextReturnNumber: () =>
+    fetchApi<{ nextReturnNumber: string }>('/sales/sales-returns/next-return-number'),
+};
+
+export interface CreditNote {
+  id: string;
+  creditNoteNo: string;
+  date: string;
+  amount: number;
+  status: string;
+  salesReturnId?: string;
+  salesInvoiceId?: string;
+  customerId: string;
+  salesReturn?: SalesReturn;
+  salesInvoice?: any;
+  customer?: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const creditNoteApi = {
+  getAll: () => fetchApi<CreditNote[]>('/sales/credit-notes'),
+  getById: (id: string) => fetchApi<CreditNote>(`/sales/credit-notes/${id}`),
+};
+
 export const warehouseApi = {
   getAll: () => fetchApi<Warehouse[]>('/warehouse'),
   getById: (id: string) => fetchApi<Warehouse>(`/warehouse/${id}`),

@@ -8,8 +8,10 @@ import { JournalVoucherPrint, numberToWords } from "../components/journal-vouche
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import * as XLSX from "xlsx";
 import {
   Printer,
+  FileSpreadsheet,
   ArrowLeft,
   Hash,
   CalendarDays,
@@ -102,6 +104,132 @@ export default function JournalVoucherDetailPage({
     }
   };
 
+  const handleExportExcel = () => {
+    if (!voucher) return;
+
+    try {
+      // General Header Information
+      const headerRows = [
+        ["JOURNAL VOUCHER DETAILS", ""],
+        ["Voucher No:", voucher.jvNo],
+        ["Date:", voucher.jvDate ? format(new Date(voucher.jvDate), "dd MMM yyyy") : "—"],
+        ["Folio:", folio(voucher.id)],
+        ["Status:", voucher.status.toUpperCase()],
+        ["Remarks / Description:", voucher.description || "—"],
+        [], // empty row separator
+      ];
+
+      // Table Headers
+      const tableHeaders = [
+        "SR #",
+        "ACCOUNT CODE",
+        "ACCOUNT HEAD",
+        "TAG CODE",
+        "TAG ACCOUNT",
+        "TAX TYPE",
+        "REF BILL NO",
+        "NARRATION",
+        "DEBIT (PKR)",
+        "CREDIT (PKR)"
+      ];
+
+      // Data Rows
+      const detailsToExport = sortedDetails;
+      let totalDr = 0;
+      let totalCr = 0;
+
+      const dataRows = detailsToExport.map((d, idx) => {
+        const debitVal = Number(d.debit) || 0;
+        const creditVal = Number(d.credit) || 0;
+        totalDr += debitVal;
+        totalCr += creditVal;
+
+        return [
+          idx + 1,
+          d.accountCode || "",
+          d.accountName || "",
+          d.tagAccountCode || "",
+          d.tagAccountName || "",
+          d.taxType || "",
+          d.refBillNo || "",
+          d.narration || voucher.description || "",
+          debitVal,
+          creditVal,
+        ];
+      });
+
+      // Totals Row
+      const totalRow = [
+        "TOTAL",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        `Amount in words: ${numberToWords(totalDr)}`,
+        totalDr,
+        totalCr
+      ];
+
+      // Combine into sheet data matrix
+      const sheetData = [
+        ...headerRows,
+        tableHeaders,
+        ...dataRows,
+        [],
+        totalRow
+      ];
+
+      const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+      // Define Column Widths
+      worksheet["!cols"] = [
+        { wch: 8 },   // SR #
+        { wch: 16 },  // ACCOUNT CODE
+        { wch: 35 },  // ACCOUNT HEAD
+        { wch: 16 },  // TAG CODE
+        { wch: 30 },  // TAG ACCOUNT
+        { wch: 14 },  // TAX TYPE
+        { wch: 18 },  // REF BILL NO
+        { wch: 45 },  // NARRATION
+        { wch: 20 },  // DEBIT
+        { wch: 20 },  // CREDIT
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Journal Voucher");
+
+      const cleanJvNo = voucher.jvNo.replace(/[^a-zA-Z0-9_-]/g, "_");
+      XLSX.writeFile(workbook, `Journal_Voucher_${cleanJvNo}.xlsx`);
+      toast.success("Journal Voucher exported to Excel successfully");
+    } catch (err) {
+      console.error("Failed to export Excel:", err);
+      toast.error("Failed to export Excel file");
+    }
+  };
+
+  const ACCOUNT_SEQUENCE_MAP: Record<string, number> = {
+    "70010001": 1,
+    "80010001": 2,
+    "12030002": 3,
+    "70010009": 4,
+    "80010009": 5,
+    "70010005": 6,
+    "80010005": 7,
+    "12030003": 8,
+    "12060001": 9,
+    "12030004": 10,
+    "31030001": 11,
+    "12030005": 12,
+    "31030002": 13,
+  };
+
+  const getSequenceOrder = (accountCode?: string): number => {
+    if (!accountCode) return 999;
+    return ACCOUNT_SEQUENCE_MAP[accountCode] ?? 99;
+  };
+
   const sortedDetails = useMemo(() => {
     if (!voucher) return [];
     const list = [...voucher.details];
@@ -110,6 +238,12 @@ export default function JournalVoucherDetailPage({
         const valA = Number(a[sortField]) || 0;
         const valB = Number(b[sortField]) || 0;
         return sortOrder === "asc" ? valA - valB : valB - valA;
+      });
+    } else {
+      list.sort((a, b) => {
+        const seqA = getSequenceOrder(a.accountCode);
+        const seqB = getSequenceOrder(b.accountCode);
+        return seqA - seqB;
       });
     }
     return list;
@@ -222,6 +356,15 @@ export default function JournalVoucherDetailPage({
             <Button onClick={() => window.print()} size="sm" variant="outline">
               <Printer className="h-4 w-4 mr-2" />
               Print Voucher
+            </Button>
+            <Button
+              onClick={handleExportExcel}
+              size="sm"
+              variant="outline"
+              className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-800 dark:hover:bg-emerald-950/30"
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Export Excel
             </Button>
             {voucher.status === "pending" && (
               <>
