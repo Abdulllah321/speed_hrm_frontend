@@ -165,8 +165,12 @@ export function JournalVoucherList({
     }, 0);
   }, [initialData]);
 
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
   const handleUpdateStatus = async (id: string, newStatus: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected") => {
+    if (updatingStatusId) return;
     try {
+      setUpdatingStatusId(id);
       const res = await updateJournalVoucher(id, { status: newStatus });
       if (res.status) {
         toast.success(`Journal Voucher ${newStatus} successfully`);
@@ -180,6 +184,8 @@ export function JournalVoucherList({
       }
     } catch {
       toast.error("An unexpected error occurred");
+    } finally {
+      setUpdatingStatusId(null);
     }
   };
 
@@ -368,6 +374,7 @@ export function JournalVoucherList({
                 <Button
                   variant="ghost"
                   size="icon"
+                  disabled={updatingStatusId === row.original.id}
                   onClick={() => handleUpdateStatus(row.original.id, "pending_check")}
                   className="h-8 w-8 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600"
                   title="Submit for Check"
@@ -379,6 +386,7 @@ export function JournalVoucherList({
                 <Button
                   variant="ghost"
                   size="icon"
+                  disabled={updatingStatusId === row.original.id}
                   onClick={() => handleUpdateStatus(row.original.id, "pending_approval")}
                   className="h-8 w-8 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-blue-600"
                   title="Check & Verify"
@@ -391,6 +399,7 @@ export function JournalVoucherList({
                   <Button
                     variant="ghost"
                     size="icon"
+                    disabled={updatingStatusId === row.original.id}
                     onClick={() => handleUpdateStatus(row.original.id, "approved")}
                     className="h-8 w-8 hover:bg-green-50 dark:hover:bg-green-950/20 text-green-600"
                     title="Authorize & Approve"
@@ -400,6 +409,7 @@ export function JournalVoucherList({
                   <Button
                     variant="ghost"
                     size="icon"
+                    disabled={updatingStatusId === row.original.id}
                     onClick={() => handleUpdateStatus(row.original.id, "rejected")}
                     className="h-8 w-8 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
                     title="Reject Voucher"
@@ -413,7 +423,7 @@ export function JournalVoucherList({
         },
       },
     ],
-    [permissions, handlePrint, handleUpdateStatus],
+    [permissions, handlePrint, handleUpdateStatus, updatingStatusId],
   );
 
   // Filter logic for DataTable data

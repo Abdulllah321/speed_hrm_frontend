@@ -140,6 +140,8 @@ export function ReceiptVoucherList({
         }
     };
 
+    const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
     // Use initial data directly as it comes from the server
     useEffect(() => {
         setTimeout(() => {
@@ -148,7 +150,9 @@ export function ReceiptVoucherList({
     }, [initialData]);
 
     const handleUpdateStatus = async (id: string, newStatus: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected") => {
+        if (updatingStatusId) return;
         try {
+            setUpdatingStatusId(id);
             const res = await updateReceiptVoucherStatus(id, newStatus);
             if (res.status) {
                 toast.success(`Receipt Voucher ${newStatus} successfully`);
@@ -158,6 +162,8 @@ export function ReceiptVoucherList({
             }
         } catch {
             toast.error("An unexpected error occurred");
+        } finally {
+            setUpdatingStatusId(null);
         }
     };
 
@@ -362,6 +368,7 @@ export function ReceiptVoucherList({
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                disabled={updatingStatusId === row.original.id}
                                 onClick={() => handleUpdateStatus(row.original.id, "pending_check")}
                                 className="h-7 w-7 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600"
                                 title="Submit for Check"
@@ -373,6 +380,7 @@ export function ReceiptVoucherList({
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                disabled={updatingStatusId === row.original.id}
                                 onClick={() => handleUpdateStatus(row.original.id, "pending_approval")}
                                 className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-blue-600"
                                 title="Check & Verify"
@@ -385,6 +393,7 @@ export function ReceiptVoucherList({
                                 <Button
                                     variant="ghost"
                                     size="icon"
+                                    disabled={updatingStatusId === row.original.id}
                                     onClick={() => handleUpdateStatus(row.original.id, "approved")}
                                     className="h-7 w-7 hover:bg-green-50 dark:hover:bg-green-950/20 text-green-600"
                                     title="Authorize & Approve"
@@ -394,6 +403,7 @@ export function ReceiptVoucherList({
                                 <Button
                                     variant="ghost"
                                     size="icon"
+                                    disabled={updatingStatusId === row.original.id}
                                     onClick={() => handleUpdateStatus(row.original.id, "rejected")}
                                     className="h-7 w-7 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
                                     title="Reject Voucher"
@@ -406,7 +416,7 @@ export function ReceiptVoucherList({
                 );
             }
         }
-    ], [permissions, handlePrint, handleUpdateStatus]);
+    ], [permissions, handlePrint, handleUpdateStatus, updatingStatusId]);
 
     const filteredData = useMemo(() => {
         return vouchers.filter(v => {
