@@ -1265,7 +1265,7 @@ export default function PosStockValuationReportPage() {
                     <thead>
                         {/* FIRST ROW: GROUP HEADERS */}
                         <tr className="bg-slate-900 text-slate-100 text-[10px] uppercase font-bold sticky top-0 z-20 shadow-xs border-b border-slate-950">
-                            <th colSpan={5} className="p-3 text-center border-r border-slate-800 bg-slate-900">General Info</th>
+                            <th colSpan={3} className="p-3 text-center border-r border-slate-800 bg-slate-900">General Info</th>
                             <th colSpan={3} className="p-3 text-center border-r border-slate-800 bg-slate-800">Opening Stock</th>
                             <th colSpan={3} className="p-3 text-center border-r border-slate-800 bg-emerald-950/40 text-emerald-300">Purchases</th>
                             <th colSpan={3} className="p-3 text-center border-r border-slate-800 bg-rose-950/40 text-rose-300">Purchases Return</th>
@@ -1276,11 +1276,9 @@ export default function PosStockValuationReportPage() {
                         </tr>
                         {/* SECOND ROW: DETAILED COLUMN HEADERS */}
                         <tr className="bg-slate-800 text-slate-100 text-[9px] uppercase font-bold sticky top-[37px] z-20 border-b border-border shadow-sm">
-                            <th className="p-2 border-r bg-slate-800">Concept</th>
-                            <th className="p-2 border-r bg-slate-800">Division</th>
-                            <th className="p-2 border-r bg-slate-800">ItemName</th>
-                            <th className="p-2 border-r bg-slate-800">SKU</th>
-                            <th className="p-2 border-r text-center bg-slate-800">Size</th>
+                            <th className="p-2 border-r bg-slate-800 min-w-[320px]">GPC / Category / Product Hierarchy</th>
+                            <th className="p-2 border-r bg-slate-800 min-w-[140px]">SKU / Barcode</th>
+                            <th className="p-2 border-r text-center bg-slate-800 min-w-[80px]">Size</th>
                             
                             <th className="p-2 text-right bg-slate-700/20">Qty</th>
                             <th className="p-2 text-right bg-slate-700/20">Cost</th>
@@ -1314,7 +1312,7 @@ export default function PosStockValuationReportPage() {
                     <tbody className="divide-y text-xs">
                         {isPending ? (
                             <tr>
-                                <td colSpan={26} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={24} className="p-8 text-center text-muted-foreground font-medium">
                                     <div className="flex items-center justify-center gap-2">
                                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                         Re-calculating running costs and stock valuation balances...
@@ -1323,7 +1321,7 @@ export default function PosStockValuationReportPage() {
                             </tr>
                         ) : filteredRows.length === 0 && flatRows.length > 0 ? (
                             <tr>
-                                <td colSpan={26} className="p-8 text-center font-medium">
+                                <td colSpan={24} className="p-8 text-center font-medium">
                                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                         <svg className="h-8 w-8 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" /></svg>
                                         <span className="text-sm font-semibold">No results match your filters</span>
@@ -1333,7 +1331,7 @@ export default function PosStockValuationReportPage() {
                             </tr>
                         ) : filteredRows.length === 0 ? (
                             <tr>
-                                <td colSpan={26} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={24} className="p-8 text-center text-muted-foreground font-medium">
                                     No stock valuation data or movements found for this location and period.
                                 </td>
                             </tr>
@@ -1341,7 +1339,7 @@ export default function PosStockValuationReportPage() {
                             <>
                                 {paddingTop > 0 && (
                                     <tr>
-                                        <td colSpan={26} style={{ height: `${paddingTop}px` }} />
+                                        <td colSpan={24} style={{ height: `${paddingTop}px` }} />
                                     </tr>
                                 )}
                                 {virtualItems.map((virtualRow) => {
@@ -1379,27 +1377,26 @@ export default function PosStockValuationReportPage() {
                                     return (
                                         <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={style.className}>
                                             {!isArticle && !isVariant ? (
-                                                <td colSpan={5} className={cn("p-2 border-r font-bold uppercase tracking-wider text-xs align-middle", style.indentClass)}>
-                                                    {row.type.toUpperCase()}: {row.label}
+                                                <td colSpan={3} className={cn("p-2 border-r font-bold uppercase tracking-wider text-xs align-middle", style.indentClass)}>
+                                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-slate-800/80 text-slate-200 border border-slate-700/60 mr-2">{row.type.toUpperCase()}</span>
+                                                    <span>{row.label}</span>
                                                 </td>
                                             ) : (
                                                 <>
-                                                    <td className="p-2 border-r"></td>
-                                                    <td className="p-2 border-r"></td>
-                                                    <td className={cn("p-2 border-r truncate max-w-[240px] align-middle", isArticle ? "flex flex-col font-bold text-slate-700 dark:text-slate-350" : "italic text-muted-foreground")}>
+                                                    <td className={cn("p-2 border-r truncate max-w-[320px] align-middle", style.indentClass, isArticle ? "font-bold text-slate-800 dark:text-slate-200" : "italic text-muted-foreground")}>
                                                         {isArticle ? (
-                                                            <>
-                                                                <span className="text-[9px] text-primary">{highlight('SKU: ' + (row.sku || ''), hlQuery)}</span>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[9px] text-primary font-mono">{highlight('SKU: ' + (row.sku || ''), hlQuery)}</span>
                                                                 <span>{highlight(row.label || '', hlQuery)}</span>
-                                                            </>
+                                                            </div>
                                                         ) : (
                                                             `Variant: ${row.color || 'Default'}${row.barCode ? ` (${row.barCode})` : ''}`
                                                         )}
                                                     </td>
-                                                    <td className="p-2 border-r align-middle font-medium text-slate-600 dark:text-slate-400">{isArticle ? row.sku : (row.barCode || row.sku || "")}</td>
+                                                    <td className="p-2 border-r align-middle font-medium text-slate-600 dark:text-slate-400 font-mono text-[11px]">{isArticle ? row.sku : (row.barCode || row.sku || "")}</td>
                                                     <td className="p-2 border-r align-middle text-center">
                                                         {isArticle ? (
-                                                            <span className="text-[9px] text-muted-foreground uppercase font-bold bg-slate-50/20 px-1 py-0.5 rounded">All Sizes</span>
+                                                            <span className="text-[9px] text-muted-foreground uppercase font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">All Sizes</span>
                                                         ) : (
                                                             <span className="font-semibold text-slate-750 dark:text-slate-350">{row.size}</span>
                                                         )}
@@ -1447,7 +1444,7 @@ export default function PosStockValuationReportPage() {
                                 })}
                                 {paddingBottom > 0 && (
                                     <tr>
-                                        <td colSpan={26} style={{ height: `${paddingBottom}px` }} />
+                                        <td colSpan={24} style={{ height: `${paddingBottom}px` }} />
                                     </tr>
                                 )}
                             </>
@@ -1458,7 +1455,7 @@ export default function PosStockValuationReportPage() {
                     {reportData.length > 0 && (
                         <tfoot className="sticky bottom-0 z-20 shadow-md">
                             <tr className="bg-slate-800 text-slate-100 font-extrabold border-t-2 border-slate-900 text-[10px]">
-                                <td colSpan={5} className="p-3 border-r text-left uppercase tracking-wider font-black bg-slate-800">
+                                <td colSpan={3} className="p-3 border-r text-left uppercase tracking-wider font-black bg-slate-800">
                                     GRAND TOTALS
                                 </td>
                                 
