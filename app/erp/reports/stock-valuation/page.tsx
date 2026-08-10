@@ -524,6 +524,8 @@ export default function PosStockValuationReportPage() {
                     type: 'variant',
                     color: node.color,
                     size: node.size,
+                    barCode: node.barCode,
+                    sku: node.sku,
                     totals: node.totals,
                     brand, division, gender, silhouette, category,
                 });
@@ -1233,10 +1235,10 @@ export default function PosStockValuationReportPage() {
                                                                 <span>{highlight(row.label || '', hlQuery)}</span>
                                                             </>
                                                         ) : (
-                                                            `Variant: ${row.color || 'Default'}`
+                                                            `Variant: ${row.color || 'Default'}${row.barCode ? ` (${row.barCode})` : ''}`
                                                         )}
                                                     </td>
-                                                    <td className="p-2 border-r align-middle font-medium text-slate-600 dark:text-slate-400">{isArticle ? row.sku : ""}</td>
+                                                    <td className="p-2 border-r align-middle font-medium text-slate-600 dark:text-slate-400">{isArticle ? row.sku : (row.barCode || row.sku || "")}</td>
                                                     <td className="p-2 border-r align-middle text-center">
                                                         {isArticle ? (
                                                             <span className="text-[9px] text-muted-foreground uppercase font-bold bg-slate-50/20 px-1 py-0.5 rounded">All Sizes</span>
