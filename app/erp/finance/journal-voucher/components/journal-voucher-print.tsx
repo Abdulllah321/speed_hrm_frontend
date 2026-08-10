@@ -34,6 +34,24 @@ function fmt(n: number) {
   return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+const ACCOUNT_SEQUENCE_MAP: Record<string, number> = {
+  "70010001": 1,
+  "80010001": 2,
+  "12030002": 3,
+  "70010009": 4,
+  "80010009": 5,
+  "70010005": 6,
+  "80010005": 7,
+  "12030003": 8,
+  "12060001": 9,
+  "12030004": 10,
+  "31030001": 11,
+  "12030005": 12,
+  "31030002": 13,
+};
+
+const getSeq = (code?: string) => (code && ACCOUNT_SEQUENCE_MAP[code]) ? ACCOUNT_SEQUENCE_MAP[code] : 99;
+
 export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
   const [printedAt, setPrintedAt] = useState<string>("");
   useEffect(() => {

@@ -94,18 +94,38 @@ export async function getJournalVoucher(id: string): Promise<{ status: boolean; 
             return { status: false, data: null, message: `Failed to fetch journal voucher: ${response.status}` };
         }
 
+        const ACCOUNT_SEQUENCE_MAP: Record<string, number> = {
+            "70010001": 1,
+            "80010001": 2,
+            "12030002": 3,
+            "70010009": 4,
+            "80010009": 5,
+            "70010005": 6,
+            "80010005": 7,
+            "12030003": 8,
+            "12060001": 9,
+            "12030004": 10,
+            "31030001": 11,
+            "12030005": 12,
+            "31030002": 13,
+        };
+
+        const getSeqOrder = (code?: string) => (code && ACCOUNT_SEQUENCE_MAP[code]) ? ACCOUNT_SEQUENCE_MAP[code] : 99;
+
         const raw = response.data?.data ?? response.data;
+        const details = (raw.details ?? []).map((d: any) => ({
+            ...d,
+            accountName:     d.account?.name     || d.accountName     || "Unknown Account",
+            accountCode:     d.account?.code     || d.accountCode     || "",
+            tagAccountName:  d.tagAccount?.name  || d.tagAccountName  || "",
+            tagAccountCode:  d.tagAccount?.code  || d.tagAccountCode  || "",
+            debit:           Number(d.debit)  || 0,
+            credit:          Number(d.credit) || 0,
+        })).sort((a: any, b: any) => getSeqOrder(a.accountCode) - getSeqOrder(b.accountCode));
+
         const voucher: JournalVoucher = {
             ...raw,
-            details: (raw.details ?? []).map((d: any) => ({
-                ...d,
-                accountName:     d.account?.name     || d.accountName     || "Unknown Account",
-                accountCode:     d.account?.code     || d.accountCode     || "",
-                tagAccountName:  d.tagAccount?.name  || d.tagAccountName  || "",
-                tagAccountCode:  d.tagAccount?.code  || d.tagAccountCode  || "",
-                debit:           Number(d.debit)  || 0,
-                credit:          Number(d.credit) || 0,
-            })),
+            details,
         };
 
         return { status: true, data: voucher };

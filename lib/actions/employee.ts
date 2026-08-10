@@ -148,7 +148,7 @@ export async function getEmployeesForDropdown(params?: {
   subDepartmentId?: string;
   providentFund?: boolean;
   eobi?: boolean;
-  locationId?: string;
+  locationId?: string | string[];
   status?: string;
   isActive?: boolean;
 }): Promise<{
@@ -169,7 +169,10 @@ export async function getEmployeesForDropdown(params?: {
     if (params?.search) searchParams.append('search', params.search);
     if (params?.departmentId) searchParams.append('departmentId', params.departmentId);
     if (params?.subDepartmentId) searchParams.append('subDepartmentId', params.subDepartmentId);
-    if (params?.locationId) searchParams.append('locationId', params.locationId);
+    if (params?.locationId) {
+      const locStr = Array.isArray(params.locationId) ? params.locationId.filter(Boolean).join(',') : params.locationId;
+      if (locStr) searchParams.append('locationId', locStr);
+    }
     if (params?.providentFund) searchParams.append('providentFund', 'true');
     if (params?.eobi) searchParams.append('eobi', 'true');
     if (params?.status) searchParams.append('status', params.status);
@@ -197,7 +200,7 @@ export async function getAllEmployeesForDropdown(filters?: {
   subDepartmentId?: string;
   search?: string;
   providentFund?: boolean;
-  locationId?: string;
+  locationId?: string | string[];
 }): Promise<{
   status: boolean;
   data?: EmployeeDropdownOption[];
