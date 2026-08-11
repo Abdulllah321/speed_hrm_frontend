@@ -182,8 +182,7 @@ export default function CreatePurchaseReturnPage() {
       const valExcl = returnQty * unitCost - discAmt;
       const taxAmt = valExcl * taxRate / 100;
       const valIncl = valExcl + taxAmt;
-      const itemAdv = valIncl * advRate / 100;
-      const lineTotal = valIncl + itemAdv;
+      const lineTotal = valIncl;
 
       item.lineTotal = lineTotal;
     }
@@ -453,7 +452,6 @@ export default function CreatePurchaseReturnPage() {
                             <th className="text-right p-3">Sales Tax %</th>
                             <th className="text-right p-3">Sales Tax Amt</th>
                             <th className="text-right p-3">Val. Incl. Tax</th>
-                            <th className="text-right p-3">Adv. Tax Amt</th>
                             <th className="text-right p-3">Disc %</th>
                             <th className="text-right p-3">Disc Amt</th>
                             <th className="text-right p-3 font-bold">Line Total</th>
@@ -462,7 +460,6 @@ export default function CreatePurchaseReturnPage() {
                         </thead>
                         <tbody>
                           {formData.items.map((item: any, index) => {
-                            const advRate  = Number(selectedDoc?.advanceTaxRate || 0.5);
                             const returnQty = Number(item.returnQty || 0);
                             const unitCost = Number(item.unitPrice || 0);
                             const discRate = Number(item.discountRate || 0);
@@ -472,8 +469,7 @@ export default function CreatePurchaseReturnPage() {
                             const taxRate  = Number(item.taxRate || 0);
                             const taxAmt   = valExcl * taxRate / 100;
                             const valIncl  = valExcl + taxAmt;
-                            const itemAdv  = valIncl * advRate / 100;
-                            const lineTotal = valIncl + itemAdv;
+                            const lineTotal = valIncl;
 
                             return (
                               <tr key={index} className="border-b hover:bg-gray-50">
@@ -516,7 +512,6 @@ export default function CreatePurchaseReturnPage() {
                                 <td className="p-3 text-right tabular-nums">{taxRate}%</td>
                                 <td className="p-3 text-right tabular-nums">{formatCurrency(taxAmt)}</td>
                                 <td className="p-3 text-right tabular-nums">{formatCurrency(valIncl)}</td>
-                                <td className="p-3 text-right tabular-nums text-orange-600">{formatCurrency(itemAdv)}</td>
                                 <td className="p-3 text-right tabular-nums">{discRate}%</td>
                                 <td className="p-3 text-right tabular-nums">{formatCurrency(discAmt)}</td>
                                 <td className="p-3 text-right tabular-nums font-semibold text-blue-700">{formatCurrency(lineTotal)}</td>
@@ -614,17 +609,16 @@ export default function CreatePurchaseReturnPage() {
                     <thead>
                       <tr className="border-y-2 border-black">
                         <th className="py-1 pr-1 text-left font-bold w-[4%]">#</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[9%]">SKU</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[7%]">HS Code</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[16%]">Description</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[10%]">SKU</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[8%]">HS Code</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[18%]">Description</th>
                         <th className="py-1 pr-1 text-left font-bold w-[6%]">Size</th>
                         <th className="py-1 pr-1 text-left font-bold w-[6%]">Color</th>
                         <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[8%]">Unit Cost</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Excl Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[9%]">Sales Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Incl Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Adv Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[9%]">Unit Cost</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[11%]">Val Excl Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Sales Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[11%]">Val Incl Tax</th>
                         <th className="py-1 text-right font-bold w-[11%]">Line Total</th>
                       </tr>
                     </thead>
@@ -646,7 +640,7 @@ export default function CreatePurchaseReturnPage() {
                             const valIncl  = valExcl + taxAmt;
                             
                             const itemAdv  = valIncl * advRate / 100;
-                            const lineTotal = valIncl + itemAdv;
+                            const lineTotal = valIncl;
 
                             return (
                               <tr key={i} className="border-b border-gray-300 align-top">
@@ -664,7 +658,6 @@ export default function CreatePurchaseReturnPage() {
                                 <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valExcl)}</td>
                                 <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(taxAmt)}</td>
                                 <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valIncl)}</td>
-                                <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(itemAdv)}</td>
                                 <td className="py-1 text-right tabular-nums font-semibold">{fmtInt(lineTotal)}</td>
                               </tr>
                             );
@@ -672,7 +665,7 @@ export default function CreatePurchaseReturnPage() {
                         } else {
                           return (
                             <tr>
-                                <td colSpan={13} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                                <td colSpan={12} className="py-4 text-center text-muted-foreground border-b border-gray-300">
                                     No items to return selected
                                 </td>
                             </tr>
@@ -723,14 +716,14 @@ export default function CreatePurchaseReturnPage() {
                             const taxAmt   = valExcl * taxRate / 100;
                             const valIncl  = valExcl + taxAmt;
                             const itemAdv  = valIncl * advRate / 100;
-                            const lineTotal = valIncl + itemAdv;
+                            const lineTotal = valIncl;
                             
                             totalQty += qty;
                             grossSubtotal += qty * unitCost;
                             totalDiscount += discAmt;
                             totalSalesTax += taxAmt;
                             totalAdvTax += itemAdv;
-                            totalAmount += lineTotal;
+                            totalAmount += valIncl + itemAdv;
                           });
                           
                           const valExcl = grossSubtotal - totalDiscount;
