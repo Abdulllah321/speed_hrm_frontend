@@ -289,16 +289,15 @@ export default function DebitNoteDetailPage() {
                     <thead>
                       <tr className="border-y-2 border-black">
                         <th className="py-1 pr-1 text-left font-bold w-[4%]">#</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[9%]">SKU</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[7%]">HS Code</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[16%]">Description</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[11%]">SKU</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[8%]">HS Code</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[21%]">Description</th>
                         <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[8%]">Unit Cost</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Excl Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[9%]">Sales Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[9%]">Unit Cost</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[11%]">Val Excl Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Sales Tax</th>
                         <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Incl Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Adv Tax</th>
-                        <th className="py-1 text-right font-bold w-[11%]">Line Total</th>
+                        <th className="py-1 text-right font-bold w-[10%]">Line Total</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -317,7 +316,7 @@ export default function DebitNoteDetailPage() {
                           const valIncl  = valExcl + taxAmt;
                           
                           const itemAdv  = valIncl * advRate / 100;
-                          const lineTotal = valIncl + itemAdv;
+                          const lineTotal = valIncl;
 
                           return (
                             <tr key={item.id || i} className="border-b border-gray-300 align-top">
@@ -333,14 +332,13 @@ export default function DebitNoteDetailPage() {
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valExcl)}</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(taxAmt)}</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valIncl)}</td>
-                              <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(itemAdv)}</td>
                               <td className="py-1 text-right tabular-nums font-semibold">{fmtInt(lineTotal)}</td>
                             </tr>
                           );
                         })
                       ) : (
                         <tr>
-                            <td colSpan={11} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                            <td colSpan={10} className="py-4 text-center text-muted-foreground border-b border-gray-300">
                                 No items found for this debit note
                             </td>
                         </tr>
