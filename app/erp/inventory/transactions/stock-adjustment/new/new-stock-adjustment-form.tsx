@@ -368,15 +368,46 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
                 return;
             }
 
+            const masterItems = res.data;
+            const targetLocId = locationId !== "none" ? locationId : null;
+
+            // Fetch exact location/warehouse stock for every found item
+            const stockMap = new Map<string, number>();
+            await Promise.all(
+                masterItems.map(async (item: any) => {
+                    try {
+                        const invRes = await searchInventoryItems(
+                            item.sku || item.barCode || item.barcode || item.id,
+                            warehouseId,
+                            targetLocId || undefined
+                        );
+                        if (invRes.status && Array.isArray(invRes.data)) {
+                            const matchedInv = invRes.data.find((i: any) => i.id === item.id);
+                            if (matchedInv) {
+                                stockMap.set(item.id, Number(matchedInv.totalQuantity || 0));
+                            } else {
+                                stockMap.set(item.id, Number(item.totalQuantity || 0));
+                            }
+                        } else {
+                            stockMap.set(item.id, Number(item.totalQuantity || 0));
+                        }
+                    } catch (e) {
+                        stockMap.set(item.id, Number(item.totalQuantity || 0));
+                    }
+                })
+            );
+
             const itemMap = new Map<string, any>();
-            res.data.forEach((item: any) => {
-                if (item.sku) itemMap.set(item.sku.toLowerCase().trim(), item);
-                if (item.barcode) itemMap.set(item.barcode.toLowerCase().trim(), item);
-                if (item.barCode) itemMap.set(item.barCode.toLowerCase().trim(), item);
-                if (item.id) itemMap.set(item.id.toLowerCase().trim(), item);
+            masterItems.forEach((item: any) => {
+                const locQty = stockMap.has(item.id) ? stockMap.get(item.id)! : Number(item.totalQuantity || 0);
+                const enrichedItem = { ...item, totalQuantity: locQty };
+
+                if (item.sku) itemMap.set(item.sku.toLowerCase().trim(), enrichedItem);
+                if (item.barcode) itemMap.set(item.barcode.toLowerCase().trim(), enrichedItem);
+                if (item.barCode) itemMap.set(item.barCode.toLowerCase().trim(), enrichedItem);
+                if (item.id) itemMap.set(item.id.toLowerCase().trim(), enrichedItem);
             });
 
-            const targetLocId = locationId !== "none" ? locationId : null;
             let foundCount = 0;
             const notFoundQueries: string[] = [];
             const updatedItems = [...selectedItems];
@@ -435,7 +466,7 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
                     `Added/updated ${foundCount} items. ${notFoundQueries.length} SKU(s) not found: ${notFoundQueries.slice(0, 3).join(", ")}${notFoundQueries.length > 3 ? "..." : ""}`
                 );
             } else {
-                toast.success(`Successfully added/updated ${foundCount} items.`);
+                toast.success(`Successfully added/updated ${foundCount} items with location stock levels.`);
             }
         } catch (error) {
             console.error("Paste processing error:", error);
@@ -507,7 +538,7 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
                                 itemId: selectedOutItem.id,
                                 locationId: targetLocId,
                                 physicalQty: Math.max(0, currentOutQty - swapQty),
-                                rate: swapRate || Number(selectedOutOutRate(selectedOutItem)),
+                                rate: swapRate || Number(selectedOutRate(selectedOutItem)),
                                 swapItemId: selectedInItem.id,
                             },
                             {
