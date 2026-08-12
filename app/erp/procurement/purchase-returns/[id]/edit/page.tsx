@@ -721,17 +721,17 @@ export default function EditPurchaseReturnPage() {
                 <table className="w-full text-[10px] sm:text-[11px] mb-4 border-collapse">
                     <thead>
                       <tr className="border-y-2 border-black">
-                        <th className="py-1 pr-1 text-left font-bold w-[4%]">#</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[11%]">SKU</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[9%]">HS Code</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[22%]">Description</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[7%]">Size</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[7%]">Color</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[7%]">Qty</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Unit Cost</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[11%]">Val Excl Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Sales Tax</th>
-                        <th className="py-1 text-right font-bold w-[12%]">Val Incl Tax</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[3%] whitespace-nowrap">#</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[10%] whitespace-nowrap">SKU</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[9%] whitespace-nowrap">HS Code</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[19%]">Description</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[6%] whitespace-nowrap">Size</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[7%] whitespace-nowrap">Color</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[5%] whitespace-nowrap">Qty</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Unit Cost</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[10%] whitespace-nowrap">Val Excl Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Sales Tax</th>
+                        <th className="py-1 text-right font-bold w-[13%] whitespace-nowrap">Val Incl Tax</th>
                       </tr>
                     </thead>
                     <tbody>
