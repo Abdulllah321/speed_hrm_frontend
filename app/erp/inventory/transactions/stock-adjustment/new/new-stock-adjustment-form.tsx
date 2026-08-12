@@ -69,6 +69,12 @@ interface SelectedItem {
     locationId: string | null;
 }
 
+interface ParsedPasteItem {
+    query: string;
+    qty?: number;
+    isExplicitDelta: boolean;
+}
+
 const REASONS = [
     { value: "Billing Mistake (Wrong Item Scanned)", label: "Billing Mistake (Wrong Item Scanned)" },
     { value: "Wrong Stock Swapped", label: "Wrong Stock Swapped" },
@@ -78,6 +84,83 @@ const REASONS = [
     { value: "Annual Stock Audit / Discrepancy", label: "Annual Stock Audit / Discrepancy" },
     { value: "Other / Mismatch Correction", label: "Other / Mismatch Correction" },
 ];
+
+/**
+ * Robust parser for text pasted from Excel (or barcodes/SKU list).
+ * Handles headers, tabs, commas, newlines, space-separated tokens, and signed deltas (+/-).
+ */
+function parseQuickPasteText(content: string): ParsedPasteItem[] {
+    if (!content || !content.trim()) return [];
+
+    const headerKeywords = new Set([
+        "barcode",
+        "barcodes",
+        "quantity",
+        "qty",
+        "sku",
+        "skus",
+        "item",
+        "items",
+        "description",
+        "code",
+        "physical",
+        "count",
+    ]);
+
+    // Tokenize whole text by newlines, tabs, commas, semicolons, pipes
+    const rawTokens = content
+        .split(/[\r\n\t,;|]+/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+    // Flatten any space-separated tokens in each line
+    const tokens: string[] = [];
+    for (const rawToken of rawTokens) {
+        const parts = rawToken.split(/\s+/).filter(Boolean);
+        tokens.push(...parts);
+    }
+
+    // Filter out header keywords if they appear
+    const cleanTokens = tokens.filter((t) => !headerKeywords.has(t.toLowerCase()));
+
+    const results: ParsedPasteItem[] = [];
+    let i = 0;
+
+    while (i < cleanTokens.length) {
+        const token = cleanTokens[i];
+
+        const isSigned = token.startsWith("-") || token.startsWith("+");
+        const isSmallNumber = !isNaN(Number(token)) && Math.abs(Number(token)) < 10000;
+        const isBarcodeOrSku = token.length >= 6 || isNaN(Number(token)) || (!isSigned && Number(token) > 10000);
+
+        if (!isBarcodeOrSku && (isSigned || isSmallNumber)) {
+            // Standalone number without query, skip
+            i++;
+            continue;
+        }
+
+        const query = token;
+        let qty: number | undefined = undefined;
+        let isExplicitDelta = false;
+
+        if (i + 1 < cleanTokens.length) {
+            const nextToken = cleanTokens[i + 1];
+            const nextIsSigned = nextToken.startsWith("-") || nextToken.startsWith("+");
+            const nextVal = Number(nextToken);
+
+            if (!isNaN(nextVal) && (nextIsSigned || Math.abs(nextVal) < 100000) && nextToken.length < 7) {
+                qty = nextVal;
+                isExplicitDelta = nextIsSigned;
+                i++; // consume quantity token
+            }
+        }
+
+        results.push({ query, qty, isExplicitDelta });
+        i++;
+    }
+
+    return results;
+}
 
 export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjustmentFormProps) {
     const router = useRouter();
@@ -133,6 +216,7 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
     // Quick Paste state
     const [inputMode, setInputMode] = useState<"search" | "paste">("search");
     const [pasteContent, setPasteContent] = useState<string>("");
+    const [pasteAdjustmentMode, setPasteAdjustmentMode] = useState<"relative" | "absolute">("relative");
     const [isResolvingPaste, setIsResolvingPaste] = useState<boolean>(false);
 
     // Debounced searches for Swap Mode
@@ -256,7 +340,7 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
     // Handle process Excel quick paste
     const handleProcessPaste = async () => {
         if (!pasteContent.trim()) {
-            toast.error("Please enter or paste SKU numbers.");
+            toast.error("Please enter or paste SKU/Barcode numbers.");
             return;
         }
 
@@ -267,79 +351,92 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
 
         setIsResolvingPaste(true);
         try {
-            const lines = pasteContent.split("\n").filter((line) => line.trim());
-            const parsedLines: { query: string; qty?: number }[] = [];
+            const parsedItems = parseQuickPasteText(pasteContent);
 
-            for (const line of lines) {
-                const parts = line.split(/[\t,;]+/).map((p) => p.trim()).filter(Boolean);
-                if (parts.length > 0) {
-                    const query = parts[0];
-                    let qty: number | undefined = undefined;
-                    if (parts.length > 1) {
-                        const parsedQty = parseFloat(parts[1]);
-                        if (!isNaN(parsedQty)) qty = parsedQty;
-                    }
-                    parsedLines.push({ query, qty });
-                }
-            }
-
-            if (parsedLines.length === 0) {
-                toast.error("No valid lines found.");
+            if (parsedItems.length === 0) {
+                toast.error("No valid Barcodes or SKUs found in pasted text.");
                 setIsResolvingPaste(false);
                 return;
             }
 
-            const uniqueQueries = Array.from(new Set(parsedLines.map((p) => p.query)));
+            const uniqueQueries = Array.from(new Set(parsedItems.map((p) => p.query)));
             const res = await bulkSearchItems(uniqueQueries);
 
             if (!res.status || !res.data) {
-                toast.error("Failed to resolve pasted SKUs.");
+                toast.error("Failed to resolve pasted items from server.");
                 setIsResolvingPaste(false);
                 return;
             }
 
             const itemMap = new Map<string, any>();
             res.data.forEach((item: any) => {
-                if (item.sku) itemMap.set(item.sku.toLowerCase(), item);
-                if (item.barcode) itemMap.set(item.barcode.toLowerCase(), item);
+                if (item.sku) itemMap.set(item.sku.toLowerCase().trim(), item);
+                if (item.barcode) itemMap.set(item.barcode.toLowerCase().trim(), item);
+                if (item.barCode) itemMap.set(item.barCode.toLowerCase().trim(), item);
+                if (item.id) itemMap.set(item.id.toLowerCase().trim(), item);
             });
 
             const targetLocId = locationId !== "none" ? locationId : null;
-            let addedCount = 0;
+            let foundCount = 0;
+            const notFoundQueries: string[] = [];
             const updatedItems = [...selectedItems];
 
-            for (const parsed of parsedLines) {
-                const matchedItem = itemMap.get(parsed.query.toLowerCase());
+            for (const parsed of parsedItems) {
+                const matchedItem = itemMap.get(parsed.query.toLowerCase().trim());
                 if (matchedItem) {
+                    foundCount++;
                     const existingIdx = updatedItems.findIndex(
                         (i) => i.id === matchedItem.id && i.locationId === targetLocId
                     );
                     const systemQty = Number(matchedItem.totalQuantity || 0);
 
+                    // Determine adjustment delta or physical count
+                    const rawQty = parsed.qty !== undefined ? parsed.qty : -1;
+                    const isRelative = pasteAdjustmentMode === "relative" || parsed.isExplicitDelta || rawQty < 0;
+
                     if (existingIdx >= 0) {
-                        if (parsed.qty !== undefined) {
-                            updatedItems[existingIdx].physicalQty = parsed.qty;
+                        if (isRelative) {
+                            updatedItems[existingIdx].physicalQty = Math.max(
+                                0,
+                                updatedItems[existingIdx].physicalQty + rawQty
+                            );
+                        } else {
+                            updatedItems[existingIdx].physicalQty = rawQty;
                         }
                     } else {
+                        const targetPhysicalQty = isRelative
+                            ? Math.max(0, systemQty + rawQty)
+                            : rawQty;
+
                         updatedItems.push({
                             id: matchedItem.id,
                             sku: matchedItem.sku,
                             description: matchedItem.description,
                             currentQty: systemQty,
-                            physicalQty: parsed.qty !== undefined ? parsed.qty : systemQty,
+                            physicalQty: targetPhysicalQty,
                             rate: Number(matchedItem.unitCost || matchedItem.unitPrice || 0),
                             color: matchedItem.color?.name || null,
                             size: matchedItem.size?.name || null,
                             locationId: targetLocId,
                         });
-                        addedCount++;
+                    }
+                } else {
+                    if (!notFoundQueries.includes(parsed.query)) {
+                        notFoundQueries.push(parsed.query);
                     }
                 }
             }
 
             setSelectedItems(updatedItems);
             setPasteContent("");
-            toast.success(`Successfully added/updated ${addedCount} items.`);
+
+            if (notFoundQueries.length > 0) {
+                toast.warning(
+                    `Added/updated ${foundCount} items. ${notFoundQueries.length} SKU(s) not found: ${notFoundQueries.slice(0, 3).join(", ")}${notFoundQueries.length > 3 ? "..." : ""}`
+                );
+            } else {
+                toast.success(`Successfully added/updated ${foundCount} items.`);
+            }
         } catch (error) {
             console.error("Paste processing error:", error);
             toast.error("An error occurred while processing pasted items.");
@@ -410,14 +507,14 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
                                 itemId: selectedOutItem.id,
                                 locationId: targetLocId,
                                 physicalQty: Math.max(0, currentOutQty - swapQty),
-                                rate: swapRate || Number(selectedOutItem.unitCost || selectedOutItem.unitPrice || 0),
+                                rate: swapRate || Number(selectedOutOutRate(selectedOutItem)),
                                 swapItemId: selectedInItem.id,
                             },
                             {
                                 itemId: selectedInItem.id,
                                 locationId: targetLocId,
                                 physicalQty: Number(selectedInItem.totalQuantity || 0) + swapQty,
-                                rate: swapRate || Number(selectedInItem.unitCost || selectedInItem.unitPrice || 0),
+                                rate: swapRate || Number(selectedInRate(selectedInItem)),
                                 swapItemId: selectedOutItem.id,
                             },
                         ],
@@ -477,6 +574,13 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
             });
         }
     };
+
+    function selectedOutRate(item: any) {
+        return item.unitCost || item.unitPrice || 0;
+    }
+    function selectedInRate(item: any) {
+        return item.unitCost || item.unitPrice || 0;
+    }
 
     return (
         <div className="space-y-6">
@@ -841,7 +945,7 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
                     <Card className="lg:col-span-2 shadow-sm border-muted">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-lg">Items to Adjust</CardTitle>
-                            <CardDescription>Search for active SKU or barcode to add them, then edit physical count.</CardDescription>
+                            <CardDescription>Search for active SKU or barcode to add them, or paste Excel stock lists.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {/* Input Mode Selector */}
@@ -924,19 +1028,62 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
 
                             {/* Paste Mode */}
                             {inputMode === "paste" && (
-                                <div className="space-y-3">
-                                    <Label htmlFor="quick-paste-box" className="text-xs text-muted-foreground">
-                                        Paste list of Barcodes/SKUs and optional Quantities (separated by Tab, Comma, or Space) directly from Excel.
-                                    </Label>
-                                    <Textarea
-                                        id="quick-paste-box"
-                                        placeholder={`Example:\nSKU-001\t10\nSKU-002\t25\nSKU-003`}
-                                        value={pasteContent}
-                                        onChange={(e) => setPasteContent(e.target.value)}
-                                        rows={6}
-                                        className="font-mono text-sm"
-                                        disabled={!warehouseId}
-                                    />
+                                <div className="space-y-4">
+                                    {/* Paste Mode Action Toggle */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Pasted Quantity Action:</span>
+                                        <div className="flex gap-2 text-xs">
+                                            <label className={cn(
+                                                "flex items-center gap-1.5 px-2.5 py-1 rounded cursor-pointer font-medium border transition-all",
+                                                pasteAdjustmentMode === "relative"
+                                                    ? "bg-white dark:bg-slate-950 border-primary text-primary shadow-sm"
+                                                    : "border-transparent text-muted-foreground hover:text-slate-800"
+                                            )}>
+                                                <input
+                                                    type="radio"
+                                                    name="pasteMode"
+                                                    value="relative"
+                                                    checked={pasteAdjustmentMode === "relative"}
+                                                    onChange={() => setPasteAdjustmentMode("relative")}
+                                                    className="sr-only"
+                                                />
+                                                <span>Deduct / Add Offset (e.g. -1, -2, +1)</span>
+                                            </label>
+
+                                            <label className={cn(
+                                                "flex items-center gap-1.5 px-2.5 py-1 rounded cursor-pointer font-medium border transition-all",
+                                                pasteAdjustmentMode === "absolute"
+                                                    ? "bg-white dark:bg-slate-950 border-primary text-primary shadow-sm"
+                                                    : "border-transparent text-muted-foreground hover:text-slate-800"
+                                            )}>
+                                                <input
+                                                    type="radio"
+                                                    name="pasteMode"
+                                                    value="absolute"
+                                                    checked={pasteAdjustmentMode === "absolute"}
+                                                    onChange={() => setPasteAdjustmentMode("absolute")}
+                                                    className="sr-only"
+                                                />
+                                                <span>Set Total Physical Count</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="quick-paste-box" className="text-xs text-muted-foreground">
+                                            Paste list of Barcodes/SKUs and optional Quantities (separated by Tab, Comma, Space, or Newline) directly from Excel.
+                                        </Label>
+                                        <Textarea
+                                            id="quick-paste-box"
+                                            placeholder={`Example 1 (Deduct/Add delta):\n196606817132\t-1\n196974922698\t-2\n\nExample 2 (Header line or multi-column):\nBarcode\tQuantity\n196606817132\t-1\n196974922698\t-2`}
+                                            value={pasteContent}
+                                            onChange={(e) => setPasteContent(e.target.value)}
+                                            rows={6}
+                                            className="font-mono text-sm"
+                                            disabled={!warehouseId}
+                                        />
+                                    </div>
+
                                     <Button
                                         type="button"
                                         onClick={handleProcessPaste}
@@ -948,7 +1095,7 @@ export function NewStockAdjustmentForm({ warehouses, locations }: NewStockAdjust
                                         ) : (
                                             <Plus className="h-4 w-4" />
                                         )}
-                                        Add Pasted Items
+                                        Process & Add Pasted Items
                                     </Button>
                                 </div>
                             )}
