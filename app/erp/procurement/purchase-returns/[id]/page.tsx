@@ -267,13 +267,11 @@ export default function PurchaseReturnDetailPage() {
                           <th className="text-right p-3">Val. Incl. Tax</th>
                           <th className="text-right p-3">Disc %</th>
                           <th className="text-right p-3">Disc Amt</th>
-                          <th className="text-right p-3 font-bold">Line Total</th>
                           <th className="text-left p-3">Reason</th>
                         </tr>
                       </thead>
                       <tbody>
                         {purchaseReturn.items.map((item: any) => {
-                          const advRate  = Number(purchaseReturn.purchaseInvoice?.advanceTaxRate || 0.5);
                           const qty      = Number(item.returnQty      || 0);
                           const unitCost = Number(item.unitPrice     || 0);
                           
@@ -304,12 +302,49 @@ export default function PurchaseReturnDetailPage() {
                               <td className="p-3 text-right tabular-nums">{fmt(valIncl)}</td>
                               <td className="p-3 text-right tabular-nums">{discRate}%</td>
                               <td className="p-3 text-right tabular-nums">{fmt(discAmt)}</td>
-                              <td className="p-3 text-right tabular-nums font-semibold">{fmt(lineTotal)}</td>
                               <td className="p-3 text-left text-xs text-gray-600">{item.reason || "—"}</td>
                             </tr>
                           );
                         })}
                       </tbody>
+                      {(() => {
+                        let tQty = 0, tUnitCost = 0, tValExcl = 0, tSalesTax = 0, tValIncl = 0, tDiscAmt = 0, tLineTotal = 0;
+                        (purchaseReturn.items || []).forEach((item: any) => {
+                          const qty      = Number(item.returnQty || 0);
+                          const unitCost = Number(item.unitPrice || 0);
+                          const discRate = Number(item.purchaseInvoiceItem?.discountRate || 0);
+                          const discAmt  = qty * unitCost * discRate / 100;
+                          const valExcl  = qty * unitCost - discAmt;
+                          const taxRate  = Number(item.purchaseInvoiceItem?.taxRate || 0);
+                          const taxAmt   = valExcl * taxRate / 100;
+                          const valIncl  = valExcl + taxAmt;
+
+                          tQty += qty;
+                          tUnitCost += unitCost;
+                          tValExcl += valExcl;
+                          tSalesTax += taxAmt;
+                          tValIncl += valIncl;
+                          tDiscAmt += discAmt;
+                          tLineTotal += valIncl;
+                        });
+
+                        return (
+                          <tfoot className="border-t-2 border-gray-300 font-bold bg-gray-50">
+                            <tr>
+                              <td colSpan={5} className="p-3 text-right">Total:</td>
+                              <td className="p-3 text-right tabular-nums">{fmt(tQty)}</td>
+                              <td className="p-3 text-right tabular-nums">{fmt(tUnitCost)}</td>
+                              <td className="p-3 text-right tabular-nums">{fmt(tValExcl)}</td>
+                              <td className="p-3"></td>
+                              <td className="p-3 text-right tabular-nums">{fmt(tSalesTax)}</td>
+                              <td className="p-3 text-right tabular-nums">{fmt(tValIncl)}</td>
+                              <td className="p-3"></td>
+                              <td className="p-3 text-right tabular-nums">{fmt(tDiscAmt)}</td>
+                              <td className="p-3 text-left text-xs text-gray-600"></td>
+                            </tr>
+                          </tfoot>
+                        );
+                      })()}
                     </table>
                   </div>
                 </CardContent>
@@ -406,14 +441,11 @@ export default function PurchaseReturnDetailPage() {
                       const taxRate  = Number(item.purchaseInvoiceItem?.taxRate       || 0);
                       const taxAmt   = valExcl * taxRate / 100;
                       const valIncl  = valExcl + taxAmt;
-                      const itemAdv  = valIncl * advRate / 100;
-                      const lineTotal = valIncl;
                       
                       totalQty += qty;
                       grossSubtotal += qty * unitCost;
                       totalDiscount += discAmt;
                       totalSalesTax += taxAmt;
-                      totalAdvTax += itemAdv;
                       totalAmount += valIncl;
                     });
                     
@@ -523,6 +555,21 @@ export default function PurchaseReturnDetailPage() {
                              <span>{purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || (purchaseReturn.purchaseInvoice?.landedCost as any)?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber}</span>
                           </div>
                        )}
+                       {(() => {
+                          const printBrands = Array.from(
+                            new Set(
+                              (purchaseReturn.items || [])
+                                .map((i: any) => i.item?.brand?.name || i.brand)
+                                .filter(Boolean)
+                            )
+                          ).join(', ');
+                          return printBrands ? (
+                            <div className="flex justify-between mt-1">
+                               <span className="font-bold">Brand:</span>
+                               <span>{printBrands}</span>
+                            </div>
+                          ) : null;
+                        })()}
                        {purchaseReturn.staxEInvoiceNumber && (
                           <div className="flex justify-between mt-1">
                              <span className="font-bold">STax e-Inv #:</span>
@@ -549,23 +596,21 @@ export default function PurchaseReturnDetailPage() {
                     <thead>
                       <tr className="border-y-2 border-black">
                         <th className="py-1 pr-1 text-left font-bold w-[4%]">#</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[10%]">SKU</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[8%]">HS Code</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[18%]">Description</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[6%]">Size</th>
-                        <th className="py-1 pr-1 text-left font-bold w-[6%]">Color</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[9%]">Unit Cost</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[11%]">SKU</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[9%]">HS Code</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[22%]">Description</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[7%]">Size</th>
+                        <th className="py-1 pr-1 text-left font-bold w-[7%]">Color</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[7%]">Qty</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[10%]">Unit Cost</th>
                         <th className="py-1 pr-1 text-right font-bold w-[11%]">Val Excl Tax</th>
                         <th className="py-1 pr-1 text-right font-bold w-[10%]">Sales Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[11%]">Val Incl Tax</th>
-                        <th className="py-1 text-right font-bold w-[11%]">Line Total</th>
+                        <th className="py-1 text-right font-bold w-[12%]">Val Incl Tax</th>
                       </tr>
                     </thead>
                     <tbody>
                       {purchaseReturn.items && purchaseReturn.items.length > 0 ? (
                         purchaseReturn.items.map((item: any, i: number) => {
-                          const advRate  = Number(purchaseReturn.purchaseInvoice?.advanceTaxRate || 0.5);
                           const qty      = Number(item.returnQty      || 0);
                           const unitCost = Number(item.unitPrice     || 0);
                           
@@ -576,9 +621,6 @@ export default function PurchaseReturnDetailPage() {
                           const taxRate  = Number(item.purchaseInvoiceItem?.taxRate       || 0);
                           const taxAmt   = valExcl * taxRate / 100;
                           const valIncl  = valExcl + taxAmt;
-                          
-                          const itemAdv  = valIncl * advRate / 100;
-                          const lineTotal = valIncl;
 
                           return (
                             <tr key={item.id || i} className="border-b border-gray-300 align-top">
@@ -595,8 +637,7 @@ export default function PurchaseReturnDetailPage() {
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(unitCost)}</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valExcl)}</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(taxAmt)}</td>
-                              <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valIncl)}</td>
-                              <td className="py-1 text-right tabular-nums font-semibold">{fmtInt(lineTotal)}</td>
+                              <td className="py-1 text-right tabular-nums font-semibold">{fmtInt(valIncl)}</td>
                             </tr>
                           );
                         })
@@ -608,98 +649,63 @@ export default function PurchaseReturnDetailPage() {
                         </tr>
                       )}
                     </tbody>
+                    {(() => {
+                      let tQty = 0, tUnitCost = 0, tValExcl = 0, tSalesTax = 0, tValIncl = 0, tLineTotal = 0;
+                      (purchaseReturn.items || []).forEach((item: any) => {
+                        const qty      = Number(item.returnQty || 0);
+                        const unitCost = Number(item.unitPrice || 0);
+                        const discRate = Number(item.purchaseInvoiceItem?.discountRate || 0);
+                        const discAmt  = qty * unitCost * discRate / 100;
+                        const valExcl  = qty * unitCost - discAmt;
+                        const taxRate  = Number(item.purchaseInvoiceItem?.taxRate || 0);
+                        const taxAmt   = valExcl * taxRate / 100;
+                        const valIncl  = valExcl + taxAmt;
+
+                        tQty += qty;
+                        tUnitCost += unitCost;
+                        tValExcl += valExcl;
+                        tSalesTax += taxAmt;
+                        tValIncl += valIncl;
+                        tLineTotal += valIncl;
+                      });
+
+                      return (
+                        <tfoot className="border-y-2 border-black font-bold">
+                          <tr>
+                            <td colSpan={6} className="py-1 pr-1 text-right">Total:</td>
+                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tQty)}</td>
+                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tUnitCost)}</td>
+                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tValExcl)}</td>
+                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tSalesTax)}</td>
+                            <td className="py-1 text-right tabular-nums font-bold">{fmtInt(tValIncl)}</td>
+                          </tr>
+                        </tfoot>
+                      );
+                    })()}
                 </table>
 
                 {/* Totals Section */}
-                <div className="flex border-b border-black pb-4 text-xs sm:text-[13px] justify-between">
-                    <div className="w-[50%] pt-4 flex flex-col justify-end gap-1">
-                        <div className="flex gap-2 font-bold mb-1">
-                            <span className="whitespace-nowrap">In Words:</span>
-                            <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(purchaseReturn.totalAmount || 0))}</span>
-                        </div>
-                        {purchaseReturn.reason && (
-                          <div className="text-left text-xs mt-2 border-t pt-2 border-dashed border-gray-300">
-                            <span className="font-bold">Reason for Return: </span>
-                            <span className="text-gray-700">{purchaseReturn.reason}</span>
-                          </div>
-                        )}
-                        {purchaseReturn.notes && (
-                          <div className="text-left text-xs mt-1">
-                            <span className="font-bold">Internal Notes: </span>
-                            <span className="text-gray-700">{purchaseReturn.notes}</span>
-                          </div>
-                        )}
+                <div className="border-b border-black pb-4 text-xs sm:text-[13px] pt-3">
+                    <div className="flex gap-2 font-bold mb-1">
+                        <span className="whitespace-nowrap">Total Return Amount:</span>
+                        <span className="font-bold border-b-2 border-black pb-0.5">{fmtInt(Number(purchaseReturn.totalAmount || 0))}</span>
                     </div>
-                    <div className="w-[45%] flex flex-col space-y-1 text-right">
-                        {(() => {
-                          const advRate  = Number(purchaseReturn.purchaseInvoice?.advanceTaxRate || 0.5);
-                          
-                          let totalQty = 0;
-                          let grossSubtotal = 0;
-                          let totalDiscount = 0;
-                          let totalSalesTax = 0;
-                          let totalAdvTax = 0;
-                          let totalAmount = 0;
-                          
-                          (purchaseReturn.items || []).forEach((item: any) => {
-                            const qty      = Number(item.returnQty      || 0);
-                            const unitCost = Number(item.unitPrice     || 0);
-                            const discRate = Number(item.purchaseInvoiceItem?.discountRate  || 0);
-                            const discAmt  = qty * unitCost * discRate / 100;
-                            const valExcl  = qty * unitCost - discAmt;
-                            const taxRate  = Number(item.purchaseInvoiceItem?.taxRate       || 0);
-                            const taxAmt   = valExcl * taxRate / 100;
-                            const valIncl  = valExcl + taxAmt;
-                            const itemAdv  = valIncl * advRate / 100;
-                            const lineTotal = valIncl;
-                            
-                            totalQty += qty;
-                            grossSubtotal += qty * unitCost;
-                            totalDiscount += discAmt;
-                            totalSalesTax += taxAmt;
-                            totalAdvTax += itemAdv;
-                            totalAmount += valIncl;
-                          });
-                          
-                          const valExcl = grossSubtotal - totalDiscount;
-                          const valIncl = valExcl + totalSalesTax;
-
-                          return (
-                            <>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Total QTY:</span>
-                                <span className="tabular-nums font-medium">{fmtInt(totalQty)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Subtotal (Gross):</span>
-                                <span className="tabular-nums font-medium">{fmtInt(grossSubtotal)}</span>
-                              </div>
-                              {totalDiscount > 0 && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Discount:</span>
-                                  <span className="tabular-nums font-medium">-{fmtInt(totalDiscount)}</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between border-t border-gray-400 pt-1">
-                                <span className="font-semibold">Value Excl. Sales Tax:</span>
-                                <span className="tabular-nums font-semibold">{fmtInt(valExcl)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Sale Tax Amount:</span>
-                                <span className="tabular-nums font-medium">{fmtInt(totalSalesTax)}</span>
-                              </div>
-                              <div className="flex justify-between border-t border-gray-400 pt-1">
-                                <span className="font-semibold">Value Incl. Sales Tax:</span>
-                                <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
-                              </div>
-                              <div className="flex justify-between border-t border-black pt-1 font-bold">
-                                <span>Total Return Amount:</span>
-                                <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmtInt(totalAmount)}</span>
-                              </div>
-                            </>
-                          );
-                        })()}
+                    <div className="flex gap-2 font-bold mb-1">
+                        <span className="whitespace-nowrap">In Words:</span>
+                        <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(purchaseReturn.totalAmount || 0))}</span>
                     </div>
+                    {purchaseReturn.reason && (
+                      <div className="text-left text-xs mt-2 border-t pt-2 border-dashed border-gray-300">
+                        <span className="font-bold">Reason for Return: </span>
+                        <span className="text-gray-700">{purchaseReturn.reason}</span>
+                      </div>
+                    )}
+                    {purchaseReturn.notes && (
+                      <div className="text-left text-xs mt-1">
+                        <span className="font-bold">Internal Notes: </span>
+                        <span className="text-gray-700">{purchaseReturn.notes}</span>
+                      </div>
+                    )}
                 </div>
 
                 {/* Signatures */}

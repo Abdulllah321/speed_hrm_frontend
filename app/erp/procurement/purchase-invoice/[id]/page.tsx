@@ -1277,16 +1277,30 @@ export default function PurchaseInvoiceDetailPage() {
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <div className="flex gap-2">
-                    <span className="font-bold">Date:</span>
-                    <span>
-                      {new Date(invoice.invoiceDate).toLocaleDateString(
-                        "en-GB",
-                      )}
-                    </span>
-                  </div>
+                <div className="flex justify-between mb-2">
+                  <span className="font-bold">Date:</span>
+                  <span>
+                    {new Date(invoice.invoiceDate).toLocaleDateString(
+                      "en-GB",
+                    )}
+                  </span>
                 </div>
+                {(() => {
+                  const brandNames = Array.from(
+                    new Set(
+                      (invoice.items || [])
+                        .map((i: any) => i.item?.brand?.name || i.brand?.name || i.brand)
+                        .filter(Boolean)
+                    )
+                  ).join(', ');
+
+                  return brandNames ? (
+                    <div className="flex justify-between">
+                      <span className="font-bold">Brand:</span>
+                      <span className="font-bold">{brandNames}</span>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </div>
 
