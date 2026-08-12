@@ -140,8 +140,8 @@ export default function CreatePurchaseReturnPage() {
     setSelectedDoc(doc);
     setFormData({
       ...formData,
-      grnId: undefined,
-      landedCostId: undefined,
+      grnId: doc.grn?.id || doc.landedCost?.grn?.id || undefined,
+      landedCostId: doc.landedCost?.id || undefined,
       purchaseInvoiceId: docId,
       supplierId: doc.supplier.id,
       warehouseId: doc.warehouse?.id || '',
@@ -723,7 +723,7 @@ export default function CreatePurchaseReturnPage() {
                             totalDiscount += discAmt;
                             totalSalesTax += taxAmt;
                             totalAdvTax += itemAdv;
-                            totalAmount += valIncl + itemAdv;
+                            totalAmount += valIncl;
                           });
                           
                           const valExcl = grossSubtotal - totalDiscount;
@@ -756,10 +756,6 @@ export default function CreatePurchaseReturnPage() {
                               <div className="flex justify-between border-t border-gray-400 pt-1">
                                 <span className="font-semibold">Value Incl. Sales Tax:</span>
                                 <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Advance Tax ({advRate}%):</span>
-                                <span className="tabular-nums font-medium">{fmtInt(totalAdvTax)}</span>
                               </div>
                               <div className="flex justify-between border-t border-black pt-1 font-bold">
                                 <span>Total Return Amount:</span>

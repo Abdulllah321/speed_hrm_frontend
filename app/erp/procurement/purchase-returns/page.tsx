@@ -149,7 +149,7 @@ export default function PurchaseReturnsPage() {
                   </thead>
                   <tbody>
                     {returns.map((returnItem) => {
-                      const grnNumber = returnItem.grn?.grnNumber || returnItem.purchaseInvoice?.grn?.grnNumber || returnItem.landedCost?.grn?.grnNumber || '—';
+                      const grnNumber = returnItem.grn?.grnNumber || returnItem.purchaseInvoice?.grn?.grnNumber || (returnItem.purchaseInvoice?.landedCost as any)?.grn?.grnNumber || returnItem.landedCost?.grn?.grnNumber || '—';
                       const brandNames = Array.from(
                         new Set(
                           (returnItem.items || [])
