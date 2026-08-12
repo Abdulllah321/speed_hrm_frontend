@@ -307,7 +307,7 @@ export default function EditPurchaseReturnPage() {
     );
   }
 
-  const grnNo = purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber || '—';
+  const grnNo = purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || (purchaseReturn.purchaseInvoice?.landedCost as any)?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber || '—';
 
   return (
     <PermissionGuard permissions="erp.procurement.pret.update">
@@ -777,15 +777,13 @@ export default function EditPurchaseReturnPage() {
                             const taxRate  = Number(item.taxRate       || 0);
                             const taxAmt   = valExcl * taxRate / 100;
                             const valIncl  = valExcl + taxAmt;
-                            const itemAdv  = valIncl * advRate / 100;
                             const lineTotal = valIncl;
                             
                             totalQty += qty;
                             grossSubtotal += qty * unitCost;
                             totalDiscount += discAmt;
                             totalSalesTax += taxAmt;
-                            totalAdvTax += itemAdv;
-                            totalAmount += valIncl + itemAdv;
+                            totalAmount += lineTotal;
                           });
                           
                           const valExcl = grossSubtotal - totalDiscount;
@@ -818,10 +816,6 @@ export default function EditPurchaseReturnPage() {
                               <div className="flex justify-between border-t border-gray-400 pt-1">
                                 <span className="font-semibold">Value Incl. Sales Tax:</span>
                                 <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Advance Tax ({advRate}%):</span>
-                                <span className="tabular-nums font-medium">{fmtInt(totalAdvTax)}</span>
                               </div>
                               <div className="flex justify-between border-t border-black pt-1 font-bold">
                                 <span>Total Return Amount:</span>

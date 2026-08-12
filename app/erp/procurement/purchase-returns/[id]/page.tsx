@@ -326,8 +326,8 @@ export default function PurchaseReturnDetailPage() {
                       <h3 className="font-semibold">Purchase Invoice Reference</h3>
                       <p className="text-gray-600">Invoice Number: {purchaseReturn.purchaseInvoice.invoiceNumber}</p>
                       <p className="text-gray-600">Date: {formatDate(purchaseReturn.purchaseInvoice.invoiceDate)}</p>
-                      {purchaseReturn.purchaseInvoice.grn && (
-                        <p className="text-gray-600">GRN Number: {purchaseReturn.purchaseInvoice.grn.grnNumber}</p>
+                      {(purchaseReturn.purchaseInvoice.grn?.grnNumber || (purchaseReturn.purchaseInvoice.landedCost as any)?.grn?.grnNumber) && (
+                        <p className="text-gray-600">GRN Number: {purchaseReturn.purchaseInvoice.grn?.grnNumber || (purchaseReturn.purchaseInvoice.landedCost as any)?.grn?.grnNumber}</p>
                       )}
                       {purchaseReturn.purchaseInvoice.landedCost && (
                         <p className="text-gray-600">LC Number: {purchaseReturn.purchaseInvoice.landedCost.landedCostNumber}</p>
@@ -407,14 +407,14 @@ export default function PurchaseReturnDetailPage() {
                       const taxAmt   = valExcl * taxRate / 100;
                       const valIncl  = valExcl + taxAmt;
                       const itemAdv  = valIncl * advRate / 100;
-                      const lineTotal = valIncl + itemAdv;
+                      const lineTotal = valIncl;
                       
                       totalQty += qty;
                       grossSubtotal += qty * unitCost;
                       totalDiscount += discAmt;
                       totalSalesTax += taxAmt;
                       totalAdvTax += itemAdv;
-                      totalAmount += lineTotal;
+                      totalAmount += valIncl;
                     });
                     
                     const valExcl = grossSubtotal - totalDiscount;
@@ -445,10 +445,6 @@ export default function PurchaseReturnDetailPage() {
                         <div className="flex justify-between text-sm border-t pt-2">
                           <span className="text-gray-700 font-medium">Value Incl. Sales Tax</span>
                           <span className="font-semibold tabular-nums">{fmtInt(valIncl)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">Advance Tax ({advRate}%)</span>
-                          <span className="font-medium tabular-nums text-orange-600">{fmtInt(totalAdvTax)}</span>
                         </div>
                         <hr />
                         <div className="flex justify-between font-semibold">
@@ -521,10 +517,10 @@ export default function PurchaseReturnDetailPage() {
                              <span>{purchaseReturn.purchaseInvoice.invoiceNumber}</span>
                           </div>
                        )}
-                       {(purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber) && (
+                       {(purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || (purchaseReturn.purchaseInvoice?.landedCost as any)?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber) && (
                           <div className="flex justify-between mt-1">
                              <span className="font-bold">GRN Number:</span>
-                             <span>{purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber}</span>
+                             <span>{purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || (purchaseReturn.purchaseInvoice?.landedCost as any)?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber}</span>
                           </div>
                        )}
                        {purchaseReturn.staxEInvoiceNumber && (
@@ -662,7 +658,7 @@ export default function PurchaseReturnDetailPage() {
                             totalDiscount += discAmt;
                             totalSalesTax += taxAmt;
                             totalAdvTax += itemAdv;
-                            totalAmount += valIncl + itemAdv;
+                            totalAmount += valIncl;
                           });
                           
                           const valExcl = grossSubtotal - totalDiscount;
@@ -695,10 +691,6 @@ export default function PurchaseReturnDetailPage() {
                               <div className="flex justify-between border-t border-gray-400 pt-1">
                                 <span className="font-semibold">Value Incl. Sales Tax:</span>
                                 <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Advance Tax ({advRate}%):</span>
-                                <span className="tabular-nums font-medium">{fmtInt(totalAdvTax)}</span>
                               </div>
                               <div className="flex justify-between border-t border-black pt-1 font-bold">
                                 <span>Total Return Amount:</span>

@@ -374,15 +374,12 @@ export default function DebitNoteDetailPage() {
                             const taxRate  = Number(item.purchaseInvoiceItem?.taxRate       || 0);
                             const taxAmt   = valExcl * taxRate / 100;
                             const valIncl  = valExcl + taxAmt;
-                            const itemAdv  = valIncl * advRate / 100;
-                            const lineTotal = valIncl + itemAdv;
                             
                             totalQty += qty;
                             grossSubtotal += qty * unitCost;
                             totalDiscount += discAmt;
                             totalSalesTax += taxAmt;
-                            totalAdvTax += itemAdv;
-                            totalAmount += lineTotal;
+                            totalAmount += valIncl;
                           });
                           
                           const valExcl = grossSubtotal - totalDiscount;
@@ -415,10 +412,6 @@ export default function DebitNoteDetailPage() {
                               <div className="flex justify-between border-t border-gray-400 pt-1">
                                 <span className="font-semibold">Value Incl. Sales Tax:</span>
                                 <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Advance Tax ({advRate}%):</span>
-                                <span className="tabular-nums font-medium">{fmtInt(totalAdvTax)}</span>
                               </div>
                               <div className="flex justify-between border-t border-black pt-1 font-bold">
                                 <span>Total Adjustment Amount:</span>
