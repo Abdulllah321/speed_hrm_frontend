@@ -18,7 +18,9 @@ import {
     Loader2,
     ArrowLeft,
     AlertCircle,
-    SlidersHorizontal,
+    Printer,
+    Repeat,
+    ClipboardList,
     TrendingDown,
     TrendingUp,
 } from "lucide-react";
@@ -29,6 +31,7 @@ import {
     deleteStockAdjustment,
     StockAdjustment,
 } from "@/lib/actions/stock-adjustment";
+import { printStockAdjustmentNote } from "@/lib/utils/print-stock-adjustment";
 import { toast } from "sonner";
 
 interface StockAdjustmentDetailProps {
@@ -45,7 +48,7 @@ const STATUS_META: Record<string, { label: string; badgeClass: string }> = {
         badgeClass: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/30 dark:text-blue-300",
     },
     SUBMITTED: {
-        label: "Posted / Submitted",
+        label: "Posted / Approved",
         badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-300",
     },
     REJECTED: {
@@ -64,6 +67,7 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
 
     const isDraft = adjustment.status === "DRAFT";
     const isPendingApproval = adjustment.status === "PENDING_APPROVAL";
+    const isSwap = adjustment.adjustmentType === "SWAP";
 
     const [managerNotes, setManagerNotes] = useState(adjustment.notes || "");
     const [editableItems, setEditableItems] = useState<any[]>([]);
@@ -172,6 +176,8 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
         badgeClass: "bg-muted text-muted-foreground",
     };
 
+    const locationName = adjustment.items?.find((i) => i.location?.name)?.location?.name;
+
     return (
         <div className="space-y-6">
             {/* Header Actions Bar */}
@@ -193,68 +199,92 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                             <Badge variant="outline" className={cn("text-xs font-semibold px-2 py-0.5", statusMeta.badgeClass)}>
                                 {statusMeta.label}
                             </Badge>
+                            <Badge
+                                variant="outline"
+                                className={cn(
+                                    "text-xs font-semibold px-2 py-0.5 flex items-center gap-1",
+                                    isSwap
+                                        ? "bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/30 dark:text-amber-300"
+                                        : "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-900 dark:text-slate-300"
+                                )}
+                            >
+                                {isSwap ? <Repeat className="h-3 w-3" /> : <ClipboardList className="h-3 w-3" />}
+                                {isSwap ? "Stock Swap" : "Standard Count"}
+                            </Badge>
                         </div>
                     </div>
                 </div>
 
-                {isDraft && (
-                    <div className="flex items-center gap-3">
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={handleDelete}
-                            disabled={isPending}
-                            className="gap-2"
-                        >
-                            <Trash className="h-4 w-4" />
-                            Delete Draft
-                        </Button>
-                        <Button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={isPending}
-                            className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600"
-                        >
-                            {isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <CheckCircle className="h-4 w-4" />
-                            )}
-                            Submit / Post Stock
-                        </Button>
-                    </div>
-                )}
+                <div className="flex items-center gap-3">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => printStockAdjustmentNote(adjustment)}
+                        className="gap-2"
+                    >
+                        <Printer className="h-4 w-4" />
+                        Print Adjustment Note
+                    </Button>
 
-                {isPendingApproval && (
-                    <div className="flex items-center gap-3">
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={handleReject}
-                            disabled={isPending}
-                            className="gap-2"
-                        >
-                            <Trash className="h-4 w-4" />
-                            Reject Request
-                        </Button>
-                        <Button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={isPending}
-                            className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600"
-                        >
-                            {isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <CheckCircle className="h-4 w-4" />
-                            )}
-                            Approve & Post Stock
-                        </Button>
-                    </div>
-                )}
+                    {isDraft && (
+                        <>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={handleDelete}
+                                disabled={isPending}
+                                className="gap-2"
+                            >
+                                <Trash className="h-4 w-4" />
+                                Delete Draft
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={isPending}
+                                className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600"
+                            >
+                                {isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <CheckCircle className="h-4 w-4" />
+                                )}
+                                Submit / Post Stock
+                            </Button>
+                        </>
+                    )}
+
+                    {isPendingApproval && (
+                        <>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={handleReject}
+                                disabled={isPending}
+                                className="gap-2"
+                            >
+                                <Trash className="h-4 w-4" />
+                                Reject Request
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={isPending}
+                                className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600"
+                            >
+                                {isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <CheckCircle className="h-4 w-4" />
+                                )}
+                                Approve & Post Stock
+                            </Button>
+                        </>
+                    )}
+                </div>
             </div>
 
-            {/* Alert banners */}
+            {/* Alert Banners */}
             {isDraft && (
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-amber-400">
                     <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
@@ -274,16 +304,22 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Meta details card */}
+                {/* Meta Details Card */}
                 <Card className="lg:col-span-2 shadow-sm border-muted">
                     <CardHeader className="pb-3">
                         <CardTitle className="text-lg">Adjustment Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <span className="text-xs text-muted-foreground block">Store Location / Outlet</span>
+                                <span className="text-sm font-semibold">{locationName || "Warehouse Direct"}</span>
+                            </div>
                             <div>
                                 <span className="text-xs text-muted-foreground block">Warehouse</span>
-                                <span className="text-sm font-semibold">{adjustment.warehouse?.name} ({adjustment.warehouse?.code})</span>
+                                <span className="text-sm font-semibold">
+                                    {adjustment.warehouse?.name} ({adjustment.warehouse?.code})
+                                </span>
                             </div>
                             <div>
                                 <span className="text-xs text-muted-foreground block">Adjustment Date</span>
@@ -326,7 +362,7 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                     </CardContent>
                 </Card>
 
-                {/* Summary calculation card */}
+                {/* Summary Calculation Card */}
                 <Card className="shadow-sm border-muted h-fit">
                     <CardHeader className="pb-3">
                         <CardTitle className="text-lg">Adjustment Totals</CardTitle>
@@ -362,7 +398,7 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                 </Card>
             </div>
 
-            {/* List of adjustment lines */}
+            {/* List of Adjustment Lines */}
             <Card className="shadow-sm border-muted">
                 <CardHeader>
                     <CardTitle className="text-lg">Adjustment Items</CardTitle>
