@@ -16,13 +16,24 @@ export default async function DeliveryNotePage({
         warehouseId?: string;
         status?: string;
         transferType?: string;
+        dispatchType?: string;
         search?: string;
         dateFrom?: string;
         dateTo?: string;
+        page?: string;
+        limit?: string;
     }>;
 }) {
     try {
-        const filters = await searchParams;
+        const rawFilters = await searchParams;
+        const page = rawFilters.page ? parseInt(rawFilters.page, 10) : 1;
+        const limit = rawFilters.limit ? parseInt(rawFilters.limit, 10) : 10;
+        const filters = {
+            ...rawFilters,
+            page,
+            limit,
+        };
+
         const [result, warehouses] = await Promise.all([
             getStockTransfers(filters),
             getWarehouses(),
@@ -71,6 +82,7 @@ export default async function DeliveryNotePage({
 
                     <StockTransferHistoryList 
                         initialEntries={data} 
+                        initialMeta={result.meta}
                         warehouses={warehouses}
                         initialFilters={filters}
                     />

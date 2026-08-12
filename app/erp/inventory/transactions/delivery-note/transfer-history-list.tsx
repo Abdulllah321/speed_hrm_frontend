@@ -27,6 +27,10 @@ import {
     Search,
     RefreshCw,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
     FileSpreadsheet,
     FileText,
     Truck,
@@ -69,6 +73,12 @@ import { cn } from "@/lib/utils";
 
 interface StockTransferHistoryListProps {
     initialEntries: any[];
+    initialMeta?: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    };
     warehouses?: Warehouse[];
     initialFilters?: {
         warehouseId?: string;
@@ -78,6 +88,8 @@ interface StockTransferHistoryListProps {
         search?: string;
         dateFrom?: string;
         dateTo?: string;
+        page?: number | string;
+        limit?: number | string;
     };
 }
 
@@ -95,11 +107,23 @@ const COMMON_COURIERS = [
 
 export function StockTransferHistoryList({ 
     initialEntries,
+    initialMeta,
     warehouses = [],
     initialFilters
 }: StockTransferHistoryListProps) {
     const router = useRouter();
     const [entries, setEntries] = React.useState<any[]>(initialEntries);
+    const [meta, setMeta] = React.useState<{
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>({
+        total: initialMeta?.total ?? initialEntries.length,
+        page: initialMeta?.page ?? (initialFilters?.page ? Number(initialFilters.page) : 1),
+        limit: initialMeta?.limit ?? (initialFilters?.limit ? Number(initialFilters.limit) : 10),
+        totalPages: initialMeta?.totalPages ?? 1,
+    });
     const [loading, setLoading] = React.useState(false);
 
     // Export state tracking per AGENTS.md rules
@@ -135,10 +159,13 @@ export function StockTransferHistoryList({
         dispatchNotes: "",
     });
 
-    // Keep state in sync with initialEntries when props update
+    // Keep state in sync with initialEntries and initialMeta when props update
     React.useEffect(() => {
         setEntries(initialEntries);
-    }, [initialEntries]);
+        if (initialMeta) {
+            setMeta(initialMeta);
+        }
+    }, [initialEntries, initialMeta]);
 
     // Poll export status every 2 seconds when generating
     React.useEffect(() => {
@@ -169,23 +196,28 @@ export function StockTransferHistoryList({
         return () => clearInterval(interval);
     }, [exportJobId, exportState]);
 
-    const applyFilters = async () => {
+    const fetchPage = async (targetPage: number, targetLimit: number, extraFilters?: any) => {
         setLoading(true);
         try {
             const activeFilters = {
-                search: search.trim() || undefined,
-                status: status !== "all" ? status : undefined,
-                transferType: transferType !== "all" ? transferType : undefined,
-                dispatchType: dispatchTypeFilter !== "all" ? dispatchTypeFilter : undefined,
-                warehouseId: warehouseId !== "all" ? warehouseId : undefined,
-                dateFrom: dateFrom || undefined,
-                dateTo: dateTo || undefined,
+                search: (extraFilters?.search !== undefined ? extraFilters.search : search).trim() || undefined,
+                status: (extraFilters?.status !== undefined ? extraFilters.status : status) !== "all" ? (extraFilters?.status ?? status) : undefined,
+                transferType: (extraFilters?.transferType !== undefined ? extraFilters.transferType : transferType) !== "all" ? (extraFilters?.transferType ?? transferType) : undefined,
+                dispatchType: (extraFilters?.dispatchType !== undefined ? extraFilters.dispatchType : dispatchTypeFilter) !== "all" ? (extraFilters?.dispatchType ?? dispatchTypeFilter) : undefined,
+                warehouseId: (extraFilters?.warehouseId !== undefined ? extraFilters.warehouseId : warehouseId) !== "all" ? (extraFilters?.warehouseId ?? warehouseId) : undefined,
+                dateFrom: (extraFilters?.dateFrom !== undefined ? extraFilters.dateFrom : dateFrom) || undefined,
+                dateTo: (extraFilters?.dateTo !== undefined ? extraFilters.dateTo : dateTo) || undefined,
+                page: targetPage,
+                limit: targetLimit,
             };
 
             const res = await getStockTransfers(activeFilters);
             if (res.status) {
                 setEntries(res.data || []);
-                
+                if (res.meta) {
+                    setMeta(res.meta);
+                }
+
                 const params = new URLSearchParams();
                 if (activeFilters.search) params.set("search", activeFilters.search);
                 if (activeFilters.status) params.set("status", activeFilters.status);
@@ -194,19 +226,25 @@ export function StockTransferHistoryList({
                 if (activeFilters.warehouseId) params.set("warehouseId", activeFilters.warehouseId);
                 if (activeFilters.dateFrom) params.set("dateFrom", activeFilters.dateFrom);
                 if (activeFilters.dateTo) params.set("dateTo", activeFilters.dateTo);
-                
+                params.set("page", String(targetPage));
+                params.set("limit", String(targetLimit));
+
                 const qs = params.toString();
                 router.replace(`/erp/inventory/transactions/delivery-note${qs ? `?${qs}` : ""}`, { scroll: false });
-                toast.success("Filters applied successfully");
             } else {
-                toast.error(res.message || "Failed to fetch filtered delivery notes");
+                toast.error(res.message || "Failed to fetch delivery notes");
             }
         } catch (error) {
-            console.error("Error applying filters:", error);
-            toast.error("Failed to filter delivery notes");
+            console.error("Error fetching delivery notes:", error);
+            toast.error("Failed to fetch delivery notes");
         } finally {
             setLoading(false);
         }
+    };
+
+    const applyFilters = async () => {
+        await fetchPage(1, meta.limit);
+        toast.success("Filters applied successfully");
     };
 
     const resetFilters = async () => {
@@ -217,22 +255,16 @@ export function StockTransferHistoryList({
         setWarehouseId("all");
         setDateFrom("");
         setDateTo("");
-        setLoading(true);
-        try {
-            const res = await getStockTransfers();
-            if (res.status) {
-                setEntries(res.data || []);
-                router.replace("/erp/inventory/transactions/delivery-note", { scroll: false });
-                toast.success("Filters reset successfully");
-            } else {
-                toast.error(res.message || "Failed to reset delivery notes");
-            }
-        } catch (error) {
-            console.error("Error resetting filters:", error);
-            toast.error("Failed to reset filters");
-        } finally {
-            setLoading(false);
-        }
+        await fetchPage(1, 10, {
+            search: "",
+            status: "all",
+            transferType: "all",
+            dispatchType: "all",
+            warehouseId: "all",
+            dateFrom: "",
+            dateTo: "",
+        });
+        toast.success("Filters reset successfully");
     };
 
     const openDispatchModal = (transfer: any) => {
@@ -699,6 +731,86 @@ export function StockTransferHistoryList({
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Pagination Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card border-2 rounded-xl shadow-xs">
+                <div className="text-xs text-muted-foreground font-semibold">
+                    Showing <span className="font-bold text-foreground">{meta.total > 0 ? (meta.page - 1) * meta.limit + 1 : 0}</span> to{" "}
+                    <span className="font-bold text-foreground">{Math.min(meta.page * meta.limit, meta.total)}</span> of{" "}
+                    <span className="font-bold text-foreground">{meta.total}</span> entries
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Rows per page:</span>
+                        <Select
+                            value={String(meta.limit)}
+                            onValueChange={(val) => {
+                                const newLimit = parseInt(val, 10);
+                                fetchPage(1, newLimit);
+                            }}
+                        >
+                            <SelectTrigger className="h-8 w-16 text-xs font-bold">
+                                <SelectValue placeholder={String(meta.limit)} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="10">10</SelectItem>
+                                <SelectItem value="25">25</SelectItem>
+                                <SelectItem value="50">50</SelectItem>
+                                <SelectItem value="100">100</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            disabled={meta.page <= 1 || loading}
+                            onClick={() => fetchPage(1, meta.limit)}
+                            title="First Page"
+                        >
+                            <ChevronsLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            disabled={meta.page <= 1 || loading}
+                            onClick={() => fetchPage(meta.page - 1, meta.limit)}
+                            title="Previous Page"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+
+                        <div className="text-xs font-bold px-2">
+                            Page {meta.page} of {meta.totalPages || 1}
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            disabled={meta.page >= (meta.totalPages || 1) || loading}
+                            onClick={() => fetchPage(meta.page + 1, meta.limit)}
+                            title="Next Page"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            disabled={meta.page >= (meta.totalPages || 1) || loading}
+                            onClick={() => fetchPage(meta.totalPages || 1, meta.limit)}
+                            title="Last Page"
+                        >
+                            <ChevronsRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            </div>
 
             {/* Courier & Dispatch Edit Modal */}
             <Dialog open={isDispatchModalOpen} onOpenChange={setIsDispatchModalOpen}>
