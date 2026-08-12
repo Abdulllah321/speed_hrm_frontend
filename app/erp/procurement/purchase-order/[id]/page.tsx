@@ -510,17 +510,31 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
 
                             {/* Details Box */}
                             <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-                               <div className="flex justify-between mb-2">
-                                 <span className="font-bold">PO Number:</span>
-                                 <span className="font-bold">{order.poNumber}</span>
-                               </div>
-                               <div className="flex justify-between">
-                                 <div className="flex gap-2">
-                                   <span className="font-bold">Date:</span>
-                                   <span>{new Date(order.orderDate).toLocaleDateString('en-GB')}</span>
-                                 </div>
-                               </div>
-                            </div>
+                                <div className="flex justify-between mb-2">
+                                  <span className="font-bold">PO Number:</span>
+                                  <span className="font-bold">{order.poNumber}</span>
+                                </div>
+                                <div className="flex justify-between mb-2">
+                                  <span className="font-bold">Date:</span>
+                                  <span>{new Date(order.orderDate).toLocaleDateString('en-GB')}</span>
+                                </div>
+                                {(() => {
+                                  const brandNames = Array.from(
+                                    new Set(
+                                      (order.items || [])
+                                        .map((i: any) => i.item?.brand?.name || i.brand?.name || i.brand)
+                                        .filter(Boolean)
+                                    )
+                                  ).join(', ');
+
+                                  return brandNames ? (
+                                    <div className="flex justify-between">
+                                      <span className="font-bold">Brand:</span>
+                                      <span className="font-bold">{brandNames}</span>
+                                    </div>
+                                  ) : null;
+                                })()}
+                             </div>
                         </div>
 
                         {/* Vendor / Ship To Box */}
@@ -543,14 +557,13 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                         <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
                             <thead>
                               <tr className="border-y-2 border-black">
-                                <th className="py-2 pr-2 text-left font-bold w-[12%]">SKU</th>
-                                <th className="py-2 pr-2 text-left font-bold w-[12%]">Brand</th>
-                                <th className="py-2 pr-2 text-left font-bold w-[22%]">Description</th>
+                                <th className="py-2 pr-2 text-left font-bold w-[14%]">SKU</th>
+                                <th className="py-2 pr-2 text-left font-bold w-[28%]">Description</th>
                                 <th className="py-2 pr-2 text-left font-bold w-[10%]">Size</th>
-                                <th className="py-2 pr-2 text-left font-bold w-[10%]">Color</th>
+                                <th className="py-2 pr-2 text-left font-bold w-[12%]">Color</th>
                                 <th className="py-2 pr-2 text-right font-bold w-[10%]">Qty</th>
-                                <th className="py-2 pr-2 text-right font-bold w-[12%]">Unit Price</th>
-                                <th className="py-2 text-right font-bold w-[12%]">Total</th>
+                                <th className="py-2 pr-2 text-right font-bold w-[13%]">Unit Price</th>
+                                <th className="py-2 text-right font-bold w-[13%]">Total</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -560,9 +573,6 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                     <tr key={item.id || i} className="border-b border-gray-300 align-top">
                                       <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
                                         {item.item?.sku || '-'}
-                                      </td>
-                                      <td className="py-2 pr-2 overflow-hidden text-ellipsis">
-                                        {item.item?.brand?.name || '-'}
                                       </td>
                                       <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
                                         {item.description || '-'}
@@ -585,7 +595,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                     </tr>
                                   ))}
                                   <tr className="border-t-2 border-black">
-                                    <td colSpan={5} className="py-2 pr-2 text-right font-bold text-xs sm:text-[13px]">Total Ordered Qty:</td>
+                                    <td colSpan={4} className="py-2 pr-2 text-right font-bold text-xs sm:text-[13px]">Total Ordered Qty:</td>
                                     <td className="py-2 pr-2 text-right tabular-nums font-bold">
                                       {order.items.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(2)}
                                     </td>
