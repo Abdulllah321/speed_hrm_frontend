@@ -167,6 +167,10 @@ export default function PosStockValuationReportPage() {
     });
 
     const [reportData, setReportData] = useState<any[]>([]);
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(50);
+    const [meta, setMeta] = useState({ total: 0, page: 1, limit: 50, totalPages: 1 });
+
     const [isPending, startTransition] = useTransition();
     const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
@@ -229,18 +233,24 @@ export default function PosStockValuationReportPage() {
                 showSilhouette: groupingLevels.silhouette,
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
+                page,
+                limit,
             });
             if (result && result.status !== false) {
-                setReportData(result.data?.root || (Array.isArray(result.data) ? result.data : []));
+                const reportRoot = result.data || result.root || (Array.isArray(result) ? result : []);
+                setReportData(Array.isArray(reportRoot) ? reportRoot : []);
+                if (result.meta) {
+                    setMeta(result.meta);
+                }
             } else {
                 toast.error("Failed to load valuation report data");
             }
         });
-    }, [dateRange, groupingLevels, summaryOnly]);
+    }, [dateRange, groupingLevels, summaryOnly, page, limit]);
 
     useEffect(() => {
         fetchReport();
-    }, [groupingLevels]);
+    }, [fetchReport]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -1052,6 +1062,54 @@ export default function PosStockValuationReportPage() {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* Pagination Controls Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/40 border border-border rounded-xl shadow-xs no-print">
+                <div className="text-xs text-muted-foreground font-medium flex items-center gap-2">
+                    <span>
+                        Page <strong className="text-foreground">{meta.page}</strong> of{" "}
+                        <strong className="text-foreground">{meta.totalPages}</strong>
+                    </span>
+                    <span className="text-border">•</span>
+                    <span>Total <strong className="text-foreground">{meta.total.toLocaleString()}</strong> items</span>
+                    {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary ml-1" />}
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-semibold">Page size:</span>
+                    <select
+                        value={limit}
+                        onChange={(e) => {
+                            setLimit(Number(e.target.value));
+                            setPage(1);
+                        }}
+                        className="text-xs px-2 py-1 rounded-lg border border-border bg-background font-semibold outline-none focus:border-primary cursor-pointer"
+                    >
+                        <option value={25}>25 / page</option>
+                        <option value={50}>50 / page</option>
+                        <option value={100}>100 / page</option>
+                        <option value={200}>200 / page</option>
+                    </select>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page <= 1 || isPending}
+                        className="h-8 text-xs font-semibold px-3"
+                    >
+                        Previous
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+                        disabled={page >= meta.totalPages || isPending}
+                        className="h-8 text-xs font-semibold px-3"
+                    >
+                        Next
+                    </Button>
+                </div>
             </div>
 
             {/* Report Hierarchy Configuration */}
