@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { purchaseReturnApi, PurchaseReturn, UpdatePurchaseReturnDto, warehouseApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { getSeasons, Season } from '@/lib/actions/season';
 
 export function numberToWords(amount: number): string {
     const a = [
@@ -52,10 +53,15 @@ export default function EditPurchaseReturnPage() {
   const [loading, setLoading] = useState(false);
   const [purchaseReturn, setPurchaseReturn] = useState<PurchaseReturn | null>(null);
   const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
 
   const [formData, setFormData] = useState<UpdatePurchaseReturnDto>({
     warehouseId: '',
     returnType: 'DEFECTIVE',
+    returnDate: '',
+    seasonId: '',
+    companyGstNumber: '12-01-9999-663-46',
+    supplierGstNumber: '',
     reason: '',
     notes: '',
     staxEInvoiceNumber: '',
@@ -64,10 +70,22 @@ export default function EditPurchaseReturnPage() {
 
   useEffect(() => {
     loadWarehouses();
+    loadSeasons();
     if (params.id) {
       loadPurchaseReturn(params.id as string);
     }
   }, [params.id]);
+
+  const loadSeasons = async () => {
+    try {
+      const res = await getSeasons();
+      if (res && res.data) {
+        setSeasons(res.data);
+      }
+    } catch (error) {
+      console.error('Error loading seasons:', error);
+    }
+  };
 
   const loadWarehouses = async () => {
     try {
@@ -196,6 +214,10 @@ export default function EditPurchaseReturnPage() {
       setFormData({
         warehouseId: data.warehouseId || '',
         returnType: data.returnType,
+        returnDate: data.returnDate ? new Date(data.returnDate).toISOString().split('T')[0] : '',
+        seasonId: data.seasonId || '',
+        companyGstNumber: data.companyGstNumber || '12-01-9999-663-46',
+        supplierGstNumber: data.supplierGstNumber || data.supplier?.strnNo || data.supplier?.ntnNo || '',
         reason: data.reason || '',
         notes: data.notes || '',
         staxEInvoiceNumber: data.staxEInvoiceNumber || '',
@@ -405,10 +427,23 @@ export default function EditPurchaseReturnPage() {
                     <CardTitle>Return Details</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                       <div className="space-y-2">
                         <Label>Return Number</Label>
                         <Input value={purchaseReturn.returnNumber} disabled className="font-medium" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>PR Creation Date (Auto)</Label>
+                        <Input value={formatDate(purchaseReturn.createdAt)} disabled className="bg-gray-50 text-gray-700 font-medium" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Sale Tax Invoice Date</Label>
+                        <Input
+                          type="date"
+                          value={formData.returnDate || ''}
+                          onChange={(e) => setFormData({ ...formData, returnDate: e.target.value })}
+                          className="font-medium"
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Return Type</Label>
@@ -429,9 +464,30 @@ export default function EditPurchaseReturnPage() {
                         </Select>
                       </div>
                       <div className="space-y-2">
+                        <Label>Season</Label>
+                        <Select
+                          value={formData.seasonId || ''}
+                          onValueChange={(val) => setFormData({ ...formData, seasonId: val })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Season" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {seasons.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
                         <Label>Supplier</Label>
                         <Input value={purchaseReturn.supplier?.name || 'N/A'} disabled />
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>GRN Number</Label>
                         <Input value={grnNo} disabled />
@@ -442,6 +498,22 @@ export default function EditPurchaseReturnPage() {
                           value={formData.staxEInvoiceNumber || ''}
                           onChange={(e) => setFormData({ ...formData, staxEInvoiceNumber: e.target.value })}
                           placeholder="e.g. ST-123456"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Company GST #</Label>
+                        <Input
+                          value={formData.companyGstNumber || ''}
+                          onChange={(e) => setFormData({ ...formData, companyGstNumber: e.target.value })}
+                          placeholder="Company GST / STRN #"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Supplier GST #</Label>
+                        <Input
+                          value={formData.supplierGstNumber || ''}
+                          onChange={(e) => setFormData({ ...formData, supplierGstNumber: e.target.value })}
+                          placeholder="Supplier GST / STRN #"
                         />
                       </div>
                     </div>
@@ -640,65 +712,71 @@ export default function EditPurchaseReturnPage() {
         <div id="print-section" className="hidden print:block min-h-screen bg-white p-0">
             <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-8 print:max-w-none box-border">
                 {/* Header */}
-                <div className="flex justify-between mb-6 gap-4 items-start">
+                <div className="flex justify-between mb-6 gap-4 items-start border-b pb-4">
                     {/* Logo */}
                     <div className="w-[20%] flex flex-col items-start justify-center">
-                       <img src="/image.png" alt="Logo" className="w-32 object-contain" />
+                       <img src="/image.png" alt="Logo" className="w-28 object-contain" />
                     </div>
                     
-                    {/* Title */}
-                    <div className="w-[35%] flex flex-col justify-center">
-                      <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                        Purchase Return (Draft Edit)
-                      </div>
+                    {/* Center Title & Details */}
+                    <div className="flex-1 text-center flex flex-col items-center justify-center">
+                      <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Speed (Private) Limited</h1>
+                      <p className="text-xs font-semibold text-gray-700 mt-0.5">GST #: {formData.companyGstNumber || purchaseReturn.companyGstNumber || '12-01-9999-663-46'}</p>
+                      {(() => {
+                        const printBrands = Array.from(
+                          new Set(
+                            (formData.items || [])
+                              .filter((item: any) => Number(item.returnQty) > 0)
+                              .map((i: any) => i.brand || i.item?.brand?.name)
+                              .filter(Boolean)
+                          )
+                        ).join(', ');
+                        return (
+                          <div className="bg-[#eef2f6] text-black w-full py-1.5 px-4 mt-2 text-lg sm:text-xl font-bold border border-gray-300 print:bg-[#eef2f6] [-webkit-print-color-adjust:exact]">
+                            Purchase Return {printBrands ? `| ${printBrands}` : ''}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Details Box */}
-                    <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-                       <div className="flex justify-between mb-2">
-                          <span className="font-bold">Return Number:</span>
-                          <span className="font-bold">{purchaseReturn.returnNumber}</span>
-                       </div>
-                       <div className="flex justify-between">
-                          <div className="flex gap-2">
-                            <span className="font-bold">Date:</span>
-                            <span>{formatDate(purchaseReturn.returnDate || new Date())}</span>
-                          </div>
-                       </div>
-                       {purchaseReturn.purchaseInvoice && (
-                          <div className="flex justify-between mt-2 pt-2 border-t border-gray-200">
-                             <span className="font-bold">Source Invoice:</span>
-                             <span>{purchaseReturn.purchaseInvoice.invoiceNumber}</span>
-                          </div>
-                       )}
-                       {grnNo !== '—' && (
-                          <div className="flex justify-between mt-1">
-                             <span className="font-bold">GRN Number:</span>
-                             <span>{grnNo}</span>
-                          </div>
-                       )}
-                       {(() => {
-                          const printBrands = Array.from(
-                            new Set(
-                              (formData.items || [])
-                                .filter((item: any) => Number(item.returnQty) > 0)
-                                .map((i: any) => i.brand || i.item?.brand?.name)
-                                .filter(Boolean)
-                            )
-                          ).join(', ');
-                          return printBrands ? (
-                            <div className="flex justify-between mt-1">
-                               <span className="font-bold">Brand:</span>
-                               <span>{printBrands}</span>
-                            </div>
-                          ) : null;
-                        })()}
-                       {formData.staxEInvoiceNumber && (
-                          <div className="flex justify-between mt-1">
-                             <span className="font-bold">STax e-Inv #:</span>
-                             <span>{formData.staxEInvoiceNumber}</span>
-                          </div>
-                       )}
+                    <div className="w-[35%] bg-[#f8fafc] text-xs p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] flex flex-col justify-center">
+                        <div className="flex justify-between mb-1">
+                           <span className="font-bold">Return Number:</span>
+                           <span className="font-bold">{purchaseReturn.returnNumber}</span>
+                        </div>
+                        <div className="flex justify-between mb-1">
+                           <span className="font-bold">PR Creation Date:</span>
+                           <span>{formatDate(purchaseReturn.createdAt)}</span>
+                        </div>
+                        {(formData.seasonId || purchaseReturn.season) && (
+                           <div className="flex justify-between mb-1">
+                              <span className="font-bold">Season:</span>
+                              <span>{seasons.find(s => s.id === formData.seasonId)?.name || purchaseReturn.season?.name || '—'}</span>
+                           </div>
+                        )}
+                        {purchaseReturn.purchaseInvoice && (
+                           <div className="flex justify-between mt-2 pt-2 border-t border-gray-200">
+                              <span className="font-bold">Source Invoice:</span>
+                              <span>{purchaseReturn.purchaseInvoice.invoiceNumber}</span>
+                           </div>
+                        )}
+                        {grnNo !== '—' && (
+                           <div className="flex justify-between mt-1">
+                              <span className="font-bold">GRN Number:</span>
+                              <span>{grnNo}</span>
+                           </div>
+                        )}
+                        {formData.staxEInvoiceNumber && (
+                           <div className="flex justify-between mt-1">
+                              <span className="font-bold">STax e-Inv #:</span>
+                              <span>{formData.staxEInvoiceNumber}</span>
+                           </div>
+                        )}
+                        <div className="flex justify-between mb-1">
+                           <span className="font-bold">Sale Tax Invoice Date:</span>
+                           <span>{formatDate(formData.returnDate ? new Date(formData.returnDate) : purchaseReturn.returnDate)}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -707,6 +785,19 @@ export default function EditPurchaseReturnPage() {
                     <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
                         <div className="font-bold border-b border-gray-300 mb-2 pb-1">Supplier Details</div>
                         <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{purchaseReturn.supplier?.name || 'N/A'}</span></div>
+                        {purchaseReturn.supplier?.address && (
+                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Address:</span> <span>{purchaseReturn.supplier.address}</span></div>
+                        )}
+                        {(() => {
+                           const raw = formData.supplierGstNumber;
+                           const val = (raw && raw.toLowerCase() !== 'registered') ? raw : '';
+                           return (
+                             <div className="flex gap-2 mb-1">
+                               <span className="font-bold w-16 shrink-0">GST #:</span>
+                               <span>{val}</span>
+                             </div>
+                           );
+                         })()}
                     </div>
                     <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
                         <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
@@ -728,10 +819,11 @@ export default function EditPurchaseReturnPage() {
                         <th className="py-1 pr-1 text-left font-bold w-[6%] whitespace-nowrap">Size</th>
                         <th className="py-1 pr-1 text-left font-bold w-[7%] whitespace-nowrap">Color</th>
                         <th className="py-1 pr-1 text-right font-bold w-[5%] whitespace-nowrap">Qty</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Unit Cost</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[10%] whitespace-nowrap">Val Excl Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Sales Tax</th>
-                        <th className="py-1 text-right font-bold w-[13%] whitespace-nowrap">Val Incl Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[8%] whitespace-nowrap">Unit Cost</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Val Excl Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[6%] whitespace-nowrap">Sales Tax %</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[8%] whitespace-nowrap">Sales Tax</th>
+                        <th className="py-1 text-right font-bold w-[12%] whitespace-nowrap">Val Incl Tax</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -764,6 +856,7 @@ export default function EditPurchaseReturnPage() {
                                 <td className="py-1 pr-1 text-right tabular-nums">{qty}</td>
                                 <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(unitCost)}</td>
                                 <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valExcl)}</td>
+                                <td className="py-1 pr-1 text-right tabular-nums">{taxRate}%</td>
                                 <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(taxAmt)}</td>
                                 <td className="py-1 text-right tabular-nums font-semibold">{fmtInt(valIncl)}</td>
                               </tr>
@@ -807,6 +900,7 @@ export default function EditPurchaseReturnPage() {
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tQty)}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tUnitCost)}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tValExcl)}</td>
+                            <td className="py-1 pr-1 text-right"></td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tSalesTax)}</td>
                             <td className="py-1 text-right tabular-nums font-bold">{fmtInt(tValIncl)}</td>
                           </tr>

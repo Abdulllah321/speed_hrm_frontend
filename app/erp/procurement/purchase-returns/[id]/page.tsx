@@ -211,8 +211,16 @@ export default function PurchaseReturnDetailPage() {
                       <p className="font-medium">{purchaseReturn.returnNumber}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Return Date</label>
+                      <label className="text-sm font-medium text-gray-500">PR Creation Date (Auto)</label>
+                      <p className="font-medium">{formatDate(purchaseReturn.createdAt)}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Sale Tax Invoice Date</label>
                       <p className="font-medium">{formatDate(purchaseReturn.returnDate)}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Season</label>
+                      <p className="font-medium">{purchaseReturn.season?.name || '—'}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Supplier</label>
@@ -221,6 +229,19 @@ export default function PurchaseReturnDetailPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-500">Warehouse</label>
                       <p className="font-medium">{purchaseReturn.warehouse?.name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Company GST #</label>
+                      <p className="font-medium">{purchaseReturn.companyGstNumber || '—'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Supplier GST #</label>
+                      <p className="font-medium">
+                        {(() => {
+                          const rawGst = purchaseReturn.supplierGstNumber || purchaseReturn.supplier?.strnNo || purchaseReturn.supplier?.ntnNo;
+                          return (rawGst && rawGst.toLowerCase() !== 'registered') ? rawGst : '—';
+                        })()}
+                      </p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Return Type</label>
@@ -518,65 +539,71 @@ export default function PurchaseReturnDetailPage() {
         <div id="print-section" className="hidden print:block min-h-screen bg-white p-0">
             <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-8 print:max-w-none box-border">
                 {/* Header */}
-                <div className="flex justify-between mb-6 gap-4 items-start">
+                <div className="flex justify-between mb-6 gap-4 items-start border-b pb-4">
                     {/* Logo */}
                     <div className="w-[20%] flex flex-col items-start justify-center">
-                       <img src="/image.png" alt="Logo" className="w-32 object-contain" />
+                       <img src="/image.png" alt="Logo" className="w-28 object-contain" />
                     </div>
                     
-                    {/* Title */}
-                    <div className="w-[35%] flex flex-col justify-center">
-                      <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                        Purchase Return
-                      </div>
+                    {/* Center Title & Details */}
+                    <div className="flex-1 text-center flex flex-col items-center justify-center">
+                      <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Speed (Private) Limited</h1>
+                      <p className="text-xs font-semibold text-gray-700 mt-0.5">GST #: {purchaseReturn.companyGstNumber || '12-01-9999-663-46'}</p>
+                      {(() => {
+                         const printBrands = Array.from(
+                           new Set(
+                             (purchaseReturn.items || [])
+                               .map((i: any) => i.item?.brand?.name || i.brand)
+                               .filter(Boolean)
+                           )
+                         ).join(', ');
+                         return (
+                           <div className="bg-[#eef2f6] text-black w-full py-1.5 px-4 mt-2 text-lg sm:text-xl font-bold border border-gray-300 print:bg-[#eef2f6] [-webkit-print-color-adjust:exact]">
+                             Purchase Return {printBrands ? `| ${printBrands}` : ''}
+                           </div>
+                         );
+                       })()}
                     </div>
 
                     {/* Details Box */}
-                    <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-                       <div className="flex justify-between mb-2">
-                         <span className="font-bold">Return Number:</span>
-                         <span className="font-bold">{purchaseReturn.returnNumber}</span>
-                       </div>
-                       <div className="flex justify-between">
-                         <div className="flex gap-2">
-                           <span className="font-bold">Date:</span>
+                    <div className="w-[35%] bg-[#f8fafc] text-xs p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] flex flex-col">
+                        <div className="flex justify-between mb-1">
+                           <span className="font-bold">Return Number:</span>
+                           <span className="font-bold">{purchaseReturn.returnNumber}</span>
+                        </div>
+                        <div className="flex justify-between mb-1">
+                           <span className="font-bold">PR Creation Date:</span>
+                           <span>{formatDate(purchaseReturn.createdAt)}</span>
+                        </div>
+                        {purchaseReturn.season?.name && (
+                           <div className="flex justify-between mb-1">
+                              <span className="font-bold">Season:</span>
+                              <span>{purchaseReturn.season.name}</span>
+                           </div>
+                        )}
+                        {purchaseReturn.purchaseInvoice && (
+                           <div className="flex justify-between mt-2 pt-2 border-t border-gray-200">
+                              <span className="font-bold">Source Invoice:</span>
+                              <span>{purchaseReturn.purchaseInvoice.invoiceNumber}</span>
+                           </div>
+                        )}
+                        {(purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || (purchaseReturn.purchaseInvoice?.landedCost as any)?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber) && (
+                           <div className="flex justify-between mt-1">
+                              <span className="font-bold">GRN Number:</span>
+                              <span>{purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || (purchaseReturn.purchaseInvoice?.landedCost as any)?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber}</span>
+                           </div>
+                        )}
+                        {purchaseReturn.staxEInvoiceNumber && (
+                           <div className="flex justify-between mt-1">
+                              <span className="font-bold">STax e-Inv #:</span>
+                              <span>{purchaseReturn.staxEInvoiceNumber}</span>
+                           </div>
+                        )}
+                        <div className="flex justify-between mb-1">
+                           <span className="font-bold">Sale Tax Invoice Date:</span>
                            <span>{formatDate(purchaseReturn.returnDate)}</span>
-                         </div>
-                       </div>
-                       {purchaseReturn.purchaseInvoice && (
-                          <div className="flex justify-between mt-2 pt-2 border-t border-gray-200">
-                             <span className="font-bold">Source Invoice:</span>
-                             <span>{purchaseReturn.purchaseInvoice.invoiceNumber}</span>
-                          </div>
-                       )}
-                       {(purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || (purchaseReturn.purchaseInvoice?.landedCost as any)?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber) && (
-                          <div className="flex justify-between mt-1">
-                             <span className="font-bold">GRN Number:</span>
-                             <span>{purchaseReturn.grn?.grnNumber || purchaseReturn.purchaseInvoice?.grn?.grnNumber || (purchaseReturn.purchaseInvoice?.landedCost as any)?.grn?.grnNumber || purchaseReturn.landedCost?.grn?.grnNumber}</span>
-                          </div>
-                       )}
-                       {(() => {
-                          const printBrands = Array.from(
-                            new Set(
-                              (purchaseReturn.items || [])
-                                .map((i: any) => i.item?.brand?.name || i.brand)
-                                .filter(Boolean)
-                            )
-                          ).join(', ');
-                          return printBrands ? (
-                            <div className="flex justify-between mt-1">
-                               <span className="font-bold">Brand:</span>
-                               <span>{printBrands}</span>
-                            </div>
-                          ) : null;
-                        })()}
-                       {purchaseReturn.staxEInvoiceNumber && (
-                          <div className="flex justify-between mt-1">
-                             <span className="font-bold">STax e-Inv #:</span>
-                             <span>{purchaseReturn.staxEInvoiceNumber}</span>
-                          </div>
-                       )}
-                    </div>
+                        </div>
+                     </div>
                 </div>
 
                 {/* Vendor / Ship To Box */}
@@ -584,6 +611,19 @@ export default function PurchaseReturnDetailPage() {
                     <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
                         <div className="font-bold border-b border-gray-300 mb-2 pb-1">Supplier Details</div>
                         <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{purchaseReturn.supplier?.name || 'N/A'}</span></div>
+                        {purchaseReturn.supplier?.address && (
+                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Address:</span> <span>{purchaseReturn.supplier.address}</span></div>
+                        )}
+                        {(() => {
+                           const rawGst = purchaseReturn.supplierGstNumber || purchaseReturn.supplier?.strnNo;
+                           const gstVal = (rawGst && rawGst.toLowerCase() !== 'registered') ? rawGst : '';
+                           return gstVal ? (
+                             <div className="flex gap-2 mb-1">
+                               <span className="font-bold w-16 shrink-0">GST #:</span>
+                               <span>{gstVal}</span>
+                             </div>
+                           ) : null;
+                         })()}
                     </div>
                     <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
                         <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
@@ -602,10 +642,11 @@ export default function PurchaseReturnDetailPage() {
                         <th className="py-1 pr-1 text-left font-bold w-[6%] whitespace-nowrap">Size</th>
                         <th className="py-1 pr-1 text-left font-bold w-[7%] whitespace-nowrap">Color</th>
                         <th className="py-1 pr-1 text-right font-bold w-[5%] whitespace-nowrap">Qty</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Unit Cost</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[10%] whitespace-nowrap">Val Excl Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Sales Tax</th>
-                        <th className="py-1 text-right font-bold w-[13%] whitespace-nowrap">Val Incl Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[8%] whitespace-nowrap">Unit Cost</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Val Excl Tax</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[6%] whitespace-nowrap">Sales Tax %</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[8%] whitespace-nowrap">Sales Tax</th>
+                        <th className="py-1 text-right font-bold w-[12%] whitespace-nowrap">Val Incl Tax</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -636,6 +677,7 @@ export default function PurchaseReturnDetailPage() {
                               <td className="py-1 pr-1 text-right tabular-nums">{qty}</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(unitCost)}</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valExcl)}</td>
+                              <td className="py-1 pr-1 text-right tabular-nums">{taxRate}%</td>
                               <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(taxAmt)}</td>
                               <td className="py-1 text-right tabular-nums font-semibold">{fmtInt(valIncl)}</td>
                             </tr>
@@ -650,7 +692,7 @@ export default function PurchaseReturnDetailPage() {
                       )}
                     </tbody>
                     {(() => {
-                      let tQty = 0, tUnitCost = 0, tValExcl = 0, tSalesTax = 0, tValIncl = 0, tLineTotal = 0;
+                      let tQty = 0, tUnitCost = 0, tValExcl = 0, tSalesTax = 0, tValIncl = 0;
                       (purchaseReturn.items || []).forEach((item: any) => {
                         const qty      = Number(item.returnQty || 0);
                         const unitCost = Number(item.unitPrice || 0);
@@ -666,7 +708,6 @@ export default function PurchaseReturnDetailPage() {
                         tValExcl += valExcl;
                         tSalesTax += taxAmt;
                         tValIncl += valIncl;
-                        tLineTotal += valIncl;
                       });
 
                       return (
@@ -676,6 +717,7 @@ export default function PurchaseReturnDetailPage() {
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tQty)}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tUnitCost)}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tValExcl)}</td>
+                            <td className="py-1 pr-1 text-right"></td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tSalesTax)}</td>
                             <td className="py-1 text-right tabular-nums font-bold">{fmtInt(tValIncl)}</td>
                           </tr>
