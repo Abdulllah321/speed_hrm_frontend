@@ -38,11 +38,26 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EllipsisIcon, Loader2, Pencil, Trash2, Monitor, Wifi, WifiOff } from "lucide-react";
+import {
+  EllipsisIcon,
+  Loader2,
+  Pencil,
+  Trash2,
+  Monitor,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Location, updateLocations, updateSingleLocation, deleteLocation, updateLocationOtherInfo, updateLocationOnlineStatus } from "@/lib/actions/location";
+import {
+  Location,
+  updateLocations,
+  updateSingleLocation,
+  deleteLocation,
+  updateLocationOtherInfo,
+  updateLocationOnlineStatus,
+} from "@/lib/actions/location";
 import { getCities, City } from "@/lib/actions/city";
 import { getBrands, Brand } from "@/lib/actions/brand";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -105,7 +120,14 @@ export const columns: ColumnDef<LocationRow>[] = [
     cell: ({ row }) => {
       const isStock = row.original.isStockLocation !== false;
       return (
-        <Badge variant={isStock ? "default" : "outline"} className={isStock ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "text-amber-600 border-amber-500 dark:text-amber-400"}>
+        <Badge
+          variant={isStock ? "default" : "outline"}
+          className={
+            isStock
+              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+              : "text-amber-600 border-amber-500 dark:text-amber-400"
+          }
+        >
           {isStock ? "Stock Location" : "Office / Non-Stock"}
         </Badge>
       );
@@ -118,11 +140,18 @@ export const columns: ColumnDef<LocationRow>[] = [
     size: 180,
     cell: ({ row }) => {
       const brands = row.original.brands || [];
-      if (brands.length === 0) return <span className="text-muted-foreground italic text-xs">None</span>;
+      if (brands.length === 0)
+        return (
+          <span className="text-muted-foreground italic text-xs">None</span>
+        );
       return (
         <div className="flex flex-wrap gap-1">
           {brands.map((b) => (
-            <Badge key={b.id} variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+            <Badge
+              key={b.id}
+              variant="secondary"
+              className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+            >
               {b.name}
             </Badge>
           ))}
@@ -135,14 +164,20 @@ export const columns: ColumnDef<LocationRow>[] = [
     accessorKey: "shortCode",
     size: 120,
     enableSorting: true,
-    cell: ({ row }) => row.original.shortCode || <span className="text-muted-foreground italic">N/A</span>,
+    cell: ({ row }) =>
+      row.original.shortCode || (
+        <span className="text-muted-foreground italic">N/A</span>
+      ),
   },
   {
     header: "City",
     accessorKey: "city.name",
     size: 130,
     enableSorting: true,
-    cell: ({ row }) => row.original.city?.name || <span className="text-muted-foreground italic">N/A</span>,
+    cell: ({ row }) =>
+      row.original.city?.name || (
+        <span className="text-muted-foreground italic">N/A</span>
+      ),
   },
   {
     header: "POS Terminals",
@@ -150,11 +185,16 @@ export const columns: ColumnDef<LocationRow>[] = [
     size: 160,
     cell: ({ row }) => {
       const posList = row.original.pos || [];
-      if (posList.length === 0) return <span className="text-muted-foreground italic">None</span>;
+      if (posList.length === 0)
+        return <span className="text-muted-foreground italic">None</span>;
       return (
         <div className="flex flex-wrap gap-1">
           {posList.map((p) => (
-            <Badge key={p.id} variant={p.status === 'active' ? 'outline' : 'secondary'} className="text-[10px] px-1.5 py-0">
+            <Badge
+              key={p.id}
+              variant={p.status === "active" ? "outline" : "secondary"}
+              className="text-[10px] px-1.5 py-0"
+            >
               {p.posId}
             </Badge>
           ))}
@@ -167,7 +207,9 @@ export const columns: ColumnDef<LocationRow>[] = [
     accessorKey: "status",
     size: 100,
     cell: ({ row }) => (
-      <Badge variant={row.original.status === "active" ? "default" : "secondary"}>
+      <Badge
+        variant={row.original.status === "active" ? "default" : "secondary"}
+      >
         {row.original.status}
       </Badge>
     ),
@@ -183,10 +225,14 @@ export const columns: ColumnDef<LocationRow>[] = [
         <div className="flex items-center gap-1.5">
           <span
             className={`h-2 w-2 rounded-full flex-shrink-0 ${
-              online ? "bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.5)]" : "bg-gray-400"
+              online
+                ? "bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.5)]"
+                : "bg-gray-400"
             }`}
           />
-          <span className={`text-xs font-medium ${online ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+          <span
+            className={`text-xs font-medium ${online ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}
+          >
             {online ? "Online" : "Offline"}
           </span>
         </div>
@@ -234,11 +280,17 @@ function RowActions({ row }: RowActionsProps) {
   // Local state for brands and stock location
   const [allBrands, setAllBrands] = useState<Brand[]>([]);
   const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
-  const [isStockLocation, setIsStockLocation] = useState<boolean>(location.isStockLocation !== false);
+  const [isStockLocation, setIsStockLocation] = useState<boolean>(
+    location.isStockLocation !== false,
+  );
 
   // Local state for toggles to handle UI conditionally
-  const [geoFenceEnabled, setGeoFenceEnabled] = useState(location.geoFenceEnabled || false);
-  const [ipWhitelistEnabled, setIpWhitelistEnabled] = useState(location.ipWhitelistEnabled || false);
+  const [geoFenceEnabled, setGeoFenceEnabled] = useState(
+    location.geoFenceEnabled || false,
+  );
+  const [ipWhitelistEnabled, setIpWhitelistEnabled] = useState(
+    location.ipWhitelistEnabled || false,
+  );
   const [fbrEnabled, setFbrEnabled] = useState(location.fbrEnabled || false);
 
   const canEdit = hasPermission("master.location.update");
@@ -302,7 +354,9 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleBrandToggle = (brandId: string) => {
     setSelectedBrandIds((prev) =>
-      prev.includes(brandId) ? prev.filter((id) => id !== brandId) : [...prev, brandId]
+      prev.includes(brandId)
+        ? prev.filter((id) => id !== brandId)
+        : [...prev, brandId],
     );
   };
 
@@ -310,14 +364,16 @@ function RowActions({ row }: RowActionsProps) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
-    const selectedAccount = flatAccounts.find((a) => a.id === selectedAccountId);
+    const selectedAccount = flatAccounts.find(
+      (a) => a.id === selectedAccountId,
+    );
     const cashGLCode = selectedAccount ? selectedAccount.code : null;
 
     startTransition(async () => {
       const resGeneral = await updateSingleLocation(location.id, {
         name: formData.get("name") as string,
         code: formData.get("code") as string,
-        shortCode: formData.get("shortCode") as string || undefined,
+        shortCode: (formData.get("shortCode") as string) || undefined,
         address: formData.get("address") as string,
         cityId: formData.get("cityId") as string,
         cashGLCode,
@@ -330,9 +386,15 @@ function RowActions({ row }: RowActionsProps) {
         return;
       }
 
-      const latVal = formData.get("latitude") ? Number(formData.get("latitude")) : undefined;
-      const lngVal = formData.get("longitude") ? Number(formData.get("longitude")) : undefined;
-      const radiusVal = formData.get("geoFenceRadius") ? Number(formData.get("geoFenceRadius")) : undefined;
+      const latVal = formData.get("latitude")
+        ? Number(formData.get("latitude"))
+        : undefined;
+      const lngVal = formData.get("longitude")
+        ? Number(formData.get("longitude"))
+        : undefined;
+      const radiusVal = formData.get("geoFenceRadius")
+        ? Number(formData.get("geoFenceRadius"))
+        : undefined;
 
       const resOther = await updateLocationOtherInfo(location.id, {
         phone: formData.get("phone") as string,
@@ -377,7 +439,12 @@ function RowActions({ row }: RowActionsProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="flex justify-end">
-            <Button size="icon" variant="ghost" className="shadow-none" aria-label="Actions">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="shadow-none"
+              aria-label="Actions"
+            >
               <EllipsisIcon size={16} />
             </Button>
           </div>
@@ -392,19 +459,30 @@ function RowActions({ row }: RowActionsProps) {
           {canEdit && (
             <DropdownMenuItem
               onClick={async () => {
-                const res = await updateLocationOnlineStatus(location.id, !location.isOnline);
+                const res = await updateLocationOnlineStatus(
+                  location.id,
+                  !location.isOnline,
+                );
                 if (res.status) {
-                  toast.success(`Marked as ${!location.isOnline ? 'Online' : 'Offline'}`);
+                  toast.success(
+                    `Marked as ${!location.isOnline ? "Online" : "Offline"}`,
+                  );
                   router.refresh();
                 } else {
-                  toast.error(res.message || 'Failed to update online status');
+                  toast.error(res.message || "Failed to update online status");
                 }
               }}
             >
               {location.isOnline ? (
-                <><WifiOff className="h-4 w-4 mr-2" />Mark Offline</>
+                <>
+                  <WifiOff className="h-4 w-4 mr-2" />
+                  Mark Offline
+                </>
               ) : (
-                <><Wifi className="h-4 w-4 mr-2" />Mark Online</>
+                <>
+                  <Wifi className="h-4 w-4 mr-2" />
+                  Mark Online
+                </>
               )}
             </DropdownMenuItem>
           )}
@@ -413,7 +491,8 @@ function RowActions({ row }: RowActionsProps) {
               <Monitor className="h-4 w-4 mr-2" />
               Manage POS
             </DropdownMenuItem>
-          )}          {canDelete && (
+          )}{" "}
+          {canDelete && (
             <DropdownMenuItem
               onClick={() => setDeleteDialog(true)}
               className="text-destructive focus:text-destructive"
@@ -451,21 +530,44 @@ function RowActions({ row }: RowActionsProps) {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-name">Name</Label>
-                    <Input id="edit-name" name="name" defaultValue={location.name} disabled={isPending} required />
+                    <Input
+                      id="edit-name"
+                      name="name"
+                      defaultValue={location.name}
+                      disabled={isPending}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit-code">Location Code</Label>
-                    <Input id="edit-code" name="code" defaultValue={location.code} disabled={isPending} required />
+                    <Input
+                      id="edit-code"
+                      name="code"
+                      defaultValue={location.code}
+                      disabled={isPending}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-short-code">Short Code (Optional)</Label>
-                    <Input id="edit-short-code" name="shortCode" defaultValue={location.shortCode || ""} disabled={isPending} />
+                    <Label htmlFor="edit-short-code">
+                      Short Code (Optional)
+                    </Label>
+                    <Input
+                      id="edit-short-code"
+                      name="shortCode"
+                      defaultValue={location.shortCode || ""}
+                      disabled={isPending}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-city">City</Label>
-                    <Select name="cityId" defaultValue={location.cityId || ""} disabled={isPending}>
+                    <Select
+                      name="cityId"
+                      defaultValue={location.cityId || ""}
+                      disabled={isPending}
+                    >
                       <SelectTrigger id="edit-city">
                         <SelectValue placeholder="Select City" />
                       </SelectTrigger>
@@ -480,13 +582,24 @@ function RowActions({ row }: RowActionsProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit-phone">Phone</Label>
-                    <Input id="edit-phone" name="phone" defaultValue={location.phone || ""} disabled={isPending} placeholder="e.g. +92 300 1234567" />
+                    <Input
+                      id="edit-phone"
+                      name="phone"
+                      defaultValue={location.phone || ""}
+                      disabled={isPending}
+                      placeholder="e.g. +92 300 1234567"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-address">Address</Label>
-                    <Input id="edit-address" name="address" defaultValue={location.address || ""} disabled={isPending} />
+                    <Input
+                      id="edit-address"
+                      name="address"
+                      defaultValue={location.address || ""}
+                      disabled={isPending}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Cash GL Account</Label>
@@ -507,9 +620,12 @@ function RowActions({ row }: RowActionsProps) {
 
                 <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/20">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Stock Location</Label>
+                    <Label className="text-sm font-medium">
+                      Stock Location
+                    </Label>
                     <p className="text-xs text-muted-foreground">
-                      Whether this location holds physical inventory (uncheck for Office / HQ locations).
+                      Whether this location holds physical inventory (uncheck
+                      for Office / HQ locations).
                     </p>
                   </div>
                   <Switch
@@ -520,9 +636,12 @@ function RowActions({ row }: RowActionsProps) {
                 </div>
 
                 <div className="space-y-2 border rounded-lg p-3">
-                  <Label className="text-sm font-medium block">Registered Brands</Label>
+                  <Label className="text-sm font-medium block">
+                    Registered Brands
+                  </Label>
                   <p className="text-xs text-muted-foreground mb-2">
-                    Select brands available at this location (e.g. Nike, Puma, Adidas).
+                    Select brands available at this location (e.g. Nike, Puma,
+                    Adidas).
                   </p>
                   <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pt-1">
                     {allBrands.map((b) => {
@@ -542,7 +661,9 @@ function RowActions({ row }: RowActionsProps) {
                       );
                     })}
                     {allBrands.length === 0 && (
-                      <span className="text-xs text-muted-foreground italic">No brands found</span>
+                      <span className="text-xs text-muted-foreground italic">
+                        No brands found
+                      </span>
                     )}
                   </div>
                 </div>
@@ -559,7 +680,11 @@ function RowActions({ row }: RowActionsProps) {
                         name="latitude"
                         type="number"
                         step="any"
-                        defaultValue={location.latitude !== null ? Number(location.latitude) : ""}
+                        defaultValue={
+                          location.latitude !== null
+                            ? Number(location.latitude)
+                            : ""
+                        }
                         placeholder="e.g. 34.0151"
                         disabled={isPending}
                       />
@@ -571,7 +696,11 @@ function RowActions({ row }: RowActionsProps) {
                         name="longitude"
                         type="number"
                         step="any"
-                        defaultValue={location.longitude !== null ? Number(location.longitude) : ""}
+                        defaultValue={
+                          location.longitude !== null
+                            ? Number(location.longitude)
+                            : ""
+                        }
                         placeholder="e.g. 71.5249"
                         disabled={isPending}
                       />
@@ -583,7 +712,9 @@ function RowActions({ row }: RowActionsProps) {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-base">Geo-Fencing</Label>
-                      <p className="text-sm text-muted-foreground">Restrict login to a specific radius</p>
+                      <p className="text-sm text-muted-foreground">
+                        Restrict login to a specific radius
+                      </p>
                     </div>
                     <Switch
                       checked={geoFenceEnabled}
@@ -611,7 +742,9 @@ function RowActions({ row }: RowActionsProps) {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-base">IP Whitelisting</Label>
-                      <p className="text-sm text-muted-foreground">Restrict login to specific IP addresses</p>
+                      <p className="text-sm text-muted-foreground">
+                        Restrict login to specific IP addresses
+                      </p>
                     </div>
                     <Switch
                       checked={ipWhitelistEnabled}
@@ -621,7 +754,9 @@ function RowActions({ row }: RowActionsProps) {
                   </div>
                   {ipWhitelistEnabled && (
                     <div className="pt-2 pl-2 border-l-2 border-primary/20 ml-1">
-                      <Label htmlFor="edit-ips">Allowed IPs (comma separated)</Label>
+                      <Label htmlFor="edit-ips">
+                        Allowed IPs (comma separated)
+                      </Label>
                       <Input
                         id="edit-ips"
                         name="ipWhitelist"
@@ -640,7 +775,9 @@ function RowActions({ row }: RowActionsProps) {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-base">FBR POS Integration</Label>
-                      <p className="text-sm text-muted-foreground">Enable FBR real-time sales reporting for this location</p>
+                      <p className="text-sm text-muted-foreground">
+                        Enable FBR real-time sales reporting for this location
+                      </p>
                     </div>
                     <Switch
                       checked={fbrEnabled}
@@ -680,7 +817,7 @@ function RowActions({ row }: RowActionsProps) {
                           name="fbrSellerName"
                           defaultValue={location.fbrSellerName || ""}
                           disabled={isPending}
-                          placeholder="e.g. Speed Limit Retail"
+                          placeholder="e.g. Speed (pvt.) Limited Retail"
                         />
                       </div>
                       <div className="space-y-2">
@@ -700,7 +837,11 @@ function RowActions({ row }: RowActionsProps) {
             </Tabs>
 
             <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialog(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
@@ -718,7 +859,8 @@ function RowActions({ row }: RowActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Location</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{location.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{location.name}&quot;? This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

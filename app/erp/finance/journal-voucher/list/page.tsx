@@ -1,5 +1,5 @@
 import { getJournalVouchers } from "@/lib/actions/journal-voucher";
-import { getChartOfAccounts } from "@/lib/actions/chart-of-account";
+import { getChartOfAccountsDropdown } from "@/lib/actions/chart-of-account";
 import { JournalVoucherList } from "../components/journal-voucher-list";
 import { hasPermission } from "@/lib/auth";
 
@@ -29,7 +29,7 @@ export default async function JournalVoucherPage({
 
     const [result, { data: accounts }] = await Promise.all([
         getJournalVouchers(filters),
-        getChartOfAccounts(),
+        getChartOfAccountsDropdown(),
     ]);
 
     const canCreate = await hasPermission("erp.finance.journal-voucher.create");

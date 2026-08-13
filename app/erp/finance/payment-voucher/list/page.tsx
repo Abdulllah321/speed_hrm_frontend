@@ -1,5 +1,5 @@
 import { getPaymentVouchers } from "@/lib/actions/payment-voucher";
-import { getChartOfAccounts } from "@/lib/actions/chart-of-account";
+import { getChartOfAccountsDropdown } from "@/lib/actions/chart-of-account";
 import { PaymentVoucherList } from "../components/payment-voucher-list";
 import { hasPermission } from "@/lib/auth";
 
@@ -30,7 +30,7 @@ export default async function PaymentVoucherListPage({
 
   const [result, { data: accounts }] = await Promise.all([
     getPaymentVouchers(filters),
-    getChartOfAccounts(),
+    getChartOfAccountsDropdown(),
   ]);
 
   const canCreate = await hasPermission("erp.finance.payment-voucher.create");

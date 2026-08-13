@@ -1,5 +1,5 @@
 import { getReceiptVouchers } from "@/lib/actions/receipt-voucher";
-import { getChartOfAccounts } from "@/lib/actions/chart-of-account";
+import { getChartOfAccountsDropdown } from "@/lib/actions/chart-of-account";
 import { ReceiptVoucherList } from "../components/receipt-voucher-list";
 import {
     Breadcrumb,
@@ -38,7 +38,7 @@ export default async function ReceiptVoucherListPage({
 
     const [result, { data: accounts }] = await Promise.all([
         getReceiptVouchers(filters),
-        getChartOfAccounts(),
+        getChartOfAccountsDropdown(),
     ]);
 
     const canCreate = await hasPermission("erp.finance.receipt-voucher.create");

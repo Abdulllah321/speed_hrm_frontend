@@ -1,161 +1,177 @@
 import { format } from "date-fns";
 
 export interface PrintStockAdjustmentItem {
-    id?: string;
-    adjustedQty?: number | string;
-    physicalQty?: number | string;
-    currentQty?: number | string;
-    rate?: number | string;
-    locationId?: string | null;
-    location?: { id: string; name: string; code: string } | null;
-    item?: {
-        sku?: string;
-        description?: string | null;
-        color?: { name: string } | null;
-        size?: { name: string } | null;
-        category?: { name: string } | null;
-        division?: { name: string } | null;
-    } | null;
-    swapItem?: {
-        sku?: string;
-        description?: string | null;
-        color?: { name: string } | null;
-        size?: { name: string } | null;
-    } | null;
+  id?: string;
+  adjustedQty?: number | string;
+  physicalQty?: number | string;
+  currentQty?: number | string;
+  rate?: number | string;
+  locationId?: string | null;
+  location?: { id: string; name: string; code: string } | null;
+  item?: {
+    sku?: string;
+    description?: string | null;
+    color?: { name: string } | null;
+    size?: { name: string } | null;
+    category?: { name: string } | null;
+    division?: { name: string } | null;
+  } | null;
+  swapItem?: {
+    sku?: string;
+    description?: string | null;
+    color?: { name: string } | null;
+    size?: { name: string } | null;
+  } | null;
 }
 
 export interface PrintStockAdjustmentData {
-    id: string;
-    adjustmentNo: string;
-    createdAt: string;
-    adjustmentDate?: string;
-    status: string;
-    reason?: string | null;
-    notes?: string | null;
-    createdById?: string | null;
-    warehouse?: { name: string; code: string } | null;
-    items: PrintStockAdjustmentItem[];
+  id: string;
+  adjustmentNo: string;
+  createdAt: string;
+  adjustmentDate?: string;
+  status: string;
+  reason?: string | null;
+  notes?: string | null;
+  createdById?: string | null;
+  warehouse?: { name: string; code: string } | null;
+  items: PrintStockAdjustmentItem[];
 }
 
-export function printStockAdjustmentNote(adj: PrintStockAdjustmentData, locationNameOverride?: string) {
-    const win = window.open("", "_blank");
-    if (!win) {
-        alert("Please allow popups to print stock adjustment notes.");
-        return;
-    }
+export function printStockAdjustmentNote(
+  adj: PrintStockAdjustmentData,
+  locationNameOverride?: string,
+) {
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("Please allow popups to print stock adjustment notes.");
+    return;
+  }
 
-    const dateStr = format(new Date(adj.createdAt || Date.now()), "dd-MMM-yyyy");
-    const refNo = adj.adjustmentNo || "N/A";
-    const statusLabel =
-        adj.status === "SUBMITTED"
-            ? "Approved / Closed"
-            : adj.status === "PENDING_APPROVAL"
-            ? "Pending Approval"
-            : adj.status;
+  const dateStr = format(new Date(adj.createdAt || Date.now()), "dd-MMM-yyyy");
+  const refNo = adj.adjustmentNo || "N/A";
+  const statusLabel =
+    adj.status === "SUBMITTED"
+      ? "Approved / Closed"
+      : adj.status === "PENDING_APPROVAL"
+        ? "Pending Approval"
+        : adj.status;
 
-    const locationName =
-        locationNameOverride ||
-        adj.items?.find((i) => i.location?.name)?.location?.name ||
-        adj.warehouse?.name ||
-        "Head Office / Warehouse";
+  const locationName =
+    locationNameOverride ||
+    adj.items?.find((i) => i.location?.name)?.location?.name ||
+    adj.warehouse?.name ||
+    "Head Office / Warehouse";
 
-    // Group items hierarchically: Division -> Category -> Product (Description)
-    const groups: Record<
+  // Group items hierarchically: Division -> Category -> Product (Description)
+  const groups: Record<
+    string,
+    {
+      name: string;
+      qty: number;
+      val: number;
+      categories: Record<
         string,
         {
-            name: string;
-            qty: number;
-            val: number;
-            categories: Record<
-                string,
-                {
-                    name: string;
-                    qty: number;
-                    val: number;
-                    products: Record<
-                        string,
-                        {
-                            name: string;
-                            qty: number;
-                            val: number;
-                            skus: Array<{
-                                sku: string;
-                                description: string;
-                                color: string;
-                                size: string;
-                                qty: number;
-                                rate: number;
-                                val: number;
-                                swapSku?: string;
-                            }>;
-                        }
-                    >;
-                }
-            >;
+          name: string;
+          qty: number;
+          val: number;
+          products: Record<
+            string,
+            {
+              name: string;
+              qty: number;
+              val: number;
+              skus: Array<{
+                sku: string;
+                description: string;
+                color: string;
+                size: string;
+                qty: number;
+                rate: number;
+                val: number;
+                swapSku?: string;
+              }>;
+            }
+          >;
         }
-    > = {};
+      >;
+    }
+  > = {};
 
-    let overallQty = 0;
-    let overallVal = 0;
-    let divisionBrandName = "SPEED LIMIT";
+  let overallQty = 0;
+  let overallVal = 0;
+  let divisionBrandName = "Speed (pvt.) Limited";
 
-    adj.items?.forEach((item) => {
-        const divName = item.item?.division?.name || "General Division";
-        const catName = item.item?.category?.name || "General Category";
-        const prodName = item.item?.description || "General Product";
+  adj.items?.forEach((item) => {
+    const divName = item.item?.division?.name || "General Division";
+    const catName = item.item?.category?.name || "General Category";
+    const prodName = item.item?.description || "General Product";
 
-        if (item.item?.division?.name) {
-            divisionBrandName = item.item.division.name.toUpperCase();
-        }
+    if (item.item?.division?.name) {
+      divisionBrandName = item.item.division.name.toUpperCase();
+    }
 
-        if (!groups[divName]) {
-            groups[divName] = { name: divName, qty: 0, val: 0, categories: {} };
-        }
-        if (!groups[divName].categories[catName]) {
-            groups[divName].categories[catName] = { name: catName, qty: 0, val: 0, products: {} };
-        }
-        if (!groups[divName].categories[catName].products[prodName]) {
-            groups[divName].categories[catName].products[prodName] = { name: prodName, qty: 0, val: 0, skus: [] };
-        }
+    if (!groups[divName]) {
+      groups[divName] = { name: divName, qty: 0, val: 0, categories: {} };
+    }
+    if (!groups[divName].categories[catName]) {
+      groups[divName].categories[catName] = {
+        name: catName,
+        qty: 0,
+        val: 0,
+        products: {},
+      };
+    }
+    if (!groups[divName].categories[catName].products[prodName]) {
+      groups[divName].categories[catName].products[prodName] = {
+        name: prodName,
+        qty: 0,
+        val: 0,
+        skus: [],
+      };
+    }
 
-        let qty = 0;
-        if (item.adjustedQty !== undefined && item.adjustedQty !== null) {
-            qty = Number(item.adjustedQty);
-        } else if (item.physicalQty !== undefined && item.currentQty !== undefined) {
-            qty = Number(item.physicalQty) - Number(item.currentQty);
-        } else {
-            qty = Number(item.physicalQty || 0);
-        }
+    let qty = 0;
+    if (item.adjustedQty !== undefined && item.adjustedQty !== null) {
+      qty = Number(item.adjustedQty);
+    } else if (
+      item.physicalQty !== undefined &&
+      item.currentQty !== undefined
+    ) {
+      qty = Number(item.physicalQty) - Number(item.currentQty);
+    } else {
+      qty = Number(item.physicalQty || 0);
+    }
 
-        const rate = Number(item.rate || 0);
-        const val = qty * rate;
+    const rate = Number(item.rate || 0);
+    const val = qty * rate;
 
-        overallQty += qty;
-        overallVal += val;
+    overallQty += qty;
+    overallVal += val;
 
-        groups[divName].qty += qty;
-        groups[divName].val += val;
-        groups[divName].categories[catName].qty += qty;
-        groups[divName].categories[catName].val += val;
-        groups[divName].categories[catName].products[prodName].qty += qty;
-        groups[divName].categories[catName].products[prodName].val += val;
+    groups[divName].qty += qty;
+    groups[divName].val += val;
+    groups[divName].categories[catName].qty += qty;
+    groups[divName].categories[catName].val += val;
+    groups[divName].categories[catName].products[prodName].qty += qty;
+    groups[divName].categories[catName].products[prodName].val += val;
 
-        groups[divName].categories[catName].products[prodName].skus.push({
-            sku: item.item?.sku || "N/A",
-            description: item.item?.description || "",
-            color: item.item?.color?.name || "N/A",
-            size: item.item?.size?.name || "N/A",
-            qty,
-            rate,
-            val,
-            swapSku: item.swapItem?.sku,
-        });
+    groups[divName].categories[catName].products[prodName].skus.push({
+      sku: item.item?.sku || "N/A",
+      description: item.item?.description || "",
+      color: item.item?.color?.name || "N/A",
+      size: item.item?.size?.name || "N/A",
+      qty,
+      rate,
+      val,
+      swapSku: item.swapItem?.sku,
     });
+  });
 
-    // Generate table rows HTML
-    let tableRowsHtml = "";
-    Object.values(groups).forEach((div) => {
-        tableRowsHtml += `
+  // Generate table rows HTML
+  let tableRowsHtml = "";
+  Object.values(groups).forEach((div) => {
+    tableRowsHtml += `
             <tr class="division-row">
                 <td class="font-bold text-left">${div.name}</td>
                 <td></td>
@@ -166,8 +182,8 @@ export function printStockAdjustmentNote(adj: PrintStockAdjustmentData, location
             </tr>
         `;
 
-        Object.values(div.categories).forEach((cat) => {
-            tableRowsHtml += `
+    Object.values(div.categories).forEach((cat) => {
+      tableRowsHtml += `
                 <tr class="category-row">
                     <td class="font-bold text-left indent-1">${cat.name}</td>
                     <td></td>
@@ -178,8 +194,8 @@ export function printStockAdjustmentNote(adj: PrintStockAdjustmentData, location
                 </tr>
             `;
 
-            Object.values(cat.products).forEach((prod) => {
-                tableRowsHtml += `
+      Object.values(cat.products).forEach((prod) => {
+        tableRowsHtml += `
                     <tr class="product-row">
                         <td class="font-bold text-left indent-2">${prod.name}</td>
                         <td></td>
@@ -190,8 +206,8 @@ export function printStockAdjustmentNote(adj: PrintStockAdjustmentData, location
                     </tr>
                 `;
 
-                prod.skus.forEach((sku) => {
-                    tableRowsHtml += `
+        prod.skus.forEach((sku) => {
+          tableRowsHtml += `
                         <tr class="sku-row">
                             <td class="text-left indent-3">
                                 <span style="border-bottom: 1px dotted #999;">${sku.sku}</span> &nbsp;&nbsp;&nbsp;&nbsp; ${sku.description}
@@ -213,12 +229,12 @@ export function printStockAdjustmentNote(adj: PrintStockAdjustmentData, location
                             <td></td>
                         </tr>
                     `;
-                });
-            });
         });
+      });
     });
+  });
 
-    win.document.write(`
+  win.document.write(`
         <html><head><title>Adjustment Note - ${refNo}</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -233,7 +249,11 @@ export function printStockAdjustmentNote(adj: PrintStockAdjustmentData, location
             .meta-table td { padding: 4px 0; font-size: 11px; vertical-align: top; }
             .meta-label { font-weight: bold; width: 120px; }
             .status-box { border: 1.5px solid #000; padding: 6px 20px; font-weight: bold; font-size: 13px; text-transform: uppercase; color: ${
-                adj.status === "SUBMITTED" ? "green" : adj.status === "REJECTED" || adj.status === "CANCELLED" ? "red" : "blue"
+              adj.status === "SUBMITTED"
+                ? "green"
+                : adj.status === "REJECTED" || adj.status === "CANCELLED"
+                  ? "red"
+                  : "blue"
             }; float: right; margin-top: 10px; }
             
             table.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -340,20 +360,20 @@ export function printStockAdjustmentNote(adj: PrintStockAdjustmentData, location
                     <td class="text-right double-underline" style="width: 10%; font-weight: bold; font-size: 11px; padding: 6px;">${overallQty}</td>
                     <td style="width: 12%;"></td>
                     <td class="text-right double-underline" style="font-weight: bold; font-size: 11px; padding: 6px; width: 13%;">${overallVal.toLocaleString(
-                        "en-PK"
+                      "en-PK",
                     )}</td>
                 </tr>
             </table>
             
             ${
-                adj.notes
-                    ? `
+              adj.notes
+                ? `
                 <div class="remarks-section">
                     <div class="remarks-label">Internal Instructions / Notes:</div>
                     <div>${adj.notes}</div>
                 </div>
             `
-                    : ""
+                : ""
             }
             
             <table class="signatures">
@@ -365,5 +385,5 @@ export function printStockAdjustmentNote(adj: PrintStockAdjustmentData, location
         </body>
         </html>
     `);
-    win.document.close();
+  win.document.close();
 }
