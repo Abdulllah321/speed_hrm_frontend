@@ -5,9 +5,30 @@ import { hasPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function JournalVoucherPage() {
-    const [{ data: vouchers }, { data: accounts }] = await Promise.all([
-        getJournalVouchers(),
+export default async function JournalVoucherPage({
+    searchParams,
+}: {
+    searchParams: Promise<{
+        status?: string;
+        fromDate?: string;
+        toDate?: string;
+        accountId?: string;
+        search?: string;
+        page?: string;
+        limit?: string;
+    }>;
+}) {
+    const rawFilters = await searchParams;
+    const page = rawFilters.page ? parseInt(rawFilters.page, 10) : 1;
+    const limit = rawFilters.limit ? parseInt(rawFilters.limit, 10) : 10;
+    const filters = {
+        ...rawFilters,
+        page,
+        limit,
+    };
+
+    const [result, { data: accounts }] = await Promise.all([
+        getJournalVouchers(filters),
         getChartOfAccounts(),
     ]);
 
@@ -19,13 +40,13 @@ export default async function JournalVoucherPage() {
 
     return (
         <div className="flex-1 flex flex-col">
-         
-                <JournalVoucherList
-                    initialData={vouchers || []}
-                    accounts={accounts || []}
-                    permissions={{ canCreate, canRead, canUpdate, canDelete, canApprove }}
-                />
-      
+            <JournalVoucherList
+                initialData={result.data || []}
+                pagination={result.pagination}
+                initialFilters={filters}
+                accounts={accounts || []}
+                permissions={{ canCreate, canRead, canUpdate, canDelete, canApprove }}
+            />
         </div>
     );
 }

@@ -37,13 +37,33 @@ export interface JournalVoucher {
     approvedAt?: string;
     rejectionReason?: string;
     remarks?: string;
+    lastPrintedAt?: string | null;
     createdAt: string;
     updatedAt: string;
 }
 
-export async function getJournalVouchers() {
+export interface JournalVoucherFilters {
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+    accountId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+}
+
+export async function getJournalVouchers(filters?: JournalVoucherFilters) {
     try {
-        const response = await authFetch("/finance/journal-voucher", {
+        const queryParams = new URLSearchParams();
+        if (filters?.status && filters.status !== "all") queryParams.append("status", filters.status);
+        if (filters?.fromDate) queryParams.append("fromDate", filters.fromDate);
+        if (filters?.toDate) queryParams.append("toDate", filters.toDate);
+        if (filters?.accountId && filters.accountId !== "all") queryParams.append("accountId", filters.accountId);
+        if (filters?.search?.trim()) queryParams.append("search", filters.search.trim());
+        if (filters?.page) queryParams.append("page", String(filters.page));
+        if (filters?.limit) queryParams.append("limit", String(filters.limit));
+
+        const response = await authFetch(`/finance/journal-voucher?${queryParams.toString()}`, {
             cache: 'no-store',
             next: { revalidate: 0 }
         });
@@ -52,12 +72,21 @@ export async function getJournalVouchers() {
             console.error("Failed to fetch journal vouchers", response.status);
             return {
                 status: false,
-                data: []
+                data: [],
+                pagination: { total: 0, page: 1, limit: 10, totalPages: 1 }
             };
         }
 
         const data = response.data;
-        const mappedData = (Array.isArray(data) ? data : (data?.data ?? [])).map((jv: any) => ({
+        const vouchersArray = Array.isArray(data) ? data : (data?.data ?? []);
+        const pagination = data.pagination || {
+            total: vouchersArray.length,
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            totalPages: Math.ceil(vouchersArray.length / (filters?.limit || 10)) || 1,
+        };
+
+        const mappedData = vouchersArray.map((jv: any) => ({
             ...jv,
             details: jv.details?.map((d: any) => ({
                 ...d,
@@ -72,13 +101,15 @@ export async function getJournalVouchers() {
 
         return {
             status: true,
-            data: mappedData
+            data: mappedData,
+            pagination,
         };
     } catch (error) {
         console.error("Error fetching journal vouchers:", error);
-        return {
-            status: false,
-            data: []
+        return { 
+            status: false, 
+            data: [], 
+            pagination: { total: 0, page: 1, limit: 10, totalPages: 1 } 
         };
     }
 }
@@ -266,6 +297,21 @@ export async function queueJournalVouchersExport(opts?: {
         return { status: true, jobId: result?.data?.jobId };
     } catch (error: any) {
         return { status: false, message: error.message || 'An unexpected error occurred' };
+    }
+}
+
+export async function markJournalVoucherAsPrinted(id: string) {
+    try {
+        const response = await authFetch(`/finance/journal-voucher/${id}/print`, {
+            method: "PATCH",
+        });
+        if (!response.ok) {
+            return { status: false, message: "Failed to mark journal voucher as printed" };
+        }
+        revalidatePath("/erp/finance/journal-voucher");
+        return { status: true, data: response.data };
+    } catch {
+        return { status: false, message: "Network error occurred" };
     }
 }
 

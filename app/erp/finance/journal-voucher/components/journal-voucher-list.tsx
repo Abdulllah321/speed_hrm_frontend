@@ -27,6 +27,7 @@ import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import {
   JournalVoucher,
   updateJournalVoucher,
+  markJournalVoucherAsPrinted,
 } from "@/lib/actions/journal-voucher";
 import { queueJournalVouchersExport } from "@/lib/actions/journal-voucher";
 import { JournalVoucherPrint } from "./journal-voucher-print";
@@ -42,6 +43,8 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 
 import { Checkbox } from "@/components/ui/checkbox";
 
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+
 interface LocalDraft {
   voucherNo: string;
   updatedAt: string;
@@ -55,10 +58,27 @@ interface LocalDraft {
 
 export function JournalVoucherList({
   initialData,
+  pagination,
+  initialFilters,
   accounts,
   permissions,
 }: {
   initialData: JournalVoucher[];
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  initialFilters?: {
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+    accountId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  };
   accounts: ChartOfAccount[];
   permissions?: {
     canCreate: boolean;
@@ -68,10 +88,22 @@ export function JournalVoucherList({
     canApprove: boolean;
   };
 }) {
-  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = useState<Date | undefined>(undefined);
-  const [selectedAccount, setSelectedAccount] = useState<string>("");
-  const [status, setStatus] = useState<string>("all");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [fromDate, setFromDate] = useState<Date | undefined>(
+    searchParams.get("fromDate") ? new Date(searchParams.get("fromDate")!) : initialFilters?.fromDate ? new Date(initialFilters.fromDate) : undefined
+  );
+  const [toDate, setToDate] = useState<Date | undefined>(
+    searchParams.get("toDate") ? new Date(searchParams.get("toDate")!) : initialFilters?.toDate ? new Date(initialFilters.toDate) : undefined
+  );
+  const [selectedAccount, setSelectedAccount] = useState<string>(
+    searchParams.get("accountId") || initialFilters?.accountId || "all"
+  );
+  const [status, setStatus] = useState<string>(
+    searchParams.get("status") || initialFilters?.status || "all"
+  );
   const [vouchers, setVouchers] = useState<JournalVoucher[]>(initialData);
   const [showFilterInfo, setShowFilterInfo] = useState(false);
   const [localDrafts, setLocalDrafts] = useState<LocalDraft[]>([]);
@@ -81,11 +113,45 @@ export function JournalVoucherList({
   const [isExporting, setIsExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [selectedVoucherIds, setSelectedVoucherIds] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>(
+    searchParams.get("search") || initialFilters?.search || ""
+  );
+
+  const updateUrlParams = (updates: Record<string, string | null | undefined>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, val]) => {
+      if (val === undefined || val === null || val === "" || val === "all") {
+        params.delete(key);
+      } else {
+        params.set(key, val);
+      }
+    });
+    if (!("page" in updates)) {
+      params.delete("page");
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setVouchers(initialData);
+  }, [initialData]);
+
+  useEffect(() => {
+    const s = searchParams.get("status") || initialFilters?.status || "all";
+    setStatus(s);
+    const acc = searchParams.get("accountId") || initialFilters?.accountId || "all";
+    setSelectedAccount(acc);
+    const q = searchParams.get("search") || initialFilters?.search || "";
+    setSearchTerm(q);
+    const fd = searchParams.get("fromDate") || initialFilters?.fromDate;
+    setFromDate(fd ? new Date(fd) : undefined);
+    const td = searchParams.get("toDate") || initialFilters?.toDate;
+    setToDate(td ? new Date(td) : undefined);
+  }, [searchParams, initialFilters]);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -122,11 +188,21 @@ export function JournalVoucherList({
     return () => window.removeEventListener("afterprint", handleAfterPrint);
   }, []);
 
-  const handlePrint = (voucher: JournalVoucher) => {
+  const handlePrint = async (voucher: JournalVoucher) => {
     setPrintingVoucher(voucher);
     setTimeout(() => {
       window.print();
     }, 100);
+    try {
+      const res = await markJournalVoucherAsPrinted(voucher.id);
+      if (res.status && res.data?.lastPrintedAt) {
+        setVouchers((prev) =>
+          prev.map((v) =>
+            v.id === voucher.id ? { ...v, lastPrintedAt: res.data.lastPrintedAt } : v,
+          ),
+        );
+      }
+    } catch {}
   };
 
   useEffect(() => {
@@ -166,6 +242,17 @@ export function JournalVoucherList({
   }, [initialData]);
 
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
+  const mostRecentlyPrintedVoucher = useMemo(() => {
+    const printed = vouchers.filter((v) => v.lastPrintedAt);
+    if (printed.length === 0) return null;
+    return printed.reduce((latest, current) => {
+      return new Date(current.lastPrintedAt!).getTime() >
+        new Date(latest.lastPrintedAt!).getTime()
+        ? current
+        : latest;
+    });
+  }, [vouchers]);
 
   const handleUpdateStatus = async (id: string, newStatus: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected") => {
     if (updatingStatusId) return;
@@ -333,6 +420,41 @@ export function JournalVoucherList({
             >
               {label}
             </span>
+          );
+        },
+      },
+      {
+        accessorKey: "lastPrintedAt",
+        header: "Last Printed At",
+        cell: ({ row }) => {
+          const lp = row.original.lastPrintedAt;
+          const isMostRecent = mostRecentlyPrintedVoucher?.id === row.original.id;
+
+          if (!lp) {
+            return (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-muted/40 text-muted-foreground italic border border-muted/30">
+                Not Printed
+              </span>
+            );
+          }
+
+          return (
+            <div className="flex flex-col gap-1 items-start">
+              <span className={cn(
+                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-medium border shadow-xs transition-colors whitespace-nowrap",
+                isMostRecent
+                  ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-700 font-semibold"
+                  : "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700"
+              )}>
+                <Printer className={cn("h-3 w-3", isMostRecent ? "text-blue-600 dark:text-blue-400" : "text-emerald-600 dark:text-emerald-400")} />
+                {format(new Date(lp), "dd-MMM-yyyy hh:mm a")}
+              </span>
+              {isMostRecent && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-blue-600 text-white dark:bg-blue-500 dark:text-slate-950 shadow-xs tracking-wider whitespace-nowrap">
+                  ★ Last Printed
+                </span>
+              )}
+            </div>
           );
         },
       },
@@ -506,6 +628,29 @@ export function JournalVoucherList({
           </div>
         </div>
       )}
+      {mostRecentlyPrintedVoucher && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-xs text-blue-900 dark:text-blue-200 shadow-xs mb-4">
+          <div className="flex items-center gap-2">
+            <Printer className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span>
+              <strong>Last Printed Voucher:</strong>{" "}
+              <Link
+                href={`/erp/finance/journal-voucher/${mostRecentlyPrintedVoucher.id}`}
+                className="font-mono font-bold underline hover:text-blue-700 dark:hover:text-blue-100"
+              >
+                {mostRecentlyPrintedVoucher.jvNo}
+              </Link>{" "}
+              was printed on{" "}
+              <span className="font-mono font-semibold">
+                {format(new Date(mostRecentlyPrintedVoucher.lastPrintedAt!), "dd-MMM-yyyy 'at' hh:mm a")}
+              </span>
+            </span>
+          </div>
+          <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-blue-600 text-white shrink-0">
+            Most Recent
+          </span>
+        </div>
+      )}
       <Card>
         <CardHeader className="border-b flex flex-row items-center justify-between">
           <CardTitle>Journal Vouchers</CardTitle>
@@ -557,6 +702,10 @@ export function JournalVoucherList({
                 onUpdate={(values) => {
                   setFromDate(values.range.from);
                   setToDate(values.range.to);
+                  updateUrlParams({
+                    fromDate: values.range.from ? values.range.from.toISOString().split("T")[0] : undefined,
+                    toDate: values.range.to ? values.range.to.toISOString().split("T")[0] : undefined,
+                  });
                 }}
                 align="start"
                 locale="en-GB"
@@ -573,7 +722,10 @@ export function JournalVoucherList({
                   label: acc.name,
                 }))}
                 value={selectedAccount}
-                onValueChange={setSelectedAccount}
+                onValueChange={(val) => {
+                  setSelectedAccount(val);
+                  updateUrlParams({ accountId: val });
+                }}
                 placeholder="Select Account"
               />
             </div>
@@ -581,7 +733,10 @@ export function JournalVoucherList({
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
                 Voucher Status
               </Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status} onValueChange={(val) => {
+                setStatus(val);
+                updateUrlParams({ status: val });
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
@@ -620,12 +775,25 @@ export function JournalVoucherList({
 
           <DataTable
             columns={columns}
-            data={filteredVouchers}
+            data={vouchers}
+            manualPagination={true}
+            rowCount={pagination?.total ?? vouchers.length}
+            pageCount={pagination?.totalPages ?? 1}
+            onPaginationChange={(pageState) => {
+              updateUrlParams({
+                page: String(pageState.pageIndex + 1),
+                limit: String(pageState.pageSize),
+              });
+            }}
+            manualFiltering={true}
+            onSearchChange={(searchVal) => {
+              setSearchTerm(searchVal);
+              updateUrlParams({ search: searchVal });
+            }}
             searchFields={[{ key: "jvNo", label: "JV Number" }, { key: "description", label: "Description" }]}
             tableId="journal-voucher-list"
             enableRowSelection
             onSelectionChange={setSelectedVoucherIds}
-            onSearchChange={setSearchTerm}
           />
         </CardContent>
       </Card>

@@ -13,9 +13,31 @@ import { hasPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReceiptVoucherListPage() {
-    const [{ data: vouchers }, { data: accounts }] = await Promise.all([
-        getReceiptVouchers(),
+export default async function ReceiptVoucherListPage({
+    searchParams,
+}: {
+    searchParams: Promise<{
+        type?: string;
+        status?: string;
+        fromDate?: string;
+        toDate?: string;
+        accountId?: string;
+        search?: string;
+        page?: string;
+        limit?: string;
+    }>;
+}) {
+    const rawFilters = await searchParams;
+    const page = rawFilters.page ? parseInt(rawFilters.page, 10) : 1;
+    const limit = rawFilters.limit ? parseInt(rawFilters.limit, 10) : 10;
+    const filters = {
+        ...rawFilters,
+        page,
+        limit,
+    };
+
+    const [result, { data: accounts }] = await Promise.all([
+        getReceiptVouchers(filters),
         getChartOfAccounts(),
     ]);
 
@@ -49,7 +71,9 @@ export default async function ReceiptVoucherListPage() {
 
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 bg-[#F8F9FA] dark:bg-background">
                 <ReceiptVoucherList
-                    initialData={vouchers || []}
+                    initialData={result.data || []}
+                    pagination={result.pagination}
+                    initialFilters={filters}
                     accounts={accounts || []}
                     permissions={{ canCreate, canRead, canUpdate, canDelete, canApprove }}
                 />
