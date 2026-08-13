@@ -30,7 +30,7 @@ export async function updateVendor(id: string, data: any) {
         // Transform data to match backend DTO
         const payload = {
             ...data,
-            type: data.type === "local" ? "LOCAL" : "INTERNATIONAL",
+            type: data.type === "local" ? "LOCAL" : "IMPORT",
             nature: data.type === "local" ? data.nature : undefined,
             brand: data.type === "import" ? data.brand : undefined,
             cnicNo: data.cnic,
@@ -50,10 +50,7 @@ export async function updateVendor(id: string, data: any) {
 
         const response = await authFetch(`/finance/suppliers/${id}`, {
             method: "PATCH",
-            body: JSON.stringify({
-                ...payload,
-                chartOfAccountId: undefined, // ensure we don't send the old key
-            }),
+            body: JSON.stringify(payload),
         });
 
         const result = response.data;
@@ -76,7 +73,7 @@ export async function createVendor(data: any) {
         // Transform data to match backend DTO
         const payload = {
             ...data,
-            type: data.type === "local" ? "LOCAL" : "INTERNATIONAL",
+            type: data.type === "local" ? "LOCAL" : "IMPORT",
             nature: data.type === "local" ? data.nature : undefined,
             brand: data.type === "import" ? data.brand : undefined,
             cnicNo: data.cnic,
@@ -96,10 +93,7 @@ export async function createVendor(data: any) {
 
         const response = await authFetch("/finance/suppliers", {
             method: "POST",
-            body: JSON.stringify({
-                ...payload,
-                chartOfAccountId: undefined,
-            }),
+            body: JSON.stringify(payload),
         });
 
         const result = response.data;

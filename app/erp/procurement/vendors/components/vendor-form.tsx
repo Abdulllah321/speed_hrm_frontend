@@ -1,9 +1,8 @@
 "use client";
 
-import { createVendor, updateVendor } from "@/lib/actions/procurement";
-
 import { useState } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { createVendor, updateVendor } from "@/lib/actions/procurement";
+import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { vendorSchema, type VendorFormValues } from "@/lib/validations/vendor";
 import { Button } from "@/components/ui/button";
@@ -196,7 +195,7 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
                                         control={form.control}
                                         name="nature"
                                         render={({ field }) => (
-                                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={readOnly}>
+                                            <Select onValueChange={field.onChange} value={field.value || ""} disabled={readOnly}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select Nature" />
                                                 </SelectTrigger>

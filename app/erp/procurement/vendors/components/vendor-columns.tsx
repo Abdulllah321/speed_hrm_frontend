@@ -20,7 +20,7 @@ export type VendorRow = {
   code: string;
   code2?: string;
   name: string;
-  type: "LOCAL" | "INTERNATIONAL";
+  type: "LOCAL" | "IMPORT";
   contactNo?: string;
   address?: string;
   nature?: string;

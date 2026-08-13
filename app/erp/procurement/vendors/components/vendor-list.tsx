@@ -35,7 +35,7 @@ export function VendorList({ initialVendors }: VendorListProps) {
               label: "Type",
               options: [
                 { label: "Local", value: "LOCAL" },
-                { label: "Import", value: "INTERNATIONAL" },
+                { label: "Import", value: "IMPORT" },
               ],
             },
           ]}
