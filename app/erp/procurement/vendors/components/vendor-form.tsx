@@ -47,6 +47,7 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
             cnic: initialData?.cnicNo || "",
             ntn: initialData?.ntnNo || "",
             strn: initialData?.strnNo || "",
+            gstNumber: initialData?.gstNumber || "",
             srb: initialData?.srbNo || "",
             pra: initialData?.praNo || "",
             ict: initialData?.ictNo || "",
@@ -169,6 +170,10 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase font-semibold">STRN No.</Label>
                                 <Input {...form.register("strn")} placeholder="Enter STRN" disabled={readOnly} />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground uppercase font-semibold">GST #</Label>
+                                <Input {...form.register("gstNumber")} placeholder="Enter GST #" disabled={readOnly} />
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase font-semibold">SRB No.</Label>

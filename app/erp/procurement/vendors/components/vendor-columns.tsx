@@ -25,6 +25,7 @@ export type VendorRow = {
   address?: string;
   nature?: string;
   brand?: string;
+  strnNo?: string;
 };
 
 export const columns: ColumnDef<VendorRow>[] = [
@@ -53,6 +54,14 @@ export const columns: ColumnDef<VendorRow>[] = [
   {
     accessorKey: "contactNo",
     header: "Contact Number",
+  },
+  {
+    accessorKey: "strnNo",
+    header: "GST #",
+    cell: ({ row }) => {
+      const raw = row.original.strnNo;
+      return (raw && raw.toLowerCase() !== 'registered') ? raw : "-";
+    },
   },
   {
     accessorKey: "nature",

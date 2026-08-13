@@ -21,7 +21,7 @@ interface SourceDocument {
   grnNumber?: string;
   landedCostNumber?: string;
   invoiceNumber?: string;
-  supplier: { id: string; name: string; strnNo?: string; ntnNo?: string };
+  supplier: { id: string; name: string; strnNo?: string; ntnNo?: string; gstNumber?: string; address?: string };
   warehouse?: { id: string; name: string };
   items: Array<{
     id: string;
@@ -164,7 +164,7 @@ export default function CreatePurchaseReturnPage() {
       supplierId: doc.supplier.id,
       warehouseId: doc.warehouse?.id || '',
       supplierGstNumber: (() => {
-        const raw = doc.supplier.strnNo || doc.supplier.ntnNo || '';
+        const raw = doc.supplier.gstNumber || doc.supplier.strnNo || doc.supplier.ntnNo || '';
         return (raw.trim().toLowerCase() === 'registered') ? '' : raw;
       })(),
       items: doc.items.map(item => ({
@@ -411,11 +411,13 @@ export default function CreatePurchaseReturnPage() {
                                 <SelectValue placeholder="Select Season" />
                               </SelectTrigger>
                               <SelectContent>
-                                {seasons.map((s) => (
-                                  <SelectItem key={s.id} value={s.id}>
-                                    {s.name}
-                                  </SelectItem>
-                                ))}
+                                {seasons
+                                   .filter(s => s.name.toUpperCase().replace(/\s+/g, '') === 'SS26')
+                                   .map((s) => (
+                                     <SelectItem key={s.id} value={s.id}>
+                                       {s.name}
+                                     </SelectItem>
+                                   ))}
                               </SelectContent>
                             </Select>
                           </div>
@@ -729,14 +731,14 @@ export default function CreatePurchaseReturnPage() {
                           <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Address:</span> <span>{selectedDoc.supplier.address}</span></div>
                         )}
                         {(() => {
-                           const raw = formData.supplierGstNumber;
+                           const raw = formData.supplierGstNumber || selectedDoc?.supplier?.gstNumber || selectedDoc?.supplier?.strnNo;
                            const val = (raw && raw.toLowerCase() !== 'registered') ? raw : '';
-                           return (
+                           return val ? (
                              <div className="flex gap-2 mb-1">
                                <span className="font-bold w-16 shrink-0">GST #:</span>
                                <span>{val}</span>
                              </div>
-                           );
+                           ) : null;
                          })()}
                     </div>
                     <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
@@ -761,7 +763,7 @@ export default function CreatePurchaseReturnPage() {
                         <th className="py-1 pr-1 text-right font-bold w-[5%] whitespace-nowrap">Qty</th>
                         <th className="py-1 pr-1 text-right font-bold w-[8%] whitespace-nowrap">Unit Cost</th>
                         <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Val Excl Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[6%] whitespace-nowrap">Sales Tax %</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[6%] whitespace-nowrap">Sales Tax Rate</th>
                         <th className="py-1 pr-1 text-right font-bold w-[8%] whitespace-nowrap">Sales Tax</th>
                         <th className="py-1 text-right font-bold w-[12%] whitespace-nowrap">Val Incl Tax</th>
                       </tr>

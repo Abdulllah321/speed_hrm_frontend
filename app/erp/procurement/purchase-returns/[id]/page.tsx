@@ -615,7 +615,7 @@ export default function PurchaseReturnDetailPage() {
                           <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Address:</span> <span>{purchaseReturn.supplier.address}</span></div>
                         )}
                         {(() => {
-                           const rawGst = purchaseReturn.supplierGstNumber || purchaseReturn.supplier?.strnNo;
+                           const rawGst = purchaseReturn.supplierGstNumber || purchaseReturn.supplier?.gstNumber || purchaseReturn.supplier?.strnNo;
                            const gstVal = (rawGst && rawGst.toLowerCase() !== 'registered') ? rawGst : '';
                            return gstVal ? (
                              <div className="flex gap-2 mb-1">
@@ -644,7 +644,7 @@ export default function PurchaseReturnDetailPage() {
                         <th className="py-1 pr-1 text-right font-bold w-[5%] whitespace-nowrap">Qty</th>
                         <th className="py-1 pr-1 text-right font-bold w-[8%] whitespace-nowrap">Unit Cost</th>
                         <th className="py-1 pr-1 text-right font-bold w-[9%] whitespace-nowrap">Val Excl Tax</th>
-                        <th className="py-1 pr-1 text-right font-bold w-[6%] whitespace-nowrap">Sales Tax %</th>
+                        <th className="py-1 pr-1 text-right font-bold w-[6%] whitespace-nowrap">Sales Tax Rate</th>
                         <th className="py-1 pr-1 text-right font-bold w-[8%] whitespace-nowrap">Sales Tax</th>
                         <th className="py-1 text-right font-bold w-[12%] whitespace-nowrap">Val Incl Tax</th>
                       </tr>
