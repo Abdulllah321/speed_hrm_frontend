@@ -164,6 +164,18 @@ export default function DebitNoteDetailPage() {
                   {note.purchaseReturn?.staxEInvoiceNumber && (
                     <p><span className="text-gray-500">STax e-Inv #:</span> {note.purchaseReturn.staxEInvoiceNumber}</p>
                   )}
+                  {(() => {
+                    const brandNames = Array.from(
+                      new Set(
+                        (note.purchaseReturn?.items || [])
+                          .map((i: any) => i.item?.brand?.name || i.brand?.name || i.brand)
+                          .filter(Boolean)
+                      )
+                    ).join(', ');
+                    return brandNames ? (
+                      <p><span className="text-gray-500">Brand:</span> <span className="font-semibold text-gray-900">{brandNames}</span></p>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             </div>
@@ -268,6 +280,21 @@ export default function DebitNoteDetailPage() {
                              <span>{note.purchaseReturn.staxEInvoiceNumber}</span>
                           </div>
                        )}
+                       {(() => {
+                          const brandNames = Array.from(
+                            new Set(
+                              (note.purchaseReturn?.items || [])
+                                .map((i: any) => i.item?.brand?.name || i.brand?.name || i.brand)
+                                .filter(Boolean)
+                            )
+                          ).join(', ');
+                          return brandNames ? (
+                            <div className="flex justify-between mt-2 pt-2 border-t border-gray-200">
+                               <span className="font-bold">Brand:</span>
+                               <span className="font-bold">{brandNames}</span>
+                            </div>
+                          ) : null;
+                       })()}
                     </div>
                 </div>
 

@@ -722,6 +722,10 @@ export interface PurchaseReturn {
   totalAmount: number;
   notes?: string;
   staxEInvoiceNumber?: string;
+  seasonId?: string;
+  season?: { id: string; name: string };
+  companyGstNumber?: string;
+  supplierGstNumber?: string;
   approvedBy?: string;
   approvedAt?: string;
   createdAt: string;
@@ -758,6 +762,10 @@ export interface CreatePurchaseReturnDto {
   supplierId: string;
   warehouseId: string;
   returnType: 'DEFECTIVE' | 'EXCESS' | 'WRONG_ITEM' | 'DAMAGED' | 'SHORTAGE';
+  returnDate?: string;
+  seasonId?: string;
+  companyGstNumber?: string;
+  supplierGstNumber?: string;
   reason?: string;
   notes?: string;
   staxEInvoiceNumber?: string;
