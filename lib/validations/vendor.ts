@@ -13,6 +13,7 @@ export const vendorSchema = z.object({
     cnic: z.string().optional(),
     ntn: z.string().optional(),
     strn: z.string().optional(),
+    gstNumber: z.string().optional(),
     srb: z.string().optional(),
     pra: z.string().optional(),
     ict: z.string().optional(),

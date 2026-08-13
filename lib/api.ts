@@ -1411,6 +1411,9 @@ export interface Supplier {
   email?: string;
   phone?: string;
   address?: string;
+  gstNumber?: string;
+  strnNo?: string;
+  ntnNo?: string;
   createdAt: string;
   updatedAt: string;
 }

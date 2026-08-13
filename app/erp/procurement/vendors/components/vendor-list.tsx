@@ -28,6 +28,7 @@ export function VendorList({ initialVendors }: VendorListProps) {
           searchFields={[
             { key: "name", label: "Name" },
             { key: "code", label: "Code" },
+            { key: "strnNo", label: "GST #" },
           ]}
           filters={[
             {
