@@ -151,9 +151,18 @@ function AutocompleteMultiSelect({
 export default function PosStockValuationReportPage() {
     const { user } = useAuth();
 
+    // Default to start of current Fiscal Year (July 1st)
+    const getFiscalYearStart = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth(); // 0 = Jan, 6 = July
+        const fyYear = month >= 6 ? year : year - 1;
+        return new Date(fyYear, 6, 1);
+    };
+
     const [dateRange, setDateRange] = useState<DateRange>({
-        from: startOfMonth(new Date()),
-        to: endOfMonth(new Date()),
+        from: getFiscalYearStart(),
+        to: new Date(),
     });
 
     const [groupingLevels, setGroupingLevels] = useState({
