@@ -86,7 +86,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                 purchaseOrderId: poId,
                 warehouseId: selectedWarehouse,
                 items: itemsToReceive,
-                notes: `Received items for PO ${order?.poNumber}`
+                notes: ""
             });
             toast.success('GRN created successfully');
             router.push('/erp/procurement/grn');
