@@ -203,15 +203,14 @@ export default function GrnDetailPage() {
                 {/* Step 2: Checked */}
                 <div className="flex items-start md:flex-col gap-4 md:text-center w-full md:w-1/3 z-10">
                   <div
-                    className={`flex items-center justify-center w-12 h-12 rounded-full border-2 md:mx-auto transition-all duration-300 ${
-                      grn.status === "PENDING_CHECKER"
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border-2 md:mx-auto transition-all duration-300 ${grn.status === "PENDING_CHECKER"
                         ? "bg-amber-500 border-amber-400 text-white animate-pulse shadow-lg shadow-amber-500/20"
                         : grn.status === "REJECTED" && !grn.checkedById
                           ? "bg-rose-500 border-rose-400 text-white shadow-lg shadow-rose-500/20"
                           : grn.checkedById
                             ? "bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20"
                             : "bg-slate-900 border-slate-700 text-slate-500"
-                    }`}
+                      }`}
                   >
                     {grn.checkedById ? (
                       <CheckCircle2 className="h-6 w-6" />
@@ -253,19 +252,18 @@ export default function GrnDetailPage() {
                 {/* Step 3: Authorized */}
                 <div className="flex items-start md:flex-col gap-4 md:text-center w-full md:w-1/3 z-10">
                   <div
-                    className={`flex items-center justify-center w-12 h-12 rounded-full border-2 md:mx-auto transition-all duration-300 ${
-                      grn.status === "VALUED" ||
-                      grn.status === "RECEIVED_UNVALUED"
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border-2 md:mx-auto transition-all duration-300 ${grn.status === "VALUED" ||
+                        grn.status === "RECEIVED_UNVALUED"
                         ? "bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20"
                         : grn.status === "PENDING_AUTHORIZER"
                           ? "bg-blue-500 border-blue-400 text-white animate-pulse shadow-lg shadow-blue-500/20"
                           : grn.status === "REJECTED" && grn.checkedById
                             ? "bg-rose-500 border-rose-400 text-white shadow-lg shadow-rose-500/20"
                             : "bg-slate-900 border-slate-700 text-slate-500"
-                    }`}
+                      }`}
                   >
                     {grn.status === "VALUED" ||
-                    grn.status === "RECEIVED_UNVALUED" ? (
+                      grn.status === "RECEIVED_UNVALUED" ? (
                       <CheckCircle2 className="h-6 w-6" />
                     ) : grn.status === "PENDING_AUTHORIZER" ? (
                       <Clock className="h-6 w-6" />
@@ -312,54 +310,54 @@ export default function GrnDetailPage() {
           {/* Approval Actions Panel */}
           {((grn.status === "PENDING_CHECKER" && canCheck) ||
             (grn.status === "PENDING_AUTHORIZER" && canAuthorize)) && (
-            <Card className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-slate-900/40 dark:to-slate-900/20 border-blue-200/60 dark:border-slate-800 shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-blue-900 dark:text-blue-400 flex items-center gap-2 text-lg">
-                  <ThumbsUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Pending GRN Approval Action Required
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-blue-700 dark:text-slate-300">
-                  This Goods Receipt Note is currently in{" "}
-                  <strong>
-                    {grn.status === "PENDING_CHECKER"
-                      ? "Pending Checker Verification"
-                      : "Pending Authorizer Release"}
-                  </strong>
-                  . As an authorized user, you can either approve/verify this
-                  receipt to forward it to the next step, or reject it.
-                </p>
-                <div className="flex gap-4">
-                  <Button
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    onClick={() =>
-                      handleAction(
-                        grn.status === "PENDING_CHECKER"
-                          ? "PENDING_AUTHORIZER"
-                          : "APPROVED",
-                      )
-                    }
-                    disabled={submitting}
-                  >
-                    <Check className="mr-2 h-4 w-4" />
-                    {grn.status === "PENDING_CHECKER"
-                      ? "Verify & Forward"
-                      : "Authorize & Release GRN"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    onClick={() => handleAction("REJECTED")}
-                    disabled={submitting}
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Reject Goods Receipt Note
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              <Card className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-slate-900/40 dark:to-slate-900/20 border-blue-200/60 dark:border-slate-800 shadow-md">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-blue-900 dark:text-blue-400 flex items-center gap-2 text-lg">
+                    <ThumbsUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    Pending GRN Approval Action Required
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-blue-700 dark:text-slate-300">
+                    This Goods Receipt Note is currently in{" "}
+                    <strong>
+                      {grn.status === "PENDING_CHECKER"
+                        ? "Pending Checker Verification"
+                        : "Pending Authorizer Release"}
+                    </strong>
+                    . As an authorized user, you can either approve/verify this
+                    receipt to forward it to the next step, or reject it.
+                  </p>
+                  <div className="flex gap-4">
+                    <Button
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
+                      onClick={() =>
+                        handleAction(
+                          grn.status === "PENDING_CHECKER"
+                            ? "PENDING_AUTHORIZER"
+                            : "APPROVED",
+                        )
+                      }
+                      disabled={submitting}
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      {grn.status === "PENDING_CHECKER"
+                        ? "Verify & Forward"
+                        : "Authorize & Release GRN"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
+                      onClick={() => handleAction("REJECTED")}
+                      disabled={submitting}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Reject Goods Receipt Note
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
           <Card>
             <CardHeader>
@@ -465,20 +463,20 @@ export default function GrnDetailPage() {
               aria-hidden="true"
             >
               <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-0 print:max-w-none box-border">
-                  {/* Header */}
-                  <div className="flex justify-between mb-6 gap-4 items-start">
-                      {/* Logo */}
-                      <div className="w-[20%] flex flex-col items-start justify-center">
-                         <img src="/image.png" alt="Logo" className="w-32 object-contain" />
-                      </div>
-                      
-                      {/* Title */}
-                      <div className="w-[35%] flex flex-col justify-center text-center">
-                        <div className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1">Speed (Private) Limited</div>
-                        <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                          Goods Receipt Note
-                        </div>
-                      </div>
+                {/* Header */}
+                <div className="flex justify-between mb-6 gap-4 items-start">
+                  {/* Logo */}
+                  <div className="w-[20%] flex flex-col items-start justify-center">
+                    <img src="/image.png" alt="Logo" className="w-32 object-contain" />
+                  </div>
+
+                  {/* Title */}
+                  <div className="w-[35%] flex flex-col justify-center text-center">
+                    <div className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1">Speed (Private) Limited</div>
+                    <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+                      Goods Receipt Note
+                    </div>
+                  </div>
 
                   {/* Details Box */}
                   <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
@@ -488,111 +486,167 @@ export default function GrnDetailPage() {
                     </div>
                     <div className="flex justify-between mb-2">
                       <span className="font-bold">PO Number:</span>
-                      <span>{grn.purchaseOrder?.poNumber || "N/A"}</span>
+                      <span>{grn.purchaseOrder?.poNumber || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <div className="flex gap-2">
                         <span className="font-bold">Date:</span>
-                        <span>
-                          {new Date(grn.receivedDate).toLocaleDateString(
-                            "en-GB",
-                          )}
-                        </span>
+                        <span>{new Date(grn.receivedDate).toLocaleDateString('en-GB')}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                  {/* Warehouse Box */}
-                  <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                      <div className="w-full p-2 border border-gray-300 flex flex-col justify-center">
-                          <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
-                          <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Name:</span> <span>{grn.warehouse?.name || 'N/A'}</span></div>
-                      </div>
+                {/* Warehouse Box */}
+                <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
+                  <div className="w-full p-2 border border-gray-300 flex flex-col justify-center">
+                    <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
+                    <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Name:</span> <span>{grn.warehouse?.name || 'N/A'}</span></div>
                   </div>
+                </div>
 
-                {/* Table */}
-                <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
-                  <thead>
-                    <tr className="border-y-2 border-black">
-                      <th className="py-2 pr-2 text-left font-bold w-[15%]">
-                        SKU
-                      </th>
-                      <th className="py-2 pr-2 text-left font-bold w-[25%]">
-                        Description
-                      </th>
-                      <th className="py-2 pr-2 text-left font-bold w-[15%]">
-                        Size
-                      </th>
-                      <th className="py-2 pr-2 text-left font-bold w-[15%]">
-                        Color
-                      </th>
-                      <th className="py-2 pr-2 text-right font-bold w-[30%]">
-                        Received Qty
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {grn.items && grn.items.length > 0 ? (
-                      grn.items.map((item, i) => (
-                        <tr
-                          key={item.id || i}
-                          className="border-b border-gray-300 align-top"
-                        >
-                          <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
-                            {item.item?.sku || "-"}
-                          </td>
-                          <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
-                            {item.description || "-"}
-                          </td>
-                          <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                            {item.item?.size?.name || "-"}
-                          </td>
-                          <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                            {item.item?.color?.name || "-"}
-                          </td>
-                          <td className="py-2 pr-2 text-right tabular-nums font-bold">
-                            {parseFloat(item.receivedQty as any).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="py-4 text-center text-muted-foreground border-b border-gray-300"
-                        >
-                          No items found for this GRN
+                {/* Details Box */}
+                <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
+                  <div className="flex justify-between mb-2">
+                    <span className="font-bold">GRN Number:</span>
+                    <span className="font-bold">{grn.grnNumber}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span className="font-bold">PO Number:</span>
+                    <span>{grn.purchaseOrder?.poNumber || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <div className="flex gap-2">
+                      <span className="font-bold">Date:</span>
+                      <span>
+                        {new Date(grn.receivedDate).toLocaleDateString(
+                          "en-GB",
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warehouse / Ship To Box */}
+              <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
+                <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                  <div className="font-bold border-b border-gray-300 mb-2 pb-1">
+                    Warehouse
+                  </div>
+                  <div className="flex gap-2 mb-1">
+                    <span className="font-bold w-16 shrink-0">Name:</span>{" "}
+                    <span>{grn.warehouse?.name || "N/A"}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-bold w-16 shrink-0">Location:</span>{" "}
+                    <span>Speed (pvt.) Limited ERP Location</span>
+                  </div>
+                </div>
+                <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                  <div className="font-bold border-b border-gray-300 mb-2 pb-1">
+                    Ship To
+                  </div>
+                  <div className="flex gap-2 mb-1">
+                    <span className="font-bold w-16 shrink-0">Name:</span>{" "}
+                    <span>Speed (pvt.) Limited Warehouse</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-bold w-16 shrink-0">Address:</span>{" "}
+                    <span>
+                      Main Warehouse, Plot #45, Industrial Area, Karachi,
+                      Pakistan
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table */}
+              <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
+                <thead>
+                  <tr className="border-y-2 border-black">
+                    <th className="py-2 pr-2 text-left font-bold w-[15%]">
+                      SKU
+                    </th>
+                    <th className="py-2 pr-2 text-left font-bold w-[25%]">
+                      Description
+                    </th>
+                    <th className="py-2 pr-2 text-left font-bold w-[15%]">
+                      Size
+                    </th>
+                    <th className="py-2 pr-2 text-left font-bold w-[15%]">
+                      Color
+                    </th>
+                    <th className="py-2 pr-2 text-right font-bold w-[30%]">
+                      Received Qty
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grn.items && grn.items.length > 0 ? (
+                    grn.items.map((item, i) => (
+                      <tr
+                        key={item.id || i}
+                        className="border-b border-gray-300 align-top"
+                      >
+                        <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
+                          {item.item?.sku || "-"}
+                        </td>
+                        <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
+                          {item.description || "-"}
+                        </td>
+                        <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                          {item.item?.size?.name || "-"}
+                        </td>
+                        <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                          {item.item?.color?.name || "-"}
+                        </td>
+                        <td className="py-2 pr-2 text-right tabular-nums font-bold">
+                          {parseFloat(item.receivedQty as any).toFixed(2)}
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-y-2 border-black font-bold">
-                      <td colSpan={4} className="py-2 pr-2 font-bold text-left">
-                        Total
-                      </td>
-                      <td className="py-2 pr-2 text-right tabular-nums font-bold">
-                        {totalReceivedQty.toFixed(2)}
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="py-4 text-center text-muted-foreground border-b border-gray-300"
+                      >
+                        No items found for this GRN
                       </td>
                     </tr>
-                  </tfoot>
-                </table>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="border-y-2 border-black font-bold">
+                    <td colSpan={4} className="py-2 pr-2 font-bold text-left">
+                      Total
+                    </td>
+                    <td className="py-2 pr-2 text-right tabular-nums font-bold">
+                      {totalReceivedQty.toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
 
-                  {/* Remarks */}
-                  <div className="mt-4 mb-8 flex gap-4">
-                      <div className="w-1/2">
-                          <div className="font-bold text-xs sm:text-[14px]">PO Notes & Remarks</div>
-                          <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.purchaseOrder?.notes || "N/A"}</p>
-                      </div>
-                      <div className="w-1/2">
-                          <div className="font-bold text-xs sm:text-[14px]">GRN Notes & Instructions</div>
-                          <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.notes || "N/A"}</p>
-                      </div>
-                  </div>
+              {/* Remarks */}
+              <div className="mt-4 mb-8 flex gap-4">
+                <div className="w-1/2">
+                  <div className="font-bold text-xs sm:text-[14px]">PO Notes & Remarks</div>
+                  <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.purchaseOrder?.notes || "N/A"}</p>
+                </div>
+                <div className="w-1/2">
+                  <div className="font-bold text-xs sm:text-[14px]">GRN Notes & Instructions</div>
+                  <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.notes || "N/A"}</p>
+                </div>
+              </div>
+              <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">
+                {grn.notes || "N/A"}
+              </p>
+            </div>
 
-                {/* Signatures */}
-                <div className="grid grid-cols-3 gap-3">
+                {/* Signatures */ }
+            < div className = "grid grid-cols-3 gap-3" >
                   <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
                     <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">
                       PREPARED BY (MAKER)
@@ -655,12 +709,13 @@ export default function GrnDetailPage() {
                     )}
                   </div>
                 </div>
-              </div>
-            </div>,
-            document.body,
-          )}
+    </div>
+            </div >,
+    document.body,
+          )
+}
       </>
-    </PermissionGuard>
+    </PermissionGuard >
   );
 }
 
