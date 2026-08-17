@@ -368,7 +368,8 @@ export default function GrnDetailPage() {
                       </div>
                       
                       {/* Title */}
-                      <div className="w-[35%] flex flex-col justify-center">
+                      <div className="w-[35%] flex flex-col justify-center text-center">
+                        <div className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1">Speed (Private) Limited</div>
                         <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
                           Goods Receipt Note
                         </div>
@@ -393,17 +394,11 @@ export default function GrnDetailPage() {
                       </div>
                   </div>
 
-                  {/* Warehouse / Ship To Box */}
+                  {/* Warehouse Box */}
                   <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                      <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                      <div className="w-full p-2 border border-gray-300 flex flex-col justify-center">
                           <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
-                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{grn.warehouse?.name || 'N/A'}</span></div>
-                          <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Location:</span> <span>Speed Limit ERP Location</span></div>
-                      </div>
-                      <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                          <div className="font-bold border-b border-gray-300 mb-2 pb-1">Ship To</div>
-                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>Speed Limit Warehouse</span></div>
-                          <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Address:</span> <span>Main Warehouse, Plot #45, Industrial Area, Karachi, Pakistan</span></div>
+                          <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Name:</span> <span>{grn.warehouse?.name || 'N/A'}</span></div>
                       </div>
                   </div>
 
@@ -458,9 +453,15 @@ export default function GrnDetailPage() {
                   </table>
 
                   {/* Remarks */}
-                  <div className="mt-4 mb-8">
-                      <div className="font-bold text-xs sm:text-[14px]">Notes & Instructions</div>
-                      <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.notes || "N/A"}</p>
+                  <div className="mt-4 mb-8 flex gap-4">
+                      <div className="w-1/2">
+                          <div className="font-bold text-xs sm:text-[14px]">PO Notes & Remarks</div>
+                          <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.purchaseOrder?.notes || "N/A"}</p>
+                      </div>
+                      <div className="w-1/2">
+                          <div className="font-bold text-xs sm:text-[14px]">GRN Notes & Instructions</div>
+                          <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.notes || "N/A"}</p>
+                      </div>
                   </div>
 
                   {/* Signatures */}
