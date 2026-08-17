@@ -43,6 +43,20 @@ interface PurchaseInvoice {
   remainingAmount: number;
   status: string;
   paymentStatus: string;
+  notes?: string;
+  grn?: {
+    grnNumber: string;
+    purchaseOrder?: {
+      notes?: string;
+    } | null;
+  } | null;
+  landedCost?: {
+    grn?: {
+      purchaseOrder?: {
+        notes?: string;
+      } | null;
+    } | null;
+  } | null;
 }
 
 export default function PurchaseInvoiceListPage() {
@@ -312,6 +326,7 @@ export default function PurchaseInvoiceListPage() {
                         <th className="text-left p-3">Date</th>
                         <th className="text-left p-3">Supplier</th>
                         <th className="text-left p-3">Brand</th>
+                        <th className="text-left p-3">Remarks</th>
                         <th className="text-right p-3">QTY</th>
                         <th className="text-right p-3">Total Amount</th>
                         <th className="text-right p-3">Paid Amount</th>
@@ -351,6 +366,14 @@ export default function PurchaseInvoiceListPage() {
                               return brands.length > 0 ? brands.join(", ") : "—";
                             })()}
                           </td>
+                          {(() => {
+                            const poNotes = invoice.grn?.purchaseOrder?.notes || invoice.landedCost?.grn?.purchaseOrder?.notes || invoice.notes || "—";
+                            return (
+                              <td className="p-3 text-sm max-w-[200px] truncate" title={poNotes}>
+                                {poNotes}
+                              </td>
+                            );
+                          })()}
                           <td className="p-3 text-right font-medium">
                             {(invoice.items || []).reduce((sum, i) => sum + Number(i.quantity || 0), 0).toLocaleString()}
                           </td>
