@@ -104,6 +104,7 @@ export default function CreatePurchaseInvoicePage() {
     discountAmount: 0,
     advanceTaxRate: 0.5,
     notes: "",
+    staxEInvoiceNumber: "",
     isApproved: false,
   });
 
@@ -318,6 +319,7 @@ export default function CreatePurchaseInvoicePage() {
         landedCostId: restFormData.landedCostId || undefined,
         dueDate: restFormData.dueDate || undefined,
         notes: restFormData.notes || undefined,
+        staxEInvoiceNumber: restFormData.staxEInvoiceNumber || undefined,
       };
 
       const payload = {
@@ -457,26 +459,39 @@ export default function CreatePurchaseInvoicePage() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="supplier">Supplier *</Label>
-              <Select
-                value={formData.supplierId}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, supplierId: value }))
-                }
-                disabled={true}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id}>
-                      {supplier.name} ({supplier.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="supplier">Supplier *</Label>
+                <Select
+                  value={formData.supplierId}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, supplierId: value }))
+                  }
+                  disabled={true}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name} ({supplier.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="staxEInvoiceNumber">STax e-Inv #</Label>
+                <Input
+                  id="staxEInvoiceNumber"
+                  value={formData.staxEInvoiceNumber}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, staxEInvoiceNumber: e.target.value }))
+                  }
+                  placeholder="e.g. ST-123456"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

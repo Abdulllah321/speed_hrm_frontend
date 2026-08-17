@@ -565,6 +565,7 @@ export interface Grn {
   items: GrnItem[];
   purchaseOrder?: {
     poNumber: string;
+    notes?: string;
   };
   warehouse?: {
     name: string;
@@ -1192,8 +1193,21 @@ export interface PurchaseInvoice {
   notes?: string;
   items: PurchaseInvoiceItem[];
   supplier?: { id: string; name: string; code: string };
-  grn?: { id: string; grnNumber: string };
-  landedCost?: { id: string; landedCostNumber: string };
+  grn?: { 
+    id: string; 
+    grnNumber: string; 
+    purchaseOrder?: { id: string; poNumber: string; notes?: string };
+  };
+  landedCost?: { 
+    id: string; 
+    landedCostNumber: string; 
+    purchaseOrder?: { id: string; poNumber: string; notes?: string } | null;
+    grn?: { 
+      id: string; 
+      grnNumber: string; 
+      purchaseOrder?: { id: string; poNumber: string; notes?: string } | null;
+    } | null;
+  };
   paymentVouchers?: {
     id: string;
     paidAmount: number;

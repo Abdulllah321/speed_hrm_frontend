@@ -161,6 +161,7 @@ export default function CreatePurchaseReturnPage() {
       grnId: doc.grn?.id || doc.landedCost?.grn?.id || undefined,
       landedCostId: doc.landedCost?.id || undefined,
       purchaseInvoiceId: docId,
+      staxEInvoiceNumber: (doc as any).staxEInvoiceNumber || '',
       supplierId: doc.supplier.id,
       warehouseId: doc.warehouse?.id || '',
       supplierGstNumber: (() => {
@@ -401,26 +402,7 @@ export default function CreatePurchaseReturnPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="space-y-2">
-                            <Label>Season</Label>
-                            <Select
-                              value={formData.seasonId || ''}
-                              onValueChange={(val) => setFormData({ ...formData, seasonId: val })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Season" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {seasons
-                                   .filter(s => s.name.toUpperCase().replace(/\s+/g, '') === 'SS26')
-                                   .map((s) => (
-                                     <SelectItem key={s.id} value={s.id}>
-                                       {s.name}
-                                     </SelectItem>
-                                   ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          {/* Season field removed */}
                           <div className="space-y-2">
                             <Label>Supplier</Label>
                             <Input value={selectedDoc.supplier?.name || 'Unknown Supplier'} disabled />
@@ -435,9 +417,8 @@ export default function CreatePurchaseReturnPage() {
                           <div className="space-y-2">
                             <Label>STax e-Inv #</Label>
                             <Input
-                              value={formData.staxEInvoiceNumber || ''}
-                              onChange={(e) => setFormData({ ...formData, staxEInvoiceNumber: e.target.value })}
-                              placeholder="e.g. ST-123456"
+                              value={(selectedDoc as any).staxEInvoiceNumber || '—'}
+                              disabled
                             />
                           </div>
                           <div className="space-y-2">
@@ -478,13 +459,6 @@ export default function CreatePurchaseReturnPage() {
                         <div className="flex justify-between items-center text-lg font-bold">
                           <span>Total Return Amount</span>
                           <span>{formatCurrency(calculateTotal())}</span>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Internal Notes</Label>
-                          <Textarea
-                            value={formData.notes}
-                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                          />
                         </div>
                         <div className="flex gap-2">
                           <Button type="submit" className="flex-1" disabled={loading}>
