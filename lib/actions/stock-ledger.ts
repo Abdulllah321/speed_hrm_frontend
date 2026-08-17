@@ -401,6 +401,7 @@ export async function queueAvailableStockSummaryReportExport(filters: {
     startDate?: string;
     endDate?: string;
     format: "xlsx" | "pdf";
+    exportType?: "hierarchical" | "flat";
     summaryOnly?: boolean;
     showBrand?: boolean;
     showDivision?: boolean;

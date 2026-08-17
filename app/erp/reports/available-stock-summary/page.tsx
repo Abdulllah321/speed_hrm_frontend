@@ -65,10 +65,15 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
     const [reportData, setReportData] = useState<any[]>([]);
     const [isPending, startTransition] = useTransition();
 
-    // Excel Export Queue States
+    // Excel Export Queue States (Hierarchy)
     const [exportJobId, setExportJobId] = useState<string | null>(null);
     const [exportState, setExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
     const [exportProgress, setExportProgress] = useState<number>(0);
+
+    // Excel Export Queue States (Flat)
+    const [flatExportJobId, setFlatExportJobId] = useState<string | null>(null);
+    const [flatExportState, setFlatExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
+    const [flatExportProgress, setFlatExportProgress] = useState<number>(0);
 
     // PDF Export Queue States
     const [pdfJobId, setPdfJobId] = useState<string | null>(null);
@@ -173,7 +178,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
         fetchReport();
     }, [locationParam, warehouseParam, groupingLevels]);
 
-    // Poll Excel Export Job Status
+    // Poll Hierarchy Excel Export Job Status
     useEffect(() => {
         if (exportState !== "queueing" && exportState !== "processing") return;
         if (!exportJobId) return;
@@ -187,11 +192,11 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
 
                     if (state === "completed") {
                         setExportState("completed");
-                        toast.success("Excel Export processed successfully! Ready to download.");
+                        toast.success("Hierarchy Excel Export processed successfully! Ready to download.");
                         clearInterval(interval);
                     } else if (state === "failed") {
                         setExportState("failed");
-                        toast.error("Background Excel export processing failed.");
+                        toast.error("Background Hierarchy Excel export processing failed.");
                         clearInterval(interval);
                     } else {
                         setExportState("processing");
@@ -204,6 +209,38 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
 
         return () => clearInterval(interval);
     }, [exportState, exportJobId]);
+
+    // Poll Flat Excel Export Job Status
+    useEffect(() => {
+        if (flatExportState !== "queueing" && flatExportState !== "processing") return;
+        if (!flatExportJobId) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await getAvailableStockSummaryReportExportStatus(flatExportJobId);
+                if (res && res.status) {
+                    const { state, progress } = res.data || {};
+                    setFlatExportProgress(progress || 0);
+
+                    if (state === "completed") {
+                        setFlatExportState("completed");
+                        toast.success("Flat Excel Export processed successfully! Ready to download.");
+                        clearInterval(interval);
+                    } else if (state === "failed") {
+                        setFlatExportState("failed");
+                        toast.error("Background Flat Excel export processing failed.");
+                        clearInterval(interval);
+                    } else {
+                        setFlatExportState("processing");
+                    }
+                }
+            } catch (err) {
+                console.error("Error polling flat job status:", err);
+            }
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [flatExportState, flatExportJobId]);
 
     // Poll PDF Export Job Status
     useEffect(() => {
@@ -237,15 +274,63 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
         return () => clearInterval(interval);
     }, [pdfExportState, pdfJobId]);
 
-    const handleExportExcelClick = async () => {
+    const handleExportExcelClick = async (exportType: "hierarchical" | "flat" = "hierarchical") => {
         if (!dateRange.from || !dateRange.to) return;
+
+        if (exportType === "flat") {
+            if (flatExportState === "completed" && flatExportJobId) {
+                const base = getApiBaseUrl();
+                const url = `${base}/stock-ledger/available-stock-summary/export/${flatExportJobId}/download`;
+                window.open(url, "_blank");
+
+                setFlatExportState("idle");
+                setFlatExportJobId(null);
+                setFlatExportProgress(0);
+                return;
+            }
+
+            setFlatExportState("queueing");
+            try {
+                const res = await queueAvailableStockSummaryReportExport({
+                    locationId: locationParam,
+                    warehouseId: warehouseParam,
+                    startDate: dateRange.from.toISOString(),
+                    endDate: dateRange.to.toISOString(),
+                    format: "xlsx",
+                    exportType: "flat",
+                    summaryOnly,
+                    showBrand: groupingLevels.brand,
+                    showDivision: groupingLevels.division,
+                    showCategory: groupingLevels.category,
+                    showGender: groupingLevels.gender,
+                    showSilhouette: groupingLevels.silhouette,
+                    showArticle: groupingLevels.article,
+                    showVariant: groupingLevels.variant,
+                    includeCosting: true,
+                });
+
+                if (res && res.status && res.data?.jobId) {
+                    setFlatExportJobId(res.data.jobId);
+                    setFlatExportState("processing");
+                    setFlatExportProgress(5);
+                    toast.info("Background Flat Excel generation queued.");
+                } else {
+                    setFlatExportState("failed");
+                    toast.error(res.message || "Failed to queue export job.");
+                }
+            } catch (err) {
+                setFlatExportState("failed");
+                console.error(err);
+                toast.error("Failed to queue export job.");
+            }
+            return;
+        }
 
         if (exportState === "completed" && exportJobId) {
             const base = getApiBaseUrl();
             const url = `${base}/stock-ledger/available-stock-summary/export/${exportJobId}/download`;
             window.open(url, "_blank");
 
-            // Reset
             setExportState("idle");
             setExportJobId(null);
             setExportProgress(0);
@@ -260,6 +345,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "xlsx",
+                exportType: "hierarchical",
                 summaryOnly,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
@@ -275,7 +361,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                 setExportJobId(res.data.jobId);
                 setExportState("processing");
                 setExportProgress(5);
-                toast.info("Background Excel generation queued.");
+                toast.info("Background Hierarchy Excel generation queued.");
             } else {
                 setExportState("failed");
                 toast.error(res.message || "Failed to queue export job.");
@@ -497,10 +583,21 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
         switch (exportState) {
             case "queueing": return "Queueing...";
             case "processing": return `Generating ${exportProgress}%`;
-            case "completed": return "Download Excel";
-            case "failed": return "Retry Excel Export";
+            case "completed": return "Download Excel (Hierarchy)";
+            case "failed": return "Retry Excel (Hierarchy)";
             case "idle":
-            default: return "Export Excel";
+            default: return "Export Excel (Hierarchy)";
+        }
+    };
+
+    const getFlatExportButtonText = () => {
+        switch (flatExportState) {
+            case "queueing": return "Queueing...";
+            case "processing": return `Generating ${flatExportProgress}%`;
+            case "completed": return "Download Excel (Flat)";
+            case "failed": return "Retry Excel (Flat)";
+            case "idle":
+            default: return "Export Excel (Flat)";
         }
     };
 
@@ -570,7 +667,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                     </Button>
                     <Button
                         variant={exportState === "completed" ? "default" : "outline"}
-                        onClick={handleExportExcelClick}
+                        onClick={() => handleExportExcelClick("hierarchical")}
                         disabled={(exportState === "queueing" || exportState === "processing") || reportData.length === 0}
                         className={cn(
                             "gap-2 font-semibold transition-all",
@@ -585,6 +682,24 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                             <Download className="h-4 w-4" />
                         )}
                         {getExportButtonText()}
+                    </Button>
+                    <Button
+                        variant={flatExportState === "completed" ? "default" : "outline"}
+                        onClick={() => handleExportExcelClick("flat")}
+                        disabled={(flatExportState === "queueing" || flatExportState === "processing") || reportData.length === 0}
+                        className={cn(
+                            "gap-2 font-semibold transition-all",
+                            flatExportState === "completed"
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 border-none"
+                                : "border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                        )}
+                    >
+                        {flatExportState === "queueing" || flatExportState === "processing" ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                        ) : (
+                            <Download className="h-4 w-4" />
+                        )}
+                        {getFlatExportButtonText()}
                     </Button>
                 </div>
             </div>
