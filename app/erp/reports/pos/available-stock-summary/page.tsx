@@ -143,8 +143,18 @@ export default function ERPAvailableStockSummaryReportPage() {
         return selectedWarehouseIds.length > 0 ? selectedWarehouseIds.join(",") : undefined;
     }, [selectedWarehouseIds]);
 
+    const abortControllerRef = useRef<AbortController | null>(null);
+
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
+
+        // Abort prior in-flight request on rapid filter toggles
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
 
         startTransition(async () => {
             const result = await getAvailableStockSummaryReport({
@@ -161,7 +171,13 @@ export default function ERPAvailableStockSummaryReportPage() {
                 showSilhouette: groupingLevels.silhouette,
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
-            });
+            }, controller.signal);
+
+            if (result && result.isAborted) {
+                // Ignore aborted requests silently
+                return;
+            }
+
             if (result && result.status !== false) {
                 const rootData = Array.isArray(result?.data?.root)
                     ? result.data.root
@@ -650,7 +666,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                     <Button
                         variant={pdfExportState === "completed" ? "default" : "outline"}
                         onClick={handleExportPdfClick}
-                        disabled={(pdfExportState === "queueing" || pdfExportState === "processing") || reportData.length === 0}
+                        disabled={pdfExportState === "queueing" || pdfExportState === "processing"}
                         className={cn(
                             "gap-2 font-semibold transition-all",
                             pdfExportState === "completed"
@@ -668,7 +684,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                     <Button
                         variant={exportState === "completed" ? "default" : "outline"}
                         onClick={() => handleExportExcelClick("hierarchical")}
-                        disabled={(exportState === "queueing" || exportState === "processing") || reportData.length === 0}
+                        disabled={exportState === "queueing" || exportState === "processing"}
                         className={cn(
                             "gap-2 font-semibold transition-all",
                             exportState === "completed"
@@ -686,7 +702,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                     <Button
                         variant={flatExportState === "completed" ? "default" : "outline"}
                         onClick={() => handleExportExcelClick("flat")}
-                        disabled={(flatExportState === "queueing" || flatExportState === "processing") || reportData.length === 0}
+                        disabled={flatExportState === "queueing" || flatExportState === "processing"}
                         className={cn(
                             "gap-2 font-semibold transition-all",
                             flatExportState === "completed"

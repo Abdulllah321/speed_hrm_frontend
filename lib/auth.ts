@@ -240,6 +240,7 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
         body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
         cache: "no-store",    // ✅ yeh sirf yahan add karo
         next: { revalidate: 0 }, // ✅ yeh bhi
+        signal: options.signal,
       });
 
       // No native timeout in fetch like axios, but we can add one if critical.
@@ -253,6 +254,9 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
         data: data,
       };
     } catch (error: any) {
+      if (error.name === 'AbortError') {
+        return { ok: false, status: 0, data: { isAborted: true, message: "Request aborted" } };
+      }
       console.error(`[authFetch Server Error] ${options.method || 'GET'} ${fullUrl}:`, error.message);
 
       return {
@@ -272,6 +276,7 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
         },
         body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
         credentials: "include",
+        signal: options.signal,
       });
 
       const data = await response.json().catch(() => ({}));
@@ -282,6 +287,9 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
         data: data,
       };
     } catch (error: any) {
+      if (error.name === 'AbortError') {
+        return { ok: false, status: 0, data: { isAborted: true, message: "Request aborted" } };
+      }
       console.error(`[authFetch Client Error] ${options.method || 'GET'} ${fullUrl}:`, error.message);
       return {
         ok: false,
