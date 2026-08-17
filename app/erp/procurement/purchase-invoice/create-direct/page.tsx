@@ -55,6 +55,7 @@ export default function CreateDirectPurchaseInvoicePage() {
     const [dueDate, setDueDate] = useState('');
     const [supplierId, setSupplierId] = useState('');
     const [notes, setNotes] = useState('');
+    const [staxEInvoiceNumber, setStaxEInvoiceNumber] = useState('');
     const [discountAmount, setDiscountAmount] = useState(0);
 
     // Supplier list
@@ -447,6 +448,7 @@ export default function CreateDirectPurchaseInvoicePage() {
                 invoiceType: 'DIRECT',
                 discountAmount,
                 notes: notes || undefined,
+                staxEInvoiceNumber: staxEInvoiceNumber || undefined,
                 items: selectedItems.map(i => ({
                     itemId: i.id,
                     description: i.description,
@@ -541,6 +543,15 @@ export default function CreateDirectPurchaseInvoicePage() {
                                 placeholder="Optional notes..."
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">STax e-Inv #</Label>
+                            <Input
+                                placeholder="e.g. ST-123456"
+                                value={staxEInvoiceNumber}
+                                onChange={e => setStaxEInvoiceNumber(e.target.value)}
                             />
                         </div>
 
