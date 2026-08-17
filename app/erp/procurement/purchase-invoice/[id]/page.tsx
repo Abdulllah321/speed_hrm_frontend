@@ -1311,30 +1311,6 @@ export default function PurchaseInvoiceDetailPage() {
                       )
                     ).join(', ');
 
-                    {/* Title */ }
-                    <div className="w-[35%] flex flex-col justify-center">
-                      <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                        Purchase Invoice
-                      </div>
-                    </div>
-
-                    {/* Supplier Details Box */ }
-                    <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                      <div className="w-full p-2 border border-gray-300 flex flex-col justify-center">
-                        <div className="font-bold border-b border-gray-300 mb-2 pb-1">
-                          Supplier Details
-                        </div>
-                        <div className="flex gap-2 mb-1">
-                          <span className="font-bold w-16 shrink-0">Name:</span>{" "}
-                          <span>{invoice.supplier?.name}</span>
-                        </div>
-                        <div className="flex gap-2 mb-1">
-                          <span className="font-bold w-16 shrink-0">Code:</span>{" "}
-                          <span>{invoice.supplier?.code}</span>
-                        </div>
-                      </div>
-                    </div>
-
                     return brandNames ? (
                       <div className="flex justify-between">
                         <span className="font-bold">Brand:</span>
@@ -1589,6 +1565,25 @@ export default function PurchaseInvoiceDetailPage() {
                 </div>
               </div>
 
+              {/* Remarks */}
+              <div className="mt-4 mb-6 flex gap-4 text-xs sm:text-[13px] text-left">
+                <div className="w-1/2 p-2 border border-gray-300">
+                  <div className="font-bold border-b border-gray-300 mb-1 pb-1">PO Notes & Remarks</div>
+                  <p className="whitespace-pre-wrap text-gray-700">
+                    {invoice.grn?.purchaseOrder?.notes || 
+                     invoice.landedCost?.purchaseOrder?.notes || 
+                     invoice.landedCost?.grn?.purchaseOrder?.notes || 
+                     "—"}
+                  </p>
+                </div>
+                <div className="w-1/2 p-2 border border-gray-300">
+                  <div className="font-bold border-b border-gray-300 mb-1 pb-1">Invoice Notes & Instructions</div>
+                  <p className="whitespace-pre-wrap text-gray-700">
+                    {invoice.notes || "—"}
+                  </p>
+                </div>
+              </div>
+
               {/* Signatures */}
               <div className="grid grid-cols-3 gap-3 mt-8">
                 <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
@@ -1608,134 +1603,10 @@ export default function PurchaseInvoiceDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="w-[45%] flex flex-col space-y-1 text-right">
-              {(() => {
-                const advRate = Number(
-                  (invoice as any).advanceTaxRate || 0.5,
-                );
-                const subtotal = Number(invoice.subtotal || 0);
-                const salesTax = Number(invoice.taxAmount || 0);
-                const advTax = Number(invoice.advanceTaxAmount || 0);
-                const discount = Number(invoice.discountAmount || 0);
-                const total = Number(invoice.totalAmount || 0);
-                const valExcl = subtotal - discount;
-                const valIncl = valExcl + salesTax;
-                const totalQty = (invoice.items || []).reduce(
-                  (s: number, i: any) => s + Number(i.quantity || 0),
-                  0,
-                );
-                return (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total QTY:</span>
-                      <span className="tabular-nums font-medium">
-                        {fmtInt(totalQty)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal (Gross):</span>
-                      <span className="tabular-nums font-medium">
-                        {fmtInt(subtotal)}
-                      </span>
-                    </div>
-                    {discount > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Discount:</span>
-                        <span className="tabular-nums font-medium">
-                          -{fmtInt(discount)}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between border-t border-gray-400 pt-1">
-                      <span className="font-semibold">
-                        Value Excl. Sales Tax:
-                      </span>
-                      <span className="tabular-nums font-semibold">
-                        {fmtInt(valExcl)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">
-                        Sale Tax Amount ({taxRateStr}):
-                      </span>
-                      <span className="tabular-nums font-medium">
-                        {fmtInt(salesTax)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-t border-gray-400 pt-1">
-                      <span className="font-semibold">
-                        Value Incl. Sales Tax:
-                      </span>
-                      <span className="tabular-nums font-semibold">
-                        {fmtInt(valIncl)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">
-                        Advance Tax ({advRate}%):
-                      </span>
-                      <span className="tabular-nums font-medium">
-                        {fmtInt(advTax)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-t border-black pt-1 font-bold">
-                      <span>Total Amount:</span>
-                      <span
-                        className="tabular-nums font-bold"
-                        style={{ borderBottom: "3px double black" }}
-                      >
-                        {fmtInt(total)}
-                      </span>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-
-            {/* Remarks */ }
-          < div className = "mt-4 mb-6 flex gap-4 text-xs sm:text-[13px] text-left" >
-              <div className="w-1/2 p-2 border border-gray-300">
-                <div className="font-bold border-b border-gray-300 mb-1 pb-1">PO Notes & Remarks</div>
-                <p className="whitespace-pre-wrap text-gray-700">
-                  {invoice.grn?.purchaseOrder?.notes || 
-                   invoice.landedCost?.purchaseOrder?.notes || 
-                   invoice.landedCost?.grn?.purchaseOrder?.notes || 
-                   "—"}
-                </p>
-              </div>
-              <div className="w-1/2 p-2 border border-gray-300">
-                <div className="font-bold border-b border-gray-300 mb-1 pb-1">Invoice Notes & Instructions</div>
-                <p className="whitespace-pre-wrap text-gray-700">
-                  {invoice.notes || "—"}
-                </p>
-              </div>
-            </div>
-
-      {/* Signatures */}
-      <div className="grid grid-cols-3 gap-3 mt-8">
-        <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-          <span className="text-[10px] sm:text-[11px] font-bold text-center">
-            PREPARED BY
-          </span>
-        </div>
-        <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-          <span className="text-[10px] sm:text-[11px] font-bold text-center">
-            CHECKED BY
-          </span>
-        </div>
-        <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-          <span className="text-[10px] sm:text-[11px] font-bold text-center">
-            APPROVED BY
-          </span>
-        </div>
-      </div>
-    </div>
-        </div >,
-    document.body
-      )
-}
+          </div>,
+          document.body,
+        )}
       </>
-    </PermissionGuard >
+    </PermissionGuard>
   );
 }

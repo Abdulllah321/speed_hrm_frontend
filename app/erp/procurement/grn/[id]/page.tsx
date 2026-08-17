@@ -497,156 +497,121 @@ export default function GrnDetailPage() {
                   </div>
                 </div>
 
-                {/* Warehouse Box */}
+                {/* Warehouse / Ship To Box */}
                 <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                  <div className="w-full p-2 border border-gray-300 flex flex-col justify-center">
-                    <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
-                    <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Name:</span> <span>{grn.warehouse?.name || 'N/A'}</span></div>
-                  </div>
-                </div>
-
-                {/* Details Box */}
-                <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-                  <div className="flex justify-between mb-2">
-                    <span className="font-bold">GRN Number:</span>
-                    <span className="font-bold">{grn.grnNumber}</span>
-                  </div>
-                  <div className="flex justify-between mb-2">
-                    <span className="font-bold">PO Number:</span>
-                    <span>{grn.purchaseOrder?.poNumber || "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between">
+                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                    <div className="font-bold border-b border-gray-300 mb-2 pb-1">
+                      Warehouse
+                    </div>
+                    <div className="flex gap-2 mb-1">
+                      <span className="font-bold w-16 shrink-0">Name:</span>{" "}
+                      <span>{grn.warehouse?.name || "N/A"}</span>
+                    </div>
                     <div className="flex gap-2">
-                      <span className="font-bold">Date:</span>
+                      <span className="font-bold w-16 shrink-0">Location:</span>{" "}
+                      <span>Speed (pvt.) Limited ERP Location</span>
+                    </div>
+                  </div>
+                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                    <div className="font-bold border-b border-gray-300 mb-2 pb-1">
+                      Ship To
+                    </div>
+                    <div className="flex gap-2 mb-1">
+                      <span className="font-bold w-16 shrink-0">Name:</span>{" "}
+                      <span>Speed (pvt.) Limited Warehouse</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="font-bold w-16 shrink-0">Address:</span>{" "}
                       <span>
-                        {new Date(grn.receivedDate).toLocaleDateString(
-                          "en-GB",
-                        )}
+                        Main Warehouse, Plot #45, Industrial Area, Karachi,
+                        Pakistan
                       </span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Warehouse / Ship To Box */}
-              <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                  <div className="font-bold border-b border-gray-300 mb-2 pb-1">
-                    Warehouse
-                  </div>
-                  <div className="flex gap-2 mb-1">
-                    <span className="font-bold w-16 shrink-0">Name:</span>{" "}
-                    <span>{grn.warehouse?.name || "N/A"}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="font-bold w-16 shrink-0">Location:</span>{" "}
-                    <span>Speed (pvt.) Limited ERP Location</span>
-                  </div>
-                </div>
-                <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                  <div className="font-bold border-b border-gray-300 mb-2 pb-1">
-                    Ship To
-                  </div>
-                  <div className="flex gap-2 mb-1">
-                    <span className="font-bold w-16 shrink-0">Name:</span>{" "}
-                    <span>Speed (pvt.) Limited Warehouse</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="font-bold w-16 shrink-0">Address:</span>{" "}
-                    <span>
-                      Main Warehouse, Plot #45, Industrial Area, Karachi,
-                      Pakistan
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Table */}
-              <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
-                <thead>
-                  <tr className="border-y-2 border-black">
-                    <th className="py-2 pr-2 text-left font-bold w-[15%]">
-                      SKU
-                    </th>
-                    <th className="py-2 pr-2 text-left font-bold w-[25%]">
-                      Description
-                    </th>
-                    <th className="py-2 pr-2 text-left font-bold w-[15%]">
-                      Size
-                    </th>
-                    <th className="py-2 pr-2 text-left font-bold w-[15%]">
-                      Color
-                    </th>
-                    <th className="py-2 pr-2 text-right font-bold w-[30%]">
-                      Received Qty
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {grn.items && grn.items.length > 0 ? (
-                    grn.items.map((item, i) => (
-                      <tr
-                        key={item.id || i}
-                        className="border-b border-gray-300 align-top"
-                      >
-                        <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
-                          {item.item?.sku || "-"}
-                        </td>
-                        <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
-                          {item.description || "-"}
-                        </td>
-                        <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                          {item.item?.size?.name || "-"}
-                        </td>
-                        <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                          {item.item?.color?.name || "-"}
-                        </td>
-                        <td className="py-2 pr-2 text-right tabular-nums font-bold">
-                          {parseFloat(item.receivedQty as any).toFixed(2)}
+                {/* Table */}
+                <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
+                  <thead>
+                    <tr className="border-y-2 border-black">
+                      <th className="py-2 pr-2 text-left font-bold w-[15%]">
+                        SKU
+                      </th>
+                      <th className="py-2 pr-2 text-left font-bold w-[25%]">
+                        Description
+                      </th>
+                      <th className="py-2 pr-2 text-left font-bold w-[15%]">
+                        Size
+                      </th>
+                      <th className="py-2 pr-2 text-left font-bold w-[15%]">
+                        Color
+                      </th>
+                      <th className="py-2 pr-2 text-right font-bold w-[30%]">
+                        Received Qty
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grn.items && grn.items.length > 0 ? (
+                      grn.items.map((item, i) => (
+                        <tr
+                          key={item.id || i}
+                          className="border-b border-gray-300 align-top"
+                        >
+                          <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
+                            {item.item?.sku || "-"}
+                          </td>
+                          <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
+                            {item.description || "-"}
+                          </td>
+                          <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                            {item.item?.size?.name || "-"}
+                          </td>
+                          <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                            {item.item?.color?.name || "-"}
+                          </td>
+                          <td className="py-2 pr-2 text-right tabular-nums font-bold">
+                            {parseFloat(item.receivedQty as any).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="py-4 text-center text-muted-foreground border-b border-gray-300"
+                        >
+                          No items found for this GRN
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="py-4 text-center text-muted-foreground border-b border-gray-300"
-                      >
-                        No items found for this GRN
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-y-2 border-black font-bold">
+                      <td colSpan={4} className="py-2 pr-2 font-bold text-left">
+                        Total
+                      </td>
+                      <td className="py-2 pr-2 text-right tabular-nums font-bold">
+                        {totalReceivedQty.toFixed(2)}
                       </td>
                     </tr>
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr className="border-y-2 border-black font-bold">
-                    <td colSpan={4} className="py-2 pr-2 font-bold text-left">
-                      Total
-                    </td>
-                    <td className="py-2 pr-2 text-right tabular-nums font-bold">
-                      {totalReceivedQty.toFixed(2)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                  </tfoot>
+                </table>
 
-              {/* Remarks */}
-              <div className="mt-4 mb-8 flex gap-4">
-                <div className="w-1/2">
-                  <div className="font-bold text-xs sm:text-[14px]">PO Notes & Remarks</div>
-                  <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.purchaseOrder?.notes || "N/A"}</p>
+                {/* Remarks */}
+                <div className="mt-4 mb-8 flex gap-4">
+                  <div className="w-1/2">
+                    <div className="font-bold text-xs sm:text-[14px]">PO Notes & Remarks</div>
+                    <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.purchaseOrder?.notes || "N/A"}</p>
+                  </div>
+                  <div className="w-1/2">
+                    <div className="font-bold text-xs sm:text-[14px]">GRN Notes & Instructions</div>
+                    <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.notes || "N/A"}</p>
+                  </div>
                 </div>
-                <div className="w-1/2">
-                  <div className="font-bold text-xs sm:text-[14px]">GRN Notes & Instructions</div>
-                  <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.notes || "N/A"}</p>
-                </div>
-              </div>
-              <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">
-                {grn.notes || "N/A"}
-              </p>
-            </div>
 
-                {/* Signatures */ }
-            < div className = "grid grid-cols-3 gap-3" >
+                {/* Signatures */}
+                <div className="grid grid-cols-3 gap-3">
                   <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
                     <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">
                       PREPARED BY (MAKER)
@@ -709,13 +674,12 @@ export default function GrnDetailPage() {
                     )}
                   </div>
                 </div>
-    </div>
-            </div >,
-    document.body,
-          )
-}
+              </div>
+            </div>,
+            document.body,
+          )}
       </>
-    </PermissionGuard >
+    </PermissionGuard>
   );
 }
 
