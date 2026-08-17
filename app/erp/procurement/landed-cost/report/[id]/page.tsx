@@ -765,6 +765,14 @@ export default function LandedCostReportPage() {
                 </div>
             </div>
 
+            {/* Remarks / Notes */}
+            <div className="mt-6 mb-8 text-left p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-white/50 dark:bg-slate-900/30">
+                <div className="font-bold text-xs sm:text-[13px] text-slate-700 dark:text-slate-300">PO Notes & Remarks</div>
+                <p className="text-xs sm:text-[12px] mt-1 text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                    {data.purchaseOrder?.notes || data.grn?.purchaseOrder?.notes || "N/A"}
+                </p>
+            </div>
+
             {/* Signature Section */}
             <div className="mt-12 grid grid-cols-3 gap-8 text-center pt-8 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
                 <div className="space-y-4">

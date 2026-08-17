@@ -964,6 +964,14 @@ export default function PurchaseInvoiceDetailPage() {
                         </Badge>
                       </div>
                     </div>
+                    {invoice.staxEInvoiceNumber && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          STax e-Inv #
+                        </label>
+                        <p className="font-medium">{invoice.staxEInvoiceNumber}</p>
+                      </div>
+                    )}
                     <div>
                       <label className="text-sm font-medium text-gray-500">
                         Total Amount
@@ -1260,48 +1268,50 @@ export default function PurchaseInvoiceDetailPage() {
                     />
                   </div>
 
-                  {/* Title */}
-                  <div className="w-[35%] flex flex-col justify-center">
-                    <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                      Purchase Invoice
-                    </div>
-                  </div>
+              {/* Title */}
+              <div className="w-[35%] flex flex-col justify-center text-center">
+                <div className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1">Speed (Private) Limited</div>
+                <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+                  Purchase Invoice
+                </div>
+              </div>
 
-                  {/* Details Box */}
-                  <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-                    <div className="flex justify-between mb-2">
-                      <span className="font-bold">Invoice Number:</span>
-                      <span className="font-bold">{invoice.invoiceNumber}</span>
-                    </div>
-                    {(invoice.grn?.grnNumber ||
-                      invoice.landedCost?.grn?.grnNumber) && (
-                      <div className="flex justify-between mb-2">
-                        <span className="font-bold">GRN Number:</span>
-                        <span className="font-bold">
-                          {invoice.grn?.grnNumber ||
-                            invoice.landedCost?.grn?.grnNumber}
-                        </span>
-                      </div>
+              {/* Details Box */}
+              <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
+                <div className="flex justify-between mb-2">
+                  <span className="font-bold">Invoice Number:</span>
+                  <span className="font-bold">{invoice.invoiceNumber}</span>
+                </div>
+                {(invoice.grn?.grnNumber || invoice.landedCost?.grn?.grnNumber) && (
+                  <div className="flex justify-between mb-2">
+                    <span className="font-bold">GRN Number:</span>
+                    <span className="font-bold">
+                      {invoice.grn?.grnNumber || invoice.landedCost?.grn?.grnNumber}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between mb-2">
+                  <span className="font-bold">Date:</span>
+                  <span>
+                    {new Date(invoice.invoiceDate).toLocaleDateString(
+                      "en-GB",
                     )}
-                    <div className="flex justify-between mb-2">
-                      <span className="font-bold">Date:</span>
-                      <span>
-                        {new Date(invoice.invoiceDate).toLocaleDateString(
-                          "en-GB",
-                        )}
-                      </span>
-                    </div>
-                    {(() => {
-                      const brandNames = Array.from(
-                        new Set(
-                          (invoice.items || [])
-                            .map(
-                              (i: any) =>
-                                i.item?.brand?.name || i.brand?.name || i.brand,
-                            )
-                            .filter(Boolean),
-                        ),
-                      ).join(", ");
+                  </span>
+                </div>
+                {invoice.staxEInvoiceNumber && (
+                  <div className="flex justify-between mb-2">
+                    <span className="font-bold">STax e-Inv #:</span>
+                    <span className="font-bold">{invoice.staxEInvoiceNumber}</span>
+                  </div>
+                )}
+                {(() => {
+                  const brandNames = Array.from(
+                    new Set(
+                      (invoice.items || [])
+                        .map((i: any) => i.item?.brand?.name || i.brand?.name || i.brand)
+                        .filter(Boolean)
+                    )
+                  ).join(', ');
 
                       return brandNames ? (
                         <div className="flex justify-between">
@@ -1313,35 +1323,22 @@ export default function PurchaseInvoiceDetailPage() {
                   </div>
                 </div>
 
-                {/* Vendor / Ship To Box */}
-                <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                    <div className="font-bold border-b border-gray-300 mb-2 pb-1">
-                      Supplier Details
-                    </div>
-                    <div className="flex gap-2 mb-1">
-                      <span className="font-bold w-16 shrink-0">Name:</span>{" "}
-                      <span>{invoice.supplier?.name}</span>
-                    </div>
-                    <div className="flex gap-2 mb-1">
-                      <span className="font-bold w-16 shrink-0">Code:</span>{" "}
-                      <span>{invoice.supplier?.code}</span>
-                    </div>
-                  </div>
-                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                    <div className="font-bold border-b border-gray-300 mb-2 pb-1">
-                      Bill To
-                    </div>
-                    <div className="flex gap-2 mb-1">
-                      <span className="font-bold w-16 shrink-0">Name:</span>{" "}
-                      <span>Speed (pvt.) Limited ERP</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="font-bold w-16 shrink-0">Address:</span>{" "}
-                      <span>Karachi, Pakistan</span>
-                    </div>
-                  </div>
+            {/* Supplier Details Box */}
+            <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
+              <div className="w-full p-2 border border-gray-300 flex flex-col justify-center">
+                <div className="font-bold border-b border-gray-300 mb-2 pb-1">
+                  Supplier Details
                 </div>
+                <div className="flex gap-2 mb-1">
+                  <span className="font-bold w-16 shrink-0">Name:</span>{" "}
+                  <span>{invoice.supplier?.name}</span>
+                </div>
+                <div className="flex gap-2 mb-1">
+                  <span className="font-bold w-16 shrink-0">Code:</span>{" "}
+                  <span>{invoice.supplier?.code}</span>
+                </div>
+              </div>
+            </div>
 
                 {/* Table */}
                 <table className="w-full text-[10px] sm:text-[11px] mb-4 border-collapse">
@@ -1460,102 +1457,119 @@ export default function PurchaseInvoiceDetailPage() {
                   </tbody>
                 </table>
 
-                {/* Totals Section */}
-                <div className="flex border-b border-black pb-4 text-xs sm:text-[13px] justify-between">
-                  <div className="w-[50%] pt-4 flex flex-col justify-end">
-                    <div className="flex gap-2 font-bold mb-1">
-                      <span className="whitespace-nowrap">In Words:</span>
-                      <span className="underline decoration-1 underline-offset-2 break-words">
-                        {numberToWords(Number(invoice.totalAmount || 0))}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="w-[45%] flex flex-col space-y-1 text-right">
-                    {(() => {
-                      const advRate = Number(
-                        (invoice as any).advanceTaxRate || 0.5,
-                      );
-                      const subtotal = Number(invoice.subtotal || 0);
-                      const salesTax = Number(invoice.taxAmount || 0);
-                      const advTax = Number(invoice.advanceTaxAmount || 0);
-                      const discount = Number(invoice.discountAmount || 0);
-                      const total = Number(invoice.totalAmount || 0);
-                      const valExcl = subtotal - discount;
-                      const valIncl = valExcl + salesTax;
-                      const totalQty = (invoice.items || []).reduce(
-                        (s: number, i: any) => s + Number(i.quantity || 0),
-                        0,
-                      );
-                      return (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Total QTY:</span>
-                            <span className="tabular-nums font-medium">
-                              {fmtInt(totalQty)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">
-                              Subtotal (Gross):
-                            </span>
-                            <span className="tabular-nums font-medium">
-                              {fmtInt(subtotal)}
-                            </span>
-                          </div>
-                          {discount > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Discount:</span>
-                              <span className="tabular-nums font-medium">
-                                -{fmtInt(discount)}
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex justify-between border-t border-gray-400 pt-1">
-                            <span className="font-semibold">
-                              Value Excl. Sales Tax:
-                            </span>
-                            <span className="tabular-nums font-semibold">
-                              {fmtInt(valExcl)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">
-                              Sale Tax Amount ({taxRateStr}):
-                            </span>
-                            <span className="tabular-nums font-medium">
-                              {fmtInt(salesTax)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between border-t border-gray-400 pt-1">
-                            <span className="font-semibold">
-                              Value Incl. Sales Tax:
-                            </span>
-                            <span className="tabular-nums font-semibold">
-                              {fmtInt(valIncl)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">
-                              Advance Tax ({advRate}%):
-                            </span>
-                            <span className="tabular-nums font-medium">
-                              {fmtInt(advTax)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between border-t border-black pt-1 font-bold">
-                            <span>Total Amount:</span>
-                            <span
-                              className="tabular-nums font-bold"
-                              style={{ borderBottom: "3px double black" }}
-                            >
-                              {fmtInt(total)}
-                            </span>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
+            {/* Totals Section */}
+            <div className="flex border-b border-black pb-4 text-xs sm:text-[13px] justify-between">
+              <div className="w-[50%] pt-4 flex flex-col justify-end">
+                <div className="flex gap-2 font-bold mb-1">
+                  <span className="whitespace-nowrap">In Words:</span>
+                  <span className="underline decoration-1 underline-offset-2 break-words">
+                    {numberToWords(Number(invoice.totalAmount || 0))}
+                  </span>
                 </div>
+              </div>
+              <div className="w-[45%] flex flex-col space-y-1 text-right">
+                {(() => {
+                  const advRate = Number(
+                    (invoice as any).advanceTaxRate || 0.5,
+                  );
+                  const subtotal = Number(invoice.subtotal || 0);
+                  const salesTax = Number(invoice.taxAmount || 0);
+                  const advTax = Number(invoice.advanceTaxAmount || 0);
+                  const discount = Number(invoice.discountAmount || 0);
+                  const total = Number(invoice.totalAmount || 0);
+                  const valExcl = subtotal - discount;
+                  const valIncl = valExcl + salesTax;
+                  const totalQty = (invoice.items || []).reduce(
+                    (s: number, i: any) => s + Number(i.quantity || 0),
+                    0,
+                  );
+                  return (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total QTY:</span>
+                        <span className="tabular-nums font-medium">
+                          {fmtInt(totalQty)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Subtotal (Gross):</span>
+                        <span className="tabular-nums font-medium">
+                          {fmtInt(subtotal)}
+                        </span>
+                      </div>
+                      {discount > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Discount:</span>
+                          <span className="tabular-nums font-medium">
+                            -{fmtInt(discount)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between border-t border-gray-400 pt-1">
+                        <span className="font-semibold">
+                          Value Excl. Sales Tax:
+                        </span>
+                        <span className="tabular-nums font-semibold">
+                          {fmtInt(valExcl)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">
+                          Sale Tax Amount ({taxRateStr}):
+                        </span>
+                        <span className="tabular-nums font-medium">
+                          {fmtInt(salesTax)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t border-gray-400 pt-1">
+                        <span className="font-semibold">
+                          Value Incl. Sales Tax:
+                        </span>
+                        <span className="tabular-nums font-semibold">
+                          {fmtInt(valIncl)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">
+                          Advance Tax ({advRate}%):
+                        </span>
+                        <span className="tabular-nums font-medium">
+                          {fmtInt(advTax)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t border-black pt-1 font-bold">
+                        <span>Total Amount:</span>
+                        <span
+                          className="tabular-nums font-bold"
+                          style={{ borderBottom: "3px double black" }}
+                        >
+                          {fmtInt(total)}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Remarks */}
+            <div className="mt-4 mb-6 flex gap-4 text-xs sm:text-[13px] text-left">
+              <div className="w-1/2 p-2 border border-gray-300">
+                <div className="font-bold border-b border-gray-300 mb-1 pb-1">PO Notes & Remarks</div>
+                <p className="whitespace-pre-wrap text-gray-700">
+                  {invoice.grn?.purchaseOrder?.notes || 
+                   invoice.landedCost?.purchaseOrder?.notes || 
+                   invoice.landedCost?.grn?.purchaseOrder?.notes || 
+                   "—"}
+                </p>
+              </div>
+              <div className="w-1/2 p-2 border border-gray-300">
+                <div className="font-bold border-b border-gray-300 mb-1 pb-1">Invoice Notes & Instructions</div>
+                <p className="whitespace-pre-wrap text-gray-700">
+                  {invoice.notes || "—"}
+                </p>
+              </div>
+            </div>
 
                 {/* Signatures */}
                 <div className="grid grid-cols-3 gap-3 mt-8">

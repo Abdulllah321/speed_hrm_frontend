@@ -704,38 +704,32 @@ export default function PurchaseOrderDetail({
         )}
       </div>
 
-      {/* Professional Print View - Hidden on Screen */}
-      {mounted &&
-        typeof window !== "undefined" &&
-        createPortal(
-          <div
-            id="print-section"
-            style={{
-              position: "fixed",
-              left: "-9999px",
-              top: 0,
-              pointerEvents: "none",
-            }}
-            aria-hidden="true"
-          >
-            <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-0 print:max-w-none box-border">
-              {/* Header */}
-              <div className="flex justify-between mb-6 gap-4 items-start">
-                {/* Logo */}
-                <div className="w-[20%] flex flex-col items-start justify-center">
-                  <img
-                    src="/image.png"
-                    alt="Logo"
-                    className="w-32 object-contain"
-                  />
-                </div>
-
-                {/* Title */}
-                <div className="w-[35%] flex flex-col justify-center">
-                  <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                    Purchase Order
-                  </div>
-                </div>
+            {/* Professional Print View - Hidden on Screen */}
+            {mounted && typeof window !== "undefined" && createPortal(
+                <div 
+                    id="print-section" 
+                    style={{
+                        position: "fixed",
+                        left: "-9999px",
+                        top: 0,
+                        pointerEvents: "none",
+                    }}
+                    aria-hidden="true"
+                >
+                    <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-0 print:max-w-none box-border">
+                        {/* Header */}
+                        <div className="flex justify-between mb-6 gap-4 items-start">
+                            {/* Logo */}
+                            <div className="w-[20%] flex flex-col items-start justify-center">
+                               <img src="/image.png" alt="Logo" className="w-32 object-contain" />
+                            </div>
+                            
+                            {/* Title */}
+                            <div className="w-[35%] flex flex-col justify-center">
+                              <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+                                Purchase Order
+                              </div>
+                            </div>
 
                 {/* Details Box */}
                 <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
@@ -771,46 +765,21 @@ export default function PurchaseOrderDetail({
                 </div>
               </div>
 
-              {/* Vendor / Ship To Box */}
-              <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                  <div className="font-bold border-b border-gray-300 mb-2 pb-1">
-                    Vendor Details
-                  </div>
-                  <div className="flex gap-2 mb-1">
-                    <span className="font-bold w-16 shrink-0">Name:</span>{" "}
-                    <span>{order.vendor?.name}</span>
-                  </div>
-                  <div className="flex gap-2 mb-1">
-                    <span className="font-bold w-16 shrink-0">Code:</span>{" "}
-                    <span>{order.vendor?.code}</span>
-                  </div>
-                  <div className="flex gap-2 mb-1">
-                    <span className="font-bold w-16 shrink-0">Email:</span>{" "}
-                    <span>{order.vendor?.email || "N/A"}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="font-bold w-16 shrink-0">Contact:</span>{" "}
-                    <span>{order.vendor?.contactNo || "N/A"}</span>
-                  </div>
-                </div>
-                <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                  <div className="font-bold border-b border-gray-300 mb-2 pb-1">
-                    Ship To
-                  </div>
-                  <div className="flex gap-2 mb-1">
-                    <span className="font-bold w-16 shrink-0">Name:</span>{" "}
-                    <span>Speed (pvt.) Limited Warehouse</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="font-bold w-16 shrink-0">Address:</span>{" "}
-                    <span>
-                      Main Warehouse, Plot #45, Industrial Area, Karachi,
-                      Pakistan
-                    </span>
-                  </div>
-                </div>
-              </div>
+                        {/* Vendor / Ship To Box */}
+                        <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
+                            <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                                <div className="font-bold border-b border-gray-300 mb-2 pb-1">Vendor Details</div>
+                                <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{order.vendor?.name}</span></div>
+                                <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Code:</span> <span>{order.vendor?.code}</span></div>
+                                <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Email:</span> <span>{order.vendor?.email || 'N/A'}</span></div>
+                                <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Contact:</span> <span>{order.vendor?.contactNo || 'N/A'}</span></div>
+                            </div>
+                            <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                                <div className="font-bold border-b border-gray-300 mb-2 pb-1">Ship To</div>
+                                <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>Speed Limit Warehouse</span></div>
+                                <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Address:</span> <span>Main Warehouse, Plot #45, Industrial Area, Karachi, Pakistan</span></div>
+                            </div>
+                        </div>
 
               {/* Table */}
               <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
