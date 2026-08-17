@@ -14,13 +14,14 @@ import {
 } from "@/components/ui/select";
 import {
     Search, Trash, Loader2, RefreshCw, AlertCircle, CheckCircle, Info, Repeat,
-    ClipboardList
+    ClipboardList, Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     createStockAdjustment,
     searchInventoryItems,
 } from "@/lib/actions/stock-adjustment";
+import { bulkSearchItems } from "@/lib/actions/items";
 import { toast } from "sonner";
 
 interface Warehouse {
@@ -51,6 +52,12 @@ interface SelectedItem {
     size?: string | null;
 }
 
+interface ParsedPasteItem {
+    query: string;
+    qty?: number;
+    isExplicitDelta: boolean;
+}
+
 const REASONS = [
     { value: "Billing Mistake (Wrong Item Scanned)", label: "Billing Mistake (Wrong Item Scanned)" },
     { value: "Wrong Stock Swapped", label: "Wrong Stock Swapped" },
@@ -59,6 +66,74 @@ const REASONS = [
     { value: "Physical Damage Replacement", label: "Physical Damage Replacement" },
     { value: "Other / Mismatch Correction", label: "Other / Mismatch Correction" },
 ];
+
+function parseQuickPasteText(content: string): ParsedPasteItem[] {
+    if (!content || !content.trim()) return [];
+
+    const headerKeywords = new Set([
+        "barcode",
+        "barcodes",
+        "quantity",
+        "qty",
+        "sku",
+        "skus",
+        "item",
+        "items",
+        "description",
+        "code",
+        "physical",
+        "count",
+    ]);
+
+    const rawTokens = content
+        .split(/[\r\n\t,;|]+/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+    const tokens: string[] = [];
+    for (const rawToken of rawTokens) {
+        const parts = rawToken.split(/\s+/).filter(Boolean);
+        tokens.push(...parts);
+    }
+
+    const cleanTokens = tokens.filter((t) => !headerKeywords.has(t.toLowerCase()));
+    const results: ParsedPasteItem[] = [];
+    let i = 0;
+
+    while (i < cleanTokens.length) {
+        const token = cleanTokens[i];
+
+        const isSigned = token.startsWith("-") || token.startsWith("+");
+        const isSmallNumber = !isNaN(Number(token)) && Math.abs(Number(token)) < 10000;
+        const isBarcodeOrSku = token.length >= 6 || isNaN(Number(token)) || (!isSigned && Number(token) > 10000);
+
+        if (!isBarcodeOrSku && (isSigned || isSmallNumber)) {
+            i++;
+            continue;
+        }
+
+        const query = token;
+        let qty: number | undefined = undefined;
+        let isExplicitDelta = false;
+
+        if (i + 1 < cleanTokens.length) {
+            const nextToken = cleanTokens[i + 1];
+            const nextIsSigned = nextToken.startsWith("-") || nextToken.startsWith("+");
+            const nextVal = Number(nextToken);
+
+            if (!isNaN(nextVal) && (nextIsSigned || Math.abs(nextVal) < 100000) && nextToken.length < 7) {
+                qty = nextVal;
+                isExplicitDelta = nextIsSigned;
+                i++;
+            }
+        }
+
+        results.push({ query, qty, isExplicitDelta });
+        i++;
+    }
+
+    return results;
+}
 
 export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFormProps) {
     const router = useRouter();
@@ -87,6 +162,12 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+
+    // Quick Paste state
+    const [inputMode, setInputMode] = useState<"search" | "paste">("search");
+    const [pasteContent, setPasteContent] = useState<string>("");
+    const [pasteAdjustmentMode, setPasteAdjustmentMode] = useState<"relative" | "absolute">("relative");
+    const [isResolvingPaste, setIsResolvingPaste] = useState<boolean>(false);
 
     // Debounce searches
     useEffect(() => {
@@ -197,6 +278,140 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
         setSelectedItems((prev) => prev.filter((_, i) => i !== index));
     };
 
+    // Handle process Excel quick paste
+    const handleProcessPaste = async () => {
+        if (!pasteContent.trim()) {
+            toast.error("Please enter or paste SKU/Barcode numbers.");
+            return;
+        }
+
+        if (!warehouse?.id || !location?.id) {
+            toast.error("Location and warehouse context missing.");
+            return;
+        }
+
+        setIsResolvingPaste(true);
+        try {
+            const parsedItems = parseQuickPasteText(pasteContent);
+
+            if (parsedItems.length === 0) {
+                toast.error("No valid Barcodes or SKUs found in pasted text.");
+                setIsResolvingPaste(false);
+                return;
+            }
+
+            const uniqueQueries = Array.from(new Set(parsedItems.map((p) => p.query)));
+            const res = await bulkSearchItems(uniqueQueries);
+
+            if (!res.status || !res.data) {
+                toast.error("Failed to resolve pasted items from server.");
+                setIsResolvingPaste(false);
+                return;
+            }
+
+            const masterItems = res.data;
+
+            // Fetch exact location stock levels in parallel
+            const stockMap = new Map<string, number>();
+            await Promise.all(
+                masterItems.map(async (item: any) => {
+                    try {
+                        const invRes = await searchInventoryItems(
+                            item.sku || item.barCode || item.barcode || item.id,
+                            warehouse.id,
+                            location.id
+                        );
+                        if (invRes.status && Array.isArray(invRes.data)) {
+                            const matchedInv = invRes.data.find((i: any) => i.id === item.id);
+                            if (matchedInv) {
+                                stockMap.set(item.id, Number(matchedInv.totalQuantity || 0));
+                            } else {
+                                stockMap.set(item.id, Number(item.totalQuantity || 0));
+                            }
+                        } else {
+                            stockMap.set(item.id, Number(item.totalQuantity || 0));
+                        }
+                    } catch (e) {
+                        stockMap.set(item.id, Number(item.totalQuantity || 0));
+                    }
+                })
+            );
+
+            const itemMap = new Map<string, any>();
+            masterItems.forEach((item: any) => {
+                const locQty = stockMap.has(item.id) ? stockMap.get(item.id)! : Number(item.totalQuantity || 0);
+                const enrichedItem = { ...item, totalQuantity: locQty };
+
+                if (item.sku) itemMap.set(item.sku.toLowerCase().trim(), enrichedItem);
+                if (item.barcode) itemMap.set(item.barcode.toLowerCase().trim(), enrichedItem);
+                if (item.barCode) itemMap.set(item.barCode.toLowerCase().trim(), enrichedItem);
+                if (item.id) itemMap.set(item.id.toLowerCase().trim(), enrichedItem);
+            });
+
+            let foundCount = 0;
+            const notFoundQueries: string[] = [];
+            const updatedItems = [...selectedItems];
+
+            for (const parsed of parsedItems) {
+                const matchedItem = itemMap.get(parsed.query.toLowerCase().trim());
+                if (matchedItem) {
+                    foundCount++;
+                    const existingIdx = updatedItems.findIndex((i) => i.id === matchedItem.id);
+                    const systemQty = Number(matchedItem.totalQuantity || 0);
+
+                    const rawQty = parsed.qty !== undefined ? parsed.qty : -1;
+                    const isRelative = pasteAdjustmentMode === "relative" || parsed.isExplicitDelta || rawQty < 0;
+
+                    if (existingIdx >= 0) {
+                        if (isRelative) {
+                            updatedItems[existingIdx].physicalQty = Math.max(
+                                0,
+                                updatedItems[existingIdx].physicalQty + rawQty
+                            );
+                        } else {
+                            updatedItems[existingIdx].physicalQty = rawQty;
+                        }
+                    } else {
+                        const targetPhysicalQty = isRelative
+                            ? Math.max(0, systemQty + rawQty)
+                            : rawQty;
+
+                        updatedItems.push({
+                            id: matchedItem.id,
+                            sku: matchedItem.sku,
+                            description: matchedItem.description,
+                            currentQty: systemQty,
+                            physicalQty: targetPhysicalQty,
+                            rate: Number(matchedItem.unitCost || matchedItem.unitPrice || 0),
+                            color: matchedItem.color?.name || null,
+                            size: matchedItem.size?.name || null,
+                        });
+                    }
+                } else {
+                    if (!notFoundQueries.includes(parsed.query)) {
+                        notFoundQueries.push(parsed.query);
+                    }
+                }
+            }
+
+            setSelectedItems(updatedItems);
+            setPasteContent("");
+
+            if (notFoundQueries.length > 0) {
+                toast.warning(
+                    `Added/updated ${foundCount} items. ${notFoundQueries.length} SKU(s) not found: ${notFoundQueries.slice(0, 3).join(", ")}${notFoundQueries.length > 3 ? "..." : ""}`
+                );
+            } else {
+                toast.success(`Successfully added/updated ${foundCount} items with location stock levels.`);
+            }
+        } catch (error) {
+            console.error("Paste processing error:", error);
+            toast.error("An error occurred while processing pasted items.");
+        } finally {
+            setIsResolvingPaste(false);
+        }
+    };
+
     // Submit handler
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -228,7 +443,6 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
 
             startTransition(async () => {
                 try {
-                    // Create 2 lines: Outbound (reduced stock) and Inbound (increased stock)
                     const payload = {
                         warehouseId: warehouse.id,
                         reason: reason || "Billing Swap Mismatch",
@@ -565,104 +779,206 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                         ) : (
                             // --- STANDARD COUNT INTERFACE ---
                             <div className="space-y-4">
-                                <div className="relative">
-                                    <div className="flex items-center border border-input rounded-md px-3 bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-primary">
-                                        <Search className="h-5 w-5 text-muted-foreground mr-2 shrink-0" />
-                                        <Input
-                                            className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 h-10 w-full"
-                                            placeholder="Type SKU or description to add..."
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                        />
-                                        {isSearching && <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />}
-                                    </div>
-
-                                    {/* Dropdown */}
-                                    {searchResults.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto border border-muted bg-white dark:bg-slate-950 rounded-md shadow-lg divide-y divide-muted">
-                                            {searchResults.map((item) => (
-                                                <div
-                                                    key={item.id}
-                                                    className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-xs"
-                                                    onClick={() => handleAddStandardItem(item)}
-                                                >
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <span className="font-mono font-bold text-sm">{item.sku}</span>
-                                                        <span className="text-muted-foreground">{item.description}</span>
-                                                        <div className="flex gap-2 mt-0.5 text-[10px] font-semibold text-slate-500">
-                                                            {item.color?.name && <span>Color: {item.color.name}</span>}
-                                                            {item.size?.name && <span>Size: {item.size.name}</span>}
-                                                        </div>
-                                                    </div>
-                                                    <span className="text-slate-500 font-semibold">Stock: {Number(item.totalQuantity || 0)}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                {/* Input Mode Selector */}
+                                <div className="flex border-b border-muted mb-4 gap-4">
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            "pb-2 px-1 text-sm font-semibold border-b-2 transition-all",
+                                            inputMode === "search"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground"
+                                        )}
+                                        onClick={() => setInputMode("search")}
+                                    >
+                                        Search Items
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            "pb-2 px-1 text-sm font-semibold border-b-2 transition-all",
+                                            inputMode === "paste"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground"
+                                        )}
+                                        onClick={() => setInputMode("paste")}
+                                    >
+                                        Quick Select (Paste from Excel)
+                                    </button>
                                 </div>
 
-                                {selectedItems.length > 0 && (
-                                    <div className="border border-muted rounded-md overflow-hidden bg-white dark:bg-slate-950">
-                                        <table className="w-full text-xs text-left border-collapse">
-                                            <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-muted">
+                                {inputMode === "search" && (
+                                    <div className="relative">
+                                        <div className="flex items-center border border-input rounded-md px-3 bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-primary">
+                                            <Search className="h-5 w-5 text-muted-foreground mr-2 shrink-0" />
+                                            <Input
+                                                className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 h-10 w-full"
+                                                placeholder="Type SKU or description to add..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                            />
+                                            {isSearching && <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />}
+                                        </div>
+
+                                        {/* Dropdown */}
+                                        {searchResults.length > 0 && (
+                                            <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto border border-muted bg-white dark:bg-slate-950 rounded-md shadow-lg divide-y divide-muted">
+                                                {searchResults.map((item) => (
+                                                    <div
+                                                        key={item.id}
+                                                        className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-xs"
+                                                        onClick={() => handleAddStandardItem(item)}
+                                                    >
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className="font-mono font-bold text-sm">{item.sku}</span>
+                                                            <span className="text-muted-foreground">{item.description}</span>
+                                                            <div className="flex gap-2 mt-0.5 text-[10px] font-semibold text-slate-500">
+                                                                {item.color?.name && <span>Color: {item.color.name}</span>}
+                                                                {item.size?.name && <span>Size: {item.size.name}</span>}
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-slate-500 font-semibold">Stock: {Number(item.totalQuantity || 0)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {inputMode === "paste" && (
+                                    <div className="space-y-4">
+                                        {/* Action Mode Toggle */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Pasted Quantity Action:</span>
+                                            <div className="flex gap-2 text-xs">
+                                                <label className={cn(
+                                                    "flex items-center gap-1.5 px-2.5 py-1 rounded cursor-pointer font-medium border transition-all",
+                                                    pasteAdjustmentMode === "relative"
+                                                        ? "bg-white dark:bg-slate-950 border-primary text-primary shadow-sm"
+                                                        : "border-transparent text-muted-foreground hover:text-slate-800"
+                                                )}>
+                                                    <input
+                                                        type="radio"
+                                                        name="posPasteMode"
+                                                        value="relative"
+                                                        checked={pasteAdjustmentMode === "relative"}
+                                                        onChange={() => setPasteAdjustmentMode("relative")}
+                                                        className="sr-only"
+                                                    />
+                                                    <span>Deduct / Add Offset (e.g. -1, -2, +1)</span>
+                                                </label>
+
+                                                <label className={cn(
+                                                    "flex items-center gap-1.5 px-2.5 py-1 rounded cursor-pointer font-medium border transition-all",
+                                                    pasteAdjustmentMode === "absolute"
+                                                        ? "bg-white dark:bg-slate-950 border-primary text-primary shadow-sm"
+                                                        : "border-transparent text-muted-foreground hover:text-slate-800"
+                                                )}>
+                                                    <input
+                                                        type="radio"
+                                                        name="posPasteMode"
+                                                        value="absolute"
+                                                        checked={pasteAdjustmentMode === "absolute"}
+                                                        onChange={() => setPasteAdjustmentMode("absolute")}
+                                                        className="sr-only"
+                                                    />
+                                                    <span>Set Total Physical Count</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="pos-quick-paste-box" className="text-xs text-muted-foreground">
+                                                Paste list of Barcodes/SKUs and optional Quantities directly from Excel.
+                                            </Label>
+                                            <Textarea
+                                                id="pos-quick-paste-box"
+                                                placeholder={`Example:\nBarcode\tQuantity\n196606817132\t-1\n196974922698\t-2`}
+                                                value={pasteContent}
+                                                onChange={(e) => setPasteContent(e.target.value)}
+                                                rows={6}
+                                                className="font-mono text-sm"
+                                            />
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            onClick={handleProcessPaste}
+                                            disabled={isResolvingPaste}
+                                            className="gap-2"
+                                        >
+                                            {isResolvingPaste ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Plus className="h-4 w-4" />
+                                            )}
+                                            Process & Add Pasted Items
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {/* Table of items */}
+                                {selectedItems.length === 0 ? (
+                                    <div className="p-8 border border-dashed border-muted rounded-lg text-center space-y-2">
+                                        <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                                        <p className="text-xs text-muted-foreground">No items added to adjustment list yet.</p>
+                                    </div>
+                                ) : (
+                                    <div className="border border-muted rounded-lg overflow-hidden">
+                                        <table className="w-full text-xs">
+                                            <thead className="bg-slate-50 dark:bg-slate-900 border-b border-muted">
                                                 <tr>
-                                                    <th className="p-2.5">Item</th>
-                                                    <th className="p-2.5 text-right w-24">System Qty</th>
-                                                    <th className="p-2.5 text-right w-28">Physical Count</th>
-                                                    <th className="p-2.5 text-right w-24">Discrepancy</th>
-                                                    <th className="p-2.5 text-center w-12"></th>
+                                                    <th className="p-2.5 text-left font-bold">Item SKU</th>
+                                                    <th className="p-2.5 text-right font-bold">System Qty</th>
+                                                    <th className="p-2.5 text-right font-bold w-28">Physical Count</th>
+                                                    <th className="p-2.5 text-right font-bold">Discrepancy</th>
+                                                    <th className="p-2.5 text-right font-bold">Unit Price</th>
+                                                    <th className="p-2.5 text-center font-bold w-12">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-muted">
-                                                {selectedItems.map((item, index) => {
+                                                {selectedItems.map((item, idx) => {
                                                     const disc = item.physicalQty - item.currentQty;
                                                     return (
-                                                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10">
+                                                        <tr key={item.id}>
                                                             <td className="p-2.5">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-semibold font-mono">{item.sku}</span>
-                                                                    <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">
-                                                                        {item.description}
-                                                                    </span>
-                                                                    <div className="flex gap-2 text-[9px] text-slate-500 font-semibold mt-0.5">
-                                                                        {item.color && <span>Color: {item.color}</span>}
-                                                                        {item.size && <span>Size: {item.size}</span>}
-                                                                    </div>
-                                                                </div>
+                                                                <span className="font-mono font-bold block">{item.sku}</span>
+                                                                <span className="text-muted-foreground block truncate max-w-48">{item.description}</span>
                                                             </td>
-                                                            <td className="p-2.5 text-right text-muted-foreground">
+                                                            <td className="p-2.5 text-right tabular-nums text-muted-foreground">
                                                                 {item.currentQty.toFixed(2)}
                                                             </td>
                                                             <td className="p-2.5 text-right">
                                                                 <Input
                                                                     type="number"
+                                                                    step="1"
+                                                                    min="0"
                                                                     value={item.physicalQty}
-                                                                    onChange={(e) => 
-                                                                        handleUpdateStandardItem(index, { 
-                                                                            physicalQty: Math.max(0, parseFloat(e.target.value) || 0) 
-                                                                        })
-                                                                    }
-                                                                    className="h-8 text-right w-20 ml-auto p-1 font-bold text-xs"
-                                                                    min={0}
+                                                                    onChange={(e) => handleUpdateStandardItem(idx, { physicalQty: parseFloat(e.target.value) || 0 })}
+                                                                    className="h-7 text-right px-2 font-mono text-xs font-bold"
                                                                 />
                                                             </td>
-                                                            <td className="p-2.5 text-right font-bold">
+                                                            <td className="p-2.5 text-right tabular-nums font-bold">
                                                                 {disc === 0 ? (
-                                                                    <span className="text-slate-400">0.00</span>
+                                                                    <span className="text-slate-400">0</span>
                                                                 ) : disc > 0 ? (
-                                                                    <span className="text-emerald-600">+{disc.toFixed(2)}</span>
+                                                                    <span className="text-emerald-600">+{disc}</span>
                                                                 ) : (
-                                                                    <span className="text-red-600">{disc.toFixed(2)}</span>
+                                                                    <span className="text-red-600">{disc}</span>
                                                                 )}
+                                                            </td>
+                                                            <td className="p-2.5 text-right tabular-nums">
+                                                                {item.rate.toLocaleString("en-PK")}
                                                             </td>
                                                             <td className="p-2.5 text-center">
                                                                 <Button
                                                                     type="button"
                                                                     variant="ghost"
-                                                                    onClick={() => handleRemoveStandardItem(index)}
-                                                                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50/50 rounded-full"
+                                                                    size="sm"
+                                                                    onClick={() => handleRemoveStandardItem(idx)}
+                                                                    className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                                                                 >
-                                                                    <Trash className="h-4 w-4" />
+                                                                    <Trash className="h-3.5 w-3.5" />
                                                                 </Button>
                                                             </td>
                                                         </tr>
@@ -677,34 +993,18 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                     </CardContent>
                 </Card>
 
-                {/* Sidebar Context Card */}
-                <div className="space-y-6">
-                    <Card className="shadow-sm border-muted">
-                        <CardHeader>
-                            <CardTitle className="text-lg">Location Context</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 text-sm">
-                            <div>
-                                <span className="text-xs text-muted-foreground block">Store Outlet</span>
-                                <span className="font-semibold">{location.name} ({location.code})</span>
-                            </div>
-                            <div>
-                                <span className="text-xs text-muted-foreground block">Linked Warehouse</span>
-                                <span className="font-semibold">{warehouse.name} ({warehouse.code})</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="shadow-sm border-muted">
-                        <CardHeader>
-                            <CardTitle className="text-lg">Reason & Notes</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="adj-reason">Reason Category <span className="text-red-500">*</span></Label>
-                                <Select value={reason} onValueChange={setReason} required>
-                                    <SelectTrigger id="adj-reason" className="w-full">
-                                        <SelectValue placeholder="Select Reason" />
+                {/* Sidebar Card */}
+                <Card className="shadow-sm border-muted h-fit space-y-4">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Adjustment Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="reason-select">Reason for Adjustment</Label>
+                            {tabMode === "swap" ? (
+                                <Select value={reason} onValueChange={setReason}>
+                                    <SelectTrigger id="reason-select">
+                                        <SelectValue placeholder="Select Reason..." />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {REASONS.map((r) => (
@@ -714,21 +1014,28 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                         ))}
                                     </SelectContent>
                                 </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="adj-notes">Additional Remarks</Label>
-                                <Textarea
-                                    id="adj-notes"
-                                    placeholder="Add any specific context or remarks..."
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    rows={3}
+                            ) : (
+                                <Input
+                                    id="reason-select"
+                                    placeholder="e.g. Store Count Discrepancy"
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
                                 />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="notes-textarea">Additional Notes</Label>
+                            <Textarea
+                                id="notes-textarea"
+                                rows={3}
+                                placeholder="Add notes for head office reviewers..."
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </form>
     );

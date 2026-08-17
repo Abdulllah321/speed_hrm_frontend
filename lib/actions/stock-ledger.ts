@@ -176,6 +176,8 @@ export async function getStockValuationReport(filters: {
     showSilhouette?: boolean;
     showArticle?: boolean;
     showVariant?: boolean;
+    page?: number;
+    limit?: number;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -190,6 +192,8 @@ export async function getStockValuationReport(filters: {
         if (filters.showSilhouette !== undefined) queryParams.append("showSilhouette", String(filters.showSilhouette));
         if (filters.showArticle !== undefined) queryParams.append("showArticle", String(filters.showArticle));
         if (filters.showVariant !== undefined) queryParams.append("showVariant", String(filters.showVariant));
+        if (filters.page) queryParams.append("page", String(filters.page));
+        if (filters.limit) queryParams.append("limit", String(filters.limit));
 
         const queryString = queryParams.toString();
         const url = `/stock-ledger/valuation-report${queryString ? `?${queryString}` : ""}`;

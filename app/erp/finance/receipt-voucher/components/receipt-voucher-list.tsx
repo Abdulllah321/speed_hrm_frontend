@@ -16,7 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Printer, Download, Plus, CreditCard, Wallet, Eye, CheckCircle2, XCircle, FileCheck, Send, Loader2 } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
-import { ReceiptVoucher, updateReceiptVoucherStatus } from "@/lib/actions/receipt-voucher";
+import { ReceiptVoucher, updateReceiptVoucherStatus, markReceiptVoucherAsPrinted } from "@/lib/actions/receipt-voucher";
 import { queueReceiptVouchersExport } from "@/lib/actions/receipt-voucher";
 import { ReceiptVoucherPrint } from "./receipt-voucher-print";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import DataTable from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
+
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 interface LocalDraft {
     voucherNo: string;
@@ -41,10 +43,28 @@ interface LocalDraft {
 
 export function ReceiptVoucherList({
     initialData,
+    pagination,
+    initialFilters,
     accounts,
     permissions,
 }: {
     initialData: ReceiptVoucher[];
+    pagination?: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    };
+    initialFilters?: {
+        type?: string;
+        status?: string;
+        fromDate?: string;
+        toDate?: string;
+        accountId?: string;
+        search?: string;
+        page?: number;
+        limit?: number;
+    };
     accounts: ChartOfAccount[];
     permissions?: {
         canCreate: boolean;
@@ -54,11 +74,25 @@ export function ReceiptVoucherList({
         canApprove: boolean;
     };
 }) {
-    const [type, setType] = useState<"bank" | "cash">("bank");
-    const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
-    const [toDate, setToDate] = useState<Date | undefined>(undefined);
-    const [selectedAccount, setSelectedAccount] = useState<string>("all");
-    const [status, setStatus] = useState<string>("all");
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    const [type, setType] = useState<"bank" | "cash">(
+        (searchParams.get("type") as "bank" | "cash") || (initialFilters?.type as "bank" | "cash") || "bank"
+    );
+    const [fromDate, setFromDate] = useState<Date | undefined>(
+        searchParams.get("fromDate") ? new Date(searchParams.get("fromDate")!) : initialFilters?.fromDate ? new Date(initialFilters.fromDate) : undefined
+    );
+    const [toDate, setToDate] = useState<Date | undefined>(
+        searchParams.get("toDate") ? new Date(searchParams.get("toDate")!) : initialFilters?.toDate ? new Date(initialFilters.toDate) : undefined
+    );
+    const [selectedAccount, setSelectedAccount] = useState<string>(
+        searchParams.get("accountId") || initialFilters?.accountId || "all"
+    );
+    const [status, setStatus] = useState<string>(
+        searchParams.get("status") || initialFilters?.status || "all"
+    );
     const [vouchers, setVouchers] = useState<ReceiptVoucher[]>(initialData);
     const [showFilterInfo, setShowFilterInfo] = useState(false);
     const [localDrafts, setLocalDrafts] = useState<LocalDraft[]>([]);
@@ -66,11 +100,47 @@ export function ReceiptVoucherList({
     const [isExporting, setIsExporting] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [selectedVoucherIds, setSelectedVoucherIds] = useState<string[]>([]);
-    const [searchTerm, setSearchTerm] = useState<string>("");
+    const [searchTerm, setSearchTerm] = useState<string>(
+        searchParams.get("search") || initialFilters?.search || ""
+    );
+
+    const updateUrlParams = (updates: Record<string, string | null | undefined>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        Object.entries(updates).forEach(([key, val]) => {
+            if (val === undefined || val === null || val === "" || val === "all") {
+                params.delete(key);
+            } else {
+                params.set(key, val);
+            }
+        });
+        if (!("page" in updates)) {
+            params.delete("page");
+        }
+        router.push(`${pathname}?${params.toString()}`);
+    };
 
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    useEffect(() => {
+        setVouchers(initialData);
+    }, [initialData]);
+
+    useEffect(() => {
+        const s = searchParams.get("status") || initialFilters?.status || "all";
+        setStatus(s);
+        const t = (searchParams.get("type") as "bank" | "cash") || (initialFilters?.type as "bank" | "cash") || "bank";
+        setType(t);
+        const acc = searchParams.get("accountId") || initialFilters?.accountId || "all";
+        setSelectedAccount(acc);
+        const q = searchParams.get("search") || initialFilters?.search || "";
+        setSearchTerm(q);
+        const fd = searchParams.get("fromDate") || initialFilters?.fromDate;
+        setFromDate(fd ? new Date(fd) : undefined);
+        const td = searchParams.get("toDate") || initialFilters?.toDate;
+        setToDate(td ? new Date(td) : undefined);
+    }, [searchParams, initialFilters]);
 
     const handleExport = async () => {
         setIsExporting(true);
@@ -108,11 +178,19 @@ export function ReceiptVoucherList({
         return () => window.removeEventListener("afterprint", handleAfterPrint);
     }, []);
 
-    const handlePrint = (voucher: ReceiptVoucher) => {
+    const handlePrint = async (voucher: ReceiptVoucher) => {
         setPrintingVoucher(voucher);
         setTimeout(() => {
             window.print();
         }, 100);
+        try {
+            const res = await markReceiptVoucherAsPrinted(voucher.id);
+            if (res.status && res.data?.lastPrintedAt) {
+                setVouchers(prev =>
+                    prev.map(v => v.id === voucher.id ? { ...v, lastPrintedAt: res.data.lastPrintedAt } : v)
+                );
+            }
+        } catch {}
     };
 
     useEffect(() => {
@@ -141,6 +219,16 @@ export function ReceiptVoucherList({
     };
 
     const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
+    const mostRecentlyPrintedVoucher = useMemo(() => {
+        const printed = vouchers.filter(v => v.lastPrintedAt);
+        if (printed.length === 0) return null;
+        return printed.reduce((latest, current) => {
+            return new Date(current.lastPrintedAt!).getTime() > new Date(latest.lastPrintedAt!).getTime()
+                ? current
+                : latest;
+        });
+    }, [vouchers]);
 
     // Use initial data directly as it comes from the server
     useEffect(() => {
@@ -336,6 +424,41 @@ export function ReceiptVoucherList({
             }
         },
         {
+            accessorKey: "lastPrintedAt",
+            header: "Last Printed At",
+            cell: ({ row }) => {
+                const lp = row.original.lastPrintedAt;
+                const isMostRecent = mostRecentlyPrintedVoucher?.id === row.original.id;
+
+                if (!lp) {
+                    return (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-muted/40 text-muted-foreground italic border border-muted/30">
+                            Not Printed
+                        </span>
+                    );
+                }
+
+                return (
+                    <div className="flex flex-col gap-1 items-start">
+                        <span className={cn(
+                            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-medium border shadow-xs transition-colors whitespace-nowrap",
+                            isMostRecent
+                                ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-700 font-semibold"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700"
+                        )}>
+                            <Printer className={cn("h-3 w-3", isMostRecent ? "text-blue-600 dark:text-blue-400" : "text-emerald-600 dark:text-emerald-400")} />
+                            {format(new Date(lp), "dd-MMM-yyyy hh:mm a")}
+                        </span>
+                        {isMostRecent && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-blue-600 text-white dark:bg-blue-500 dark:text-slate-950 shadow-xs tracking-wider whitespace-nowrap">
+                                ★ Last Printed
+                            </span>
+                        )}
+                    </div>
+                );
+            }
+        },
+        {
             id: "actions",
             header: "",
             cell: ({ row }) => {
@@ -416,18 +539,7 @@ export function ReceiptVoucherList({
                 );
             }
         }
-    ], [permissions, handlePrint, handleUpdateStatus, updatingStatusId]);
-
-    const filteredData = useMemo(() => {
-        return vouchers.filter(v => {
-            const date = new Date(v.rvDate);
-            const matchesDate = (!fromDate || date >= fromDate) && (!toDate || date <= toDate);
-            const matchesType = v.type === type;
-            const matchesStatus = status === "all" || v.status === status;
-            const matchesAccount = selectedAccount === "all" || v.debitAccountId === selectedAccount || v.details.some(d => d.accountId === selectedAccount);
-            return matchesDate && matchesType && matchesStatus && matchesAccount;
-        });
-    }, [vouchers, type, fromDate, toDate, selectedAccount, status]);
+    ], [permissions, handlePrint, handleUpdateStatus, updatingStatusId, mostRecentlyPrintedVoucher]);
 
     return (
         <div className="space-y-6">
@@ -522,7 +634,31 @@ export function ReceiptVoucherList({
                 </div>
             )}
  
-            <Tabs value={type} onValueChange={(val) => setType(val as "bank" | "cash")} className="w-full">
+            {mostRecentlyPrintedVoucher && (
+                <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-xs text-blue-900 dark:text-blue-200 shadow-xs mb-4">
+                    <div className="flex items-center gap-2">
+                        <Printer className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                        <span>
+                            <strong>Last Printed Voucher:</strong>{" "}
+                            <Link
+                                href={`/erp/finance/receipt-voucher/${mostRecentlyPrintedVoucher.id}`}
+                                className="font-mono font-bold underline hover:text-blue-700 dark:hover:text-blue-100"
+                            >
+                                {mostRecentlyPrintedVoucher.rvNo}
+                            </Link>{" "}
+                            was printed on{" "}
+                            <span className="font-mono font-semibold">
+                                {format(new Date(mostRecentlyPrintedVoucher.lastPrintedAt!), "dd-MMM-yyyy 'at' hh:mm a")}
+                            </span>
+                        </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-blue-600 text-white shrink-0">
+                        Most Recent
+                    </span>
+                </div>
+            )}
+
+            <Tabs value={type} onValueChange={(val) => { const newType = val as "bank" | "cash"; setType(newType); updateUrlParams({ type: newType }); }} className="w-full">
                 <TabsList variant="card" className="grid w-full max-w-md grid-cols-2">
                     <TabsTrigger value="bank" className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
@@ -552,6 +688,10 @@ export function ReceiptVoucherList({
                                     onUpdate={(values) => {
                                         setFromDate(values.range.from);
                                         setToDate(values.range.to);
+                                        updateUrlParams({
+                                            fromDate: values.range.from ? values.range.from.toISOString().split("T")[0] : undefined,
+                                            toDate: values.range.to ? values.range.to.toISOString().split("T")[0] : undefined,
+                                        });
                                     }}
                                     align="start"
                                     locale="en-GB"
@@ -565,13 +705,19 @@ export function ReceiptVoucherList({
                                     className="h-10"
                                     options={accounts.map(acc => ({ value: acc.id, label: acc.name }))}
                                     value={selectedAccount}
-                                    onValueChange={setSelectedAccount}
+                                    onValueChange={(val) => {
+                                        setSelectedAccount(val);
+                                        updateUrlParams({ accountId: val });
+                                    }}
                                     placeholder="Select Account"
                                 />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Voucher Status</Label>
-                                <Select value={status} onValueChange={setStatus}>
+                                <Select value={status} onValueChange={(val) => {
+                                    setStatus(val);
+                                    updateUrlParams({ status: val });
+                                }}>
                                     <SelectTrigger className="h-10">
                                         <SelectValue placeholder="All" />
                                     </SelectTrigger>
@@ -606,7 +752,21 @@ export function ReceiptVoucherList({
 
                         <DataTable
                             columns={columns}
-                            data={filteredData}
+                            data={vouchers}
+                            manualPagination={true}
+                            rowCount={pagination?.total ?? vouchers.length}
+                            pageCount={pagination?.totalPages ?? 1}
+                            onPaginationChange={(pageState) => {
+                                updateUrlParams({
+                                    page: String(pageState.pageIndex + 1),
+                                    limit: String(pageState.pageSize),
+                                });
+                            }}
+                            manualFiltering={true}
+                            onSearchChange={(searchVal) => {
+                                setSearchTerm(searchVal);
+                                updateUrlParams({ search: searchVal });
+                            }}
                             searchFields={[{ key: "rvNo", label: "RV Number" }, { key: "description", label: "Description" }]}
                             tableId="receipt-voucher-list"
                             enableRowSelection

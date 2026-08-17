@@ -48,16 +48,33 @@ export interface PaymentVoucher {
     chequeDate?: string; // ISO string
     details: PaymentVoucherDetail[];
     folio?: string | null;
+    lastPrintedAt?: string | null;
     createdAt: string;
     createdBy: string;
 }
 
-export async function getPaymentVouchers(type?: "bank" | "cash") {
+export interface PaymentVoucherFilters {
+    type?: string;
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+    accountId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+}
+
+export async function getPaymentVouchers(filters?: PaymentVoucherFilters) {
     try {
         const queryParams = new URLSearchParams();
-        if (type) {
-            queryParams.append("type", type);
-        }
+        if (filters?.type && filters.type !== "all") queryParams.append("type", filters.type);
+        if (filters?.status && filters.status !== "all") queryParams.append("status", filters.status);
+        if (filters?.fromDate) queryParams.append("fromDate", filters.fromDate);
+        if (filters?.toDate) queryParams.append("toDate", filters.toDate);
+        if (filters?.accountId && filters.accountId !== "all") queryParams.append("accountId", filters.accountId);
+        if (filters?.search?.trim()) queryParams.append("search", filters.search.trim());
+        if (filters?.page) queryParams.append("page", String(filters.page));
+        if (filters?.limit) queryParams.append("limit", String(filters.limit));
 
         const response = await authFetch(`/finance/payment-vouchers?${queryParams.toString()}`, {
             cache: 'no-store',
@@ -68,20 +85,19 @@ export async function getPaymentVouchers(type?: "bank" | "cash") {
             console.error("Failed to fetch payment vouchers", response.status);
             return {
                 status: false,
-                data: []
+                data: [],
+                pagination: { total: 0, page: 1, limit: 10, totalPages: 1 },
             };
         }
 
         const result = response.data;
-        const vouchersArray = result.data || result;
-
-        if (!Array.isArray(vouchersArray)) {
-            console.error("Vouchers data is not an array:", result);
-            return {
-                status: false,
-                data: []
-            };
-        }
+        const vouchersArray = Array.isArray(result) ? result : (result.data || []);
+        const pagination = result.pagination || {
+            total: vouchersArray.length,
+            page: filters?.page || 1,
+            limit: filters?.limit || 10,
+            totalPages: Math.ceil(vouchersArray.length / (filters?.limit || 10)) || 1,
+        };
 
         // Map backend data to frontend interface
         const mappedData = vouchersArray.map((pv: any) => ({
@@ -102,13 +118,15 @@ export async function getPaymentVouchers(type?: "bank" | "cash") {
 
         return {
             status: true,
-            data: mappedData
+            data: mappedData,
+            pagination,
         };
     } catch (error) {
         console.error("Error fetching payment vouchers:", error);
         return {
             status: false,
-            data: []
+            data: [],
+            pagination: { total: 0, page: 1, limit: 10, totalPages: 1 }
         };
     }
 }
@@ -444,6 +462,21 @@ export async function updatePaymentVoucherCpr(id: string, details: { id: string;
     } catch (error: any) {
         console.error("Error updating payment voucher CPR numbers:", error);
         return { status: false, message: error.message || "An unexpected error occurred" };
+    }
+}
+
+export async function markPaymentVoucherAsPrinted(id: string) {
+    try {
+        const response = await authFetch(`/finance/payment-vouchers/${id}/print`, {
+            method: "PATCH",
+        });
+        if (!response.ok) {
+            return { status: false, message: "Failed to mark payment voucher as printed" };
+        }
+        revalidatePath("/erp/finance/payment-voucher");
+        return { status: true, data: response.data };
+    } catch {
+        return { status: false, message: "Network error occurred" };
     }
 }
 

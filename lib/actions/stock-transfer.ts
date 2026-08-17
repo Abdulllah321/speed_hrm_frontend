@@ -10,6 +10,8 @@ export async function getStockTransfers(filters?: {
     search?: string;
     dateFrom?: string;
     dateTo?: string;
+    page?: number;
+    limit?: number;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -20,6 +22,8 @@ export async function getStockTransfers(filters?: {
         if (filters?.search) queryParams.append("search", filters.search);
         if (filters?.dateFrom) queryParams.append("dateFrom", filters.dateFrom);
         if (filters?.dateTo) queryParams.append("dateTo", filters.dateTo);
+        if (filters?.page) queryParams.append("page", String(filters.page));
+        if (filters?.limit) queryParams.append("limit", String(filters.limit));
 
         const queryString = queryParams.toString();
         const url = `/transfer-request${queryString ? `?${queryString}` : ""}`;
@@ -31,13 +35,13 @@ export async function getStockTransfers(filters?: {
         const result = response.data;
 
         if (result.status) {
-            return { status: true, data: result.data };
+            return { status: true, data: result.data, meta: result.meta };
         }
 
-        return { status: false, data: [], message: result.message || "Failed to fetch stock transfers" };
+        return { status: false, data: [], meta: null, message: result.message || "Failed to fetch stock transfers" };
     } catch (error) {
         console.error("Get stock transfers error:", error);
-        return { status: false, data: [], message: "Failed to connect to server" };
+        return { status: false, data: [], meta: null, message: "Failed to connect to server" };
     }
 }
 

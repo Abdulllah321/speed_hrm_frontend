@@ -31,6 +31,20 @@ export async function getChartOfAccounts(): Promise<{ status: boolean; data: Cha
     return { status: false, data: [], message: "Failed to fetch chart of accounts" };
   }
 }
+
+export async function getChartOfAccountsDropdown(): Promise<{ status: boolean; data: ChartOfAccount[]; message?: string }> {
+  try {
+    const res = await authFetch(`/finance/chart-of-accounts/dropdown`, {});
+    const data = res.data;
+    if (Array.isArray(data)) {
+         return { status: true, data };
+    }
+    return { status: false, data: [] };
+  } catch (error) {
+    console.error("Failed to fetch chart of accounts dropdown:", error);
+    return { status: false, data: [], message: "Failed to fetch chart of accounts dropdown" };
+  }
+}
 export async function getChartOfAccountsTree(): Promise<{ status: boolean; data: ChartOfAccount[]; message?: string }> {
     try {
     const res = await authFetch(`/finance/chart-of-accounts/tree`, {});

@@ -1,8 +1,8 @@
 "use client";
 
+import { addTransitionType, startTransition, useState } from "react";
 import { updateVendor } from "@/lib/actions/procurement";
-import { useState, startTransition, addTransitionType } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { vendorSchema, type VendorFormValues } from "@/lib/validations/vendor";
 import { Button } from "@/components/ui/button";
@@ -182,7 +182,7 @@ export function VendorEditForm({ vendor }: VendorEditFormProps) {
                                             control={form.control}
                                             name="nature"
                                             render={({ field }) => (
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <Select onValueChange={field.onChange} value={field.value || ""}>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select Nature" />
                                                     </SelectTrigger>

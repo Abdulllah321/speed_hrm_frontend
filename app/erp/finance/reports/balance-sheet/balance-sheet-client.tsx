@@ -42,8 +42,7 @@ const fmt = (n: number) =>
     maximumFractionDigits: 2,
   });
 
-const fmtPct = (n: number) =>
-  `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 
 export function BalanceSheetClient({
   initialData,
@@ -54,27 +53,35 @@ export function BalanceSheetClient({
 
   // Filter States
   const [asOf, setAsOf] = useState<string>(initialData?.asOf || "");
-  const [compareAsOf, setCompareAsOf] = useState<string>(initialData?.compareAsOf || "");
-  const [enableCompare, setEnableCompare] = useState<boolean>(!!initialData?.compareAsOf);
+  const [compareAsOf, setCompareAsOf] = useState<string>(
+    initialData?.compareAsOf || "",
+  );
+  const [enableCompare, setEnableCompare] = useState<boolean>(
+    !!initialData?.compareAsOf,
+  );
   const [includeTagAccounts, setIncludeTagAccounts] = useState<boolean>(
-    initialData?.includeTagAccounts ?? true
+    initialData?.includeTagAccounts ?? true,
   );
   const [showZeroBalances, setShowZeroBalances] = useState<boolean>(
-    initialData?.showZeroBalances ?? false
+    initialData?.showZeroBalances ?? false,
   );
   const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [layoutMode, setLayoutMode] = useState<"stacked" | "t-account">("t-account");
+  const [layoutMode, setLayoutMode] = useState<"stacked" | "t-account">(
+    "t-account",
+  );
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Expand / Collapse State
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => {
     const set = new Set<string>();
     if (initialData) {
-      [...initialData.assets, ...initialData.liabilities, ...initialData.equity].forEach(
-        (row) => {
-          if (row.isGroup || row.level === 0) set.add(row.id);
-        }
-      );
+      [
+        ...initialData.assets,
+        ...initialData.liabilities,
+        ...initialData.equity,
+      ].forEach((row) => {
+        if (row.isGroup || row.level === 0) set.add(row.id);
+      });
     }
     return set;
   });
@@ -93,11 +100,13 @@ export function BalanceSheetClient({
         setData(res.data);
         // Expand root groups by default
         const newExpanded = new Set<string>();
-        [...res.data.assets, ...res.data.liabilities, ...res.data.equity].forEach(
-          (row) => {
-            if (row.isGroup || row.level === 0) newExpanded.add(row.id);
-          }
-        );
+        [
+          ...res.data.assets,
+          ...res.data.liabilities,
+          ...res.data.equity,
+        ].forEach((row) => {
+          if (row.isGroup || row.level === 0) newExpanded.add(row.id);
+        });
         setExpandedNodes(newExpanded);
       }
     });
@@ -119,7 +128,7 @@ export function BalanceSheetClient({
     if (!data) return;
     const allIds = new Set<string>();
     [...data.assets, ...data.liabilities, ...data.equity].forEach((r) =>
-      allIds.add(r.id)
+      allIds.add(r.id),
     );
     setExpandedNodes(allIds);
   };
@@ -139,7 +148,7 @@ export function BalanceSheetClient({
       const q = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(
         (r) =>
-          r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)
+          r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q),
       );
     }
 
@@ -170,22 +179,18 @@ export function BalanceSheetClient({
     return filtered;
   };
 
-  const filteredAssets = useMemo(() => filterRows(data?.assets || []), [
-    data?.assets,
-    searchQuery,
-    levelFilter,
-    expandedNodes,
-  ]);
+  const filteredAssets = useMemo(
+    () => filterRows(data?.assets || []),
+    [data?.assets, searchQuery, levelFilter, expandedNodes],
+  );
   const filteredLiabilities = useMemo(
     () => filterRows(data?.liabilities || []),
-    [data?.liabilities, searchQuery, levelFilter, expandedNodes]
+    [data?.liabilities, searchQuery, levelFilter, expandedNodes],
   );
-  const filteredEquity = useMemo(() => filterRows(data?.equity || []), [
-    data?.equity,
-    searchQuery,
-    levelFilter,
-    expandedNodes,
-  ]);
+  const filteredEquity = useMemo(
+    () => filterRows(data?.equity || []),
+    [data?.equity, searchQuery, levelFilter, expandedNodes],
+  );
 
   const asOfDisplay = asOf
     ? format(parseISO(asOf), "dd MMM yyyy")
@@ -205,7 +210,9 @@ export function BalanceSheetClient({
       "Level",
       "Is Tag Account",
       `As of (${asOfDisplay})`,
-      ...(compareDisplay ? [`Compare (${compareDisplay})`, "Variance", "Change %"] : []),
+      ...(compareDisplay
+        ? [`Compare (${compareDisplay})`, "Variance", "Change %"]
+        : []),
     ];
 
     const formatRow = (r: BalanceSheetAccount, category: string) => [
@@ -231,7 +238,9 @@ export function BalanceSheetClient({
       ...data.equity.map((r) => formatRow(r, "EQUITY").join(",")),
     ];
 
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([lines.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -263,7 +272,7 @@ export function BalanceSheetClient({
         <div
           className={cn(
             "px-4 py-3 font-extrabold text-xs uppercase tracking-wider flex items-center justify-between border-b dark:border-border",
-            headerBgClass
+            headerBgClass,
           )}
         >
           <span className="flex items-center gap-2">
@@ -316,7 +325,8 @@ export function BalanceSheetClient({
                         "hover:bg-muted/30 transition-colors",
                         isGroup && "bg-muted/15 font-semibold text-foreground",
                         isTag && "text-muted-foreground bg-accent/10 italic",
-                        isVirtual && "bg-purple-500/10 font-bold text-purple-700 dark:text-purple-300"
+                        isVirtual &&
+                          "bg-purple-500/10 font-bold text-purple-700 dark:text-purple-300",
                       )}
                     >
                       {/* Code */}
@@ -354,15 +364,20 @@ export function BalanceSheetClient({
 
                           <span
                             className={cn(
-                              isGroup ? "font-bold text-xs uppercase tracking-tight" : "font-medium text-xs",
-                              isTag && "text-[11px]"
+                              isGroup
+                                ? "font-bold text-xs uppercase tracking-tight"
+                                : "font-medium text-xs",
+                              isTag && "text-[11px]",
                             )}
                           >
                             {row.name}
                           </span>
 
                           {isTag && (
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-300 text-amber-700 dark:text-amber-400">
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 border-amber-300 text-amber-700 dark:text-amber-400"
+                            >
                               Sub-Account
                             </Badge>
                           )}
@@ -388,8 +403,8 @@ export function BalanceSheetClient({
                                   (row.variance || 0) > 0
                                     ? "text-emerald-600 dark:text-emerald-400"
                                     : (row.variance || 0) < 0
-                                    ? "text-rose-600 dark:text-rose-400"
-                                    : "text-muted-foreground"
+                                      ? "text-rose-600 dark:text-rose-400"
+                                      : "text-muted-foreground",
                                 )}
                               >
                                 {fmt(row.variance || 0)}
@@ -400,7 +415,7 @@ export function BalanceSheetClient({
                                     "text-[10px] font-bold px-1 rounded",
                                     (row.percentageChange || 0) > 0
                                       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                                      : "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
+                                      : "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400",
                                   )}
                                 >
                                   {fmtPct(row.percentageChange || 0)}
@@ -417,7 +432,10 @@ export function BalanceSheetClient({
             </tbody>
             <tfoot>
               <tr className="bg-muted/50 font-extrabold border-t border-border text-foreground">
-                <td colSpan={2} className="px-4 py-3 text-right uppercase text-xs tracking-wider">
+                <td
+                  colSpan={2}
+                  className="px-4 py-3 text-right uppercase text-xs tracking-wider"
+                >
                   Total {title}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-sm">
@@ -485,7 +503,6 @@ export function BalanceSheetClient({
       />
 
       <div className="space-y-6 max-w-7xl mx-auto print:hidden">
-
         {/* ── Top Header & Actions ── */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -494,11 +511,19 @@ export function BalanceSheetClient({
               Financial Balance Sheet
             </h1>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
-              <span>As of: <strong className="text-foreground">{asOfDisplay}</strong></span>
+              <span>
+                As of:{" "}
+                <strong className="text-foreground">{asOfDisplay}</strong>
+              </span>
               {compareDisplay && (
                 <>
                   <span>•</span>
-                  <span>Compared with: <strong className="text-foreground">{compareDisplay}</strong></span>
+                  <span>
+                    Compared with:{" "}
+                    <strong className="text-foreground">
+                      {compareDisplay}
+                    </strong>
+                  </span>
                 </>
               )}
             </p>
@@ -545,7 +570,9 @@ export function BalanceSheetClient({
             <Card className="border-blue-200 dark:border-blue-900 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider">Total Assets</span>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                    Total Assets
+                  </span>
                   <Landmark className="h-5 w-5" />
                 </div>
                 <div className="text-2xl font-black font-mono mt-2 text-foreground">
@@ -554,11 +581,23 @@ export function BalanceSheetClient({
                 {enableCompare && (
                   <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
                     <span>Prev: {fmt(data.compareTotalAssets || 0)}</span>
-                    <span className={cn(
-                      "font-bold",
-                      (data.totalAssets - (data.compareTotalAssets || 0)) >= 0 ? "text-emerald-600" : "text-rose-600"
-                    )}>
-                      ({fmtPct(data.compareTotalAssets ? ((data.totalAssets - data.compareTotalAssets) / Math.abs(data.compareTotalAssets)) * 100 : 0)})
+                    <span
+                      className={cn(
+                        "font-bold",
+                        data.totalAssets - (data.compareTotalAssets || 0) >= 0
+                          ? "text-emerald-600"
+                          : "text-rose-600",
+                      )}
+                    >
+                      (
+                      {fmtPct(
+                        data.compareTotalAssets
+                          ? ((data.totalAssets - data.compareTotalAssets) /
+                              Math.abs(data.compareTotalAssets)) *
+                              100
+                          : 0,
+                      )}
+                      )
                     </span>
                   </p>
                 )}
@@ -569,7 +608,9 @@ export function BalanceSheetClient({
             <Card className="border-amber-200 dark:border-amber-900 bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-950/20">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between text-amber-600 dark:text-amber-400">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider">Total Liabilities</span>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                    Total Liabilities
+                  </span>
                   <Building2 className="h-5 w-5" />
                 </div>
                 <div className="text-2xl font-black font-mono mt-2 text-foreground">
@@ -587,7 +628,9 @@ export function BalanceSheetClient({
             <Card className="border-purple-200 dark:border-purple-900 bg-gradient-to-br from-purple-50/50 to-transparent dark:from-purple-950/20">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between text-purple-600 dark:text-purple-400">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider">Total Equity</span>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                    Total Equity
+                  </span>
                   <PieChart className="h-5 w-5" />
                 </div>
                 <div className="text-2xl font-black font-mono mt-2 text-foreground">
@@ -595,7 +638,9 @@ export function BalanceSheetClient({
                 </div>
                 <p className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold mt-1 flex items-center gap-1">
                   <span>Net Profit:</span>
-                  <span className="font-mono font-bold">{fmt(data.currentNetIncome || 0)}</span>
+                  <span className="font-mono font-bold">
+                    {fmt(data.currentNetIncome || 0)}
+                  </span>
                 </p>
               </CardContent>
             </Card>
@@ -604,7 +649,9 @@ export function BalanceSheetClient({
             <Card className="border-emerald-200 dark:border-emerald-900 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider">Working Capital</span>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                    Working Capital
+                  </span>
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div className="text-2xl font-black font-mono mt-2 text-foreground">
@@ -625,7 +672,7 @@ export function BalanceSheetClient({
               "flex flex-col sm:flex-row items-center justify-between px-5 py-3 rounded-xl border text-xs font-bold gap-3 shadow-sm",
               data.balanced
                 ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                : "bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                : "bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800",
             )}
           >
             <div className="flex items-center gap-2">
@@ -642,9 +689,13 @@ export function BalanceSheetClient({
             </div>
 
             <div className="flex items-center gap-4 font-mono text-xs">
-              <span>Assets: <strong>{fmt(data.totalAssets)}</strong></span>
+              <span>
+                Assets: <strong>{fmt(data.totalAssets)}</strong>
+              </span>
               <span>=</span>
-              <span>L + E: <strong>{fmt(data.totalLiabilitiesAndEquity)}</strong></span>
+              <span>
+                L + E: <strong>{fmt(data.totalLiabilitiesAndEquity)}</strong>
+              </span>
             </div>
           </div>
         )}
@@ -658,24 +709,34 @@ export function BalanceSheetClient({
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-
               {/* As Of Date */}
               <div className="space-y-1.5">
-                <Label className="text-[10px] uppercase font-bold text-muted-foreground">As of Date</Label>
-                <DatePicker value={asOf} onChange={setAsOf} placeholder="Current live balances" />
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                  As of Date
+                </Label>
+                <DatePicker
+                  value={asOf}
+                  onChange={setAsOf}
+                  placeholder="Current live balances"
+                />
               </div>
 
               {/* Compare As Of Date */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Compare Date</Label>
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Compare Date
+                  </Label>
                   <div className="flex items-center space-x-1.5">
                     <Checkbox
                       id="enableCompare"
                       checked={enableCompare}
                       onCheckedChange={(c) => setEnableCompare(!!c)}
                     />
-                    <label htmlFor="enableCompare" className="text-[10px] font-semibold cursor-pointer select-none">
+                    <label
+                      htmlFor="enableCompare"
+                      className="text-[10px] font-semibold cursor-pointer select-none"
+                    >
                       Enable
                     </label>
                   </div>
@@ -690,7 +751,9 @@ export function BalanceSheetClient({
 
               {/* Level Depth Filter */}
               <div className="space-y-1.5">
-                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Hierarchy Level Depth</Label>
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                  Hierarchy Level Depth
+                </Label>
                 <div className="flex items-center rounded-md border p-1 bg-muted/20 gap-1">
                   {[
                     { id: "all", label: "All" },
@@ -706,7 +769,7 @@ export function BalanceSheetClient({
                         "flex-1 py-1 text-[10px] font-bold rounded transition-colors",
                         levelFilter === lvl.id
                           ? "bg-primary text-primary-foreground shadow-sm"
-                          : "hover:bg-muted text-muted-foreground"
+                          : "hover:bg-muted text-muted-foreground",
                       )}
                     >
                       {lvl.label}
@@ -717,7 +780,9 @@ export function BalanceSheetClient({
 
               {/* Search Bar */}
               <div className="space-y-1.5">
-                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Search Account</Label>
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                  Search Account
+                </Label>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -728,7 +793,6 @@ export function BalanceSheetClient({
                   />
                 </div>
               </div>
-
             </div>
 
             {/* Checkbox Toggles & Apply Button */}
@@ -740,7 +804,10 @@ export function BalanceSheetClient({
                     checked={includeTagAccounts}
                     onCheckedChange={(c) => setIncludeTagAccounts(!!c)}
                   />
-                  <label htmlFor="tagToggle" className="text-xs font-semibold cursor-pointer select-none">
+                  <label
+                    htmlFor="tagToggle"
+                    className="text-xs font-semibold cursor-pointer select-none"
+                  >
                     Include Sub-Accounts (Tag Accounts Breakdown)
                   </label>
                 </div>
@@ -751,21 +818,44 @@ export function BalanceSheetClient({
                     checked={showZeroBalances}
                     onCheckedChange={(c) => setShowZeroBalances(!!c)}
                   />
-                  <label htmlFor="zeroToggle" className="text-xs font-semibold cursor-pointer select-none">
+                  <label
+                    htmlFor="zeroToggle"
+                    className="text-xs font-semibold cursor-pointer select-none"
+                  >
                     Show Zero Balances
                   </label>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={expandAll} className="h-8 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={expandAll}
+                  className="h-8 text-xs"
+                >
                   Expand All
                 </Button>
-                <Button variant="outline" size="sm" onClick={collapseAll} className="h-8 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={collapseAll}
+                  className="h-8 text-xs"
+                >
                   Collapse All
                 </Button>
-                <Button onClick={loadReport} disabled={isPending} size="sm" className="h-8 text-xs font-bold">
-                  <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isPending && "animate-spin")} />
+                <Button
+                  onClick={loadReport}
+                  disabled={isPending}
+                  size="sm"
+                  className="h-8 text-xs font-bold"
+                >
+                  <RefreshCw
+                    className={cn(
+                      "h-3.5 w-3.5 mr-1.5",
+                      isPending && "animate-spin",
+                    )}
+                  />
                   {isPending ? "Loading..." : "Apply Filters"}
                 </Button>
               </div>
@@ -811,8 +901,12 @@ export function BalanceSheetClient({
 
                   {/* Combined Liabilities + Equity Total Banner */}
                   <div className="flex items-center justify-between px-6 py-4 rounded-xl border dark:border-border font-extrabold bg-muted/40 text-foreground shadow-sm">
-                    <span className="uppercase text-xs tracking-wider">Total Liabilities + Equity</span>
-                    <span className="font-mono text-lg text-primary">{fmt(data.totalLiabilitiesAndEquity)}</span>
+                    <span className="uppercase text-xs tracking-wider">
+                      Total Liabilities + Equity
+                    </span>
+                    <span className="font-mono text-lg text-primary">
+                      {fmt(data.totalLiabilitiesAndEquity)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -848,8 +942,12 @@ export function BalanceSheetClient({
 
                 {/* Combined Total */}
                 <div className="flex items-center justify-between px-6 py-4 rounded-xl border dark:border-border font-extrabold bg-muted/40 text-foreground shadow-sm">
-                  <span className="uppercase text-xs tracking-wider">Total Liabilities + Equity</span>
-                  <span className="font-mono text-lg text-primary">{fmt(data.totalLiabilitiesAndEquity)}</span>
+                  <span className="uppercase text-xs tracking-wider">
+                    Total Liabilities + Equity
+                  </span>
+                  <span className="font-mono text-lg text-primary">
+                    {fmt(data.totalLiabilitiesAndEquity)}
+                  </span>
                 </div>
               </div>
             )}
@@ -859,37 +957,62 @@ export function BalanceSheetClient({
 
       {/* ── Printable A4 Template ── */}
       {data && (
-        <div id="balance-sheet-print-container" className="hidden print:block font-sans text-black">
+        <div
+          id="balance-sheet-print-container"
+          className="hidden print:block font-sans text-black"
+        >
           {/* Company Header */}
           <div className="text-center border-b pb-4 mb-4">
-            <h1 className="text-xl font-bold uppercase tracking-wider">SPEED LIMIT ERP</h1>
-            <h2 className="text-lg font-semibold uppercase mt-1">Financial Balance Sheet Statement</h2>
+            <h1 className="text-xl font-bold uppercase tracking-wider">
+              Speed (pvt.) Limited ERP
+            </h1>
+            <h2 className="text-lg font-semibold uppercase mt-1">
+              Financial Balance Sheet Statement
+            </h2>
             <p className="text-xs text-gray-600 mt-0.5">As of: {asOfDisplay}</p>
           </div>
 
           {/* KPI Summary Strip for Print */}
           <div className="grid grid-cols-4 gap-2 text-center text-xs mb-4 border p-2 rounded bg-gray-50">
             <div>
-              <span className="block text-[10px] text-gray-500 uppercase">Total Assets</span>
-              <span className="font-mono font-bold text-sm">{fmt(data.totalAssets)}</span>
+              <span className="block text-[10px] text-gray-500 uppercase">
+                Total Assets
+              </span>
+              <span className="font-mono font-bold text-sm">
+                {fmt(data.totalAssets)}
+              </span>
             </div>
             <div>
-              <span className="block text-[10px] text-gray-500 uppercase">Total Liabilities</span>
-              <span className="font-mono font-bold text-sm">{fmt(data.totalLiabilities)}</span>
+              <span className="block text-[10px] text-gray-500 uppercase">
+                Total Liabilities
+              </span>
+              <span className="font-mono font-bold text-sm">
+                {fmt(data.totalLiabilities)}
+              </span>
             </div>
             <div>
-              <span className="block text-[10px] text-gray-500 uppercase">Total Equity</span>
-              <span className="font-mono font-bold text-sm">{fmt(data.totalEquity)}</span>
+              <span className="block text-[10px] text-gray-500 uppercase">
+                Total Equity
+              </span>
+              <span className="font-mono font-bold text-sm">
+                {fmt(data.totalEquity)}
+              </span>
             </div>
             <div>
-              <span className="block text-[10px] text-gray-500 uppercase">Net Income</span>
-              <span className="font-mono font-bold text-sm">{fmt(data.currentNetIncome || 0)}</span>
+              <span className="block text-[10px] text-gray-500 uppercase">
+                Net Income
+              </span>
+              <span className="font-mono font-bold text-sm">
+                {fmt(data.currentNetIncome || 0)}
+              </span>
             </div>
           </div>
 
           {/* Assets Section */}
           <div className="mb-4">
-            <h3 className="font-bold text-xs uppercase bg-gray-200 px-2 py-1 mb-1">Assets</h3>
+            <h3 className="font-bold text-xs uppercase bg-gray-200 px-2 py-1 mb-1">
+              Assets
+            </h3>
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b font-bold text-left">
@@ -902,17 +1025,35 @@ export function BalanceSheetClient({
                 {data.assets.map((r) => (
                   <tr key={r.id} className="border-b border-gray-100">
                     <td className="py-0.5 font-mono text-[10px]">{r.code}</td>
-                    <td className="py-0.5" style={{ paddingLeft: `${(r.level || 0) * 12}px` }}>
-                      <span className={r.isGroup ? "font-bold uppercase" : "font-normal"}>{r.name}</span>
+                    <td
+                      className="py-0.5"
+                      style={{ paddingLeft: `${(r.level || 0) * 12}px` }}
+                    >
+                      <span
+                        className={
+                          r.isGroup ? "font-bold uppercase" : "font-normal"
+                        }
+                      >
+                        {r.name}
+                      </span>
                     </td>
-                    <td className="py-0.5 text-right font-mono font-semibold">{fmt(r.amount)}</td>
+                    <td className="py-0.5 text-right font-mono font-semibold">
+                      {fmt(r.amount)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-black font-bold">
-                  <td colSpan={2} className="py-1 text-right uppercase text-[10px]">Total Assets</td>
-                  <td className="py-1 text-right font-mono">{fmt(data.totalAssets)}</td>
+                  <td
+                    colSpan={2}
+                    className="py-1 text-right uppercase text-[10px]"
+                  >
+                    Total Assets
+                  </td>
+                  <td className="py-1 text-right font-mono">
+                    {fmt(data.totalAssets)}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -920,7 +1061,9 @@ export function BalanceSheetClient({
 
           {/* Liabilities Section */}
           <div className="mb-4">
-            <h3 className="font-bold text-xs uppercase bg-gray-200 px-2 py-1 mb-1">Liabilities</h3>
+            <h3 className="font-bold text-xs uppercase bg-gray-200 px-2 py-1 mb-1">
+              Liabilities
+            </h3>
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b font-bold text-left">
@@ -933,17 +1076,35 @@ export function BalanceSheetClient({
                 {data.liabilities.map((r) => (
                   <tr key={r.id} className="border-b border-gray-100">
                     <td className="py-0.5 font-mono text-[10px]">{r.code}</td>
-                    <td className="py-0.5" style={{ paddingLeft: `${(r.level || 0) * 12}px` }}>
-                      <span className={r.isGroup ? "font-bold uppercase" : "font-normal"}>{r.name}</span>
+                    <td
+                      className="py-0.5"
+                      style={{ paddingLeft: `${(r.level || 0) * 12}px` }}
+                    >
+                      <span
+                        className={
+                          r.isGroup ? "font-bold uppercase" : "font-normal"
+                        }
+                      >
+                        {r.name}
+                      </span>
                     </td>
-                    <td className="py-0.5 text-right font-mono font-semibold">{fmt(r.amount)}</td>
+                    <td className="py-0.5 text-right font-mono font-semibold">
+                      {fmt(r.amount)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t border-black font-bold">
-                  <td colSpan={2} className="py-1 text-right uppercase text-[10px]">Total Liabilities</td>
-                  <td className="py-1 text-right font-mono">{fmt(data.totalLiabilities)}</td>
+                  <td
+                    colSpan={2}
+                    className="py-1 text-right uppercase text-[10px]"
+                  >
+                    Total Liabilities
+                  </td>
+                  <td className="py-1 text-right font-mono">
+                    {fmt(data.totalLiabilities)}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -951,7 +1112,9 @@ export function BalanceSheetClient({
 
           {/* Equity Section */}
           <div className="mb-6">
-            <h3 className="font-bold text-xs uppercase bg-gray-200 px-2 py-1 mb-1">Equity</h3>
+            <h3 className="font-bold text-xs uppercase bg-gray-200 px-2 py-1 mb-1">
+              Equity
+            </h3>
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b font-bold text-left">
@@ -964,21 +1127,46 @@ export function BalanceSheetClient({
                 {data.equity.map((r) => (
                   <tr key={r.id} className="border-b border-gray-100">
                     <td className="py-0.5 font-mono text-[10px]">{r.code}</td>
-                    <td className="py-0.5" style={{ paddingLeft: `${(r.level || 0) * 12}px` }}>
-                      <span className={r.isGroup ? "font-bold uppercase" : "font-normal"}>{r.name}</span>
+                    <td
+                      className="py-0.5"
+                      style={{ paddingLeft: `${(r.level || 0) * 12}px` }}
+                    >
+                      <span
+                        className={
+                          r.isGroup ? "font-bold uppercase" : "font-normal"
+                        }
+                      >
+                        {r.name}
+                      </span>
                     </td>
-                    <td className="py-0.5 text-right font-mono font-semibold">{fmt(r.amount)}</td>
+                    <td className="py-0.5 text-right font-mono font-semibold">
+                      {fmt(r.amount)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t border-black font-bold">
-                  <td colSpan={2} className="py-1 text-right uppercase text-[10px]">Total Equity</td>
-                  <td className="py-1 text-right font-mono">{fmt(data.totalEquity)}</td>
+                  <td
+                    colSpan={2}
+                    className="py-1 text-right uppercase text-[10px]"
+                  >
+                    Total Equity
+                  </td>
+                  <td className="py-1 text-right font-mono">
+                    {fmt(data.totalEquity)}
+                  </td>
                 </tr>
                 <tr className="border-t-2 border-black font-black bg-gray-100">
-                  <td colSpan={2} className="py-1.5 text-right uppercase text-[10px]">Total Liabilities + Equity</td>
-                  <td className="py-1.5 text-right font-mono text-sm">{fmt(data.totalLiabilitiesAndEquity)}</td>
+                  <td
+                    colSpan={2}
+                    className="py-1.5 text-right uppercase text-[10px]"
+                  >
+                    Total Liabilities + Equity
+                  </td>
+                  <td className="py-1.5 text-right font-mono text-sm">
+                    {fmt(data.totalLiabilitiesAndEquity)}
+                  </td>
                 </tr>
               </tfoot>
             </table>
