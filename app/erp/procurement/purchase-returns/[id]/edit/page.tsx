@@ -463,26 +463,7 @@ export default function EditPurchaseReturnPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Season</Label>
-                        <Select
-                          value={formData.seasonId || ''}
-                          onValueChange={(val) => setFormData({ ...formData, seasonId: val })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Season" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {seasons
-                               .filter(s => s.name.toUpperCase().replace(/\s+/g, '') === 'SS26')
-                               .map((s) => (
-                                 <SelectItem key={s.id} value={s.id}>
-                                   {s.name}
-                                 </SelectItem>
-                               ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {/* Season field removed */}
                       <div className="space-y-2">
                         <Label>Supplier</Label>
                         <Input value={purchaseReturn.supplier?.name || 'N/A'} disabled />
@@ -497,9 +478,8 @@ export default function EditPurchaseReturnPage() {
                       <div className="space-y-2">
                         <Label>STax e-Inv #</Label>
                         <Input
-                          value={formData.staxEInvoiceNumber || ''}
-                          onChange={(e) => setFormData({ ...formData, staxEInvoiceNumber: e.target.value })}
-                          placeholder="e.g. ST-123456"
+                          value={formData.staxEInvoiceNumber || '—'}
+                          disabled
                         />
                       </div>
                       <div className="space-y-2">
@@ -541,13 +521,7 @@ export default function EditPurchaseReturnPage() {
                       <span>Total Return Amount</span>
                       <span>{formatCurrency(calculateTotal())}</span>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Internal Notes</Label>
-                      <Textarea
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      />
-                    </div>
+                     {/* Internal Notes field removed */}
                     <div className="flex gap-2">
                       <Button type="submit" className="flex-1" disabled={loading}>
                         {loading ? 'Updating...' : 'Update Purchase Return'}
