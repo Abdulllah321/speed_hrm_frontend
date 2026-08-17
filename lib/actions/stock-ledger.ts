@@ -252,12 +252,56 @@ export async function queueStockValuationReportExport(filters: {
                 showSilhouette: filters.showSilhouette,
                 showArticle: filters.showArticle,
                 showVariant: filters.showVariant,
+                previewJobId: (filters as any).previewJobId,
             }),
         });
         return response.data ?? { status: false, message: "No response from server" };
     } catch (error) {
         console.error("Queue stock valuation report export error:", error);
         return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function queueStockValuationPreview(filters: {
+    locationId?: string;
+    startDate?: string;
+    endDate?: string;
+    summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+    filterBrands?: string[];
+    filterDivisions?: string[];
+    filterCategories?: string[];
+    filterGenders?: string[];
+    filterSilhouettes?: string[];
+    searchText?: string;
+}) {
+    try {
+        const response = await authFetch("/stock-ledger/valuation-report/queue", {
+            method: "POST",
+            body: filters,
+        });
+        return response.data;
+    } catch (error: any) {
+        console.error("Queue stock valuation preview error:", error);
+        return { status: false, message: error.message || "Failed to queue stock valuation preview" };
+    }
+}
+
+export async function getStockValuationResult(jobId: string) {
+    try {
+        const response = await authFetch(`/stock-ledger/valuation-report/result/${jobId}`, {
+            method: "GET",
+        });
+        return response.data;
+    } catch (error: any) {
+        console.error("Get stock valuation result error:", error);
+        return { status: false, message: error.message || "Failed to fetch stock valuation result" };
     }
 }
 
@@ -397,6 +441,45 @@ export async function getAvailableStockSummaryReport(filters: {
     }
 }
 
+export async function queueAvailableStockSummaryPreview(filters: {
+    locationId?: string;
+    warehouseId?: string;
+    startDate?: string;
+    endDate?: string;
+    reportType?: "merged" | "separate";
+    summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+}) {
+    try {
+        const response = await authFetch("/stock-ledger/available-stock-summary/queue", {
+            method: "POST",
+            body: filters,
+        });
+        return response.data;
+    } catch (error: any) {
+        console.error("Queue available stock summary preview error:", error);
+        return { status: false, message: error.message || "Failed to queue available stock summary report preview" };
+    }
+}
+
+export async function getAvailableStockSummaryResult(jobId: string) {
+    try {
+        const response = await authFetch(`/stock-ledger/available-stock-summary/result/${jobId}`, {
+            method: "GET",
+        });
+        return response.data;
+    } catch (error: any) {
+        console.error("Get available stock summary result error:", error);
+        return { status: false, message: error.message || "Failed to fetch report result" };
+    }
+}
+
 export async function queueAvailableStockSummaryReportExport(filters: {
     locationId?: string;
     warehouseId?: string;
@@ -414,6 +497,7 @@ export async function queueAvailableStockSummaryReportExport(filters: {
     showArticle?: boolean;
     showVariant?: boolean;
     includeCosting?: boolean;
+    previewJobId?: string;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const url = `/stock-ledger/available-stock-summary/export/queue`;

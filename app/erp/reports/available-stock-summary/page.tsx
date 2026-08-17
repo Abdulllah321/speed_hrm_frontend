@@ -6,8 +6,12 @@ import { getWarehouses, Warehouse } from "@/lib/actions/warehouse";
 import {
     getAvailableStockSummaryReport,
     queueAvailableStockSummaryReportExport,
-    getAvailableStockSummaryReportExportStatus
+    getAvailableStockSummaryReportExportStatus,
+    queueAvailableStockSummaryPreview,
+    getAvailableStockSummaryResult,
 } from "@/lib/actions/stock-ledger";
+import { useReportSse } from "@/hooks/use-report-sse";
+import { ReportQueueProgress } from "@/components/reports/ReportQueueProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
@@ -143,11 +147,14 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
         return selectedWarehouseIds.length > 0 ? selectedWarehouseIds.join(",") : undefined;
     }, [selectedWarehouseIds]);
 
+    const [previewJobId, setPreviewJobId] = useState<string | null>(null);
+    const sseState = useReportSse(previewJobId);
+
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
 
         startTransition(async () => {
-            const result = await getAvailableStockSummaryReport({
+            const queueRes = await queueAvailableStockSummaryPreview({
                 locationId: locationParam,
                 warehouseId: warehouseParam,
                 startDate: dateRange.from?.toISOString(),
@@ -163,16 +170,10 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                 showVariant: groupingLevels.variant,
             });
 
-            if (result && result.status !== false) {
-                const rootData = Array.isArray(result?.data?.root)
-                    ? result.data.root
-                    : (Array.isArray(result?.data)
-                        ? result.data
-                        : (Array.isArray(result) ? result : []));
-                setReportData(rootData);
+            if (queueRes && queueRes.status && queueRes.data?.jobId) {
+                setPreviewJobId(queueRes.data.jobId);
             } else {
-                setReportData([]);
-                toast.error("Failed to load available stock summary report data");
+                toast.error("Failed to queue report preview");
             }
         });
     }, [locationParam, warehouseParam, dateRange, reportType, groupingLevels, summaryOnly]);
@@ -180,6 +181,23 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
     useEffect(() => {
         fetchReport();
     }, [locationParam, warehouseParam, reportType, groupingLevels]);
+
+    // Handle SSE completion to fetch GZIP report result
+    useEffect(() => {
+        if (sseState.status === "completed" && previewJobId) {
+            getAvailableStockSummaryResult(previewJobId).then((res) => {
+                if (res && res.status !== false && res.data) {
+                    const rootData = Array.isArray(res.data?.root)
+                        ? res.data.root
+                        : (Array.isArray(res.data) ? res.data : []);
+                    setReportData(rootData);
+                } else {
+                    setReportData([]);
+                    toast.error("Failed to load completed report preview data");
+                }
+            });
+        }
+    }, [sseState.status, previewJobId]);
 
     // Poll Hierarchy Excel Export Job Status
     useEffect(() => {
@@ -311,6 +329,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                     showArticle: groupingLevels.article,
                     showVariant: groupingLevels.variant,
                     includeCosting: true,
+                    previewJobId: previewJobId || undefined,
                 });
 
                 if (res && res.status && res.data?.jobId) {
@@ -360,6 +379,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
                 includeCosting: true,
+                previewJobId: previewJobId || undefined,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -411,6 +431,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
                 includeCosting: true,
+                previewJobId: previewJobId || undefined,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -709,6 +730,15 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                     </Button>
                 </div>
             </div>
+
+            <ReportQueueProgress
+                jobId={previewJobId}
+                status={sseState.status}
+                progressPercent={sseState.progressPercent}
+                queuePosition={sseState.queuePosition}
+                waitingCount={sseState.waitingCount}
+                failedReason={sseState.failedReason}
+            />
 
             {/* Print Header */}
             <div className="hidden print:block mb-6 border-b pb-4">

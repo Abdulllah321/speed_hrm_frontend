@@ -5,8 +5,12 @@ import { useAuth } from "@/components/providers/auth-provider";
 import {
     getStockValuationReport,
     queueStockValuationReportExport,
-    getStockValuationReportExportStatus
+    getStockValuationReportExportStatus,
+    queueStockValuationPreview,
+    getStockValuationResult,
 } from "@/lib/actions/stock-ledger";
+import { useReportSse } from "@/hooks/use-report-sse";
+import { ReportQueueProgress } from "@/components/reports/ReportQueueProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
@@ -226,10 +230,13 @@ export default function PosStockValuationReportPage() {
         setFilterCategories(new Set());
     };
 
+    const [previewJobId, setPreviewJobId] = useState<string | null>(null);
+    const sseState = useReportSse(previewJobId);
+
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
         startTransition(async () => {
-            const result = await getStockValuationReport({
+            const queueRes = await queueStockValuationPreview({
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
                 summaryOnly,
@@ -240,24 +247,45 @@ export default function PosStockValuationReportPage() {
                 showSilhouette: groupingLevels.silhouette,
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
+                filterBrands: Array.from(filterBrands),
+                filterDivisions: Array.from(filterDivisions),
+                filterCategories: Array.from(filterCategories),
+                filterGenders: Array.from(filterGenders),
+                filterSilhouettes: Array.from(filterSilhouettes),
+                searchText,
             });
-            if (result && result.status !== false) {
-                const reportRoot = result.data || result.root || (Array.isArray(result) ? result : []);
-                setReportData(Array.isArray(reportRoot) ? reportRoot : []);
-                if (result.meta?.total) {
-                    setTotalItemsCount(result.meta.total);
-                } else if (Array.isArray(reportRoot)) {
-                    setTotalItemsCount(reportRoot.length);
-                }
+
+            if (queueRes && queueRes.status && queueRes.data?.jobId) {
+                setPreviewJobId(queueRes.data.jobId);
             } else {
-                toast.error("Failed to load valuation report data");
+                toast.error("Failed to queue stock valuation report preview");
             }
         });
-    }, [dateRange, groupingLevels, summaryOnly]);
+    }, [dateRange, groupingLevels, summaryOnly, filterBrands, filterDivisions, filterCategories, filterGenders, filterSilhouettes, searchText]);
 
     useEffect(() => {
         fetchReport();
     }, [fetchReport]);
+
+    // Handle SSE completion to fetch GZIP report result
+    useEffect(() => {
+        if (sseState.status === "completed" && previewJobId) {
+            getStockValuationResult(previewJobId).then((res) => {
+                if (res && res.status !== false && res.data) {
+                    const reportRoot = res.data?.root || res.data || (Array.isArray(res.data) ? res.data : []);
+                    setReportData(Array.isArray(reportRoot) ? reportRoot : []);
+                    if (res.data?.meta?.total) {
+                        setTotalItemsCount(res.data.meta.total);
+                    } else if (Array.isArray(reportRoot)) {
+                        setTotalItemsCount(reportRoot.length);
+                    }
+                } else {
+                    setReportData([]);
+                    toast.error("Failed to load completed stock valuation report preview data");
+                }
+            });
+        }
+    }, [sseState.status, previewJobId]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -361,6 +389,7 @@ export default function PosStockValuationReportPage() {
                 showSilhouette: groupingLevels.silhouette,
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
+                previewJobId: previewJobId || undefined,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -416,6 +445,7 @@ export default function PosStockValuationReportPage() {
                 showSilhouette: groupingLevels.silhouette,
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
+                previewJobId: previewJobId || undefined,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -896,6 +926,15 @@ export default function PosStockValuationReportPage() {
                     </Button>
                 </div>
             </div>
+
+            <ReportQueueProgress
+                jobId={previewJobId}
+                status={sseState.status}
+                progressPercent={sseState.progressPercent}
+                queuePosition={sseState.queuePosition}
+                waitingCount={sseState.waitingCount}
+                failedReason={sseState.failedReason}
+            />
 
             {/* Print Header (Visible only when printed) */}
             <div className="hidden print:block mb-6 border-b pb-4">
