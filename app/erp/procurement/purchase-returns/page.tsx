@@ -139,6 +139,7 @@ export default function PurchaseReturnsPage() {
                       <th className="text-left p-3">Source</th>
                       <th className="text-left p-3">GRN #</th>
                       <th className="text-left p-3">Brand</th>
+                      <th className="text-left p-3">Remarks</th>
                       <th className="text-left p-3">Supplier</th>
                       <th className="text-left p-3">Type</th>
                       <th className="text-left p-3">Amount</th>
@@ -171,6 +172,18 @@ export default function PurchaseReturnsPage() {
                           </td>
                           <td className="p-3 font-mono text-xs">{grnNumber}</td>
                           <td className="p-3 font-medium">{brandNames}</td>
+                          {(() => {
+                            const poNotes = returnItem.grn?.purchaseOrder?.notes || 
+                                            returnItem.purchaseInvoice?.grn?.purchaseOrder?.notes || 
+                                            (returnItem.purchaseInvoice?.landedCost as any)?.grn?.purchaseOrder?.notes || 
+                                            returnItem.landedCost?.grn?.purchaseOrder?.notes || 
+                                            returnItem.reason || "—";
+                            return (
+                              <td className="p-3 text-sm max-w-[150px] truncate" title={poNotes}>
+                                {poNotes}
+                              </td>
+                            );
+                          })()}
                           <td className="p-3">{returnItem.supplier?.name || 'N/A'}</td>
                           <td className="p-3">{returnTypeLabels[returnItem.returnType]}</td>
                           <td className="p-3">{formatCurrency(returnItem.totalAmount)}</td>
