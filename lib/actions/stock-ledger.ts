@@ -369,7 +369,7 @@ export async function getAvailableStockSummaryReport(filters: {
     showSilhouette?: boolean;
     showArticle?: boolean;
     showVariant?: boolean;
-}, signal?: AbortSignal) {
+}) {
     try {
         const queryParams = new URLSearchParams();
         if (filters.locationId) queryParams.append("locationId", filters.locationId);
@@ -389,12 +389,9 @@ export async function getAvailableStockSummaryReport(filters: {
         const queryString = queryParams.toString();
         const url = `/stock-ledger/available-stock-summary${queryString ? `?${queryString}` : ""}`;
 
-        const response = await authFetch(url, { method: "GET", signal });
+        const response = await authFetch(url, { method: "GET" });
         return response.data;
     } catch (error: any) {
-        if (error?.name === "AbortError" || error?.message === "Request aborted") {
-            return { status: false, data: [], isAborted: true, message: "Request aborted" };
-        }
         console.error("Get available stock summary report error:", error);
         return { status: false, data: [], message: "Failed to fetch available stock summary report" };
     }

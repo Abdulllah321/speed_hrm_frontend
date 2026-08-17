@@ -143,18 +143,8 @@ export default function ERPAvailableStockSummaryReportPage() {
         return selectedWarehouseIds.length > 0 ? selectedWarehouseIds.join(",") : undefined;
     }, [selectedWarehouseIds]);
 
-    const abortControllerRef = useRef<AbortController | null>(null);
-
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
-
-        // Abort prior in-flight request on rapid filter toggles
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-
-        const controller = new AbortController();
-        abortControllerRef.current = controller;
 
         startTransition(async () => {
             const result = await getAvailableStockSummaryReport({
@@ -171,12 +161,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                 showSilhouette: groupingLevels.silhouette,
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
-            }, controller.signal);
-
-            if (result && result.isAborted) {
-                // Ignore aborted requests silently
-                return;
-            }
+            });
 
             if (result && result.status !== false) {
                 const rootData = Array.isArray(result?.data?.root)
