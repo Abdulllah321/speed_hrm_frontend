@@ -11,10 +11,13 @@ export interface PrintStockAdjustmentItem {
   item?: {
     sku?: string;
     description?: string | null;
+    name?: string | null;
     color?: { name: string } | null;
     size?: { name: string } | null;
-    category?: { name: string } | null;
+    brand?: { name: string } | null;
     division?: { name: string } | null;
+    gender?: { name: string } | null;
+    category?: { name: string } | null;
   } | null;
   swapItem?: {
     sku?: string;
@@ -33,6 +36,14 @@ export interface PrintStockAdjustmentData {
   reason?: string | null;
   notes?: string | null;
   createdById?: string | null;
+  createdBy?: {
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    name?: string;
+    email?: string;
+  } | null;
+  requesterName?: string | null;
   warehouse?: { name: string; code: string } | null;
   items: PrintStockAdjustmentItem[];
 }
@@ -62,35 +73,60 @@ export function printStockAdjustmentNote(
     adj.warehouse?.name ||
     "Head Office / Warehouse";
 
-  // Group items hierarchically: Division -> Category -> Product (Description)
+  // Resolve Requester Name & ID
+  let requesterName = adj.requesterName || "";
+  if (!requesterName && adj.createdBy) {
+    if (adj.createdBy.firstName || adj.createdBy.lastName) {
+      requesterName = `${adj.createdBy.firstName || ""} ${adj.createdBy.lastName || ""}`.trim();
+    } else if (adj.createdBy.name) {
+      requesterName = adj.createdBy.name;
+    } else if (adj.createdBy.email) {
+      requesterName = adj.createdBy.email;
+    }
+  }
+  if (!requesterName) {
+    requesterName = "System User";
+  }
+
+  const requesterId = adj.createdById || adj.createdBy?.id || "";
+
+  // Group items hierarchically: Brand > Division > Gender > Category > Items
   const groups: Record<
     string,
     {
       name: string;
       qty: number;
       val: number;
-      categories: Record<
+      divisions: Record<
         string,
         {
           name: string;
           qty: number;
           val: number;
-          products: Record<
+          genders: Record<
             string,
             {
               name: string;
               qty: number;
               val: number;
-              skus: Array<{
-                sku: string;
-                description: string;
-                color: string;
-                size: string;
-                qty: number;
-                rate: number;
-                val: number;
-                swapSku?: string;
-              }>;
+              categories: Record<
+                string,
+                {
+                  name: string;
+                  qty: number;
+                  val: number;
+                  skus: Array<{
+                    sku: string;
+                    description: string;
+                    color: string;
+                    size: string;
+                    qty: number;
+                    rate: number;
+                    val: number;
+                    swapSku?: string;
+                  }>;
+                }
+              >;
             }
           >;
         }
@@ -100,31 +136,32 @@ export function printStockAdjustmentNote(
 
   let overallQty = 0;
   let overallVal = 0;
-  let divisionBrandName = "Speed (pvt.) Limited";
+  let primaryBrandName = "Speed (pvt.) Limited";
 
   adj.items?.forEach((item) => {
+    const brandName = item.item?.brand?.name || "General Brand";
     const divName = item.item?.division?.name || "General Division";
+    const genderName = item.item?.gender?.name || "Unisex / General";
     const catName = item.item?.category?.name || "General Category";
-    const prodName = item.item?.description || "General Product";
 
-    if (item.item?.division?.name) {
-      divisionBrandName = item.item.division.name.toUpperCase();
+    if (item.item?.brand?.name) {
+      primaryBrandName = item.item.brand.name.toUpperCase();
+    } else if (item.item?.division?.name) {
+      primaryBrandName = item.item.division.name.toUpperCase();
     }
 
-    if (!groups[divName]) {
-      groups[divName] = { name: divName, qty: 0, val: 0, categories: {} };
+    if (!groups[brandName]) {
+      groups[brandName] = { name: brandName, qty: 0, val: 0, divisions: {} };
     }
-    if (!groups[divName].categories[catName]) {
-      groups[divName].categories[catName] = {
+    if (!groups[brandName].divisions[divName]) {
+      groups[brandName].divisions[divName] = { name: divName, qty: 0, val: 0, genders: {} };
+    }
+    if (!groups[brandName].divisions[divName].genders[genderName]) {
+      groups[brandName].divisions[divName].genders[genderName] = { name: genderName, qty: 0, val: 0, categories: {} };
+    }
+    if (!groups[brandName].divisions[divName].genders[genderName].categories[catName]) {
+      groups[brandName].divisions[divName].genders[genderName].categories[catName] = {
         name: catName,
-        qty: 0,
-        val: 0,
-        products: {},
-      };
-    }
-    if (!groups[divName].categories[catName].products[prodName]) {
-      groups[divName].categories[catName].products[prodName] = {
-        name: prodName,
         qty: 0,
         val: 0,
         skus: [],
@@ -149,16 +186,21 @@ export function printStockAdjustmentNote(
     overallQty += qty;
     overallVal += val;
 
-    groups[divName].qty += qty;
-    groups[divName].val += val;
-    groups[divName].categories[catName].qty += qty;
-    groups[divName].categories[catName].val += val;
-    groups[divName].categories[catName].products[prodName].qty += qty;
-    groups[divName].categories[catName].products[prodName].val += val;
+    groups[brandName].qty += qty;
+    groups[brandName].val += val;
+    groups[brandName].divisions[divName].qty += qty;
+    groups[brandName].divisions[divName].val += val;
+    groups[brandName].divisions[divName].genders[genderName].qty += qty;
+    groups[brandName].divisions[divName].genders[genderName].val += val;
+    groups[brandName].divisions[divName].genders[genderName].categories[catName].qty += qty;
+    groups[brandName].divisions[divName].genders[genderName].categories[catName].val += val;
 
-    groups[divName].categories[catName].products[prodName].skus.push({
+    const barCode = item.item?.barCode || (item.item as any)?.barcode || (item.item as any)?.upc || "";
+
+    groups[brandName].divisions[divName].genders[genderName].categories[catName].skus.push({
       sku: item.item?.sku || "N/A",
-      description: item.item?.description || "",
+      barCode,
+      description: item.item?.description || item.item?.name || "Item Details",
       color: item.item?.color?.name || "N/A",
       size: item.item?.size?.name || "N/A",
       qty,
@@ -168,222 +210,263 @@ export function printStockAdjustmentNote(
     });
   });
 
-  // Generate table rows HTML
+  // Build Table HTML with clean grid lines and Brand > Division > Gender > Category tree
   let tableRowsHtml = "";
-  Object.values(groups).forEach((div) => {
+  Object.values(groups).forEach((brand) => {
     tableRowsHtml += `
-            <tr class="division-row">
-                <td class="font-bold text-left">${div.name}</td>
-                <td></td>
-                <td></td>
-                <td class="text-right font-bold">${div.qty}</td>
-                <td></td>
-                <td class="text-right font-bold">${div.val.toLocaleString("en-PK")}</td>
-            </tr>
+      <tr class="brand-row">
+        <td colspan="3" class="text-left font-bold">BRAND: ${brand.name.toUpperCase()}</td>
+        <td class="text-right font-bold">${brand.qty}</td>
+        <td></td>
+        <td class="text-right font-bold">${brand.val.toLocaleString("en-PK")}</td>
+      </tr>
+    `;
+
+    Object.values(brand.divisions).forEach((div) => {
+      tableRowsHtml += `
+        <tr class="division-row">
+          <td colspan="3" class="text-left indent-1">DIVISION: ${div.name}</td>
+          <td class="text-right font-bold">${div.qty}</td>
+          <td></td>
+          <td class="text-right font-bold">${div.val.toLocaleString("en-PK")}</td>
+        </tr>
+      `;
+
+      Object.values(div.genders).forEach((gender) => {
+        tableRowsHtml += `
+          <tr class="gender-row">
+            <td colspan="3" class="text-left indent-2">GENDER: ${gender.name}</td>
+            <td class="text-right font-bold">${gender.qty}</td>
+            <td></td>
+            <td class="text-right font-bold">${gender.val.toLocaleString("en-PK")}</td>
+          </tr>
         `;
 
-    Object.values(div.categories).forEach((cat) => {
-      tableRowsHtml += `
-                <tr class="category-row">
-                    <td class="font-bold text-left indent-1">${cat.name}</td>
-                    <td></td>
-                    <td></td>
-                    <td class="text-right">${cat.qty}</td>
-                    <td></td>
-                    <td class="text-right font-semibold">${cat.val.toLocaleString("en-PK")}</td>
-                </tr>
-            `;
-
-      Object.values(cat.products).forEach((prod) => {
-        tableRowsHtml += `
-                    <tr class="product-row">
-                        <td class="font-bold text-left indent-2">${prod.name}</td>
-                        <td></td>
-                        <td></td>
-                        <td class="text-right">${prod.qty}</td>
-                        <td></td>
-                        <td class="text-right font-semibold">${prod.val.toLocaleString("en-PK")}</td>
-                    </tr>
-                `;
-
-        prod.skus.forEach((sku) => {
+        Object.values(gender.categories).forEach((cat) => {
           tableRowsHtml += `
-                        <tr class="sku-row">
-                            <td class="text-left indent-3">
-                                <span style="border-bottom: 1px dotted #999;">${sku.sku}</span> &nbsp;&nbsp;&nbsp;&nbsp; ${sku.description}
-                                ${sku.swapSku ? `<br/><span style="color:#d97706; font-size:10px;">(Swapped with: ${sku.swapSku})</span>` : ""}
-                            </td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td class="text-right">${sku.qty}</td>
-                            <td class="text-right">${sku.rate.toLocaleString("en-PK")}</td>
-                            <td class="text-right font-medium">${sku.val.toLocaleString("en-PK")}</td>
-                        </tr>
-                        <tr class="detail-row">
-                            <td></td>
-                            <td class="text-left">${sku.color}</td>
-                            <td class="text-left">${sku.size}</td>
-                            <td class="text-right">${sku.qty}</td>
-                            <td></td>
-                            <td></td>
-                        </tr>
-                    `;
+            <tr class="category-row">
+              <td colspan="3" class="text-left indent-3">CATEGORY: ${cat.name}</td>
+              <td class="text-right font-bold">${cat.qty}</td>
+              <td></td>
+              <td class="text-right font-bold">${cat.val.toLocaleString("en-PK")}</td>
+            </tr>
+          `;
+
+          cat.skus.forEach((sku) => {
+            tableRowsHtml += `
+              <tr class="item-row">
+                <td class="text-left indent-4">
+                  <div class="sku-code">${sku.sku}</div>
+                  ${sku.barCode ? `<div class="barcode-sub"><span class="sub-label">Barcode:</span> ${sku.barCode}</div>` : ""}
+                  <div class="article-name">${sku.description}</div>
+                  <div class="meta-sub"><span class="sub-label">Color:</span> ${sku.color} &nbsp;|&nbsp; <span class="sub-label">Size:</span> ${sku.size}</div>
+                  ${sku.swapSku ? `<div class="swap-tag">(Swapped with: ${sku.swapSku})</div>` : ""}
+                </td>
+                <td class="text-center">${sku.color}</td>
+                <td class="text-center font-bold">${sku.size}</td>
+                <td class="text-right font-mono font-medium">${sku.qty}</td>
+                <td class="text-right font-mono">${sku.rate.toLocaleString("en-PK")}</td>
+                <td class="text-right font-mono font-bold">${sku.val.toLocaleString("en-PK")}</td>
+              </tr>
+            `;
+          });
         });
       });
     });
   });
 
   win.document.write(`
-        <html><head><title>Adjustment Note - ${refNo}</title>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; color: #111; padding: 30px 40px; font-size: 11px; }
-            
-            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
-            .company-title { font-size: 15px; font-weight: bold; }
-            .document-title { font-size: 16px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 3px; display: inline-block; margin-top: 5px; }
-            .brand-header { font-size: 20px; font-weight: bold; text-align: right; vertical-align: top; }
-            
-            .meta-table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px; }
-            .meta-table td { padding: 4px 0; font-size: 11px; vertical-align: top; }
-            .meta-label { font-weight: bold; width: 120px; }
-            .status-box { border: 1.5px solid #000; padding: 6px 20px; font-weight: bold; font-size: 13px; text-transform: uppercase; color: ${
-              adj.status === "SUBMITTED"
-                ? "green"
-                : adj.status === "REJECTED" || adj.status === "CANCELLED"
-                  ? "red"
-                  : "blue"
-            }; float: right; margin-top: 10px; }
-            
-            table.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            table.data-table th { border-bottom: 2px solid #000; padding: 8px 6px; font-weight: bold; text-align: left; }
-            table.data-table td { padding: 6px; vertical-align: middle; border: none; }
-            
-            .text-right { text-align: right; }
-            .text-left { text-align: left; }
-            
-            .indent-1 { padding-left: 20px !important; }
-            .indent-2 { padding-left: 40px !important; }
-            .indent-3 { padding-left: 60px !important; }
-            
-            .division-row td { padding-top: 10px; font-size: 11px; }
-            .category-row td { font-size: 11px; }
-            .product-row td { font-size: 11px; }
-            .sku-row td { font-size: 11px; }
-            .detail-row td { color: #444; font-size: 10px; padding-bottom: 8px; border-bottom: 1px dotted #ccc; }
-            
-            .totals-section { border-top: 2px solid #000; margin-top: 10px; }
-            .totals-table { width: 100%; border-collapse: collapse; }
-            .totals-table td { padding: 8px; font-weight: bold; font-size: 12px; }
-            .double-underline { border-bottom: 3px double #000; }
-            
-            .remarks-section { margin-top: 25px; font-size: 11px; border-top: 1px solid #ccc; padding-top: 10px; }
-            .remarks-label { font-weight: bold; margin-bottom: 4px; }
-            
-            .signatures { width: 100%; margin-top: 80px; }
-            .signatures td { width: 50%; text-align: center; font-weight: bold; font-size: 10px; border-top: 1px solid #000; padding-top: 8px; }
-        </style>
-        </head>
-        <body onload="window.print()">
-            <table class="header-table">
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Stock Adjustment Note - ${refNo}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; padding: 25px 30px; font-size: 10.5px; line-height: 1.3; }
+
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        .company-title { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; color: #0f172a; text-transform: uppercase; }
+        .document-title { font-size: 13px; font-weight: 700; color: #2563eb; text-transform: uppercase; margin-top: 3px; display: inline-block; border-bottom: 2px solid #2563eb; padding-bottom: 1px; }
+        .brand-header { font-size: 18px; font-weight: 800; text-align: right; color: #334155; text-transform: uppercase; }
+
+        .meta-card { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; background-color: #f8fafc; padding: 10px 14px; margin-bottom: 14px; }
+        .meta-grid { width: 100%; border-collapse: collapse; }
+        .meta-grid td { padding: 3px 6px; vertical-align: top; font-size: 10.5px; }
+        .meta-label { font-weight: 700; color: #475569; width: 120px; text-transform: uppercase; font-size: 9.5px; }
+        .meta-val { font-weight: 600; color: #0f172a; }
+
+        .status-badge {
+          display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border: 1.5px solid;
+          color: ${adj.status === "SUBMITTED" ? "#15803d" : adj.status === "REJECTED" || adj.status === "CANCELLED" ? "#b91c1c" : "#1d4ed8"};
+          border-color: ${adj.status === "SUBMITTED" ? "#86efac" : adj.status === "REJECTED" || adj.status === "CANCELLED" ? "#fca5a5" : "#93c5fd"};
+          background-color: ${adj.status === "SUBMITTED" ? "#f0fdf4" : adj.status === "REJECTED" || adj.status === "CANCELLED" ? "#fef2f2" : "#eff6ff"};
+        }
+
+        /* Compact Table with Grid Lines */
+        table.data-table { width: 100%; border-collapse: collapse; margin-top: 8px; border: 1px solid #cbd5e1; }
+        table.data-table th { background-color: #1e293b; color: #ffffff; padding: 6px 8px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; border: 1px solid #334155; text-align: left; }
+        table.data-table td { padding: 4px 8px; border: 1px solid #e2e8f0; vertical-align: middle; }
+
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+        .text-center { text-align: center; }
+        .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
+        .indent-1 { padding-left: 14px !important; }
+        .indent-2 { padding-left: 24px !important; }
+        .indent-3 { padding-left: 34px !important; }
+        .indent-4 { padding-left: 44px !important; }
+
+        .brand-row { background-color: #e2e8f0; font-weight: 800; color: #0f172a; font-size: 10.5px; }
+        .brand-row td { border: 1px solid #cbd5e1; }
+
+        .division-row { background-color: #f1f5f9; font-weight: 700; color: #1e293b; font-size: 10px; }
+        .division-row td { border: 1px solid #e2e8f0; }
+
+        .gender-row { background-color: #f8fafc; font-weight: 600; color: #334155; font-size: 10px; }
+        .gender-row td { border: 1px solid #e2e8f0; }
+
+        .category-row { background-color: #ffffff; font-weight: 600; color: #475569; font-size: 10px; }
+        .category-row td { border: 1px solid #e2e8f0; }
+
+        .item-row { background-color: #ffffff; }
+        .item-row td { border: 1px solid #e2e8f0; }
+
+        .sku-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 700; color: #2563eb; font-size: 10.5px; }
+        .barcode-sub { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: #059669; font-size: 9.5px; font-weight: 600; margin-top: 1px; }
+        .sub-label { color: #64748b; font-weight: 500; font-size: 9px; text-transform: uppercase; }
+        .article-name { color: #334155; font-weight: 600; font-size: 10px; margin-top: 1px; }
+        .meta-sub { color: #475569; font-size: 9.5px; margin-top: 1px; }
+        .swap-tag { color: #d97706; font-size: 9.5px; font-weight: 600; margin-top: 1px; }
+
+        .totals-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .totals-table td { padding: 6px 8px; font-weight: 800; font-size: 11px; border-top: 2px solid #0f172a; border-bottom: 3px double #0f172a; }
+
+        .remarks-box { margin-top: 14px; border: 1px solid #e2e8f0; border-radius: 4px; background-color: #f8fafc; padding: 8px 12px; }
+        .remarks-title { font-weight: 700; color: #475569; font-size: 9.5px; text-transform: uppercase; margin-bottom: 3px; }
+
+        .signatures-container { width: 100%; margin-top: 50px; page-break-inside: avoid; }
+        .signatures-table { width: 100%; border-collapse: collapse; }
+        .signatures-table td { width: 50%; vertical-align: bottom; text-align: center; padding: 0 30px; }
+        .sig-line { border-top: 1.5px solid #0f172a; padding-top: 6px; font-size: 10px; }
+        .sig-title { font-weight: 700; text-transform: uppercase; color: #475569; font-size: 9.5px; }
+        .sig-name { font-weight: 800; color: #0f172a; font-size: 11px; margin-top: 2px; }
+        .sig-id { color: #64748b; font-size: 9.5px; font-weight: 500; font-family: monospace; }
+      </style>
+    </head>
+    <body onload="window.print()">
+      <table class="header-table">
+        <tr>
+          <td>
+            <div class="company-title">Speed (Private) Limited</div>
+            <div class="document-title">Stock Adjustment Note</div>
+          </td>
+          <td class="brand-header">${primaryBrandName}</td>
+        </tr>
+      </table>
+
+      <div class="meta-card">
+        <table class="meta-grid">
+          <tr>
+            <td style="width: 55%;">
+              <table style="width: 100%;">
                 <tr>
-                    <td>
-                        <div class="company-title">Speed (Private) Limited</div>
-                        <div class="document-title">Stock Adjustment Note</div>
-                    </td>
-                    <td class="brand-header">${divisionBrandName}</td>
+                  <td class="meta-label">Financial Year:</td>
+                  <td class="meta-val">2026</td>
                 </tr>
-            </table>
-            
-            <table class="meta-table">
                 <tr>
-                    <td style="width: 50%;">
-                        <table style="width: 100%;">
-                            <tr>
-                                <td class="meta-label">Financial Year :</td>
-                                <td>2,026</td>
-                            </tr>
-                            <tr>
-                                <td class="meta-label">Stock Adjusted At :</td>
-                                <td>${locationName}</td>
-                            </tr>
-                            <tr>
-                                <td class="meta-label">S.A.N. No :</td>
-                                <td style="font-weight: bold;">${refNo}</td>
-                            </tr>
-                            <tr>
-                                <td class="meta-label">Employee / User :</td>
-                                <td>${adj.createdById || "System"}</td>
-                            </tr>
-                            <tr>
-                                <td class="meta-label">Remarks :</td>
-                                <td>${adj.reason || "Stock Count Adjustment"}</td>
-                            </tr>
-                        </table>
-                    </td>
-                    <td style="width: 50%; vertical-align: top;">
-                        <div style="float: right; text-align: right;">
-                            <table style="width: 100%; margin-bottom: 10px;">
-                                <tr>
-                                    <td class="meta-label" style="text-align: right; padding-right: 15px;">Date :</td>
-                                    <td>${dateStr}</td>
-                                </tr>
-                            </table>
-                            <div class="status-box">${statusLabel}</div>
-                        </div>
-                    </td>
+                  <td class="meta-label">Adjusted Location:</td>
+                  <td class="meta-val">${locationName}</td>
                 </tr>
-            </table>
-            
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th class="text-left" style="width: 40%;">GPC / Category / Product</th>
-                        <th class="text-left" style="width: 15%;">Color</th>
-                        <th class="text-left" style="width: 10%;">Size</th>
-                        <th class="text-right" style="width: 10%;">Quantity</th>
-                        <th class="text-right" style="width: 12%;">Selling Price (Rs.)</th>
-                        <th class="text-right" style="width: 13%;">Total Value (Rs.)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRowsHtml}
-                </tbody>
-            </table>
-            
-            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
                 <tr>
-                    <td style="width: 40%;"></td>
-                    <td style="width: 15%;"></td>
-                    <td style="width: 10%;"></td>
-                    <td class="text-right double-underline" style="width: 10%; font-weight: bold; font-size: 11px; padding: 6px;">${overallQty}</td>
-                    <td style="width: 12%;"></td>
-                    <td class="text-right double-underline" style="font-weight: bold; font-size: 11px; padding: 6px; width: 13%;">${overallVal.toLocaleString(
-                      "en-PK",
-                    )}</td>
+                  <td class="meta-label">S.A.N. Ref No:</td>
+                  <td class="meta-val" style="color: #2563eb;">${refNo}</td>
                 </tr>
-            </table>
-            
-            ${
-              adj.notes
-                ? `
-                <div class="remarks-section">
-                    <div class="remarks-label">Internal Instructions / Notes:</div>
-                    <div>${adj.notes}</div>
-                </div>
-            `
-                : ""
-            }
-            
-            <table class="signatures">
                 <tr>
-                    <td style="padding-right: 40px;">Store Manager / Requester</td>
-                    <td style="padding-left: 40px;">ERP Head Office Approval</td>
+                  <td class="meta-label">Requester Name:</td>
+                  <td class="meta-val">${requesterName} ${requesterId ? `<span style="color:#64748b; font-weight:normal; font-size:9.5px;">(${requesterId})</span>` : ""}</td>
                 </tr>
-            </table>
-        </body>
-        </html>
-    `);
+                <tr>
+                  <td class="meta-label">Reason / Purpose:</td>
+                  <td class="meta-val">${adj.reason || "Stock Count Adjustment"}</td>
+                </tr>
+              </table>
+            </td>
+            <td style="width: 45%; text-align: right; vertical-align: top;">
+              <table style="width: 100%;">
+                <tr>
+                  <td class="meta-label" style="text-align: right; padding-right: 8px;">Date:</td>
+                  <td class="meta-val" style="text-align: left; width: 90px;">${dateStr}</td>
+                </tr>
+              </table>
+              <div style="margin-top: 10px; text-align: right;">
+                <div class="status-badge">${statusLabel}</div>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 42%;">Product / SKU</th>
+            <th class="text-center" style="width: 13%;">Color</th>
+            <th class="text-center" style="width: 10%;">Size</th>
+            <th class="text-right" style="width: 10%;">Qty</th>
+            <th class="text-right" style="width: 12%;">Price (PKR)</th>
+            <th class="text-right" style="width: 13%;">Total (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRowsHtml}
+        </tbody>
+      </table>
+
+      <table class="totals-table">
+        <tr>
+          <td style="width: 42%;" class="text-left">TOTAL ADJUSTED STOCK</td>
+          <td style="width: 13%;"></td>
+          <td style="width: 10%;"></td>
+          <td style="width: 10%;" class="text-right font-mono">${overallQty}</td>
+          <td style="width: 12%;"></td>
+          <td style="width: 13%;" class="text-right font-mono">Rs. ${overallVal.toLocaleString("en-PK")}</td>
+        </tr>
+      </table>
+
+      ${
+        adj.notes
+          ? `
+          <div class="remarks-box">
+            <div class="remarks-title">Internal Notes / Instructions</div>
+            <div style="font-weight: 500;">${adj.notes}</div>
+          </div>
+        `
+          : ""
+      }
+
+      <div class="signatures-container">
+        <table class="signatures-table">
+          <tr>
+            <td>
+              <div class="sig-line">
+                <div class="sig-title">Prepared / Requested By</div>
+                <div class="sig-name">${requesterName}</div>
+                ${requesterId ? `<div class="sig-id">ID: ${requesterId}</div>` : ""}
+              </div>
+            </td>
+            <td>
+              <div class="sig-line">
+                <div class="sig-title">Head Office Approval</div>
+                <div class="sig-name">Authorized Signature</div>
+                <div class="sig-id">ERP Management</div>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </body>
+    </html>
+  `);
   win.document.close();
 }
