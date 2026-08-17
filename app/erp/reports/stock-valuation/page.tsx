@@ -172,7 +172,7 @@ export default function PosStockValuationReportPage() {
         gender: true,
         silhouette: true,
         article: true,
-        variant: false,
+        variant: true,
     });
 
     const [reportData, setReportData] = useState<any[]>([]);
