@@ -51,6 +51,7 @@ export default function ERPAvailableStockSummaryReportPage() {
     });
 
     const [searchQuery, setSearchQuery] = useState("");
+    const [reportType, setReportType] = useState<"merged" | "separate">("merged");
 
     const [groupingLevels, setGroupingLevels] = useState({
         brand: true,
@@ -151,6 +152,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                 warehouseId: warehouseParam,
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
+                reportType,
                 summaryOnly,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
@@ -172,11 +174,11 @@ export default function ERPAvailableStockSummaryReportPage() {
                 toast.error("Failed to load available stock summary report data");
             }
         });
-    }, [locationParam, warehouseParam, dateRange, groupingLevels, summaryOnly]);
+    }, [locationParam, warehouseParam, dateRange, reportType, groupingLevels, summaryOnly]);
 
     useEffect(() => {
         fetchReport();
-    }, [locationParam, warehouseParam, groupingLevels]);
+    }, [locationParam, warehouseParam, reportType, groupingLevels]);
 
     // Poll Hierarchy Excel Export Job Status
     useEffect(() => {
@@ -298,6 +300,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                     endDate: dateRange.to.toISOString(),
                     format: "xlsx",
                     exportType: "flat",
+                    reportType,
                     summaryOnly,
                     showBrand: groupingLevels.brand,
                     showDivision: groupingLevels.division,
@@ -345,6 +348,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                 endDate: dateRange.to.toISOString(),
                 format: "xlsx",
                 exportType: "hierarchical",
+                reportType,
                 summaryOnly,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
@@ -394,6 +398,7 @@ export default function ERPAvailableStockSummaryReportPage() {
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
                 format: "pdf",
+                reportType,
                 summaryOnly,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
@@ -756,6 +761,34 @@ export default function ERPAvailableStockSummaryReportPage() {
                                 }
                             }}
                         />
+                    </div>
+
+                    {/* Report Mode Toggle: Merged vs Separate */}
+                    <div className="flex flex-col gap-1.5 min-w-[200px]">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                            <Layers className="h-3.5 w-3.5 text-primary" />
+                            Stock View Mode
+                        </span>
+                        <div className="flex items-center p-1 bg-background border border-slate-200 dark:border-slate-800 rounded-lg h-10">
+                            <Button
+                                type="button"
+                                variant={reportType === "merged" ? "default" : "ghost"}
+                                size="sm"
+                                onClick={() => setReportType("merged")}
+                                className="flex-1 h-8 text-xs font-semibold"
+                            >
+                                Merged
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={reportType === "separate" ? "default" : "ghost"}
+                                size="sm"
+                                onClick={() => setReportType("separate")}
+                                className="flex-1 h-8 text-xs font-semibold"
+                            >
+                                Separate
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Search Bar */}

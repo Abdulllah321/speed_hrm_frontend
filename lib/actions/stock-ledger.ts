@@ -360,6 +360,7 @@ export async function getAvailableStockSummaryReport(filters: {
     warehouseId?: string;
     startDate?: string;
     endDate?: string;
+    reportType?: "merged" | "separate";
     summaryOnly?: boolean;
     showBrand?: boolean;
     showDivision?: boolean;
@@ -375,6 +376,7 @@ export async function getAvailableStockSummaryReport(filters: {
         if (filters.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
         if (filters.startDate) queryParams.append("startDate", filters.startDate);
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.reportType) queryParams.append("reportType", filters.reportType);
         if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
         if (filters.showBrand !== undefined) queryParams.append("showBrand", String(filters.showBrand));
         if (filters.showDivision !== undefined) queryParams.append("showDivision", String(filters.showDivision));
@@ -402,6 +404,7 @@ export async function queueAvailableStockSummaryReportExport(filters: {
     endDate?: string;
     format: "xlsx" | "pdf";
     exportType?: "hierarchical" | "flat";
+    reportType?: "merged" | "separate";
     summaryOnly?: boolean;
     showBrand?: boolean;
     showDivision?: boolean;
