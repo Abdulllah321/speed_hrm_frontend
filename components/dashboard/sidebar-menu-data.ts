@@ -793,19 +793,56 @@ export const menuData: MenuItem[] = [
     title: "Inventory",
     icon: Package,
     environment: "ERP",
-    permissions: ["inventory.read", "erp.item.read", "erp.item.create"],
+    permissions: [
+      "inventory.read",
+      "erp.inventory.view",
+      "erp.item.read",
+      "erp.item.create",
+      "erp.warehouse.read",
+      "erp.inventory.warehouse.view",
+      "erp.inventory.stock-transfer.read",
+      "erp.inventory.delivery-note.read",
+      "erp.inventory.stock-ledger.read",
+      "erp.inventory.transfer.create",
+    ],
     children: [
-      { title: "Dashboard", href: "/erp/inventory" },
+      {
+        title: "Dashboard",
+        href: "/erp/inventory",
+        permissions: ["erp.inventory.view", "inventory.read"],
+      },
       {
         title: "Warehouse WMS",
-        permissions: ["erp.warehouse.read", "erp.warehouse.create"],
+        permissions: [
+          "erp.inventory.warehouse.view",
+          "erp.warehouse.read",
+          "erp.warehouse.create",
+          "erp.inventory.explorer.view",
+          "erp.inventory.warehouse.inventory.view",
+        ],
         children: [
-          { title: "Dashboard", href: "/erp/inventory/warehouse" },
-          { title: "Warehouse", href: "/erp/inventory/warehouse/add" },
-          { title: "Inventory Explorer", href: "/erp/inventory/explorer" },
+          {
+            title: "Dashboard",
+            href: "/erp/inventory/warehouse",
+            permissions: ["erp.inventory.warehouse.view", "erp.warehouse.read"],
+          },
+          {
+            title: "Warehouse",
+            href: "/erp/inventory/warehouse/add",
+            permissions: ["erp.inventory.warehouse.create", "erp.warehouse.create"],
+          },
+          {
+            title: "Inventory Explorer",
+            href: "/erp/inventory/explorer",
+            permissions: ["erp.inventory.explorer.view", "erp.inventory.view"],
+          },
           {
             title: "Inventory List",
             href: "/erp/inventory/warehouse/inventory",
+            permissions: [
+              "erp.inventory.warehouse.inventory.view",
+              "erp.warehouse.read",
+            ],
           },
         ],
       },
@@ -826,7 +863,7 @@ export const menuData: MenuItem[] = [
           {
             title: "Bulk Discount",
             href: "/erp/items/bulk-discount",
-            permissions: ["erp.item.update"],
+            permissions: ["erp.item.update", "erp.item.bulk-discount"],
           },
           {
             title: "Campaigns",
@@ -838,30 +875,59 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Transactions",
+        permissions: [
+          "erp.inventory.stock-ledger.read",
+          "erp.inventory.stock-ledger.update",
+          "erp.inventory.delivery-note.read",
+          "erp.inventory.stock-transfer.read",
+          "erp.inventory.transfer.create",
+          "erp.inventory.claims.acknowledge",
+        ],
         children: [
           {
             title: "Stock Ledger",
             href: "/erp/inventory/transactions/stock-received",
+            permissions: ["erp.inventory.stock-ledger.read"],
           },
           {
             title: "Stock Adjustment",
             href: "/erp/inventory/transactions/stock-adjustment",
+            permissions: [
+              "erp.inventory.stock-ledger.read",
+              "erp.inventory.stock-ledger.update",
+            ],
           },
           {
             title: "Delivery Note",
             href: "/erp/inventory/transactions/delivery-note",
+            permissions: [
+              "erp.inventory.delivery-note.read",
+              "erp.inventory.delivery-note.create",
+            ],
           },
           {
             title: "Stock Requisition",
             href: "/erp/inventory/transactions/stock-requisition",
+            permissions: [
+              "erp.inventory.stock-transfer.read",
+              "erp.inventory.transfer.create",
+            ],
           },
           {
             title: "Requisition Pending List",
             href: "/erp/inventory/transactions/stock-requisition/pending",
+            permissions: [
+              "erp.inventory.stock-transfer.read",
+              "erp.inventory.transfer.create",
+            ],
           },
           {
             title: "Stock Transfer",
             href: "/erp/inventory/transactions/stock-transfer",
+            permissions: [
+              "erp.inventory.stock-transfer.read",
+              "erp.inventory.transfer.create",
+            ],
           },
           {
             title: "PLM Claims",
