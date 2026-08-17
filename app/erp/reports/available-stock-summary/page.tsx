@@ -1098,6 +1098,25 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                                         const row = flatRows[virtualRow.index];
                                         const val = row.totals || {};
 
+                                        if (row.type === 'location') {
+                                            return (
+                                                <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-amber-950 text-amber-100 font-extrabold text-[13px] border-b-2 border-amber-800">
+                                                    <td colSpan={3} className="p-3 pl-3 text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                                                        <Store className="h-4 w-4 text-amber-400" />
+                                                        LOCATION: {row.label}
+                                                    </td>
+                                                    <td className="p-3 text-right text-emerald-400 font-black">{formatVal(val.quantity)}</td>
+                                                    <td className="p-3 text-right text-amber-400 font-black">{formatVal(val.transit)}</td>
+                                                    <td className="p-3 text-right text-purple-300 font-black">{formatVal(val.reserved)}</td>
+                                                    <td className="p-3 text-right text-white font-black">{formatVal(val.total)}</td>
+                                                    <td className="p-3 text-right text-slate-400">-</td>
+                                                    <td className="p-3 text-right text-indigo-300 font-black">{formatPriceVal(val.value)}</td>
+                                                    <td className="p-3 text-right text-slate-400">-</td>
+                                                    <td className="p-3 text-right text-emerald-400 font-black">{formatPriceVal(val.costingValue)}</td>
+                                                </tr>
+                                            );
+                                        }
+
                                         if (row.type === 'brand') {
                                             return (
                                                 <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-slate-900 text-slate-100 font-extrabold text-[12px] border-b border-slate-800">
@@ -1220,9 +1239,9 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                                                     <td className="p-2 text-right text-amber-600 dark:text-amber-500 font-medium">{formatVal(val.transit)}</td>
                                                     <td className="p-2 text-right text-purple-600 dark:text-purple-400 font-medium">{formatVal(val.reserved)}</td>
                                                     <td className="p-2 text-right font-bold text-foreground">{formatVal(val.total)}</td>
-                                                    <td className="p-2 text-right text-muted-foreground">-</td>
+                                                    <td className="p-2 text-right font-medium text-slate-700 dark:text-slate-300">{formatPriceVal(val.unitPrice)}</td>
                                                     <td className="p-2 text-right font-semibold text-foreground">{formatPriceVal(val.value)}</td>
-                                                    <td className="p-2 text-right text-muted-foreground">-</td>
+                                                    <td className="p-2 text-right font-medium text-indigo-600 dark:text-indigo-400">{formatPriceVal(val.unitCost)}</td>
                                                     <td className="p-2 text-right font-semibold text-foreground">{formatPriceVal(val.costingValue)}</td>
                                                 </tr>
                                             );
