@@ -231,10 +231,17 @@ export default function PosStockValuationReportPage() {
     };
 
     const [previewJobId, setPreviewJobId] = useState<string | null>(null);
+    const [isQueueingJob, setIsQueueingJob] = useState(false);
+    const [isFetchingResult, setIsFetchingResult] = useState(false);
+    const activeJobIdRef = useRef<string | null>(null);
+
     const sseState = useReportSse(previewJobId, "valuation");
 
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
+        setIsQueueingJob(true);
+        setIsFetchingResult(false);
+
         startTransition(async () => {
             const queueRes = await queueStockValuationPreview({
                 startDate: dateRange.from?.toISOString(),
@@ -255,8 +262,12 @@ export default function PosStockValuationReportPage() {
                 searchText,
             });
 
+            setIsQueueingJob(false);
+
             if (queueRes && queueRes.status && queueRes.data?.jobId) {
-                setPreviewJobId(queueRes.data.jobId);
+                const newJobId = queueRes.data.jobId;
+                activeJobIdRef.current = newJobId;
+                setPreviewJobId(newJobId);
             } else {
                 toast.error("Failed to queue stock valuation report preview");
             }
@@ -267,10 +278,13 @@ export default function PosStockValuationReportPage() {
         fetchReport();
     }, [fetchReport]);
 
-    // Handle SSE completion to fetch GZIP report result
+    // Handle SSE completion to fetch GZIP report result with loading state & stale job protection
     useEffect(() => {
-        if (sseState.status === "completed" && previewJobId) {
+        if (sseState.status === "completed" && previewJobId && activeJobIdRef.current === previewJobId) {
+            setIsFetchingResult(true);
             getStockValuationResult(previewJobId).then((res) => {
+                if (activeJobIdRef.current !== previewJobId) return;
+                setIsFetchingResult(false);
                 if (res && res.status !== false && res.data) {
                     const reportRoot = res.data?.root || res.data || (Array.isArray(res.data) ? res.data : []);
                     setReportData(Array.isArray(reportRoot) ? reportRoot : []);
@@ -283,6 +297,8 @@ export default function PosStockValuationReportPage() {
                     setReportData([]);
                     toast.error("Failed to load completed stock valuation report preview data");
                 }
+            }).catch(() => {
+                setIsFetchingResult(false);
             });
         }
     }, [sseState.status, previewJobId]);
@@ -928,10 +944,22 @@ export default function PosStockValuationReportPage() {
             </div>
 
             <ReportQueueProgress
-                jobId={previewJobId}
-                status={sseState.status}
-                progressPercent={sseState.progressPercent}
-                message={sseState.message}
+                jobId={previewJobId || (isQueueingJob ? "queueing-temp-id" : null)}
+                status={isQueueingJob ? "queued" : isFetchingResult ? "processing" : sseState.status}
+                progressPercent={
+                    isQueueingJob
+                        ? 5
+                        : isFetchingResult
+                        ? 95
+                        : sseState.progressPercent
+                }
+                message={
+                    isQueueingJob
+                        ? "Submitting report calculation job to background queue..."
+                        : isFetchingResult
+                        ? "Downloading and rendering report table..."
+                        : sseState.message
+                }
                 queuePosition={sseState.queuePosition}
                 waitingCount={sseState.waitingCount}
                 failedReason={sseState.failedReason}

@@ -148,10 +148,16 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
     }, [selectedWarehouseIds]);
 
     const [previewJobId, setPreviewJobId] = useState<string | null>(null);
+    const [isQueueingJob, setIsQueueingJob] = useState(false);
+    const [isFetchingResult, setIsFetchingResult] = useState(false);
+    const activeJobIdRef = useRef<string | null>(null);
+
     const sseState = useReportSse(previewJobId);
 
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
+        setIsQueueingJob(true);
+        setIsFetchingResult(false);
 
         startTransition(async () => {
             const queueRes = await queueAvailableStockSummaryPreview({
@@ -170,8 +176,12 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                 showVariant: groupingLevels.variant,
             });
 
+            setIsQueueingJob(false);
+
             if (queueRes && queueRes.status && queueRes.data?.jobId) {
-                setPreviewJobId(queueRes.data.jobId);
+                const newJobId = queueRes.data.jobId;
+                activeJobIdRef.current = newJobId;
+                setPreviewJobId(newJobId);
             } else {
                 toast.error("Failed to queue report preview");
             }
@@ -182,10 +192,13 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
         fetchReport();
     }, [locationParam, warehouseParam, reportType, groupingLevels]);
 
-    // Handle SSE completion to fetch GZIP report result
+    // Handle SSE completion to fetch GZIP report result with loading state & stale job protection
     useEffect(() => {
-        if (sseState.status === "completed" && previewJobId) {
+        if (sseState.status === "completed" && previewJobId && activeJobIdRef.current === previewJobId) {
+            setIsFetchingResult(true);
             getAvailableStockSummaryResult(previewJobId).then((res) => {
+                if (activeJobIdRef.current !== previewJobId) return;
+                setIsFetchingResult(false);
                 if (res && res.status !== false && res.data) {
                     const rootData = Array.isArray(res.data?.root)
                         ? res.data.root
@@ -195,6 +208,8 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                     setReportData([]);
                     toast.error("Failed to load completed report preview data");
                 }
+            }).catch(() => {
+                setIsFetchingResult(false);
             });
         }
     }, [sseState.status, previewJobId]);
@@ -732,10 +747,22 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
             </div>
 
             <ReportQueueProgress
-                jobId={previewJobId}
-                status={sseState.status}
-                progressPercent={sseState.progressPercent}
-                message={sseState.message}
+                jobId={previewJobId || (isQueueingJob ? "queueing-temp-id" : null)}
+                status={isQueueingJob ? "queued" : isFetchingResult ? "processing" : sseState.status}
+                progressPercent={
+                    isQueueingJob
+                        ? 5
+                        : isFetchingResult
+                        ? 95
+                        : sseState.progressPercent
+                }
+                message={
+                    isQueueingJob
+                        ? "Submitting report calculation job to background queue..."
+                        : isFetchingResult
+                        ? "Downloading and rendering report table..."
+                        : sseState.message
+                }
                 queuePosition={sseState.queuePosition}
                 waitingCount={sseState.waitingCount}
                 failedReason={sseState.failedReason}
