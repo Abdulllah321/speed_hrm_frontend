@@ -564,6 +564,56 @@ export async function getOverallAvailableReservedStockReport(filters: {
     }
 }
 
+export async function queueOverallAvailableReservedStockPreview(filters: {
+    locationId?: string;
+    warehouseId?: string;
+    asOfDate?: string;
+    summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+    includeCosting?: boolean;
+}): Promise<{ status: boolean; data?: { jobId: string; queuePosition: number; waitingCount: number }; message?: string }> {
+    try {
+        const url = `/stock-ledger/overall-available-reserved-stock/queue`;
+        const response = await authFetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Queue overall available reserved stock preview error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getOverallAvailableReservedStockResult(jobId: string): Promise<{ status: boolean; data?: any; message?: string }> {
+    try {
+        const url = `/stock-ledger/overall-available-reserved-stock/result/${jobId}`;
+        const response = await authFetch(url, { method: "GET" });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Get overall available reserved stock result error:", error);
+        return { status: false, message: "Failed to fetch report result" };
+    }
+}
+
+export async function cancelOverallAvailableReservedStockPreview(jobId: string): Promise<{ status: boolean; message?: string }> {
+    try {
+        const url = `/stock-ledger/overall-available-reserved-stock/cancel-preview/${jobId}`;
+        const response = await authFetch(url, { method: "POST" });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Cancel overall available reserved stock preview error:", error);
+        return { status: false, message: "Failed to cancel report preview" };
+    }
+}
+
 export async function queueOverallAvailableReservedStockReportExport(filters: {
     locationId?: string;
     warehouseId?: string;
@@ -578,6 +628,7 @@ export async function queueOverallAvailableReservedStockReportExport(filters: {
     showArticle?: boolean;
     showVariant?: boolean;
     includeCosting?: boolean;
+    previewJobId?: string;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const url = `/stock-ledger/overall-available-reserved-stock/export/queue`;

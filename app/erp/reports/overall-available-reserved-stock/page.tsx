@@ -6,8 +6,13 @@ import { getWarehouses, Warehouse } from "@/lib/actions/warehouse";
 import {
     getOverallAvailableReservedStockReport,
     queueOverallAvailableReservedStockReportExport,
-    getOverallAvailableReservedStockReportExportStatus
+    getOverallAvailableReservedStockReportExportStatus,
+    queueOverallAvailableReservedStockPreview,
+    getOverallAvailableReservedStockResult,
+    cancelOverallAvailableReservedStockPreview,
 } from "@/lib/actions/stock-ledger";
+import { useReportSse } from "@/hooks/use-report-sse";
+import { ReportQueueProgress } from "@/components/reports/ReportQueueProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -140,11 +145,21 @@ export default function OverallAvailableReservedStockReportPage() {
         return selectedWarehouseIds.length > 0 ? selectedWarehouseIds.join(",") : undefined;
     }, [selectedWarehouseIds]);
 
+    const [previewJobId, setPreviewJobId] = useState<string | null>(null);
+    const [isQueueingJob, setIsQueueingJob] = useState(false);
+    const [isFetchingResult, setIsFetchingResult] = useState(false);
+    const activeJobIdRef = useRef<string | null>(null);
+
+    const sseState = useReportSse(previewJobId);
+
     const fetchReport = useCallback(() => {
         if (!asOfDate) return;
+        setIsQueueingJob(true);
+        setIsFetchingResult(false);
+        setPreviewJobId(null);
 
         startTransition(async () => {
-            const result = await getOverallAvailableReservedStockReport({
+            const queueRes = await queueOverallAvailableReservedStockPreview({
                 locationId: locationParam,
                 warehouseId: warehouseParam,
                 asOfDate: asOfDate ? new Date(asOfDate).toISOString() : undefined,
@@ -159,25 +174,57 @@ export default function OverallAvailableReservedStockReportPage() {
                 includeCosting,
             });
 
-            if (result && result.status !== false) {
-                const rootData = Array.isArray(result?.data?.root)
-                    ? result.data.root
-                    : (Array.isArray(result?.data)
-                        ? result.data
-                        : (Array.isArray(result) ? result : []));
-                setReportData(rootData);
-                if (Array.isArray(result?.data?.warehouses)) setWarehousesList(result.data.warehouses);
-                if (Array.isArray(result?.data?.stockLocations)) setStockLocationsList(result.data.stockLocations);
+            setIsQueueingJob(false);
+
+            if (queueRes && queueRes.status && queueRes.data?.jobId) {
+                const newJobId = queueRes.data.jobId;
+                activeJobIdRef.current = newJobId;
+                setPreviewJobId(newJobId);
             } else {
-                setReportData([]);
-                toast.error("Failed to load overall available stock report data");
+                toast.error("Failed to queue report preview");
             }
         });
     }, [locationParam, warehouseParam, asOfDate, groupingLevels, summaryOnly, includeCosting]);
 
     useEffect(() => {
-        fetchReport();
-    }, [locationParam, warehouseParam, groupingLevels, includeCosting]);
+        const timer = setTimeout(() => {
+            fetchReport();
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [fetchReport]);
+
+    // Handle SSE completion to fetch GZIP report result with loading state
+    useEffect(() => {
+        if (sseState.status === "completed" && previewJobId && activeJobIdRef.current === previewJobId) {
+            setIsFetchingResult(true);
+            const targetJobId = previewJobId;
+
+            getOverallAvailableReservedStockResult(targetJobId)
+                .then((res) => {
+                    if (activeJobIdRef.current !== targetJobId) return;
+                    setIsFetchingResult(false);
+
+                    if (res && res.status !== false && res.data) {
+                        const rootData = Array.isArray(res.data?.root)
+                            ? res.data.root
+                            : (Array.isArray(res.data) ? res.data : []);
+                        setReportData(rootData);
+                        if (Array.isArray(res.data?.warehouses)) setWarehousesList(res.data.warehouses);
+                        if (Array.isArray(res.data?.stockLocations)) setStockLocationsList(res.data.stockLocations);
+                    } else {
+                        if (activeJobIdRef.current === targetJobId) {
+                            setReportData([]);
+                            toast.error("Failed to load completed report preview data");
+                        }
+                    }
+                })
+                .catch(() => {
+                    if (activeJobIdRef.current === targetJobId) {
+                        setIsFetchingResult(false);
+                    }
+                });
+        }
+    }, [sseState.status, previewJobId]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -273,6 +320,7 @@ export default function OverallAvailableReservedStockReportPage() {
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
                 includeCosting,
+                previewJobId: previewJobId || undefined,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -321,6 +369,7 @@ export default function OverallAvailableReservedStockReportPage() {
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
                 includeCosting,
+                previewJobId: previewJobId || undefined,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -820,6 +869,29 @@ export default function OverallAvailableReservedStockReportPage() {
                     </div>
                 </div>
             </div>
+
+            <ReportQueueProgress
+                jobId={previewJobId || (isQueueingJob ? "queueing-temp-id" : null)}
+                status={isQueueingJob ? "queued" : isFetchingResult ? "processing" : sseState.status}
+                progressPercent={
+                    isQueueingJob
+                        ? 5
+                        : isFetchingResult
+                        ? 95
+                        : sseState.progressPercent
+                }
+                message={
+                    isQueueingJob
+                        ? "Submitting report calculation job to background queue..."
+                        : isFetchingResult
+                        ? "Downloading and rendering report table..."
+                        : sseState.message
+                }
+                queuePosition={sseState.queuePosition}
+                waitingCount={sseState.waitingCount}
+                failedReason={sseState.failedReason}
+                title="Overall Available Reserved Stock Report"
+            />
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-7 gap-3.5 no-print">
