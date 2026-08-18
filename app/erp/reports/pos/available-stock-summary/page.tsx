@@ -189,8 +189,11 @@ export default function ERPAvailableStockSummaryReportPage() {
     }, [locationParam, warehouseParam, dateRange, reportType, groupingLevels, summaryOnly]);
 
     useEffect(() => {
-        fetchReport();
-    }, [locationParam, warehouseParam, reportType, groupingLevels]);
+        const timer = setTimeout(() => {
+            fetchReport();
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [fetchReport]);
 
     // Handle SSE completion to fetch GZIP report result with loading state & stale job protection
     useEffect(() => {

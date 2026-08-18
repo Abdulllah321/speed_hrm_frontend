@@ -275,7 +275,10 @@ export default function PosStockValuationReportPage() {
     }, [dateRange, groupingLevels, summaryOnly, filterBrands, filterDivisions, filterCategories, filterGenders, filterSilhouettes, searchText]);
 
     useEffect(() => {
-        fetchReport();
+        const timer = setTimeout(() => {
+            fetchReport();
+        }, 400);
+        return () => clearTimeout(timer);
     }, [fetchReport]);
 
     // Handle SSE completion to fetch GZIP report result with loading state & stale job protection
