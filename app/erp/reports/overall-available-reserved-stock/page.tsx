@@ -150,7 +150,7 @@ export default function OverallAvailableReservedStockReportPage() {
     const [isFetchingResult, setIsFetchingResult] = useState(false);
     const activeJobIdRef = useRef<string | null>(null);
 
-    const sseState = useReportSse(previewJobId);
+    const sseState = useReportSse(previewJobId, "overall-reserved");
 
     const fetchReport = useCallback(() => {
         if (!asOfDate) return;
