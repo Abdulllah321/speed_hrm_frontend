@@ -972,6 +972,16 @@ export default function PurchaseInvoiceDetailPage() {
                         <p className="font-medium">{invoice.staxEInvoiceNumber}</p>
                       </div>
                     )}
+                    {invoice.staxEInvoiceDate && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Sale Tax Invoice Date
+                        </label>
+                        <p className="font-medium">
+                          {new Date(invoice.staxEInvoiceDate).toLocaleDateString("en-GB")}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <label className="text-sm font-medium text-gray-500">
                         Total Amount
@@ -1300,6 +1310,14 @@ export default function PurchaseInvoiceDetailPage() {
                     <div className="flex justify-between mb-2">
                       <span className="font-bold">STax e-Inv #:</span>
                       <span className="font-bold">{invoice.staxEInvoiceNumber}</span>
+                    </div>
+                  )}
+                  {invoice.staxEInvoiceDate && (
+                    <div className="flex justify-between mb-2">
+                      <span className="font-bold">Sale Tax Invoice Date:</span>
+                      <span className="font-bold">
+                        {new Date(invoice.staxEInvoiceDate).toLocaleDateString("en-GB")}
+                      </span>
                     </div>
                   )}
                   {(() => {

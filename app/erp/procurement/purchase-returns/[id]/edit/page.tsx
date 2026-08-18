@@ -779,7 +779,7 @@ export default function EditPurchaseReturnPage() {
                         <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
                         <div className="flex gap-2 mb-1">
                           <span className="font-bold w-16 shrink-0">Name:</span> 
-                          <span>{warehouses.find(w => w.id === formData.warehouseId)?.name || purchaseReturn.warehouse?.name || 'N/A'}</span>
+                          <span>{warehouses.find(w => w.id === formData.warehouseId)?.name || purchaseReturn.warehouse?.name || 'Logistic Area'}</span>
                         </div>
                     </div>
                 </div>

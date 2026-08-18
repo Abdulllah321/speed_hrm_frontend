@@ -21,6 +21,11 @@ interface SourceDocument {
   grnNumber?: string;
   landedCostNumber?: string;
   invoiceNumber?: string;
+  invoiceDate?: string;
+  staxEInvoiceDate?: string;
+  staxEInvoiceNumber?: string;
+  grn?: any;
+  landedCost?: any;
   supplier: { id: string; name: string; strnNo?: string; ntnNo?: string; gstNumber?: string; address?: string };
   warehouse?: { id: string; name: string };
   items: Array<{
@@ -134,6 +139,10 @@ export default function CreatePurchaseReturnPage() {
     try {
       const data = await warehouseApi.getAll();
       setWarehouses(data);
+      const logisticWh = data.find((w: any) => w.name?.toLowerCase().includes('logistic'));
+      if (logisticWh) {
+        setFormData(prev => ({ ...prev, warehouseId: prev.warehouseId || logisticWh.id }));
+      }
     } catch (error) {
       console.error('Error loading warehouses:', error);
     }
@@ -155,15 +164,24 @@ export default function CreatePurchaseReturnPage() {
     const doc = eligibleDocs.find(d => d.id === docId);
     if (!doc || !doc.supplier) return;
 
+    const piDate = doc.staxEInvoiceDate
+      ? new Date(doc.staxEInvoiceDate).toISOString().split('T')[0]
+      : (doc.invoiceDate ? new Date(doc.invoiceDate).toISOString().split('T')[0] : '');
+
+    const logisticWh = warehouses.find((w: any) => w.name?.toLowerCase().includes('logistic'));
+    const resolvedWarehouseId = doc.warehouse?.id || formData.warehouseId || logisticWh?.id || '';
+
     setSelectedDoc(doc);
     setFormData({
       ...formData,
       grnId: doc.grn?.id || doc.landedCost?.grn?.id || undefined,
       landedCostId: doc.landedCost?.id || undefined,
       purchaseInvoiceId: docId,
-      staxEInvoiceNumber: (doc as any).staxEInvoiceNumber || '',
+      staxEInvoiceNumber: doc.staxEInvoiceNumber || '',
+      staxEInvoiceDate: doc.staxEInvoiceDate ? new Date(doc.staxEInvoiceDate).toISOString().split('T')[0] : '',
+      returnDate: piDate || formData.returnDate,
       supplierId: doc.supplier.id,
-      warehouseId: doc.warehouse?.id || '',
+      warehouseId: resolvedWarehouseId,
       supplierGstNumber: (() => {
         const raw = doc.supplier.gstNumber || doc.supplier.strnNo || doc.supplier.ntnNo || '';
         return (raw.trim().toLowerCase() === 'registered') ? '' : raw;
@@ -719,7 +737,7 @@ export default function CreatePurchaseReturnPage() {
                         <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
                         <div className="flex gap-2 mb-1">
                           <span className="font-bold w-16 shrink-0">Name:</span> 
-                          <span>{warehouses.find(w => w.id === formData.warehouseId)?.name || 'N/A'}</span>
+                          <span>{warehouses.find(w => w.id === formData.warehouseId)?.name || 'Logistic Area'}</span>
                         </div>
                     </div>
                 </div>
