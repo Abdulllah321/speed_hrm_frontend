@@ -36,6 +36,15 @@ export function useReportSse(
       return;
     }
 
+    // Immediately reset state when switching to a new jobId (0ms reset)
+    setState({
+      status: "queued",
+      progressPercent: 5,
+      message: "Submitting report calculation job to background queue...",
+      queuePosition: 1,
+      waitingCount: 0,
+    });
+
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
     const endpoint =
       reportType === "valuation"
