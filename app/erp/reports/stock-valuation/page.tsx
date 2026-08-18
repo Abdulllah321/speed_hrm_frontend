@@ -241,6 +241,7 @@ export default function PosStockValuationReportPage() {
         if (!dateRange.from || !dateRange.to) return;
         setIsQueueingJob(true);
         setIsFetchingResult(false);
+        setPreviewJobId(null);
 
         startTransition(async () => {
             const queueRes = await queueStockValuationPreview({
@@ -281,28 +282,37 @@ export default function PosStockValuationReportPage() {
         return () => clearTimeout(timer);
     }, [fetchReport]);
 
-    // Handle SSE completion to fetch GZIP report result with loading state & stale job protection
+    // Handle SSE completion to fetch GZIP report result with loading state & silent filter change handling
     useEffect(() => {
         if (sseState.status === "completed" && previewJobId && activeJobIdRef.current === previewJobId) {
             setIsFetchingResult(true);
-            getStockValuationResult(previewJobId).then((res) => {
-                if (activeJobIdRef.current !== previewJobId) return;
-                setIsFetchingResult(false);
-                if (res && res.status !== false && res.data) {
-                    const reportRoot = res.data?.root || res.data || (Array.isArray(res.data) ? res.data : []);
-                    setReportData(Array.isArray(reportRoot) ? reportRoot : []);
-                    if (res.data?.meta?.total) {
-                        setTotalItemsCount(res.data.meta.total);
-                    } else if (Array.isArray(reportRoot)) {
-                        setTotalItemsCount(reportRoot.length);
+            const targetJobId = previewJobId;
+
+            getStockValuationResult(targetJobId)
+                .then((res) => {
+                    if (activeJobIdRef.current !== targetJobId) return;
+                    setIsFetchingResult(false);
+
+                    if (res && res.status !== false && res.data) {
+                        const reportRoot = res.data?.root || res.data || (Array.isArray(res.data) ? res.data : []);
+                        setReportData(Array.isArray(reportRoot) ? reportRoot : []);
+                        if (res.data?.meta?.total) {
+                            setTotalItemsCount(res.data.meta.total);
+                        } else if (Array.isArray(reportRoot)) {
+                            setTotalItemsCount(reportRoot.length);
+                        }
+                    } else {
+                        if (activeJobIdRef.current === targetJobId) {
+                            setReportData([]);
+                            toast.error("Failed to load completed stock valuation report preview data");
+                        }
                     }
-                } else {
-                    setReportData([]);
-                    toast.error("Failed to load completed stock valuation report preview data");
-                }
-            }).catch(() => {
-                setIsFetchingResult(false);
-            });
+                })
+                .catch(() => {
+                    if (activeJobIdRef.current === targetJobId) {
+                        setIsFetchingResult(false);
+                    }
+                });
         }
     }, [sseState.status, previewJobId]);
 

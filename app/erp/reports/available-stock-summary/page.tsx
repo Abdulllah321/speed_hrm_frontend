@@ -158,6 +158,7 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
         if (!dateRange.from || !dateRange.to) return;
         setIsQueueingJob(true);
         setIsFetchingResult(false);
+        setPreviewJobId(null);
 
         startTransition(async () => {
             const queueRes = await queueAvailableStockSummaryPreview({
@@ -195,25 +196,34 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
         return () => clearTimeout(timer);
     }, [fetchReport]);
 
-    // Handle SSE completion to fetch GZIP report result with loading state & stale job protection
+    // Handle SSE completion to fetch GZIP report result with loading state & silent filter change handling
     useEffect(() => {
         if (sseState.status === "completed" && previewJobId && activeJobIdRef.current === previewJobId) {
             setIsFetchingResult(true);
-            getAvailableStockSummaryResult(previewJobId).then((res) => {
-                if (activeJobIdRef.current !== previewJobId) return;
-                setIsFetchingResult(false);
-                if (res && res.status !== false && res.data) {
-                    const rootData = Array.isArray(res.data?.root)
-                        ? res.data.root
-                        : (Array.isArray(res.data) ? res.data : []);
-                    setReportData(rootData);
-                } else {
-                    setReportData([]);
-                    toast.error("Failed to load completed report preview data");
-                }
-            }).catch(() => {
-                setIsFetchingResult(false);
-            });
+            const targetJobId = previewJobId;
+
+            getAvailableStockSummaryResult(targetJobId)
+                .then((res) => {
+                    if (activeJobIdRef.current !== targetJobId) return;
+                    setIsFetchingResult(false);
+
+                    if (res && res.status !== false && res.data) {
+                        const rootData = Array.isArray(res.data?.root)
+                            ? res.data.root
+                            : (Array.isArray(res.data) ? res.data : []);
+                        setReportData(rootData);
+                    } else {
+                        if (activeJobIdRef.current === targetJobId) {
+                            setReportData([]);
+                            toast.error("Failed to load completed report preview data");
+                        }
+                    }
+                })
+                .catch(() => {
+                    if (activeJobIdRef.current === targetJobId) {
+                        setIsFetchingResult(false);
+                    }
+                });
         }
     }, [sseState.status, previewJobId]);
 
@@ -1164,9 +1174,11 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                                         if (row.type === 'location') {
                                             return (
                                                 <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-amber-950 text-amber-100 font-extrabold text-[13px] border-b-2 border-amber-800">
-                                                    <td colSpan={3} className="p-3 pl-3 text-amber-300 uppercase tracking-wider flex items-center gap-2">
-                                                        <Store className="h-4 w-4 text-amber-400" />
-                                                        LOCATION: {row.label}
+                                                    <td colSpan={3} className="p-3 pl-3 text-amber-300 uppercase tracking-wider">
+                                                        <div className="flex items-center gap-2">
+                                                            <Store className="h-4 w-4 text-amber-400 shrink-0" />
+                                                            <span>LOCATION: {row.label}</span>
+                                                        </div>
                                                     </td>
                                                     <td className="p-3 text-right text-emerald-400 font-black">{formatVal(val.quantity)}</td>
                                                     <td className="p-3 text-right text-amber-400 font-black">{formatVal(val.transit)}</td>
