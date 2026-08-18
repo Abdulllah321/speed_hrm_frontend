@@ -1767,7 +1767,7 @@ export const menuData: MenuItem[] = [
         permissions: ["pos.inventory.view"],
       },
       {
-        title: "Stock Receipts",
+        title: "Stock Transfers",
         href: "/pos/inventory/receipt",
         permissions: ["pos.inventory.receipt.view"],
       },

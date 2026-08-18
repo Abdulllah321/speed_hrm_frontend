@@ -402,6 +402,32 @@ export async function updatePaymentVoucherStatus(id: string, status: "draft" | "
     }
 }
 
+export async function unapprovePaymentVoucher(id: string, remarks?: string) {
+    try {
+        const response = await authFetch(`/finance/payment-vouchers/${id}/unapprove`, {
+            method: "PATCH",
+            body: JSON.stringify({ remarks }),
+        });
+
+        if (!response.ok) {
+            const errorData = response.data || {};
+            return {
+                status: false,
+                message: errorData.message || `Failed to unapprove voucher: ${response.statusText || response.status}`
+            };
+        }
+
+        revalidatePath("/finance/payment-voucher/list");
+        revalidatePath(`/erp/finance/payment-voucher/${id}`);
+        revalidatePath("/erp/finance/payment-voucher/list");
+
+        return { status: true, message: "Payment Voucher unapproved successfully" };
+    } catch (error: any) {
+        console.error("Error unapproving payment voucher:", error);
+        return { status: false, message: error.message || "An unexpected error occurred" };
+    }
+}
+
 // ── Background export ─────────────────────────────────────────────────────────
 export async function queuePaymentVouchersExport(opts?: {
     type?: string;

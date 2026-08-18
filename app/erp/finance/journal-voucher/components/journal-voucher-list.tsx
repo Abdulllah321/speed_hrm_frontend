@@ -22,12 +22,14 @@ import {
   FileCheck,
   Send,
   Loader2,
+  RotateCcw,
 } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import {
   JournalVoucher,
   updateJournalVoucher,
   markJournalVoucherAsPrinted,
+  unapproveJournalVoucher,
 } from "@/lib/actions/journal-voucher";
 import { queueJournalVouchersExport } from "@/lib/actions/journal-voucher";
 import { JournalVoucherPrint } from "./journal-voucher-print";
@@ -276,6 +278,28 @@ export function JournalVoucherList({
     }
   };
 
+  const handleUnapprove = async (id: string) => {
+    if (updatingStatusId) return;
+    try {
+      setUpdatingStatusId(id);
+      const res = await unapproveJournalVoucher(id);
+      if (res.status) {
+        toast.success("Journal Voucher unapproved & unposted successfully");
+        setVouchers((prev) =>
+          prev.map((v) =>
+            v.id === id ? { ...v, status: "pending_check" as const } : v,
+          ),
+        );
+      } else {
+        toast.error(res.message || "Failed to unapprove voucher");
+      }
+    } catch {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
   const columns = useMemo<ColumnDef<JournalVoucher>[]>(
     () => [
       {
@@ -516,6 +540,18 @@ export function JournalVoucherList({
                   <FileCheck className="h-4 w-4" />
                 </Button>
               )}
+              {isApproved && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={updatingStatusId === row.original.id}
+                  onClick={() => handleUnapprove(row.original.id)}
+                  className="h-8 w-8 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600"
+                  title="Unapprove & Unpost Voucher"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
               {!isApproved && !isRejected && (
                 <>
                   <Button
@@ -545,7 +581,7 @@ export function JournalVoucherList({
         },
       },
     ],
-    [permissions, handlePrint, handleUpdateStatus, updatingStatusId],
+    [permissions, handlePrint, handleUpdateStatus, handleUnapprove, updatingStatusId],
   );
 
   // Filter logic for DataTable data

@@ -276,6 +276,27 @@ export async function updateReceiptVoucherStatus(id: string, status: "draft" | "
     }
 }
 
+export async function unapproveReceiptVoucher(id: string, remarks?: string) {
+    try {
+        const response = await authFetch(`/finance/receipt-vouchers/${id}/unapprove`, {
+            method: "PATCH",
+            body: JSON.stringify({ remarks }),
+        });
+
+        if (!response.ok) {
+            const err = response.data || {};
+            return { status: false, message: err.message || `Failed to unapprove voucher: ${response.status}` };
+        }
+
+        revalidatePath("/erp/finance/receipt-voucher/list");
+        revalidatePath("/erp/finance/retail-sale-receipt-voucher/list");
+        revalidatePath(`/erp/finance/receipt-voucher/${id}`);
+        return { status: true, message: "Receipt Voucher unapproved successfully" };
+    } catch (e: any) {
+        return { status: false, message: e.message || "An unexpected error occurred" };
+    }
+}
+
 export async function bulkUpdateReceiptVoucherStatus(
     ids: string[],
     status: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected",

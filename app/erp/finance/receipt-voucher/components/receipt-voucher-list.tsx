@@ -14,9 +14,9 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Printer, Download, Plus, CreditCard, Wallet, Eye, CheckCircle2, XCircle, FileCheck, Send, Loader2 } from "lucide-react";
+import { Printer, Download, Plus, CreditCard, Wallet, Eye, CheckCircle2, XCircle, FileCheck, Send, Loader2, RotateCcw } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
-import { ReceiptVoucher, updateReceiptVoucherStatus, markReceiptVoucherAsPrinted } from "@/lib/actions/receipt-voucher";
+import { ReceiptVoucher, updateReceiptVoucherStatus, markReceiptVoucherAsPrinted, unapproveReceiptVoucher } from "@/lib/actions/receipt-voucher";
 import { queueReceiptVouchersExport } from "@/lib/actions/receipt-voucher";
 import { ReceiptVoucherPrint } from "./receipt-voucher-print";
 import { cn } from "@/lib/utils";
@@ -247,6 +247,24 @@ export function ReceiptVoucherList({
                 setVouchers(prev => prev.map(v => v.id === id ? { ...v, status: newStatus as const } : v));
             } else {
                 toast.error(res.message || "Failed to update voucher status");
+            }
+        } catch {
+            toast.error("An unexpected error occurred");
+        } finally {
+            setUpdatingStatusId(null);
+        }
+    };
+
+    const handleUnapprove = async (id: string) => {
+        if (updatingStatusId) return;
+        try {
+            setUpdatingStatusId(id);
+            const res = await unapproveReceiptVoucher(id);
+            if (res.status) {
+                toast.success("Receipt Voucher unapproved & unposted successfully");
+                setVouchers(prev => prev.map(v => v.id === id ? { ...v, status: "pending_check" as const } : v));
+            } else {
+                toast.error(res.message || "Failed to unapprove voucher");
             }
         } catch {
             toast.error("An unexpected error occurred");
@@ -511,6 +529,18 @@ export function ReceiptVoucherList({
                                 <FileCheck className="h-3.5 w-3.5" />
                             </Button>
                         )}
+                        {isApproved && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={updatingStatusId === row.original.id}
+                                onClick={() => handleUnapprove(row.original.id)}
+                                className="h-7 w-7 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-600"
+                                title="Unapprove & Unpost Voucher"
+                            >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
                         {!isApproved && !isRejected && (
                             <>
                                 <Button
@@ -539,7 +569,7 @@ export function ReceiptVoucherList({
                 );
             }
         }
-    ], [permissions, handlePrint, handleUpdateStatus, updatingStatusId, mostRecentlyPrintedVoucher]);
+    ], [permissions, handlePrint, handleUpdateStatus, handleUnapprove, updatingStatusId, mostRecentlyPrintedVoucher]);
 
     return (
         <div className="space-y-6">

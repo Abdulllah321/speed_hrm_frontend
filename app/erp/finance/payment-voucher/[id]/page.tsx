@@ -35,7 +35,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-
+  RotateCcw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -307,10 +307,22 @@ export default function PaymentVoucherDetailPage({
               return (
                 <>
                   {isApproved && (
-                    <Button onClick={() => setIsCprModalOpen(true)} size="sm" variant="outline">
-                      <FileEdit className="h-4 w-4 mr-2" />
-                      Update CPR Numbers
-                    </Button>
+                    <>
+                      <Button onClick={() => setIsCprModalOpen(true)} size="sm" variant="outline">
+                        <FileEdit className="h-4 w-4 mr-2" />
+                        Update CPR Numbers
+                      </Button>
+                      <Button
+                        onClick={() => handleUpdateStatus("pending_check")}
+                        size="sm"
+                        variant="outline"
+                        disabled={actionPending}
+                        className="border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Unapprove & Unpost
+                      </Button>
+                    </>
                   )}
                   {!isApproved && !isRejected && (
                     <>

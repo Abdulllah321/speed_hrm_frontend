@@ -24,6 +24,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  RotateCcw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -368,7 +369,22 @@ export default function JournalVoucherDetailPage({
               const isDraft = currentStatus === "draft";
               const isPendingCheck = currentStatus === "pending_check" || currentStatus === "pending";
 
-              if (isApproved || isRejected) return null;
+              if (isApproved) {
+                return (
+                  <Button
+                    onClick={() => handleUpdateStatus("pending_check")}
+                    size="sm"
+                    variant="outline"
+                    disabled={actionPending}
+                    className="border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Unapprove & Unpost
+                  </Button>
+                );
+              }
+
+              if (isRejected) return null;
 
               return (
                 <>
