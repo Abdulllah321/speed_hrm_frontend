@@ -41,7 +41,11 @@ export async function createPurchaseInvoice(data: {
     warehouseId?: string;
     invoiceType?: 'GRN_BASED' | 'LANDED_COST_BASED' | 'DIRECT';
     discountAmount?: number;
+    advanceTaxRate?: number;
     notes?: string;
+    staxEInvoiceNumber?: string;
+    staxEInvoiceDate?: string;
+    status?: string;
     items: {
         itemId: string;
         grnItemId?: string;
@@ -136,7 +140,10 @@ export async function updatePurchaseInvoice(id: string, data: {
     grnId?: string;
     landedCostId?: string;
     discountAmount?: number;
+    advanceTaxRate?: number;
     notes?: string;
+    staxEInvoiceNumber?: string;
+    staxEInvoiceDate?: string;
     status?: string;
     items?: {
         itemId: string;

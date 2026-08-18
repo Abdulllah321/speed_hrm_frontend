@@ -105,6 +105,7 @@ export default function CreatePurchaseInvoicePage() {
     advanceTaxRate: 0.5,
     notes: "",
     staxEInvoiceNumber: "",
+    staxEInvoiceDate: "",
     isApproved: false,
   });
 
@@ -320,6 +321,7 @@ export default function CreatePurchaseInvoicePage() {
         dueDate: restFormData.dueDate || undefined,
         notes: restFormData.notes || undefined,
         staxEInvoiceNumber: restFormData.staxEInvoiceNumber || undefined,
+        staxEInvoiceDate: restFormData.staxEInvoiceDate || undefined,
       };
 
       const payload = {
@@ -459,7 +461,7 @@ export default function CreatePurchaseInvoicePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="supplier">Supplier *</Label>
                 <Select
@@ -490,6 +492,16 @@ export default function CreatePurchaseInvoicePage() {
                     setFormData((prev) => ({ ...prev, staxEInvoiceNumber: e.target.value }))
                   }
                   placeholder="e.g. ST-123456"
+                />
+              </div>
+              <div>
+                <Label htmlFor="staxEInvoiceDate">Sale Tax Invoice Date</Label>
+                <DatePicker
+                  value={formData.staxEInvoiceDate}
+                  onChange={(date) =>
+                    setFormData((prev) => ({ ...prev, staxEInvoiceDate: date }))
+                  }
+                  placeholder="Select Sale Tax Invoice Date"
                 />
               </div>
             </div>

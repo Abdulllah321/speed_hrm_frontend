@@ -723,6 +723,7 @@ export interface PurchaseReturn {
   totalAmount: number;
   notes?: string;
   staxEInvoiceNumber?: string;
+  staxEInvoiceDate?: string;
   seasonId?: string;
   season?: { id: string; name: string };
   companyGstNumber?: string;
@@ -770,6 +771,7 @@ export interface CreatePurchaseReturnDto {
   reason?: string;
   notes?: string;
   staxEInvoiceNumber?: string;
+  staxEInvoiceDate?: string;
   items: {
     sourceItemType: 'GRN_ITEM' | 'LANDED_COST_ITEM' | 'INVOICE_ITEM';
     grnItemId?: string;

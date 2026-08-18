@@ -56,6 +56,7 @@ export default function CreateDirectPurchaseInvoicePage() {
     const [supplierId, setSupplierId] = useState('');
     const [notes, setNotes] = useState('');
     const [staxEInvoiceNumber, setStaxEInvoiceNumber] = useState('');
+    const [staxEInvoiceDate, setStaxEInvoiceDate] = useState('');
     const [discountAmount, setDiscountAmount] = useState(0);
 
     // Supplier list
@@ -449,6 +450,7 @@ export default function CreateDirectPurchaseInvoicePage() {
                 discountAmount,
                 notes: notes || undefined,
                 staxEInvoiceNumber: staxEInvoiceNumber || undefined,
+                staxEInvoiceDate: staxEInvoiceDate || undefined,
                 items: selectedItems.map(i => ({
                     itemId: i.id,
                     description: i.description,
@@ -552,6 +554,15 @@ export default function CreateDirectPurchaseInvoicePage() {
                                 placeholder="e.g. ST-123456"
                                 value={staxEInvoiceNumber}
                                 onChange={e => setStaxEInvoiceNumber(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Sale Tax Invoice Date</Label>
+                            <DatePicker
+                                value={staxEInvoiceDate}
+                                onChange={setStaxEInvoiceDate}
+                                placeholder="Select Sale Tax date"
                             />
                         </div>
 

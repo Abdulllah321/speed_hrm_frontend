@@ -627,7 +627,7 @@ export default function PurchaseReturnDetailPage() {
                     </div>
                     <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
                         <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
-                        <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{purchaseReturn.warehouse?.name || 'N/A'}</span></div>
+                        <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{purchaseReturn.warehouse?.name || 'Logistic Area'}</span></div>
                     </div>
                 </div>
 
