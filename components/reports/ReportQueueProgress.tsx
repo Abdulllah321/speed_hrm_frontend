@@ -1,16 +1,18 @@
 "use client";
 
 import React from "react";
-import { Loader2, Layers, Clock, CheckCircle2, AlertTriangle, Cpu } from "lucide-react";
+import { Loader2, Clock, AlertTriangle, Cpu, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ReportQueueProgressProps {
   jobId: string | null;
   status: "idle" | "queued" | "active" | "processing" | "completed" | "failed";
   progressPercent: number;
+  message?: string;
   queuePosition: number;
   waitingCount: number;
   failedReason?: string;
+  title?: string;
   className?: string;
 }
 
@@ -18,9 +20,11 @@ export function ReportQueueProgress({
   jobId,
   status,
   progressPercent,
+  message,
   queuePosition,
   waitingCount,
   failedReason,
+  title = "Stock Report",
   className,
 }: ReportQueueProgressProps) {
   if (!jobId || status === "idle" || status === "completed") {
@@ -34,7 +38,7 @@ export function ReportQueueProgress({
   return (
     <div
       className={cn(
-        "no-print rounded-xl border p-5 shadow-lg transition-all duration-300",
+        "no-print rounded-xl border p-5 shadow-lg transition-all duration-300 my-4",
         isQueued && "border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-500/30",
         isProcessing && "border-blue-500/40 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-500/30",
         isFailed && "border-rose-500/40 bg-rose-50/50 dark:bg-rose-950/20 dark:border-rose-500/30",
@@ -59,9 +63,9 @@ export function ReportQueueProgress({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                {isQueued && "Report Queued & Waiting"}
-                {isProcessing && "Generating Available Stock Report"}
-                {isFailed && "Report Generation Failed"}
+                {isQueued && `${title} Queued & Waiting`}
+                {isProcessing && `Generating ${title}`}
+                {isFailed && `${title} Generation Failed`}
               </h3>
               {isQueued && (
                 <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500 text-white shadow-sm">
@@ -70,24 +74,27 @@ export function ReportQueueProgress({
               )}
               {isProcessing && (
                 <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-blue-600 text-white shadow-sm flex items-center gap-1">
-                  <Cpu className="h-3 w-3 animate-pulse" /> Worker Active
+                  <Cpu className="h-3 w-3 animate-pulse" /> Worker Executing
                 </span>
               )}
             </div>
 
-            <p className="text-xs text-muted-foreground mt-1 font-medium">
+            <p className="text-xs text-muted-foreground mt-1 font-medium flex items-center gap-1.5">
               {isQueued && (
                 <>
-                  There are <span className="font-bold text-foreground">{waitingCount}</span> reports in queue ahead of you. Your report is #<span className="font-bold text-foreground">{queuePosition}</span> and will execute automatically when a worker frees up.
+                  There are <span className="font-bold text-foreground">{waitingCount}</span> reports in queue ahead of you. Your position is #<span className="font-bold text-foreground">{queuePosition}</span> and will execute automatically when worker completes preceding jobs.
                 </>
               )}
               {isProcessing && (
                 <>
-                  Processing background calculation across ledgers, locations, and pricing tiers...
+                  <Activity className="h-3.5 w-3.5 text-blue-500 shrink-0 animate-pulse" />
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    {message || "Processing background queries across ledgers, locations, and pricing tiers..."}
+                  </span>
                 </>
               )}
               {isFailed && (
-                <span className="text-rose-600 dark:text-rose-400">
+                <span className="text-rose-600 dark:text-rose-400 font-semibold">
                   {failedReason || "An error occurred while generating background report."}
                 </span>
               )}
@@ -95,16 +102,20 @@ export function ReportQueueProgress({
           </div>
         </div>
 
-        {/* Progress Display */}
+        {/* Progress Bar Display */}
         {isProcessing && (
-          <div className="w-full md:w-64 shrink-0 space-y-1.5">
+          <div className="w-full md:w-72 shrink-0 space-y-1.5 bg-white/60 dark:bg-slate-900/60 p-3 rounded-lg border border-blue-200/50 dark:border-blue-900/30 shadow-sm">
             <div className="flex justify-between items-center text-xs font-bold">
-              <span className="text-slate-600 dark:text-slate-400">Progress</span>
-              <span className="text-blue-600 dark:text-blue-400 font-mono">{progressPercent}%</span>
+              <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                Calculating...
+              </span>
+              <span className="text-blue-600 dark:text-blue-400 font-mono text-sm font-extrabold">
+                {progressPercent}%
+              </span>
             </div>
-            <div className="h-2.5 w-full bg-blue-100 dark:bg-blue-950 rounded-full overflow-hidden">
+            <div className="h-3 w-full bg-blue-100 dark:bg-blue-950 rounded-full overflow-hidden p-0.5">
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-300 rounded-full"
+                className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 transition-all duration-300 rounded-full shadow-sm"
                 style={{ width: `${Math.max(5, progressPercent)}%` }}
               />
             </div>

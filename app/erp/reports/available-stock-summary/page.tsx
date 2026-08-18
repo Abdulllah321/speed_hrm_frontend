@@ -735,9 +735,11 @@ export default function ERPAvailableStockSummaryCostingReportPage() {
                 jobId={previewJobId}
                 status={sseState.status}
                 progressPercent={sseState.progressPercent}
+                message={sseState.message}
                 queuePosition={sseState.queuePosition}
                 waitingCount={sseState.waitingCount}
                 failedReason={sseState.failedReason}
+                title="Available Stock Summary Report"
             />
 
             {/* Print Header */}

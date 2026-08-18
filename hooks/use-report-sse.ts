@@ -5,16 +5,21 @@ import { useEffect, useState } from "react";
 export interface ReportSseState {
   status: "idle" | "queued" | "active" | "processing" | "completed" | "failed";
   progressPercent: number;
+  message?: string;
   queuePosition: number;
   waitingCount: number;
   failedReason?: string;
   error?: string | null;
 }
 
-export function useReportSse(jobId: string | null): ReportSseState {
+export function useReportSse(
+  jobId: string | null,
+  reportType: "available" | "valuation" = "available"
+): ReportSseState {
   const [state, setState] = useState<ReportSseState>({
     status: "idle",
     progressPercent: 0,
+    message: "",
     queuePosition: 0,
     waitingCount: 0,
   });
@@ -24,6 +29,7 @@ export function useReportSse(jobId: string | null): ReportSseState {
       setState({
         status: "idle",
         progressPercent: 0,
+        message: "",
         queuePosition: 0,
         waitingCount: 0,
       });
@@ -31,14 +37,18 @@ export function useReportSse(jobId: string | null): ReportSseState {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-    const streamUrl = `${baseUrl}/api/stock-ledger/available-stock-summary/stream/${jobId}`;
+    const endpoint =
+      reportType === "valuation"
+        ? `/api/stock-ledger/valuation-report/stream/${jobId}`
+        : `/api/stock-ledger/available-stock-summary/stream/${jobId}`;
+    const streamUrl = `${baseUrl}${endpoint}`;
 
     const eventSource = new EventSource(streamUrl, { withCredentials: true });
 
     eventSource.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        const { status, progress, queuePosition, waitingCount, failedReason } = payload;
+        const { status, progress, message, queuePosition, waitingCount, failedReason } = payload;
 
         let normalizedStatus: ReportSseState["status"] = "processing";
         if (status === "waiting" || status === "delayed" || status === "queued") {
@@ -54,6 +64,7 @@ export function useReportSse(jobId: string | null): ReportSseState {
         setState({
           status: normalizedStatus,
           progressPercent: progress || (normalizedStatus === "completed" ? 100 : 0),
+          message: message || (normalizedStatus === "completed" ? "Report computation complete!" : ""),
           queuePosition: queuePosition || 0,
           waitingCount: waitingCount || 0,
           failedReason: failedReason,
@@ -75,7 +86,7 @@ export function useReportSse(jobId: string | null): ReportSseState {
     return () => {
       eventSource.close();
     };
-  }, [jobId]);
+  }, [jobId, reportType]);
 
   return state;
 }

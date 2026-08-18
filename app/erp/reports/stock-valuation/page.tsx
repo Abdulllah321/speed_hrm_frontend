@@ -231,7 +231,7 @@ export default function PosStockValuationReportPage() {
     };
 
     const [previewJobId, setPreviewJobId] = useState<string | null>(null);
-    const sseState = useReportSse(previewJobId);
+    const sseState = useReportSse(previewJobId, "valuation");
 
     const fetchReport = useCallback(() => {
         if (!dateRange.from || !dateRange.to) return;
@@ -931,9 +931,11 @@ export default function PosStockValuationReportPage() {
                 jobId={previewJobId}
                 status={sseState.status}
                 progressPercent={sseState.progressPercent}
+                message={sseState.message}
                 queuePosition={sseState.queuePosition}
                 waitingCount={sseState.waitingCount}
                 failedReason={sseState.failedReason}
+                title="Stock Valuation Report"
             />
 
             {/* Print Header (Visible only when printed) */}
