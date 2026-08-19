@@ -37,17 +37,36 @@ import { startOfMonth, endOfMonth, format } from "date-fns";
 import { cn, COMPANY_NAME, getApiBaseUrl } from "@/lib/utils";
 
 // ─── Highlight helper ──────────────────────────────────────────────────────────
-function highlight(text: string, query: string) {
-    if (!query.trim()) return <>{text}</>;
-    const idx = text.toLowerCase().indexOf(query.toLowerCase());
-    if (idx === -1) return <>{text}</>;
-    return (
-        <>
-            {text.slice(0, idx)}
-            <mark className="bg-amber-200 dark:bg-amber-700/60 text-inherit rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
-            {text.slice(idx + query.length)}
-        </>
-    );
+function highlight(text: string, query: string | string[]) {
+    if (!text) return <></>;
+    const tokens = Array.isArray(query) 
+        ? query.filter(q => Boolean(q && q.trim())) 
+        : (query && query.trim() ? [query.trim()] : []);
+    
+    if (tokens.length === 0) return <>{text}</>;
+
+    try {
+        const escapedTokens = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(`(${escapedTokens.join('|')})`, 'gi');
+        const parts = text.split(pattern);
+
+        return (
+            <>
+                {parts.map((part, i) => {
+                    const isMatch = tokens.some(t => t.toLowerCase() === part.toLowerCase());
+                    return isMatch ? (
+                        <mark key={i} className="bg-amber-200 dark:bg-amber-700/60 text-inherit rounded-sm px-0.5 font-semibold">
+                            {part}
+                        </mark>
+                    ) : (
+                        part
+                    );
+                })}
+            </>
+        );
+    } catch {
+        return <>{text}</>;
+    }
 }
 
 // ─── Autocomplete multi-select ─────────────────────────────────────────────────
@@ -205,6 +224,17 @@ export default function PosStockValuationReportPage() {
     const [filterSilhouettes, setFilterSilhouettes] = useState<Set<string>>(new Set());
     const [filterCategories, setFilterCategories] = useState<Set<string>>(new Set());
 
+    // Parse search text into tokens (supporting spaces, commas, newlines copied from Excel)
+    const searchTokens = useMemo(() => {
+        if (!searchText.trim()) return [];
+        return searchText
+            .split(/[\r\n,;\s]+/)
+            .map(t => t.trim().toLowerCase())
+            .filter(t => t.length > 0);
+    }, [searchText]);
+
+    const tokenSet = useMemo(() => new Set(searchTokens), [searchTokens]);
+
     const toggleFilter = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, val: string) => {
         setter(prev => {
             const next = new Set(prev);
@@ -214,7 +244,7 @@ export default function PosStockValuationReportPage() {
     };
 
     const hasActiveFilters =
-        searchText.trim() !== "" ||
+        searchTokens.length > 0 ||
         filterBrands.size > 0 ||
         filterDivisions.size > 0 ||
         filterGenders.size > 0 ||
@@ -255,12 +285,6 @@ export default function PosStockValuationReportPage() {
                 showSilhouette: groupingLevels.silhouette,
                 showArticle: groupingLevels.article,
                 showVariant: groupingLevels.variant,
-                filterBrands: Array.from(filterBrands),
-                filterDivisions: Array.from(filterDivisions),
-                filterCategories: Array.from(filterCategories),
-                filterGenders: Array.from(filterGenders),
-                filterSilhouettes: Array.from(filterSilhouettes),
-                searchText,
             });
 
             setIsQueueingJob(false);
@@ -273,7 +297,7 @@ export default function PosStockValuationReportPage() {
                 toast.error("Failed to queue stock valuation report preview");
             }
         });
-    }, [dateRange, groupingLevels, summaryOnly, filterBrands, filterDivisions, filterCategories, filterGenders, filterSilhouettes, searchText]);
+    }, [dateRange, groupingLevels, summaryOnly]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -493,6 +517,148 @@ export default function PosStockValuationReportPage() {
         }
     };
 
+    const createEmptyValuationTotals = () => ({
+        openingQty: 0, openingCost: 0, openingValue: 0,
+        purchaseQty: 0, purchaseCost: 0, purchaseValue: 0,
+        purchaseRetQty: 0, purchaseRetCost: 0, purchaseRetValue: 0,
+        availableQty: 0, availableCost: 0, availableValue: 0,
+        salesQty: 0, salesCost: 0, salesValue: 0,
+        adjQty: 0, adjCost: 0, adjValue: 0,
+        closingQty: 0, closingCost: 0, closingValue: 0,
+    });
+
+    // ─── Apply frontend filters cleanly via recursive tree filtering ───────────
+    const filteredTree = useMemo(() => {
+        if (!hasActiveFilters) return reportData;
+
+        const filterNode = (node: any, ancestorBrand = "", ancestorDivision = "", ancestorGender = "", ancestorSilhouette = "", ancestorCategory = ""): any | null => {
+            if (!node) return null;
+
+            const brand = node.level === 'brand' ? node.value : ancestorBrand;
+            const division = node.level === 'division' ? node.value : ancestorDivision;
+            const gender = node.level === 'gender' ? node.value : ancestorGender;
+            const silhouette = node.level === 'silhouette' ? node.value : ancestorSilhouette;
+            const category = node.level === 'category' ? node.value : ancestorCategory;
+
+            const brandMatch = filterBrands.size === 0 || filterBrands.has(brand);
+            const divMatch = filterDivisions.size === 0 || filterDivisions.has(division);
+            const genderMatch = filterGenders.size === 0 || filterGenders.has(gender);
+            const silMatch = filterSilhouettes.size === 0 || filterSilhouettes.has(silhouette);
+            const catMatch = filterCategories.size === 0 || filterCategories.has(category);
+
+            if (!brandMatch || !divMatch || !genderMatch || !silMatch || !catMatch) {
+                return null;
+            }
+
+            if (node.level === 'variant') {
+                const bc = (node.barCode || "").toLowerCase();
+                const sku = (node.sku || "").toLowerCase();
+                const color = (node.color || "").toLowerCase();
+                const size = (node.size || "").toLowerCase();
+
+                const textMatch = searchTokens.length === 0 ||
+                    tokenSet.has(bc) ||
+                    tokenSet.has(sku) ||
+                    searchTokens.some(q => bc.includes(q) || sku.includes(q) || color.includes(q) || size.includes(q));
+                return textMatch ? node : null;
+            }
+
+            if (node.level === 'article') {
+                const artName = (node.articleName || "").toLowerCase();
+                const sku = (node.sku || "").toLowerCase();
+
+                const articleSelfMatch = searchTokens.length === 0 ||
+                    tokenSet.has(sku) ||
+                    tokenSet.has(artName) ||
+                    searchTokens.some(q => artName.includes(q) || sku.includes(q));
+
+                let filteredChildren: any[] = [];
+                if (node.children && node.children.length > 0) {
+                    for (const child of node.children) {
+                        const res = filterNode(child, brand, division, gender, silhouette, category);
+                        if (res) filteredChildren.push(res);
+                    }
+                }
+
+                if (articleSelfMatch || filteredChildren.length > 0) {
+                    return {
+                        ...node,
+                        children: filteredChildren,
+                    };
+                }
+                return null;
+            }
+
+            // Group nodes (brand, division, category, gender, silhouette)
+            let filteredChildren: any[] = [];
+            if (node.children && node.children.length > 0) {
+                for (const child of node.children) {
+                    const res = filterNode(child, brand, division, gender, silhouette, category);
+                    if (res) filteredChildren.push(res);
+                }
+            }
+
+            const val = (node.value || "").toLowerCase();
+            const groupSelfMatch = searchTokens.length === 0 ||
+                tokenSet.has(val) ||
+                searchTokens.some(q => val.includes(q));
+
+            if (filteredChildren.length > 0) {
+                const newTotals = createEmptyValuationTotals();
+                const addValuationTotals = (target: any, source: any) => {
+                    target.openingQty += source.openingQty;
+                    target.openingValue += source.openingValue;
+                    target.openingCost = target.openingQty > 0 ? target.openingValue / target.openingQty : 0;
+
+                    target.purchaseQty += source.purchaseQty;
+                    target.purchaseValue += source.purchaseValue;
+                    target.purchaseCost = target.purchaseQty > 0 ? target.purchaseValue / target.purchaseQty : 0;
+
+                    target.purchaseRetQty += source.purchaseRetQty;
+                    target.purchaseRetValue += source.purchaseRetValue;
+                    target.purchaseRetCost = target.purchaseRetQty > 0 ? target.purchaseRetValue / target.purchaseRetQty : 0;
+
+                    target.availableQty += source.availableQty;
+                    target.availableValue += source.availableValue;
+                    target.availableCost = target.availableQty > 0 ? target.availableValue / target.availableQty : 0;
+
+                    target.salesQty += source.salesQty;
+                    target.salesValue += source.salesValue;
+                    target.salesCost = target.salesQty > 0 ? target.salesValue / target.salesQty : 0;
+
+                    target.adjQty += source.adjQty;
+                    target.adjValue += source.adjValue;
+                    target.adjCost = target.adjQty !== 0 ? target.adjValue / target.adjQty : 0;
+
+                    target.closingQty += source.closingQty;
+                    target.closingValue += source.closingValue;
+                    target.closingCost = target.closingQty > 0 ? target.closingValue / target.closingQty : 0;
+                };
+
+                for (const child of filteredChildren) {
+                    addValuationTotals(newTotals, child.totals);
+                }
+
+                return {
+                    ...node,
+                    totals: newTotals,
+                    children: filteredChildren,
+                };
+            } else if (groupSelfMatch && searchTokens.length > 0) {
+                return node;
+            }
+
+            return null;
+        };
+
+        const resultTree: any[] = [];
+        for (const rootNode of reportData) {
+            const res = filterNode(rootNode);
+            if (res) resultTree.push(res);
+        }
+        return resultTree;
+    }, [reportData, hasActiveFilters, searchTokens, tokenSet, filterBrands, filterDivisions, filterGenders, filterSilhouettes, filterCategories]);
+
     // Calculate High Level & Grand Totals Metrics
     const grandTotals = useMemo(() => {
         const t = {
@@ -513,7 +679,9 @@ export default function PosStockValuationReportPage() {
             closingValue: 0,
         };
 
-        for (const node of reportData) {
+        const targetData = hasActiveFilters ? filteredTree : reportData;
+
+        for (const node of targetData) {
             if (!node || !node.totals) continue;
             t.openingQty += node.totals.openingQty;
             t.openingValue += node.totals.openingValue;
@@ -549,12 +717,12 @@ export default function PosStockValuationReportPage() {
             }
         };
 
-        for (const node of reportData) {
+        for (const node of targetData) {
             countArticles(node);
         }
 
         return t;
-    }, [reportData]);
+    }, [reportData, filteredTree, hasActiveFilters]);
 
     // ─── Extract unique filter options from loaded data ────────────────────────
     const filterOptions = useMemo(() => {
@@ -642,138 +810,11 @@ export default function PosStockValuationReportPage() {
         return rows;
     }, [reportData]);
 
-    const createEmptyValuationTotals = () => ({
-        openingQty: 0, openingCost: 0, openingValue: 0,
-        purchaseQty: 0, purchaseCost: 0, purchaseValue: 0,
-        purchaseRetQty: 0, purchaseRetCost: 0, purchaseRetValue: 0,
-        availableQty: 0, availableCost: 0, availableValue: 0,
-        salesQty: 0, salesCost: 0, salesValue: 0,
-        adjQty: 0, adjCost: 0, adjValue: 0,
-        closingQty: 0, closingCost: 0, closingValue: 0,
-    });
-
-    // ─── Apply frontend filters cleanly via recursive tree filtering ───────────
     const filteredRows = useMemo(() => {
         if (!hasActiveFilters) return flatRows;
 
-        const q = searchText.trim().toLowerCase();
-
-        const filterNode = (node: any, ancestorBrand = "", ancestorDivision = "", ancestorGender = "", ancestorSilhouette = "", ancestorCategory = ""): any | null => {
-            if (!node) return null;
-
-            const brand = node.level === 'brand' ? node.value : ancestorBrand;
-            const division = node.level === 'division' ? node.value : ancestorDivision;
-            const gender = node.level === 'gender' ? node.value : ancestorGender;
-            const silhouette = node.level === 'silhouette' ? node.value : ancestorSilhouette;
-            const category = node.level === 'category' ? node.value : ancestorCategory;
-
-            const brandMatch = filterBrands.size === 0 || filterBrands.has(brand);
-            const divMatch = filterDivisions.size === 0 || filterDivisions.has(division);
-            const genderMatch = filterGenders.size === 0 || filterGenders.has(gender);
-            const silMatch = filterSilhouettes.size === 0 || filterSilhouettes.has(silhouette);
-            const catMatch = filterCategories.size === 0 || filterCategories.has(category);
-
-            if (!brandMatch || !divMatch || !genderMatch || !silMatch || !catMatch) {
-                return null;
-            }
-
-            if (node.level === 'variant') {
-                const textMatch = !q ||
-                    (node.barCode || "").toLowerCase().includes(q) ||
-                    (node.sku || "").toLowerCase().includes(q) ||
-                    (node.color || "").toLowerCase().includes(q) ||
-                    (node.size || "").toLowerCase().includes(q);
-                return textMatch ? node : null;
-            }
-
-            if (node.level === 'article') {
-                const articleSelfMatch = !q ||
-                    (node.articleName || "").toLowerCase().includes(q) ||
-                    (node.sku || "").toLowerCase().includes(q);
-
-                let filteredChildren: any[] = [];
-                if (node.children && node.children.length > 0) {
-                    for (const child of node.children) {
-                        const res = filterNode(child, brand, division, gender, silhouette, category);
-                        if (res) filteredChildren.push(res);
-                    }
-                }
-
-                if (articleSelfMatch || filteredChildren.length > 0) {
-                    return {
-                        ...node,
-                        children: filteredChildren,
-                    };
-                }
-                return null;
-            }
-
-            // Group nodes (brand, division, category, gender, silhouette)
-            let filteredChildren: any[] = [];
-            if (node.children && node.children.length > 0) {
-                for (const child of node.children) {
-                    const res = filterNode(child, brand, division, gender, silhouette, category);
-                    if (res) filteredChildren.push(res);
-                }
-            }
-
-            const groupSelfMatch = !q || (node.value || "").toLowerCase().includes(q);
-
-            if (filteredChildren.length > 0) {
-                const newTotals = createEmptyValuationTotals();
-                const addValuationTotals = (target: any, source: any) => {
-                    target.openingQty += source.openingQty;
-                    target.openingValue += source.openingValue;
-                    target.openingCost = target.openingQty > 0 ? target.openingValue / target.openingQty : 0;
-
-                    target.purchaseQty += source.purchaseQty;
-                    target.purchaseValue += source.purchaseValue;
-                    target.purchaseCost = target.purchaseQty > 0 ? target.purchaseValue / target.purchaseQty : 0;
-
-                    target.purchaseRetQty += source.purchaseRetQty;
-                    target.purchaseRetValue += source.purchaseRetValue;
-                    target.purchaseRetCost = target.purchaseRetQty > 0 ? target.purchaseRetValue / target.purchaseRetQty : 0;
-
-                    target.availableQty += source.availableQty;
-                    target.availableValue += source.availableValue;
-                    target.availableCost = target.availableQty > 0 ? target.availableValue / target.availableQty : 0;
-
-                    target.salesQty += source.salesQty;
-                    target.salesValue += source.salesValue;
-                    target.salesCost = target.salesQty > 0 ? target.salesValue / target.salesQty : 0;
-
-                    target.adjQty += source.adjQty;
-                    target.adjValue += source.adjValue;
-                    target.adjCost = target.adjQty !== 0 ? target.adjValue / target.adjQty : 0;
-
-                    target.closingQty += source.closingQty;
-                    target.closingValue += source.closingValue;
-                    target.closingCost = target.closingQty > 0 ? target.closingValue / target.closingQty : 0;
-                };
-
-                for (const child of filteredChildren) {
-                    addValuationTotals(newTotals, child.totals);
-                }
-
-                return {
-                    ...node,
-                    totals: newTotals,
-                    children: filteredChildren,
-                };
-            } else if (groupSelfMatch && q) {
-                return node;
-            }
-
-            return null;
-        };
-
-        const filteredTree: any[] = [];
-        for (const rootNode of reportData) {
-            const res = filterNode(rootNode);
-            if (res) filteredTree.push(res);
-        }
-
         const rows: any[] = [];
+
         const visit = (node: any, path: string = "", ancestorBrand = "", ancestorDivision = "", ancestorGender = "", ancestorSilhouette = "", ancestorCategory = "") => {
             if (!node) return;
             const currentPath = path ? `${path}-${node.level}-${node.value}` : `${node.level}-${node.value}`;
@@ -792,7 +833,7 @@ export default function PosStockValuationReportPage() {
                     sku: node.sku,
                     totals: node.totals,
                     brand, division, gender, silhouette, category,
-                    _highlight: q,
+                    _highlight: searchTokens,
                 });
             } else if (node.level === 'variant') {
                 rows.push({
@@ -804,7 +845,7 @@ export default function PosStockValuationReportPage() {
                     sku: node.sku,
                     totals: node.totals,
                     brand, division, gender, silhouette, category,
-                    _highlight: q,
+                    _highlight: searchTokens,
                 });
             } else {
                 rows.push({
@@ -828,7 +869,7 @@ export default function PosStockValuationReportPage() {
         }
 
         return rows;
-    }, [reportData, flatRows, hasActiveFilters, searchText, filterBrands, filterDivisions, filterGenders, filterSilhouettes, filterCategories]);
+    }, [flatRows, filteredTree, hasActiveFilters, searchTokens]);
 
     const handleToggleLevel = (level: keyof typeof groupingLevels, checked: boolean) => {
         setGroupingLevels(prev => {
@@ -1026,19 +1067,29 @@ export default function PosStockValuationReportPage() {
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3 no-print">
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Text search */}
-                    <div className="relative flex-1 min-w-[200px] max-w-xs">
-                        <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>
-                        <input
-                            type="text"
-                            placeholder="Search article name, SKU, or Barcode..."
-                            value={searchText}
-                            onChange={e => setSearchText(e.target.value)}
-                            className="w-full text-xs pl-7 pr-3 py-1.5 rounded-lg border border-border bg-muted/30 outline-none focus:border-primary transition-colors"
-                        />
-                        {searchText && (
-                            <button onClick={() => setSearchText("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
+                    <div className="relative flex-1 min-w-[260px] max-w-sm">
+                        <div className="relative flex items-center">
+                            <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>
+                            <textarea
+                                rows={searchTokens.length > 1 ? 2 : 1}
+                                placeholder="Search or paste multiple Barcodes / SKUs (space, comma, or newline separated)..."
+                                value={searchText}
+                                onChange={e => setSearchText(e.target.value)}
+                                className="w-full text-xs pl-7 pr-7 py-1.5 rounded-lg border border-border bg-muted/30 outline-none focus:border-primary transition-all resize-none font-mono"
+                            />
+                            {searchText && (
+                                <button onClick={() => setSearchText("")} className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground">
+                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            )}
+                        </div>
+                        {searchTokens.length > 1 && (
+                            <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground font-semibold px-1">
+                                <span className="text-primary font-bold bg-primary/10 px-1.5 py-0.5 rounded">
+                                    {searchTokens.length} Barcodes / SKUs pasted
+                                </span>
+                                <span>Multi-item search active</span>
+                            </div>
                         )}
                     </div>
 
@@ -1113,9 +1164,11 @@ export default function PosStockValuationReportPage() {
                 {/* Active filter chips */}
                 {hasActiveFilters && (
                     <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border">
-                        {searchText.trim() && (
+                        {searchTokens.length > 0 && (
                             <span className="inline-flex items-center gap-1 text-[11px] bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-semibold">
-                                Search: &ldquo;{searchText}&rdquo;
+                                {searchTokens.length === 1 
+                                    ? `Search: "${searchTokens[0]}"` 
+                                    : `Search: ${searchTokens.length} Barcodes/SKUs`}
                                 <button onClick={() => setSearchText("")} className="hover:text-amber-600"><svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
                             </span>
                         )}
@@ -1494,7 +1547,7 @@ export default function PosStockValuationReportPage() {
                                                             `Variant: ${row.color || 'Default'}${row.barCode ? ` (${row.barCode})` : ''}`
                                                         )}
                                                     </td>
-                                                    <td className="p-2 border-r align-middle font-medium text-slate-600 dark:text-slate-400 font-mono text-[11px]">{isArticle ? row.sku : (row.barCode || row.sku || "")}</td>
+                                                    <td className="p-2 border-r align-middle font-medium text-slate-600 dark:text-slate-400 font-mono text-[11px]">{highlight(isArticle ? (row.sku || "") : (row.barCode || row.sku || ""), hlQuery)}</td>
                                                     <td className="p-2 border-r align-middle text-center">
                                                         {isArticle ? (
                                                             <span className="text-[9px] text-muted-foreground uppercase font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">All Sizes</span>
