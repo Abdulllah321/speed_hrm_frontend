@@ -349,6 +349,7 @@ export default function TerminalSettingsPage() {
                                 <SelectItem value="card">Card</SelectItem>
                                 <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                                 <SelectItem value="credit_account">Credit Account</SelectItem>
+                                <SelectItem value="reward_voucher">Reward Voucher</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

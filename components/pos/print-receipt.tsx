@@ -137,6 +137,7 @@ interface PrintReceiptProps {
   selectedAlliance?: any;
   settings?: Partial<PosSettings>;
   isLoading?: boolean;
+  autoPrint?: boolean;
   creditVouchers?: {
     code: string;
     faceValue: number;
@@ -222,6 +223,7 @@ export function PrintReceipt({
   selectedAlliance,
   settings: settingsOverride,
   isLoading = false,
+  autoPrint,
   creditVouchers,
   onClose,
 }: PrintReceiptProps) {
@@ -249,20 +251,22 @@ export function PrintReceipt({
     setMounted(true);
   }, []);
 
+  const shouldAutoPrint = autoPrint !== undefined ? autoPrint : (settings.receiptAutoPrint ?? false);
+
   useEffect(() => {
-    if (!isLoading && settings.receiptAutoPrint) {
+    if (!isLoading && mounted && shouldAutoPrint) {
       if (layout === "thermal") {
         const timer = setTimeout(
           () => printThermal("receipt-print-root", settings),
-          400,
+          300,
         );
         return () => clearTimeout(timer);
       } else {
-        const timer = setTimeout(() => window.print(), 400);
+        const timer = setTimeout(() => window.print(), 300);
         return () => clearTimeout(timer);
       }
     }
-  }, [isLoading, settings.receiptAutoPrint, settings, layout]);
+  }, [isLoading, mounted, shouldAutoPrint, settings, layout]);
 
   const handlePrint = () => {
     if (layout === "thermal") {
