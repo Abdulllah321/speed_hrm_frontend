@@ -1072,7 +1072,7 @@ export default function PosStockValuationReportPage() {
                             <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>
                             <textarea
                                 rows={searchTokens.length > 1 ? 2 : 1}
-                                placeholder="Search or paste multiple Barcodes / SKUs (space, comma, or newline separated)..."
+                                placeholder="Search or paste multiple Barcodes..."
                                 value={searchText}
                                 onChange={e => setSearchText(e.target.value)}
                                 className="w-full text-xs pl-7 pr-7 py-1.5 rounded-lg border border-border bg-muted/30 outline-none focus:border-primary transition-all resize-none font-mono"
