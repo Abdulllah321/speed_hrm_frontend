@@ -21,7 +21,7 @@ import {
     Loader2, Search, Calendar, RefreshCcw, Printer, RotateCcw,
     Banknote, CreditCard, Ticket, BookOpen, AlertCircle, CheckCircle2,
     XCircle, Info, ShoppingBag, Eye, ArrowRight, User, Building, MapPin,
-    ArrowUpDown, History, Receipt, FileSpreadsheet, Download
+    ArrowUpDown, History, Receipt, FileSpreadsheet, Download, Award
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -48,6 +48,7 @@ const TENDER_ICONS: Record<string, any> = {
     voucher: Ticket,
     bank_transfer: Building,
     credit_account: BookOpen,
+    reward_voucher: Award,
 };
 
 const ACTIVITY_CONFIG: Record<string, { label: string; color: string; icon: any }> = {

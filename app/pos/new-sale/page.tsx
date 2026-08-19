@@ -227,69 +227,9 @@ export default function NewSalePage() {
 
     // Keyboard shortcuts moved to bottom to prevent TDZ error
 
-    // ─── Debounced Live Search ──────────────────────────────────────
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (searchQuery.trim().length >= 2) {
-                setIsSearching(true);
-                try {
-                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: searchQuery.trim() } });
-                    if (res.ok && res.data?.status && res.data.data) {
-                        setSearchResults(res.data.data);
-                    } else {
-                        setSearchResults([]);
-                    }
-                } catch {
-                    setSearchResults([]);
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setSearchResults([]);
-            }
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
-
-    // ─── Barcode scan / Search submit ──────────────────────────────
-    const handleSearchSubmit = useCallback(async () => {
-        if (!searchQuery.trim()) return;
-        try {
-            const res = await authFetch(`/pos-sales/scan`, { params: { barcode: searchQuery.trim() } });
-            if (res.ok && res.data?.status && res.data.data) {
-                const product = res.data.data;
-                const defTax = parseFloat(settings.defaultTaxPercent) || 0;
-                setCartItems((prev) => {
-                    const existingIndex = prev.findIndex((i) => i.id === product.id);
-                    if (existingIndex > -1) {
-                        const existing = prev[existingIndex];
-                        if (existing.quantity + 1 > product.stockQty) {
-                            toast.error(`Only ${product.stockQty} units available in stock`);
-                            return prev;
-                        }
-                        setTimeout(() => setFocusedCartIndex(existingIndex), 0);
-                        return prev.map((i) =>
-                            i.id === product.id
-                                ? computeLineItem(product, i.quantity + 1, i.discountPercent, defTax)
-                                : i
-                        );
-                    }
-                    setTimeout(() => setFocusedCartIndex(prev.length), 0);
-                    return [...prev, computeLineItem(product, 1, Number(product.effectiveDiscountPercent ?? product.discountRate) || 0, defTax)];
-                });
-            } else {
-                toast.error(res.data?.message || "Item not found");
-            }
-        } catch {
-            toast.error("Failed to scan item. Check connection.");
-        }
-        setSearchQuery("");
-        searchInputRef.current?.focus();
-    }, [searchQuery, settings.defaultTaxPercent]);
-
-    // ─── Select from Autocomplete ───────────────────────────────────
+    // ─── Add Product To Cart (shared by scan, click, enter) ───────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleSelectProduct = useCallback((product: any) => {
+    const addProductToCart = useCallback((product: any) => {
         const defTax = parseFloat(settings.defaultTaxPercent) || 0;
         setCartItems((prev) => {
             const existingIndex = prev.findIndex((i) => i.id === product.id);
@@ -313,6 +253,109 @@ export default function NewSalePage() {
         setSearchResults([]);
         searchInputRef.current?.focus();
     }, [settings.defaultTaxPercent]);
+
+    // Track scanner rapid input timing
+    const lastKeyTimeRef = useRef<number>(0);
+    const isScannerInputRef = useRef<boolean>(false);
+    const isScanningRef = useRef<boolean>(false);
+
+    const handleSearchChange = useCallback((value: string) => {
+        const now = Date.now();
+        const timeDiff = now - lastKeyTimeRef.current;
+        lastKeyTimeRef.current = now;
+
+        // If characters arrive in < 45ms or in bulk (>2 chars added at once e.g. barcode scanner wedge)
+        if (timeDiff < 45 || value.length - searchQuery.length > 2) {
+            isScannerInputRef.current = true;
+        } else {
+            isScannerInputRef.current = false;
+        }
+        setSearchQuery(value);
+    }, [searchQuery]);
+
+    // ─── Debounced Live Search & Instant Barcode Auto-Add ────────────
+    useEffect(() => {
+        const query = searchQuery.trim();
+        if (!query) {
+            setSearchResults([]);
+            return;
+        }
+
+        // If fast scanner input detected, use very short debounce (60ms) to auto-add immediately.
+        // For normal manual typing, use 250ms debounce for dropdown search.
+        const delay = isScannerInputRef.current ? 60 : 250;
+
+        const timer = setTimeout(async () => {
+            if (isScanningRef.current) return;
+
+            // 1. Try exact barcode/SKU scan if length >= 3
+            if (query.length >= 3) {
+                try {
+                    isScanningRef.current = true;
+                    const scanRes = await authFetch(`/pos-sales/scan`, { params: { barcode: query } });
+                    if (scanRes.ok && scanRes.data?.status && scanRes.data.data) {
+                        const product = scanRes.data.data;
+                        addProductToCart(product);
+                        toast.success(`Scanned: ${product.description || product.name || "Product"}`);
+                        return;
+                    }
+                } catch {
+                    // Fallthrough to regular search lookup
+                } finally {
+                    isScanningRef.current = false;
+                }
+            }
+
+            // 2. Regular lookup for partial text search (e.g. "puma")
+            if (query.length >= 2) {
+                setIsSearching(true);
+                try {
+                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: query } });
+                    if (res.ok && res.data?.status && res.data.data) {
+                        setSearchResults(res.data.data);
+                    } else {
+                        setSearchResults([]);
+                    }
+                } catch {
+                    setSearchResults([]);
+                } finally {
+                    setIsSearching(false);
+                }
+            } else {
+                setSearchResults([]);
+            }
+        }, delay);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery, addProductToCart]);
+
+    // ─── Barcode scan / Search submit (fallback on Enter key) ───────
+    const handleSearchSubmit = useCallback(async () => {
+        if (!searchQuery.trim()) return;
+        try {
+            const res = await authFetch(`/pos-sales/scan`, { params: { barcode: searchQuery.trim() } });
+            if (res.ok && res.data?.status && res.data.data) {
+                addProductToCart(res.data.data);
+                toast.success(`Added: ${res.data.data.description || "Product"}`);
+            } else if (searchResults.length === 1) {
+                // If only 1 item in search results, select it
+                addProductToCart(searchResults[0]);
+                toast.success(`Added: ${searchResults[0].description || "Product"}`);
+            } else {
+                toast.error(res.data?.message || "Item not found");
+            }
+        } catch {
+            toast.error("Failed to scan item. Check connection.");
+        }
+        setSearchQuery("");
+        searchInputRef.current?.focus();
+    }, [searchQuery, searchResults, addProductToCart]);
+
+    // ─── Select from Autocomplete ───────────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleSelectProduct = useCallback((product: any) => {
+        addProductToCart(product);
+    }, [addProductToCart]);
 
     // ─── Cart operations ────────────────────────────────────────────
     const handleQuantityChange = useCallback((id: string, quantity: number) => {
@@ -622,6 +665,7 @@ export default function NewSalePage() {
     }, [searchQuery]);
 
     // ─── Derived state ──────────────────────────────────────────────
+    const totalQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0);
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const totalDiscount = cartItems.reduce((acc, item) => acc + item.discountAmount, 0);
     const totalTax = cartItems.reduce((acc, item) => acc + item.taxAmount, 0);
@@ -659,8 +703,9 @@ export default function NewSalePage() {
             {/* Top bar */}
             <NewSaleTopBar
                 itemCount={cartItems.length}
+                totalQuantity={totalQuantity}
                 searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
+                onSearchChange={handleSearchChange}
                 onSearchSubmit={handleSearchSubmit}
                 searchResults={searchResults}
                 isSearching={isSearching}

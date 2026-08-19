@@ -28,7 +28,7 @@ export const POS_SETTINGS_DEFAULTS: PosSettings = {
     receiptSTRN: "",
     receiptFooter: "Thank you for your purchase!",
     receiptShowTax: true,
-    receiptAutoPrint: false,
+    receiptAutoPrint: true,
     receiptShowCashier: true,
     receiptPrinterName: "",
     defaultPaymentMethod: "cash",

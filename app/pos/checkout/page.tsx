@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Phone, UserCheck } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 
 // Sub-components
@@ -67,8 +67,10 @@ export interface Tender {
   amount: number;
   cardLast4?: string;
   slipNo?: string;
+  remarks?: string;
   voucherId?: string;
   voucherFaceValue?: number;
+  voucherType?: string;
   cardholderName?: string;
 }
 export interface Customer {
@@ -76,6 +78,8 @@ export interface Customer {
   name: string;
   code: string;
   contactNo?: string;
+  email?: string;
+  cnicNo?: string;
   address?: string;
 }
 export type DiscountMode = "none" | "promo" | "coupon" | "alliance" | "manual";
@@ -99,10 +103,12 @@ function AddCustomerModal({
   open,
   onOpenChange,
   onSuccess,
+  existingCustomers = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (customer: Customer) => void;
+  existingCustomers?: Customer[];
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -112,6 +118,92 @@ function AddCustomerModal({
     cnicNo: "",
   });
 
+  const [contactSuggestions, setContactSuggestions] = useState<Customer[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!open) {
+      setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
+      setContactSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [open]);
+
+  // Click outside suggestions popover
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Debounced search for phone number suggestions
+  useEffect(() => {
+    const query = formData.contactNo.trim();
+    if (query.length < 2) {
+      setContactSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    // First, filter immediate matches from local existingCustomers
+    const localMatches = existingCustomers.filter(
+      (c) =>
+        c.contactNo &&
+        c.contactNo.replace(/\D/g, "").includes(query.replace(/\D/g, ""))
+    );
+
+    setContactSuggestions(localMatches);
+    setShowSuggestions(localMatches.length > 0);
+
+    // Also query backend for full database search
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await authFetch(
+          `/pos-sales/customers?search=${encodeURIComponent(query)}`
+        );
+        if (res.ok && res.data?.status && Array.isArray(res.data.data)) {
+          const apiList: Customer[] = res.data.data;
+          const map = new Map<string, Customer>();
+          for (const c of localMatches) map.set(c.id, c);
+          for (const c of apiList) {
+            if (
+              c.contactNo &&
+              c.contactNo.replace(/\D/g, "").includes(query.replace(/\D/g, ""))
+            ) {
+              map.set(c.id, c);
+            }
+          }
+          const merged = Array.from(map.values());
+          setContactSuggestions(merged);
+          setShowSuggestions(merged.length > 0);
+        }
+      } catch (err) {
+        console.error("Error searching customers by contact:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [formData.contactNo, existingCustomers]);
+
+  const handleSelectExisting = (cust: Customer) => {
+    toast.success(`Selected existing customer: ${cust.name}`);
+    onSuccess(cust);
+    onOpenChange(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -120,10 +212,17 @@ function AddCustomerModal({
     }
     setIsSubmitting(true);
     try {
-      const code = `CUST-${Date.now()}`;
+      const payload: any = {
+        name: formData.name.trim(),
+        customerType: "POS",
+      };
+      if (formData.contactNo?.trim()) payload.contactNo = formData.contactNo.trim();
+      if (formData.email?.trim()) payload.email = formData.email.trim();
+      if (formData.cnicNo?.trim()) payload.cnicNo = formData.cnicNo.trim();
+
       const res = await authFetch("/pos-sales/customers", {
         method: "POST",
-        body: { ...formData, code },
+        body: payload,
       });
       if (res.ok && res.data?.status) {
         toast.success("Customer added successfully");
@@ -161,16 +260,82 @@ function AddCustomerModal({
               autoFocus
             />
           </div>
-          <div className="space-y-2">
-            <Label>Contact Number</Label>
+
+          {/* Contact Number with live suggestions dropdown */}
+          <div className="space-y-2 relative" ref={suggestionsRef}>
+            <div className="flex items-center justify-between">
+              <Label>Contact Number</Label>
+              {isSearching && (
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Searching...
+                </span>
+              )}
+            </div>
             <Input
               placeholder="e.g. 03001234567"
               value={formData.contactNo}
               onChange={(e) =>
                 setFormData((d) => ({ ...d, contactNo: e.target.value }))
               }
+              onFocus={() => {
+                if (contactSuggestions.length > 0) setShowSuggestions(true);
+              }}
             />
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && contactSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-popover border border-border shadow-xl rounded-lg overflow-hidden max-h-56 overflow-y-auto">
+                <div className="bg-muted/60 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground flex items-center justify-between border-b">
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="h-3 w-3 text-primary" />
+                    Existing Customers Found ({contactSuggestions.length})
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">Click to select</span>
+                </div>
+                <div className="divide-y divide-border/40">
+                  {contactSuggestions.map((cust) => (
+                    <div
+                      key={cust.id}
+                      onClick={() => handleSelectExisting(cust)}
+                      className="p-2.5 hover:bg-primary/10 cursor-pointer transition-colors flex items-center justify-between gap-2 group"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs text-primary group-hover:underline">
+                            {cust.contactNo || "No Contact"}
+                          </span>
+                          <span className="font-semibold text-xs truncate text-foreground">
+                            {cust.name}
+                          </span>
+                        </div>
+                        {(cust.cnicNo || cust.email) && (
+                          <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                            {cust.cnicNo && `CNIC: ${cust.cnicNo}`}
+                            {cust.cnicNo && cust.email && " • "}
+                            {cust.email && cust.email}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-7 text-xs px-2.5 font-bold gap-1 shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-all"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectExisting(cust);
+                        }}
+                      >
+                        <UserCheck className="h-3.5 w-3.5" />
+                        Select
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
           <div className="space-y-2">
             <Label>Email Address</Label>
             <Input
@@ -358,6 +523,7 @@ export default function CheckoutPage() {
   const [tenderCardholderName, setTenderCardholderName] = useState("");
   const [tenderCardLast4, setTenderCardLast4] = useState("");
   const [tenderSlip, setTenderSlip] = useState("");
+  const [tenderRemarks, setTenderRemarks] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<any>(null);
   const [isGiftReceipt, setIsGiftReceipt] = useState(false);
@@ -715,13 +881,19 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (tenderMethod === "reward_voucher" && !tenderRemarks.trim()) {
+      toast.error("Please enter a remark / reference for the Reward Voucher.");
+      return;
+    }
+
     setTenders((prev) => [
       ...prev,
       {
         method: tenderMethod,
         amount: tenderAmount,
         cardLast4: tenderCardLast4 || undefined,
-        slipNo: tenderSlip || undefined,
+        slipNo: tenderMethod === "reward_voucher" ? tenderRemarks.trim() : (tenderSlip || undefined),
+        remarks: tenderMethod === "reward_voucher" ? tenderRemarks.trim() : undefined,
         cardholderName: tenderCardholderName || undefined,
       },
     ]);
@@ -742,6 +914,7 @@ export default function CheckoutPage() {
     setTenderCardholderName("");
     setTenderCardLast4("");
     setTenderSlip("");
+    setTenderRemarks("");
   };
 
   const validateVoucherCode = useCallback(
@@ -822,6 +995,7 @@ export default function CheckoutPage() {
       return;
     }
     const amount = Math.min(tenderAmount, validatedVoucher.faceValue);
+    const remBalance = Math.max(0, validatedVoucher.faceValue - amount);
     setAppliedVouchers((prev) => [
       ...prev,
       { voucherId: validatedVoucher.id, code: validatedVoucher.code, amount },
@@ -834,8 +1008,14 @@ export default function CheckoutPage() {
         slipNo: validatedVoucher.code,
         voucherId: validatedVoucher.id,
         voucherFaceValue: validatedVoucher.faceValue,
+        voucherType: validatedVoucher.voucherType,
       },
     ]);
+    if (remBalance > 0) {
+      toast.info(`Voucher added: ${fmtCurrency(amount)}. Remaining voucher balance: ${fmtCurrency(remBalance)}`);
+    } else {
+      toast.success(`Voucher added: ${fmtCurrency(amount)}`);
+    }
     setVoucherCode("");
     setValidatedVoucher(null);
     setTenderAmount(0);
@@ -1322,10 +1502,10 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Select Tender Method: Alt+1 to Alt+5 / Ctrl+1 to Ctrl+5 (only if cash payment not locked/restricted by alliance)
-      const isAlt1To5 = e.altKey && ["1", "2", "3", "4", "5"].includes(e.key);
-      const isCtrl1To5 = e.ctrlKey && ["1", "2", "3", "4", "5"].includes(e.key);
-      if (isAlt1To5 || isCtrl1To5) {
+      // Select Tender Method: Alt+1 to Alt+6 / Ctrl+1 to Ctrl+6 (only if cash payment not locked/restricted by alliance)
+      const isAlt1To6 = e.altKey && ["1", "2", "3", "4", "5", "6"].includes(e.key);
+      const isCtrl1To6 = e.ctrlKey && ["1", "2", "3", "4", "5", "6"].includes(e.key);
+      if (isAlt1To6 || isCtrl1To6) {
         const keyNum = e.key;
         e.preventDefault();
         const methods = [
@@ -1334,6 +1514,7 @@ export default function CheckoutPage() {
           "bank_transfer",
           "voucher",
           "credit_account",
+          "reward_voucher",
         ];
         const method = methods[parseInt(keyNum) - 1];
 
@@ -1359,6 +1540,11 @@ export default function CheckoutPage() {
           setTimeout(() => {
             const vInput = document.getElementById("voucher-code-input");
             if (vInput) (vInput as HTMLInputElement).focus();
+          }, 50);
+        } else if (method === "reward_voucher") {
+          setTimeout(() => {
+            const rInput = document.getElementById("reward-voucher-remarks-input");
+            if (rInput) (rInput as HTMLInputElement).focus();
           }, 50);
         } else if (method === "card" || method === "bank_transfer") {
           setTimeout(() => {
@@ -1552,6 +1738,7 @@ export default function CheckoutPage() {
         {/* Header */}
         <CheckoutHeader
           cartItemCount={cartItems.length}
+          totalQuantity={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
           onBack={() => router.push("/pos/new-sale")}
         />
 
@@ -1559,8 +1746,12 @@ export default function CheckoutPage() {
         <AddCustomerModal
           open={showAddCustomer}
           onOpenChange={setShowAddCustomer}
+          existingCustomers={customers}
           onSuccess={(c) => {
-            setCustomers((prev) => [c, ...prev]);
+            setCustomers((prev) => {
+              if (prev.some((x) => x.id === c.id)) return prev;
+              return [c, ...prev];
+            });
             setSelectedCustomer(c);
           }}
         />
@@ -1725,6 +1916,7 @@ export default function CheckoutPage() {
               tenderCardholderName={tenderCardholderName}
               tenderCardLast4={tenderCardLast4}
               tenderSlip={tenderSlip}
+              tenderRemarks={tenderRemarks}
               balanceDue={balanceDue}
               changeAmount={changeAmount}
               discountMode={discountMode}
@@ -1746,6 +1938,7 @@ export default function CheckoutPage() {
               onTenderCardholderNameChange={setTenderCardholderName}
               onTenderCardLast4Change={setTenderCardLast4}
               onTenderSlipChange={setTenderSlip}
+              onTenderRemarksChange={setTenderRemarks}
               onAddTender={addTender}
               onAddVoucherTender={addVoucherTender}
               onRemoveTender={removeTender}
@@ -1807,6 +2000,7 @@ export default function CheckoutPage() {
           appliedCoupon={appliedCoupon}
           selectedAlliance={selectedAlliance}
           settings={settings}
+          autoPrint={false}
           onClose={() => setShowReceiptPreview(false)}
         />
       )}
@@ -1826,6 +2020,7 @@ export default function CheckoutPage() {
           appliedCoupon={appliedCoupon}
           selectedAlliance={selectedAlliance}
           settings={settings}
+          autoPrint={true}
           creditVouchers={completedOrder.creditVouchers}
           onClose={() => {
             if (isGiftReceipt) {
@@ -1853,6 +2048,7 @@ export default function CheckoutPage() {
           appliedCoupon={appliedCoupon}
           selectedAlliance={selectedAlliance}
           settings={settings}
+          autoPrint={true}
           creditVouchers={completedOrder.creditVouchers}
           onClose={() => {
             setCompletedOrder(null);
@@ -1963,10 +2159,10 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">
-                  Voucher / Credit Account
+                  Voucher / Credit / Reward
                 </span>
                 <kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">
-                  Alt + 4 / 5
+                  Alt + 4 / 5 / 6
                 </kbd>
               </div>
               <div className="flex justify-between items-center">

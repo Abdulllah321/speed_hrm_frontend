@@ -34,6 +34,7 @@ import {
   Building2,
   Ticket,
   BookOpen,
+  Award,
   Users,
   Package,
   BarChart3,
@@ -174,6 +175,7 @@ const PAYMENT_ICONS: Record<string, React.ElementType> = {
   bank_transfer: Building2,
   voucher: Ticket,
   credit_account: BookOpen,
+  reward_voucher: Award,
   split: BarChart3,
 };
 
@@ -183,6 +185,7 @@ const PAYMENT_COLORS: Record<string, string> = {
   bank_transfer: "text-violet-600",
   voucher: "text-amber-600",
   credit_account: "text-rose-600",
+  reward_voucher: "text-purple-600",
   split: "text-slate-600",
 };
 
@@ -566,6 +569,7 @@ export default function SalesReportPage() {
                   <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                   <SelectItem value="voucher">Voucher</SelectItem>
                   <SelectItem value="credit_account">Credit Account</SelectItem>
+                  <SelectItem value="reward_voucher">Reward Voucher</SelectItem>
                   <SelectItem value="split">Split</SelectItem>
                 </SelectContent>
               </Select>

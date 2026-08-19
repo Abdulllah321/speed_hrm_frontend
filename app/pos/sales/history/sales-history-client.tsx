@@ -20,7 +20,7 @@ import {
 import {
     Printer, Eye,
     PauseCircle, RotateCcw, Pencil, Plus, Trash2, Loader2,
-    Banknote, CreditCard, Building2, Ticket, BookOpen,
+    Banknote, CreditCard, Building2, Ticket, BookOpen, Award,
     AlertCircle, CheckCircle, CheckCircle2, XCircle, Upload,
 } from "lucide-react";
 import DataTable from "@/components/common/data-table";
@@ -56,6 +56,7 @@ const TENDER_OPTIONS = [
     { value: "bank_transfer",  label: "Bank Transfer",  icon: Building2 },
     { value: "voucher",        label: "Voucher",        icon: Ticket    },
     { value: "credit_account", label: "Credit Account", icon: BookOpen  },
+    { value: "reward_voucher", label: "Reward Voucher", icon: Award     },
 ];
 
 interface Tender {
@@ -205,7 +206,7 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
                 method, 
                 amount, 
                 cardLast4: (method === "card" || method === "bank_transfer") ? cardLast4 || undefined : undefined, 
-                slipNo: (method === "card" || method === "bank_transfer") ? slipNo || undefined : undefined 
+                slipNo: (method === "card" || method === "bank_transfer" || method === "reward_voucher") ? slipNo || undefined : undefined 
             },
         ]);
         setAmount(0); 
@@ -401,6 +402,21 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
                                         <div className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs text-emerald-700">
                                             <BookOpen className="h-3.5 w-3.5 shrink-0" />
                                             <span>Will be posted to <strong>{fullOrder.customer?.name || "linked customer"}</strong>'s Credit Account.</span>
+                                        </div>
+                                    )}
+
+                                    {/* Reward voucher remarks */}
+                                    {method === "reward_voucher" && (
+                                        <div className="space-y-1 pt-1">
+                                            <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                                Remarks / Reference
+                                            </Label>
+                                            <Input
+                                                className="h-8 text-xs font-mono"
+                                                placeholder="Enter reward voucher remarks..."
+                                                value={slipNo}
+                                                onChange={e => setSlipNo(e.target.value)}
+                                            />
                                         </div>
                                     )}
 

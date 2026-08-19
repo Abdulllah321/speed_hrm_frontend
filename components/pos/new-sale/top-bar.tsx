@@ -10,6 +10,7 @@ import { formatCurrency, cn } from "@/lib/utils";
 
 interface TopBarProps {
     itemCount: number;
+    totalQuantity?: number;
     searchQuery: string;
     onSearchChange: (value: string) => void;
     onSearchSubmit: () => void;
@@ -21,6 +22,7 @@ interface TopBarProps {
 
 export function NewSaleTopBar({
     itemCount,
+    totalQuantity,
     searchQuery,
     onSearchChange,
     onSearchSubmit,
@@ -37,17 +39,15 @@ export function NewSaleTopBar({
     }, [searchResults, searchQuery]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (searchResults.length === 0) return;
-
-        if (e.key === "ArrowDown") {
+        if (e.key === "ArrowDown" && searchResults.length > 0) {
             e.preventDefault();
             setActiveIndex((prev) => (prev + 1) % searchResults.length);
-        } else if (e.key === "ArrowUp") {
+        } else if (e.key === "ArrowUp" && searchResults.length > 0) {
             e.preventDefault();
             setActiveIndex((prev) => (prev - 1 + searchResults.length) % searchResults.length);
         } else if (e.key === "Enter") {
+            e.preventDefault();
             if (activeIndex >= 0 && activeIndex < searchResults.length) {
-                e.preventDefault();
                 onSelectProduct(searchResults[activeIndex]);
                 setActiveIndex(-1);
             } else {
@@ -106,20 +106,24 @@ export function NewSaleTopBar({
                                                 onClick={() => onSelectProduct(product)}
                                             >
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-semibold">
-                                                        {product.description || 'Unknown Product'}
+                                                    <div className="flex items-center flex-wrap gap-1.5">
+                                                        <span className="text-sm font-normal text-foreground">
+                                                            {product.description || 'Unknown Product'}
+                                                        </span>
                                                         {(typeof product.size === "object" ? product.size?.name : product.size) && (
-                                                            <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
-                                                                Size: {typeof product.size === "object" ? product.size?.name : product.size}
+                                                            <span className="text-[10px] text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                Size: <strong className="font-bold text-foreground">{typeof product.size === "object" ? product.size?.name : product.size}</strong>
                                                             </span>
                                                         )}
                                                         {(typeof product.color === "object" ? product.color?.name : product.color) && (
-                                                            <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
-                                                                Color: {typeof product.color === "object" ? product.color?.name : product.color}
+                                                            <span className="text-[10px] text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                Color: <span className="font-medium text-foreground">{typeof product.color === "object" ? product.color?.name : product.color}</span>
                                                             </span>
                                                         )}
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground mt-0.5 font-mono">
+                                                        SKU: <strong className="font-bold text-foreground tracking-wide">{product.sku || product.barCode || '-'}</strong>
                                                     </span>
-                                                    <span className="text-xs text-muted-foreground">SKU: {product.sku || product.barCode || '-'}</span>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1">
                                                     <span className="text-sm font-bold">{formatCurrency(product.unitPrice || 0)}</span>
@@ -143,10 +147,10 @@ export function NewSaleTopBar({
                     </div>
                 </div>
 
-                {/* Right section: Items Count */}
-                <div className="flex items-center gap-6">
-                    {/* Items in Cart */}
-                    <div className="flex flex-col items-center gap-0.5 ml-auto">
+                {/* Right section: Items Count & Total Qty */}
+                <div className="flex items-center gap-4 sm:gap-6 shrink-0 ml-auto">
+                    {/* Items in Cart (Unique Lines) */}
+                    <div className="flex flex-col items-center gap-0.5">
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                             Items in Cart
                         </span>
@@ -154,6 +158,21 @@ export function NewSaleTopBar({
                             <ShoppingCart className="h-4 w-4 text-foreground" />
                             <span className="text-2xl font-bold leading-none">
                                 {itemCount}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Vertical Divider */}
+                    <div className="h-8 w-px bg-border/80" />
+
+                    {/* Total Units / Quantity */}
+                    <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                            Total Qty
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-2xl font-extrabold font-mono leading-none text-primary">
+                                {totalQuantity ?? itemCount}
                             </span>
                         </div>
                     </div>

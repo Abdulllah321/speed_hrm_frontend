@@ -197,7 +197,9 @@ export function OrderSummary({
                                                 }}
                                             >
                                                 <span className="font-semibold text-xs">{c.name}</span>
-                                                <span className="text-[10px] text-muted-foreground">{c.contactNo || c.code}</span>
+                                                {c.contactNo && (
+                                                    <span className="text-[10px] text-muted-foreground">{c.contactNo}</span>
+                                                )}
                                             </li>
                                         ))
                                     )}
@@ -222,7 +224,9 @@ export function OrderSummary({
                         <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold text-emerald-500 leading-none">{selectedCustomer.name}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1 truncate">{selectedCustomer.contactNo || "No contact"} · {selectedCustomer.code}</p>
+                            {selectedCustomer.contactNo && (
+                                <p className="text-[10px] text-muted-foreground mt-1 truncate">{selectedCustomer.contactNo}</p>
+                            )}
                         </div>
                         <button
                             onClick={onClearCustomer}

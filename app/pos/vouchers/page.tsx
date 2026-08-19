@@ -495,19 +495,16 @@ export default function PosVouchersPage() {
                     <h1 className="text-xl font-bold">Vouchers</h1>
                     <p className="text-sm text-muted-foreground">Issue and manage vouchers</p>
                 </div>
-                {canCreate && (
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={fetchVouchers} className="rounded-full">
-                            <RefreshCw className="w-4 h-4" />
-                        </Button>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={fetchVouchers} className="rounded-full" title="Refresh">
+                        <RefreshCw className="w-4 h-4" />
+                    </Button>
+                    {canCreate && (
                         <Button variant="outline" onClick={() => setShowBulk(true)} className="gap-2">
                             <Layers className="w-4 h-4" /> Bulk Issue
                         </Button>
-                        <Button onClick={() => setShowSingle(true)} className="gap-2">
-                            <Plus className="w-4 h-4" /> Issue Voucher
-                        </Button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* Tabs + table */}

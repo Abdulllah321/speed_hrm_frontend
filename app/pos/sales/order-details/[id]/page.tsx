@@ -335,7 +335,7 @@ export default function OrderDetailsPage() {
                                                         <p className="text-xs font-black capitalize">{t.method.replace("_", " ")}</p>
                                                     </div>
                                                     {t.cardLast4 && <span className="text-[9px] font-mono font-black text-primary ring-1 ring-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">••••{t.cardLast4}</span>}
-                                                    {t.slipNo && <span className="text-[9px] font-mono font-black text-muted-foreground ring-1 ring-border px-1.5 py-0.5 rounded-md bg-muted/30">{t.method === "voucher" ? `#${t.slipNo}` : t.slipNo}</span>}
+                                                    {t.slipNo && <span className="text-[9px] font-mono font-black text-muted-foreground ring-1 ring-border px-1.5 py-0.5 rounded-md bg-muted/30">{t.method === "voucher" ? `#${t.slipNo}` : t.method === "reward_voucher" ? `Remark: ${t.slipNo}` : t.slipNo}</span>}
                                                     {t.voucherFaceValue && <span className="text-[9px] font-mono font-black text-amber-600 ring-1 ring-amber-500/20 px-1.5 py-0.5 rounded-md bg-amber-500/5">Val: {formatCurrency(t.voucherFaceValue)}</span>}
                                                 </div>
                                                 <div className="text-right">

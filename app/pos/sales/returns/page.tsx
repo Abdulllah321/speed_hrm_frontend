@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -40,6 +47,10 @@ import {
   Send,
   X,
   Receipt,
+  UserRound,
+  Trash2,
+  UserPlus,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
@@ -131,6 +142,292 @@ interface LoadedOrder {
   alliance?: string;
   locationName?: string;
   locationId?: string;
+  customer?: Customer;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  code: string;
+  contactNo?: string;
+  email?: string;
+  cnicNo?: string;
+  address?: string;
+}
+
+function AddCustomerModal({
+  open,
+  onOpenChange,
+  onSuccess,
+  existingCustomers = [],
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: (customer: Customer) => void;
+  existingCustomers?: Customer[];
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    contactNo: "",
+    email: "",
+    cnicNo: "",
+  });
+
+  const [contactSuggestions, setContactSuggestions] = useState<Customer[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
+      setContactSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const query = formData.contactNo.trim();
+    if (query.length < 2) {
+      setContactSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const localMatches = existingCustomers.filter(
+      (c) =>
+        c.contactNo &&
+        c.contactNo.replace(/\D/g, "").includes(query.replace(/\D/g, ""))
+    );
+
+    setContactSuggestions(localMatches);
+    setShowSuggestions(localMatches.length > 0);
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await authFetch(
+          `/pos-sales/customers?search=${encodeURIComponent(query)}`
+        );
+        if (res.ok && res.data?.status && Array.isArray(res.data.data)) {
+          const apiList: Customer[] = res.data.data;
+          const map = new Map<string, Customer>();
+          for (const c of localMatches) map.set(c.id, c);
+          for (const c of apiList) {
+            if (
+              c.contactNo &&
+              c.contactNo.replace(/\D/g, "").includes(query.replace(/\D/g, ""))
+            ) {
+              map.set(c.id, c);
+            }
+          }
+          const merged = Array.from(map.values());
+          setContactSuggestions(merged);
+          setShowSuggestions(merged.length > 0);
+        }
+      } catch (err) {
+        console.error("Error searching customers by contact:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [formData.contactNo, existingCustomers]);
+
+  const handleSelectExisting = (cust: Customer) => {
+    toast.success(`Selected existing customer: ${cust.name}`);
+    onSuccess(cust);
+    onOpenChange(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const payload: any = {
+        name: formData.name.trim(),
+        customerType: "POS",
+      };
+      if (formData.contactNo?.trim()) payload.contactNo = formData.contactNo.trim();
+      if (formData.email?.trim()) payload.email = formData.email.trim();
+      if (formData.cnicNo?.trim()) payload.cnicNo = formData.cnicNo.trim();
+
+      const res = await authFetch("/pos-sales/customers", {
+        method: "POST",
+        body: payload,
+      });
+      if (res.ok && res.data?.status) {
+        toast.success("Customer added successfully");
+        onSuccess(res.data.data);
+        onOpenChange(false);
+        setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
+      } else {
+        toast.error(res.data?.message || "Failed to add customer");
+      }
+    } catch {
+      toast.error("Failed to add customer. Check connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add New Customer</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>
+              Full Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              placeholder="Customer name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData((d) => ({ ...d, name: e.target.value }))
+              }
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="space-y-2 relative" ref={suggestionsRef}>
+            <div className="flex items-center justify-between">
+              <Label>Contact Number</Label>
+              {isSearching && (
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Searching...
+                </span>
+              )}
+            </div>
+            <Input
+              placeholder="e.g. 03001234567"
+              value={formData.contactNo}
+              onChange={(e) =>
+                setFormData((d) => ({ ...d, contactNo: e.target.value }))
+              }
+              onFocus={() => {
+                if (contactSuggestions.length > 0) setShowSuggestions(true);
+              }}
+            />
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && contactSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-popover border border-border shadow-xl rounded-lg overflow-hidden max-h-56 overflow-y-auto">
+                <div className="bg-muted/60 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground flex items-center justify-between border-b">
+                  <span className="text-xs font-semibold text-foreground">
+                    Existing Customers Found ({contactSuggestions.length})
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">Click to select</span>
+                </div>
+                <div className="divide-y divide-border/40">
+                  {contactSuggestions.map((cust) => (
+                    <div
+                      key={cust.id}
+                      onClick={() => handleSelectExisting(cust)}
+                      className="p-2.5 hover:bg-primary/10 cursor-pointer transition-colors flex items-center justify-between gap-2 group"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs text-primary group-hover:underline">
+                            {cust.contactNo || "No Contact"}
+                          </span>
+                          <span className="font-semibold text-xs truncate text-foreground">
+                            {cust.name}
+                          </span>
+                        </div>
+                        {(cust.cnicNo || cust.email) && (
+                          <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                            {cust.cnicNo && `CNIC: ${cust.cnicNo}`}
+                            {cust.cnicNo && cust.email && " • "}
+                            {cust.email && cust.email}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-7 text-xs px-2.5 font-bold gap-1 shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-all"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectExisting(cust);
+                        }}
+                      >
+                        <UserCheck className="h-3.5 w-3.5" />
+                        Select
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Email Address</Label>
+            <Input
+              type="email"
+              placeholder="e.g. customer@example.com"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData((d) => ({ ...d, email: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>CNIC</Label>
+            <Input
+              placeholder="e.g. 42201-1234567-1"
+              value={formData.cnicNo}
+              onChange={(e) =>
+                setFormData((d) => ({ ...d, cnicNo: e.target.value }))
+              }
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
+                </>
+              ) : (
+                "Save Customer"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function ReturnsPage() {
@@ -164,8 +461,110 @@ export default function ReturnsPage() {
   const [reasonCode, setReasonCode] = useState("DEFECTIVE");
   const [notes, setNotes] = useState("");
   const [notesError, setNotesError] = useState(false);
+
+  // ── Customer search for claims (same as checkout) ─────────────────
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const customerSearchRef = useRef<HTMLInputElement>(null);
+  const [activeCustomerIndex, setActiveCustomerIndex] = useState(-1);
+
+  const [claimCustomerName, setClaimCustomerName] = useState("");
+  const [claimCustomerPhone, setClaimCustomerPhone] = useState("");
+  const [claimErrors, setClaimErrors] = useState<{
+    customerName?: boolean;
+    customerPhone?: boolean;
+    reason?: boolean;
+  }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
+
+  // ── Fetch customers for claim search (same as checkout) ───────────
+  useEffect(() => {
+    if (mode !== "claim") return;
+    setIsLoadingCustomers(true);
+    const searchParam = customerSearch
+      ? `?search=${encodeURIComponent(customerSearch)}`
+      : "";
+    authFetch(`/pos-sales/customers${searchParam}`)
+      .then((res) => {
+        if (res.ok && res.data?.status) setCustomers(res.data.data || []);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingCustomers(false));
+  }, [customerSearch, mode]);
+
+  useEffect(() => {
+    if (loadedOrders.length > 0 && mode === "claim" && !selectedCustomer) {
+      const order = loadedOrders[0];
+      if (order.customer) {
+        setSelectedCustomer(order.customer);
+        setClaimCustomerName(order.customer.name || "");
+        setClaimCustomerPhone(order.customer.contactNo || "");
+      } else if (order.id) {
+        authFetch(`/pos-sales/orders/${order.id}`)
+          .then((res) => {
+            if (res.ok && res.data?.status && res.data.data?.customer) {
+              const cust = res.data.data.customer;
+              setSelectedCustomer(cust);
+              setClaimCustomerName(cust.name || "");
+              setClaimCustomerPhone(cust.contactNo || "");
+              setLoadedOrders((prev) =>
+                prev.map((o) => (o.id === order.id ? { ...o, customer: cust } : o)),
+              );
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [loadedOrders, mode, selectedCustomer]);
+
+  const handleCustomerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showCustomerDropdown || customers.length === 0) {
+      if (e.key === "ArrowDown") {
+        setShowCustomerDropdown(true);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveCustomerIndex((prev) =>
+        prev < customers.length - 1 ? prev + 1 : prev,
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveCustomerIndex((prev) => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeCustomerIndex >= 0 && activeCustomerIndex < customers.length) {
+        const c = customers[activeCustomerIndex];
+        handleSelectCustomer(c);
+        customerSearchRef.current?.blur();
+      }
+    } else if (e.key === "Escape") {
+      setShowCustomerDropdown(false);
+    }
+  };
+
+  const handleSelectCustomer = (c: Customer) => {
+    setSelectedCustomer(c);
+    setClaimCustomerName(c.name);
+    setClaimCustomerPhone(c.contactNo || "");
+    setCustomerSearch("");
+    setShowCustomerDropdown(false);
+    setClaimErrors((prev) => ({ ...prev, customerName: false, customerPhone: false }));
+  };
+
+  const handleClearCustomer = () => {
+    setSelectedCustomer(null);
+    setClaimCustomerName("");
+    setClaimCustomerPhone("");
+    setCustomerSearch("");
+  };
 
   const handleSelectionClick = useCallback(
     (selected: Mode) => {
@@ -184,9 +583,17 @@ export default function ReturnsPage() {
       if (pendingMode !== "return" && pendingMode !== "exchange") {
         setNewLines([]);
       }
+      if (pendingMode === "claim" && loadedOrders.length > 0) {
+        const o = loadedOrders[0];
+        if (o.customer && !selectedCustomer) {
+          setSelectedCustomer(o.customer);
+          setClaimCustomerName(o.customer.name || "");
+          setClaimCustomerPhone(o.customer.contactNo || o.customer.phone || "");
+        }
+      }
     }
     setShowConfirmModal(false);
-  }, [pendingMode]);
+  }, [pendingMode, loadedOrders, selectedCustomer]);
 
   // ── Memo-level discount on new items (exchange only) ──────────────
   const [memoDiscType, setMemoDiscType] = useState<"pct" | "flat">("pct");
@@ -245,6 +652,27 @@ export default function ReturnsPage() {
           return;
         }
 
+        let orderCustomer = found.customer || null;
+        if (!orderCustomer && found.id) {
+          try {
+            const singleRes = await authFetch(`/pos-sales/orders/${found.id}`);
+            if (singleRes.ok && singleRes.data?.status && singleRes.data.data?.customer) {
+              orderCustomer = singleRes.data.data.customer;
+            }
+          } catch {}
+        }
+
+        if (orderCustomer) {
+          setSelectedCustomer(orderCustomer);
+          setClaimCustomerName(orderCustomer.name || "");
+          setClaimCustomerPhone(orderCustomer.contactNo || orderCustomer.phone || "");
+        } else {
+          const custName = found.customerName || "";
+          const custPhone = found.customerPhone || "";
+          if (custName) setClaimCustomerName(custName);
+          if (custPhone) setClaimCustomerPhone(custPhone);
+        }
+
         setLoadedOrders((prev) => [
           ...prev,
           {
@@ -258,6 +686,7 @@ export default function ReturnsPage() {
             alliance: found.alliance?.code || undefined,
             locationName: found.location?.name || undefined,
             locationId: found.locationId || undefined,
+            customer: orderCustomer || undefined,
           },
         ]);
 
@@ -649,13 +1078,30 @@ export default function ReturnsPage() {
           }
         } else {
           // Claim — only single order supported
+          const finalCustName = selectedCustomer?.name || claimCustomerName.trim();
+          const finalCustPhone = selectedCustomer?.contactNo || claimCustomerPhone.trim();
+
+          if (!finalCustName || !finalCustPhone || !notes.trim()) {
+            const errs: { customerName?: boolean; customerPhone?: boolean; reason?: boolean } = {};
+            if (!finalCustName) errs.customerName = true;
+            if (!finalCustPhone) errs.customerPhone = true;
+            if (!notes.trim()) errs.reason = true;
+            setClaimErrors(errs);
+            toast.error("Customer Name, Contact Number, and Claim Reason are mandatory.");
+            setIsSubmitting(false);
+            return;
+          }
+
           res = await authFetch("/pos-claims", {
             method: "POST",
             body: {
               salesOrderId: loadedOrders[0].id,
               claimType: "RETURN",
-              reasonCode,
-              reasonNotes: notes || undefined,
+              reasonCode: reasonCode || "DEFECTIVE",
+              reasonNotes: notes.trim(),
+              customerName: finalCustName,
+              customerPhone: finalCustPhone,
+              customerId: selectedCustomer?.id || undefined,
               items: selectedLines.map((l) => ({
                 salesOrderItemId: l.orderItemId,
                 itemId: l.itemId,
@@ -1548,41 +1994,241 @@ export default function ReturnsPage() {
                             </div>
                           )}
                       </div>
-                      <div className="space-y-1.5">
-                        <Label
-                          className={cn(
-                            "text-xs font-medium",
-                            notesError
-                              ? "text-destructive"
-                              : "text-muted-foreground",
+                      {mode === "claim" ? (
+                        <div className="space-y-3 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 shadow-sm">
+                          <div className="flex items-center justify-between pb-2 border-b border-amber-200 dark:border-amber-800">
+                            <div className="flex items-center gap-2">
+                              <UserRound className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              <span className="font-bold text-xs uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                                Claim Customer Info <span className="text-destructive">*</span>
+                              </span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              type="button"
+                              onClick={() => setShowAddCustomer(true)}
+                              className="h-7 text-[11px] gap-1 bg-card hover:bg-amber-100 dark:hover:bg-amber-900/50 border-amber-300 dark:border-amber-700 font-semibold"
+                            >
+                              <Plus className="h-3 w-3" /> Add Customer
+                            </Button>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                              <span>Search Customer <span className="text-destructive">*</span></span>
+                              <span className="text-[10px] text-muted-foreground font-normal">F6 / Search</span>
+                            </Label>
+                            <div className="flex gap-1.5 relative">
+                              <div className="flex-1 relative">
+                                <Input
+                                  id="claim-customer-search-input"
+                                  ref={customerSearchRef}
+                                  placeholder="Search name, phone or code..."
+                                  value={customerSearch}
+                                  onChange={(e) => {
+                                    setCustomerSearch(e.target.value);
+                                    setShowCustomerDropdown(true);
+                                  }}
+                                  onFocus={() => setShowCustomerDropdown(true)}
+                                  onBlur={() => {
+                                    setTimeout(() => setShowCustomerDropdown(false), 200);
+                                  }}
+                                  onKeyDown={handleCustomerKeyDown}
+                                  className={cn(
+                                    "w-full bg-card h-9 text-xs",
+                                    claimErrors.customerName && !selectedCustomer && "border-destructive focus-visible:ring-destructive"
+                                  )}
+                                />
+                                {showCustomerDropdown && (
+                                  <div className="absolute left-0 right-0 top-10 bg-popover border border-border shadow-lg rounded-md overflow-hidden z-[500] max-h-56 overflow-y-auto">
+                                    <ul className="flex flex-col divide-y divide-border/50">
+                                      {isLoadingCustomers ? (
+                                        <div className="p-3 text-center text-xs text-muted-foreground flex items-center justify-center">
+                                          <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Loading customers...
+                                        </div>
+                                      ) : customers.length === 0 ? (
+                                        <div className="p-3 text-center text-xs text-muted-foreground italic">
+                                          No matching customers found
+                                        </div>
+                                      ) : (
+                                        customers.map((c, idx) => (
+                                          <li
+                                            key={c.id}
+                                            className={cn(
+                                              "px-3 py-2 hover:bg-muted cursor-pointer flex flex-col transition-colors text-left text-xs",
+                                              idx === activeCustomerIndex && "bg-primary/10 border-l-4 border-l-primary",
+                                            )}
+                                            onMouseDown={() => handleSelectCustomer(c)}
+                                          >
+                                            <span className="font-bold text-foreground">{c.name}</span>
+                                            {c.contactNo && (
+                                              <span className="text-[10px] text-muted-foreground font-mono">
+                                                {c.contactNo}
+                                              </span>
+                                            )}
+                                          </li>
+                                        ))
+                                      )}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Selected Customer Card or Direct Input */}
+                          {selectedCustomer ? (
+                            <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 animate-in fade-in">
+                              <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 leading-none">
+                                  {selectedCustomer.name}
+                                </p>
+                                {selectedCustomer.contactNo && (
+                                  <p className="text-[10px] text-muted-foreground mt-1 truncate font-mono">
+                                    {selectedCustomer.contactNo}
+                                  </p>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleClearCustomer}
+                                className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                                title="Clear customer selection"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              {/* Customer Name */}
+                              <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                                  <span>Customer Name <span className="text-destructive">*</span></span>
+                                </Label>
+                                <Input
+                                  placeholder="Customer name..."
+                                  value={claimCustomerName}
+                                  onChange={(e) => {
+                                    setClaimCustomerName(e.target.value);
+                                    if (e.target.value.trim()) {
+                                      setClaimErrors((prev) => ({ ...prev, customerName: false }));
+                                    }
+                                  }}
+                                  className={cn(
+                                    "h-8 text-xs bg-card",
+                                    claimErrors.customerName && "border-destructive focus-visible:ring-destructive"
+                                  )}
+                                />
+                              </div>
+
+                              {/* Contact Number */}
+                              <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                                  <span>Contact Number <span className="text-destructive">*</span></span>
+                                </Label>
+                                <Input
+                                  placeholder="0300-1234567..."
+                                  value={claimCustomerPhone}
+                                  onChange={(e) => {
+                                    setClaimCustomerPhone(e.target.value);
+                                    if (e.target.value.trim()) {
+                                      setClaimErrors((prev) => ({ ...prev, customerPhone: false }));
+                                    }
+                                  }}
+                                  className={cn(
+                                    "h-8 text-xs bg-card font-mono",
+                                    claimErrors.customerPhone && "border-destructive focus-visible:ring-destructive"
+                                  )}
+                                />
+                              </div>
+                            </div>
                           )}
-                        >
-                          Notes{" "}
-                          {(mode === "refund" || mode === "claim") && (
-                            <span className="text-destructive">*</span>
+
+                          {/* Claim Reason Category */}
+                          <div className="space-y-1">
+                            <Label className="text-xs font-semibold text-foreground">
+                              Claim Reason Category <span className="text-destructive">*</span>
+                            </Label>
+                            <Select value={reasonCode} onValueChange={setReasonCode}>
+                              <SelectTrigger className="h-9 text-xs bg-card">
+                                <SelectValue placeholder="Select defect reason" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="DEFECTIVE">Manufacturing / Fabric Defect</SelectItem>
+                                <SelectItem value="DAMAGED">Damaged in Store / Transit</SelectItem>
+                                <SelectItem value="COLOR_FADING">Color Fading / Bleeding</SelectItem>
+                                <SelectItem value="STITCHING_ISSUE">Stitching / Zipper Issue</SelectItem>
+                                <SelectItem value="SOLE_PASTE_ISSUE">Sole / Pasting Defect</SelectItem>
+                                <SelectItem value="OTHER">Other Defect / Reason</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Claim Reason Details */}
+                          <div className="space-y-1">
+                            <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                              <span>Claim Reason Details <span className="text-destructive">*</span></span>
+                              {notesError && (
+                                <span className="text-[10px] text-destructive font-normal">Reason details are required</span>
+                              )}
+                            </Label>
+                            <Textarea
+                              placeholder="Explain the defect/claim reason in detail..."
+                              value={notes}
+                              onChange={(e) => {
+                                setNotes(e.target.value);
+                                if (e.target.value.trim()) {
+                                  setNotesError(false);
+                                  setClaimErrors((prev) => ({ ...prev, reason: false }));
+                                }
+                              }}
+                              rows={2}
+                              className={cn(
+                                "resize-none text-xs bg-card",
+                                notesError && "border-destructive focus-visible:ring-destructive"
+                              )}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <Label
+                            className={cn(
+                              "text-xs font-medium",
+                              notesError
+                                ? "text-destructive"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            Notes{" "}
+                            {mode === "refund" && (
+                              <span className="text-destructive">*</span>
+                            )}
+                          </Label>
+                          <Textarea
+                            placeholder={`Reason for ${mode === "return" ? "Return" : "Refund"}...`}
+                            value={notes}
+                            onChange={(e) => {
+                              setNotes(e.target.value);
+                              if (e.target.value.trim()) setNotesError(false);
+                            }}
+                            rows={2}
+                            className={cn(
+                              "resize-none text-sm",
+                              notesError &&
+                                "border-destructive focus-visible:ring-destructive",
+                            )}
+                          />
+                          {notesError && (
+                            <p className="text-xs text-destructive flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Notes are required before processing
+                            </p>
                           )}
-                        </Label>
-                        <Textarea
-                          placeholder={`Reason for ${mode === "return" ? "Return" : "Refund"}...`}
-                          value={notes}
-                          onChange={(e) => {
-                            setNotes(e.target.value);
-                            if (e.target.value.trim()) setNotesError(false);
-                          }}
-                          rows={2}
-                          className={cn(
-                            "resize-none text-sm",
-                            notesError &&
-                              "border-destructive focus-visible:ring-destructive",
-                          )}
-                        />
-                        {notesError && (
-                          <p className="text-xs text-destructive flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" />
-                            Notes are required before processing
-                          </p>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       <div className="flex gap-3 pt-1">
                         <Button
                           variant="outline"
@@ -1601,17 +2247,41 @@ export default function ReturnsPage() {
                                 : "bg-destructive hover:bg-destructive/90",
                           )}
                           onClick={
-                            mode === "claim" || mode === "refund"
+                            mode === "claim"
                               ? () => {
+                                  let hasError = false;
+                                  const errs: { customerName?: boolean; customerPhone?: boolean; reason?: boolean } = {};
+                                  if (!claimCustomerName.trim()) {
+                                    errs.customerName = true;
+                                    hasError = true;
+                                  }
+                                  if (!claimCustomerPhone.trim()) {
+                                    errs.customerPhone = true;
+                                    hasError = true;
+                                  }
                                   if (!notes.trim()) {
+                                    errs.reason = true;
                                     setNotesError(true);
-                                    toast.error("Notes are required");
+                                    hasError = true;
+                                  }
+                                  setClaimErrors(errs);
+                                  if (hasError) {
+                                    toast.error("Please fill all mandatory claim fields (Customer Name, Contact Number, and Reason)");
                                     return;
                                   }
-                                  setNotesError(false);
                                   setShowVerify(true);
                                 }
-                              : () => handleSubmit()
+                              : mode === "refund"
+                                ? () => {
+                                    if (!notes.trim()) {
+                                      setNotesError(true);
+                                      toast.error("Notes are required");
+                                      return;
+                                    }
+                                    setNotesError(false);
+                                    setShowVerify(true);
+                                  }
+                                : () => handleSubmit()
                           }
                           disabled={
                             isSubmitting ||
@@ -1800,6 +2470,14 @@ export default function ReturnsPage() {
           }}
         />
       )}
+
+      {/* ── Add Customer Modal ───────────────────────────────────── */}
+      <AddCustomerModal
+        open={showAddCustomer}
+        onOpenChange={setShowAddCustomer}
+        existingCustomers={customers}
+        onSuccess={handleSelectCustomer}
+      />
 
       {/* ── Manager Verification (ERP Claim) ─────────────────────── */}
       <ManagerVerificationDialog
