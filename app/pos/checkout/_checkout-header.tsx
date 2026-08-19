@@ -6,10 +6,11 @@ import { ArrowLeft } from "lucide-react";
 
 interface CheckoutHeaderProps {
     cartItemCount: number;
+    totalQuantity?: number;
     onBack: () => void;
 }
 
-export function CheckoutHeader({ cartItemCount, onBack }: CheckoutHeaderProps) {
+export function CheckoutHeader({ cartItemCount, totalQuantity, onBack }: CheckoutHeaderProps) {
     return (
         <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
@@ -30,6 +31,7 @@ export function CheckoutHeader({ cartItemCount, onBack }: CheckoutHeaderProps) {
                 </div>
                 <Badge variant="outline" className="font-mono">
                     {cartItemCount} item{cartItemCount !== 1 ? "s" : ""}
+                    {totalQuantity !== undefined && totalQuantity !== cartItemCount && ` (${totalQuantity} pcs)`}
                 </Badge>
             </div>
         </div>

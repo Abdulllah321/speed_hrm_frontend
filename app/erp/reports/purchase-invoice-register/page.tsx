@@ -402,13 +402,17 @@ export default function PurchaseInvoiceRegisterPage() {
   };
 
   const formatVal = (val: number) => {
-    if (val === 0 || val === null || val === undefined) return "-";
-    return val.toLocaleString();
+    if (val === 0 || val === null || val === undefined || isNaN(Number(val))) return "-";
+    const rounded = Math.round(Number(val));
+    if (rounded === 0) return "-";
+    return rounded.toLocaleString();
   };
 
   const formatPriceVal = (val: number) => {
-    if (val === 0 || val === null || val === undefined) return "-";
-    return `Rs. ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (val === 0 || val === null || val === undefined || isNaN(Number(val))) return "-";
+    const rounded = Math.round(Number(val));
+    if (rounded === 0) return "-";
+    return `Rs. ${rounded.toLocaleString()}`;
   };
 
   // Flatten nested tree for TanStack virtualization
