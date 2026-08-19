@@ -675,21 +675,23 @@ function RequestTransferForm() {
                                   onClick={() => handleSelectProduct(product)}
                                 >
                                   <div className="flex flex-col">
-                                    <span className="text-sm font-semibold">
-                                      {product.description || "Unknown Product"}
+                                    <div className="flex items-center flex-wrap gap-1.5">
+                                      <span className="text-sm font-normal text-foreground">
+                                        {product.description || "Unknown Product"}
+                                      </span>
                                       {product.size?.name && (
-                                        <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
-                                          Size: {product.size.name}
+                                        <span className="text-[10px] text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                          Size: <strong className="font-bold text-foreground">{product.size.name}</strong>
                                         </span>
                                       )}
                                       {product.color?.name && (
-                                        <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
-                                          Color: {product.color.name}
+                                        <span className="text-[10px] text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                          Color: <span className="font-medium text-foreground">{product.color.name}</span>
                                         </span>
                                       )}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      SKU: {product.sku || "-"}
+                                    </div>
+                                    <span className="text-xs text-muted-foreground mt-0.5 font-mono">
+                                      SKU: <strong className="font-bold text-foreground">{product.sku || "-"}</strong>
                                     </span>
                                   </div>
                                   <div className="flex flex-col items-end gap-1">

@@ -692,32 +692,40 @@ function DirectTransferForm() {
                                   onClick={() => handleSelectProduct(product)}
                                 >
                                   <div className="flex flex-col">
-                                    <span className="text-sm font-semibold">
-                                      {product.description || "Unknown Product"}
+                                    <div className="flex items-center flex-wrap gap-1.5">
+                                      <span className="text-sm font-normal text-foreground">
+                                        {product.description || "Unknown Item"}
+                                      </span>
                                       {(typeof product.size === "object"
                                         ? product.size?.name
                                         : product.size) && (
-                                        <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                        <span className="text-[10px] text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
                                           Size:{" "}
-                                          {typeof product.size === "object"
-                                            ? product.size?.name
-                                            : product.size}
+                                          <strong className="font-bold text-foreground">
+                                            {typeof product.size === "object"
+                                              ? product.size?.name
+                                              : product.size}
+                                          </strong>
                                         </span>
                                       )}
                                       {(typeof product.color === "object"
                                         ? product.color?.name
                                         : product.color) && (
-                                        <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                        <span className="text-[10px] text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
                                           Color:{" "}
-                                          {typeof product.color === "object"
-                                            ? product.color?.name
-                                            : product.color}
+                                          <span className="font-medium text-foreground">
+                                            {typeof product.color === "object"
+                                              ? product.color?.name
+                                              : product.color}
+                                          </span>
                                         </span>
                                       )}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
+                                    </div>
+                                    <span className="text-xs text-muted-foreground mt-0.5 font-mono">
                                       SKU:{" "}
-                                      {product.sku || product.barCode || "-"}
+                                      <strong className="font-bold text-foreground">
+                                        {product.sku || product.barCode || "-"}
+                                      </strong>
                                     </span>
                                   </div>
                                   <div className="flex flex-col items-end gap-1">
