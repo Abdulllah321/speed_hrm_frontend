@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import {
     Loader2, Plus, Trash2, CreditCard, Banknote, Building2, Ticket, BookOpen,
-    CheckCircle2, XCircle,
+    CheckCircle2, XCircle, Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tender, Customer, AllianceConfig, DiscountMode } from "./page";
@@ -42,6 +42,7 @@ const TENDER_OPTIONS = [
     { value: "bank_transfer", label: "Bank Transfer (Alt+3)", icon: Building2 },
     { value: "voucher", label: "Voucher (Alt+4)", icon: Ticket },
     { value: "credit_account", label: "Credit Account (Alt+5)", icon: BookOpen },
+    { value: "reward_voucher", label: "Reward Voucher (Alt+6)", icon: Award },
 ];
 interface PaymentPanelProps {
     tenders: Tender[];
@@ -50,6 +51,7 @@ interface PaymentPanelProps {
     tenderCardholderName: string;
     tenderCardLast4: string;
     tenderSlip: string;
+    tenderRemarks: string;
     balanceDue: number;
     changeAmount: number;
     discountMode: DiscountMode;
@@ -76,6 +78,7 @@ interface PaymentPanelProps {
     onTenderCardholderNameChange: (val: string) => void;
     onTenderCardLast4Change: (val: string) => void;
     onTenderSlipChange: (val: string) => void;
+    onTenderRemarksChange: (val: string) => void;
     onAddTender: () => void;
     onAddVoucherTender: () => void;
     onRemoveTender: (index: number) => void;
@@ -85,14 +88,14 @@ interface PaymentPanelProps {
 }
 
 export function PaymentPanel({
-    tenders, tenderMethod, tenderAmount, tenderCardholderName, tenderCardLast4, tenderSlip,
+    tenders, tenderMethod, tenderAmount, tenderCardholderName, tenderCardLast4, tenderSlip, tenderRemarks,
     balanceDue, changeAmount, discountMode, selectedAlliance, selectedCustomer,
     merchants, selectedMerchant, isLoadingMerchants, onMerchantChange,
     voucherCode, validatedVoucher, voucherError, voucherValidating,
     allianceMeta, onAllianceMetaChange,
     tenderAmountRef,
     onTenderMethodChange, onTenderAmountChange,
-    onTenderCardholderNameChange, onTenderCardLast4Change, onTenderSlipChange,
+    onTenderCardholderNameChange, onTenderCardLast4Change, onTenderSlipChange, onTenderRemarksChange,
     onAddTender, onAddVoucherTender, onRemoveTender,
     onVoucherCodeChange, onVoucherValidate,
     fmtCurrency,
@@ -321,6 +324,27 @@ export function PaymentPanel({
                         </div>
                     )}
 
+                    {/* Reward Voucher tender */}
+                    {tenderMethod === "reward_voucher" && (
+                        <div className="space-y-1.5 rounded-lg border border-violet-200 bg-violet-50/40 dark:bg-violet-950/20 p-2.5">
+                            <Label className="text-xs font-semibold text-violet-800 dark:text-violet-300 uppercase tracking-wide">
+                                Remarks / Reference <span className="text-destructive ml-0.5">*</span>
+                            </Label>
+                            <Input
+                                id="reward-voucher-remarks-input"
+                                className="h-9 text-xs bg-background"
+                                placeholder="Enter reward voucher remarks, ref #, or reason..."
+                                value={tenderRemarks}
+                                onChange={(e) => onTenderRemarksChange(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && onAddTender()}
+                                autoFocus
+                            />
+                            <p className="text-[10px] text-muted-foreground">
+                                This voucher payment will be recorded as <strong>On Credit</strong> in reconciliation reports.
+                            </p>
+                        </div>
+                    )}
+
                     {/* Voucher tender */}
                     {tenderMethod === "voucher" && (
                         <div className="space-y-2">
@@ -348,23 +372,78 @@ export function PaymentPanel({
                                 </div>
                                 {voucherError && <p className="text-xs text-destructive mt-1">{voucherError}</p>}
                             </div>
-                            {validatedVoucher && (
-                                <div className="rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs font-semibold text-emerald-700">{validatedVoucher.code}</span>
-                                        <Badge variant="outline" className="text-[10px] border-emerald-400 text-emerald-700">
-                                            {validatedVoucher.voucherType.replace("_", " ")}
-                                        </Badge>
+                            {validatedVoucher && (() => {
+                                const currentAmountToPay = Number(tenderAmount) || 0;
+                                const redeemingAmount = Math.min(currentAmountToPay, validatedVoucher.faceValue);
+                                const remainingVoucherBalance = Math.max(0, validatedVoucher.faceValue - redeemingAmount);
+                                const remainingBillDue = Math.max(0, balanceDue - redeemingAmount);
+
+                                return (
+                                    <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/20 p-3 space-y-2.5 shadow-sm animate-in fade-in duration-200">
+                                        <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200 dark:border-emerald-800">
+                                            <div className="flex items-center gap-1.5">
+                                                <Ticket className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-200 font-mono tracking-wider">
+                                                    {validatedVoucher.code}
+                                                </span>
+                                            </div>
+                                            <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider border-emerald-400 text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-900/50">
+                                                {validatedVoucher.voucherType.replace("_", " ")} VOUCHER
+                                            </Badge>
+                                        </div>
+
+                                        {validatedVoucher.description && (
+                                            <p className="text-[11px] text-emerald-700/90 dark:text-emerald-300/90 italic">
+                                                {validatedVoucher.description}
+                                            </p>
+                                        )}
+
+                                        {/* Real-time financial calculations */}
+                                        <div className="space-y-1.5 pt-1 text-xs font-mono">
+                                            <div className="flex justify-between items-center text-muted-foreground">
+                                                <span>Voucher Total Amount:</span>
+                                                <span className="font-bold text-foreground">{fmtCurrency(validatedVoucher.faceValue)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-emerald-700 dark:text-emerald-400 font-semibold">
+                                                <span>Amount Redeeming (This Bill):</span>
+                                                <span>−{fmtCurrency(redeemingAmount)}</span>
+                                            </div>
+                                            <div className="border-t border-emerald-200 dark:border-emerald-800 pt-1.5 flex justify-between items-center text-xs">
+                                                <span className={remainingVoucherBalance > 0 ? "text-blue-700 dark:text-blue-300 font-bold" : "text-muted-foreground font-semibold"}>
+                                                    Remaining Voucher Balance:
+                                                </span>
+                                                <span className={cn(
+                                                    "font-bold font-mono text-sm",
+                                                    remainingVoucherBalance > 0 ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground"
+                                                )}>
+                                                    {remainingVoucherBalance > 0 ? fmtCurrency(remainingVoucherBalance) : "PKR 0 (Fully Used)"}
+                                                </span>
+                                            </div>
+                                            {remainingBillDue > 0 && (
+                                                <div className="flex justify-between items-center text-destructive font-semibold pt-0.5">
+                                                    <span>Remaining Bill Due:</span>
+                                                    <span>{fmtCurrency(remainingBillDue)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Live helper note */}
+                                        {remainingVoucherBalance > 0 ? (
+                                            <div className="rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 px-2.5 py-1.5 text-[11px] text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                                                <span>ℹ️ Remaining <strong>{fmtCurrency(remainingVoucherBalance)}</strong> balance stays available on this voucher.</span>
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-md bg-emerald-100/60 dark:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                                                <span>✓ Voucher covers required portion completely.</span>
+                                            </div>
+                                        )}
+
+                                        {validatedVoucher.requireCustomerMatch && (
+                                            <p className="text-[10px] text-amber-600 font-medium">Customer-bound voucher — verified ✓</p>
+                                        )}
                                     </div>
-                                    <div className="flex items-center justify-between text-xs text-emerald-700">
-                                        <span>{validatedVoucher.description || "Voucher"}</span>
-                                        <span className="font-mono font-bold">{fmtCurrency(validatedVoucher.faceValue)}</span>
-                                    </div>
-                                    {validatedVoucher.requireCustomerMatch && (
-                                        <p className="text-[10px] text-amber-600">Customer-bound — verified ✓</p>
-                                    )}
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
                     )}
 
@@ -392,30 +471,73 @@ export function PaymentPanel({
 
                 {/* Tenders list */}
                 {tenders.length > 0 && (
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                         <div className="grid grid-cols-[1fr_auto_auto] text-xs text-muted-foreground font-medium px-1">
-                            <span>Method</span><span>Amount</span><span></span>
+                            <span>Method / Details</span><span>Amount</span><span></span>
                         </div>
                         {tenders.map((t, i) => {
                             const Icon = TENDER_OPTIONS.find((o) => o.value === t.method)?.icon ?? Banknote;
+                            const isVoucher = t.method === "voucher" || t.voucherFaceValue !== undefined;
+                            const faceVal = t.voucherFaceValue ?? t.amount;
+                            const remainingVal = Math.max(0, faceVal - t.amount);
+
                             return (
-                                <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded px-2 py-1.5 bg-muted/30 text-sm">
-                                    <span className="flex items-center gap-1.5 capitalize">
-                                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                                        {t.method.replace("_", " ")}
-                                        {t.cardLast4 && <span className="text-xs text-muted-foreground font-mono">••{t.cardLast4}</span>}
-                                        {t.slipNo && <span className="text-xs text-muted-foreground font-mono">#{t.slipNo}</span>}
-                                    </span>
-                                    <span className="font-mono font-semibold">{fmtCurrency(t.amount)}</span>
-                                    <button
-                                        onClick={() => onRemoveTender(i)}
-                                        className="text-muted-foreground hover:text-destructive transition-colors"
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
+                                <div key={i} className="flex flex-col gap-1 rounded-lg px-2.5 py-2 bg-muted/40 border text-sm">
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center gap-1.5 font-medium capitalize">
+                                            <Icon className="h-4 w-4 text-primary" />
+                                            {t.voucherType ? `${t.voucherType.replace("_", " ")} Voucher` : t.method.replace("_", " ")}
+                                            {t.slipNo && (
+                                                <Badge variant="outline" className="text-xs font-mono font-bold text-primary border-primary/30 ml-1">
+                                                    {t.slipNo}
+                                                </Badge>
+                                            )}
+                                            {t.cardLast4 && <span className="text-xs text-muted-foreground font-mono">••{t.cardLast4}</span>}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-mono font-bold text-foreground">{fmtCurrency(t.amount)}</span>
+                                            <button
+                                                onClick={() => onRemoveTender(i)}
+                                                className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                                                title="Remove tender"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Voucher / Exchange remaining details */}
+                                    {isVoucher && (
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground bg-card/60 rounded px-2 py-1 font-mono border border-border/40 mt-0.5">
+                                            <span>Voucher Total: <strong className="text-foreground">{fmtCurrency(faceVal)}</strong></span>
+                                            <span>
+                                                Remaining:{" "}
+                                                <strong className={remainingVal > 0 ? "text-blue-600 dark:text-blue-400 font-bold" : "text-muted-foreground"}>
+                                                    {remainingVal > 0 ? fmtCurrency(remainingVal) : "PKR 0"}
+                                                </strong>
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
+                    </div>
+                )}
+
+                {/* Total Remaining Voucher Credit */}
+                {tenders.some(t => t.method === "voucher" && (t.voucherFaceValue ?? 0) > t.amount) && (
+                    <div className="flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        <span className="flex items-center gap-1.5">
+                            <Ticket className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            Remaining Voucher Balance (Unused):
+                        </span>
+                        <span className="font-mono font-bold text-sm">
+                            {fmtCurrency(
+                                tenders
+                                    .filter(t => t.method === "voucher")
+                                    .reduce((acc, t) => acc + Math.max(0, (t.voucherFaceValue || t.amount) - t.amount), 0)
+                            )}
+                        </span>
                     </div>
                 )}
 

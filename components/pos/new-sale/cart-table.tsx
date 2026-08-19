@@ -222,8 +222,8 @@ export function CartTable({
                                         <span className="font-mono text-sm font-medium">
                                             {item.upc}
                                         </span>
-                                        <span className="text-[11px] text-muted-foreground font-mono">
-                                            {item.sku}
+                                        <span className="text-[11px] font-bold font-mono text-foreground">
+                                            SKU: {item.sku}
                                         </span>
                                     </div>
                                 </TableCell>
@@ -231,7 +231,7 @@ export function CartTable({
                                 {/* Item Description */}
                                 <TableCell>
                                     <div className="flex flex-col">
-                                        <span className="font-medium text-sm">
+                                        <span className="font-normal text-sm text-foreground">
                                             {item.name}
                                         </span>
                                         <span className="text-[11px] text-muted-foreground">
@@ -245,7 +245,7 @@ export function CartTable({
                                     <div className="flex items-center justify-center gap-1.5">
                                         <Badge
                                             variant="secondary"
-                                            className="text-[11px] px-2 py-0.5 rounded-md"
+                                            className="text-[11px] font-bold px-2 py-0.5 rounded-md text-foreground"
                                         >
                                             {item.size}
                                         </Badge>

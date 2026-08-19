@@ -23,7 +23,7 @@ import {
     Printer, Eye, ShoppingCart, Wallet, Calendar as CalendarIcon,
     PauseCircle, RotateCcw, Clock, Pencil, Plus, Trash2, Loader2,
     Banknote, CreditCard, Building2, Ticket, BookOpen, FileText,
-    CheckCircle2, XCircle, Upload,
+    CheckCircle2, XCircle, Upload, Award,
 } from "lucide-react";
 
 import DataTable from "@/components/common/data-table";
@@ -53,6 +53,7 @@ const TENDER_OPTIONS = [
     { value: "bank_transfer", label: "Bank Transfer", icon: Building2 },
     { value: "voucher", label: "Voucher", icon: Ticket },
     { value: "credit_account", label: "Credit Account", icon: BookOpen },
+    { value: "reward_voucher", label: "Reward Voucher", icon: Award },
 ];
 
 interface Tender { method: string; amount: number; cardLast4?: string; slipNo?: string; voucherId?: string; }
