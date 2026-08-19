@@ -319,14 +319,14 @@ export default function ERPAvailableStockSummaryReportPage() {
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
                 reportType,
-                summaryOnly,
-                showBrand: groupingLevels.brand,
-                showDivision: groupingLevels.division,
-                showCategory: groupingLevels.category,
-                showGender: groupingLevels.gender,
-                showSilhouette: groupingLevels.silhouette,
-                showArticle: groupingLevels.article,
-                showVariant: groupingLevels.variant,
+                summaryOnly: false,
+                showBrand: true,
+                showDivision: true,
+                showCategory: true,
+                showGender: true,
+                showSilhouette: true,
+                showArticle: true,
+                showVariant: true,
             });
 
             setIsQueueingJob(false);
@@ -339,14 +339,14 @@ export default function ERPAvailableStockSummaryReportPage() {
                 toast.error("Failed to queue report preview");
             }
         });
-    }, [locationParam, warehouseParam, dateRange, reportType, groupingLevels, summaryOnly]);
+    }, [locationParam, warehouseParam, dateRange, reportType]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchReport();
         }, 400);
         return () => clearTimeout(timer);
-    }, [fetchReport]);
+    }, [dateRange, reportType]);
 
     // Handle SSE completion to fetch GZIP report result with loading state & silent filter change handling
     useEffect(() => {
@@ -822,28 +822,36 @@ export default function ERPAvailableStockSummaryReportPage() {
             const currentPath = path ? `${path}-${node.level}-${node.value}` : `${node.level}-${node.value}`;
 
             if (node.level === 'article') {
-                rows.push({
-                    id: `art-${node.sku}`,
-                    type: 'article',
-                    label: node.articleName,
-                    sku: node.sku,
-                    totals: node.totals,
-                });
+                if (groupingLevels.article) {
+                    rows.push({
+                        id: `art-${node.sku}`,
+                        type: 'article',
+                        label: node.articleName,
+                        sku: node.sku,
+                        totals: node.totals,
+                    });
+                }
             } else if (node.level === 'variant') {
-                rows.push({
-                    id: `var-${currentPath}`,
-                    type: 'variant',
-                    color: node.color,
-                    size: node.size,
-                    totals: node.totals,
-                });
+                if (groupingLevels.variant) {
+                    rows.push({
+                        id: `var-${currentPath}`,
+                        type: 'variant',
+                        color: node.color,
+                        size: node.size,
+                        barCode: node.barCode || node.barcode || node.sku || '',
+                        totals: node.totals,
+                    });
+                }
             } else {
-                rows.push({
-                    id: `${node.level}-${currentPath}`,
-                    type: node.level,
-                    label: `${node.value ? String(node.value).toUpperCase() : ''}`,
-                    totals: node.totals,
-                });
+                const levelKey = node.level as keyof typeof groupingLevels;
+                if (levelKey in groupingLevels ? groupingLevels[levelKey] : true) {
+                    rows.push({
+                        id: `${node.level}-${currentPath}`,
+                        type: node.level,
+                        label: `${node.value ? String(node.value).toUpperCase() : ''}`,
+                        totals: node.totals,
+                    });
+                }
             }
 
             if (Array.isArray(node.children) && node.children.length > 0) {
@@ -1686,8 +1694,11 @@ export default function ERPAvailableStockSummaryReportPage() {
                                         if (row.type === 'variant') {
                                             return (
                                                 <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-background hover:bg-slate-50 dark:hover:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400">
-                                                    <td className="p-2 pl-24 italic text-muted-foreground">
-                                                        &mdash; Variant Detail
+                                                    <td className="p-2 pl-24 flex flex-col gap-0.5">
+                                                        <span className="italic text-muted-foreground">&mdash; Variant Detail</span>
+                                                        <span className="font-mono text-xs text-muted-foreground">
+                                                            Barcode: <span className="font-bold text-foreground">{row.barCode || '—'}</span>
+                                                        </span>
                                                     </td>
                                                     <td className="p-2 text-center font-bold text-foreground">{row.size}</td>
                                                     <td className="p-2 text-center font-medium">{row.color}</td>

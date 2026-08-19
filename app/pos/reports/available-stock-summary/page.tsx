@@ -267,14 +267,14 @@ export default function AvailableStockSummaryReportPage() {
                 locationId: activeLocationId,
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
-                summaryOnly,
-                showBrand: groupingLevels.brand,
-                showDivision: groupingLevels.division,
-                showCategory: groupingLevels.category,
-                showGender: groupingLevels.gender,
-                showSilhouette: groupingLevels.silhouette,
-                showArticle: groupingLevels.article,
-                showVariant: groupingLevels.variant,
+                summaryOnly: false,
+                showBrand: true,
+                showDivision: true,
+                showCategory: true,
+                showGender: true,
+                showSilhouette: true,
+                showArticle: true,
+                showVariant: true,
             });
             if (result && result.status !== false) {
                 const rootData = Array.isArray(result?.data?.root)
@@ -288,11 +288,11 @@ export default function AvailableStockSummaryReportPage() {
                 toast.error("Failed to load available stock summary report data");
             }
         });
-    }, [selectedLocationId, defaultLocationId, dateRange, groupingLevels, summaryOnly]);
+    }, [selectedLocationId, defaultLocationId, dateRange]);
 
     useEffect(() => {
         fetchReport();
-    }, [selectedLocationId, groupingLevels]);
+    }, [selectedLocationId, dateRange]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -654,28 +654,36 @@ export default function AvailableStockSummaryReportPage() {
             const currentPath = path ? `${path}-${node.level}-${node.value}` : `${node.level}-${node.value}`;
             
             if (node.level === 'article') {
-                rows.push({
-                    id: `art-${node.sku}`,
-                    type: 'article',
-                    label: node.articleName,
-                    sku: node.sku,
-                    totals: node.totals,
-                });
+                if (groupingLevels.article) {
+                    rows.push({
+                        id: `art-${node.sku}`,
+                        type: 'article',
+                        label: node.articleName,
+                        sku: node.sku,
+                        totals: node.totals,
+                    });
+                }
             } else if (node.level === 'variant') {
-                rows.push({
-                    id: `var-${currentPath}`,
-                    type: 'variant',
-                    color: node.color,
-                    size: node.size,
-                    totals: node.totals,
-                });
+                if (groupingLevels.variant) {
+                    rows.push({
+                        id: `var-${currentPath}`,
+                        type: 'variant',
+                        color: node.color,
+                        size: node.size,
+                        barCode: node.barCode || node.barcode || node.sku || '',
+                        totals: node.totals,
+                    });
+                }
             } else {
-                rows.push({
-                    id: `${node.level}-${currentPath}`,
-                    type: node.level,
-                    label: `${node.value ? String(node.value).toUpperCase() : ''}`,
-                    totals: node.totals,
-                });
+                const levelKey = node.level as keyof typeof groupingLevels;
+                if (levelKey in groupingLevels ? groupingLevels[levelKey] : true) {
+                    rows.push({
+                        id: `${node.level}-${currentPath}`,
+                        type: node.level,
+                        label: `${node.value ? String(node.value).toUpperCase() : ''}`,
+                        totals: node.totals,
+                    });
+                }
             }
             
             if (Array.isArray(node.children) && node.children.length > 0) {
@@ -1322,8 +1330,11 @@ export default function AvailableStockSummaryReportPage() {
                                                     <span className="text-slate-900 dark:text-slate-100">{row.label}</span>
                                                 </td>
                                             ) : isVariant ? (
-                                                <td className={cn("p-3 border-r text-muted-foreground italic", style.indentClass)}>
-                                                    &mdash; Variant Item
+                                                <td className={cn("p-3 border-r text-muted-foreground flex flex-col gap-0.5", style.indentClass)}>
+                                                    <span className="italic text-muted-foreground">&mdash; Variant Item</span>
+                                                    <span className="font-mono text-xs text-muted-foreground">
+                                                        Barcode: <span className="font-bold text-foreground">{row.barCode || '—'}</span>
+                                                    </span>
                                                 </td>
                                             ) : (
                                                 <td colSpan={3} className={cn("p-3 border-r text-xs font-bold", style.indentClass)}>
