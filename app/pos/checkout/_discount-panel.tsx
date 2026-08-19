@@ -549,43 +549,57 @@ export function DiscountPanel({
                                              onChange={(e) => setManualAllianceSearch(e.target.value)}
                                          />
                                      </div>
-                                     <div className="max-h-[120px] overflow-y-auto border rounded-md p-1 bg-muted/20 space-y-1">
-                                         <button
-                                             type="button"
-                                             onClick={() => onSelectAlliance(null)}
-                                             className={cn(
-                                                 "w-full text-left rounded px-2.5 py-1.5 transition-all text-xs flex justify-between items-center",
-                                                 !selectedAlliance ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted text-muted-foreground"
-                                             )}
-                                         >
-                                             <span>-- No Alliance Attached --</span>
-                                             {!selectedAlliance && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-                                         </button>
-                                         {filteredManualAlliances.map((a) => {
-                                             const isSelected = selectedAlliance?.id === a.id;
-                                             return (
-                                                 <button
-                                                     type="button"
-                                                     key={a.id}
-                                                     onClick={() => onSelectAlliance(a)}
-                                                     className={cn(
-                                                         "w-full text-left rounded px-2.5 py-1.5 transition-all text-xs flex justify-between items-center",
-                                                         isSelected ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary" : "hover:bg-muted"
-                                                     )}
-                                                 >
-                                                     <div className="flex flex-col min-w-0">
-                                                         <span className="truncate font-medium">{a.partnerName}</span>
-                                                         {a.binNumbers?.length > 0 && (
-                                                             <span className="text-[9px] text-muted-foreground font-mono mt-0.5 truncate">
-                                                                 BINs: {a.binNumbers.join(", ")}
-                                                             </span>
-                                                         )}
-                                                     </div>
-                                                     {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
-                                                 </button>
-                                             );
-                                         })}
-                                     </div>
+                                     <div className="max-h-[220px] overflow-y-auto border rounded-lg p-1.5 bg-muted/20 space-y-1.5">
+                                          <button
+                                              type="button"
+                                              onClick={() => onSelectAlliance(null)}
+                                              className={cn(
+                                                  "w-full text-left rounded-lg px-3 py-2 transition-all text-xs flex justify-between items-center border",
+                                                  !selectedAlliance 
+                                                      ? "bg-primary/10 text-primary font-semibold border-primary ring-1 ring-primary" 
+                                                      : "border-transparent hover:bg-muted text-muted-foreground"
+                                              )}
+                                          >
+                                              <span className="font-medium">-- No Alliance Attached --</span>
+                                              {!selectedAlliance && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                          </button>
+                                          {filteredManualAlliances.map((a) => {
+                                              const isSelected = selectedAlliance?.id === a.id;
+                                              return (
+                                                  <button
+                                                      type="button"
+                                                      key={a.id}
+                                                      onClick={() => onSelectAlliance(a)}
+                                                      className={cn(
+                                                          "w-full text-left rounded-lg px-3 py-2 transition-all text-xs flex justify-between items-center border",
+                                                          isSelected 
+                                                              ? "bg-primary/10 text-primary border-primary ring-1 ring-primary" 
+                                                              : "border-border/60 hover:bg-muted hover:border-muted-foreground/40 bg-card"
+                                                      )}
+                                                  >
+                                                      <div className="flex flex-col min-w-0 pr-2">
+                                                          <span className="font-semibold text-xs text-foreground truncate">{a.partnerName}</span>
+                                                          {(a.description || a.code) && (
+                                                              <span className="text-[10px] text-muted-foreground font-normal mt-0.5 truncate">
+                                                                  {a.description || a.code}
+                                                              </span>
+                                                          )}
+                                                          {a.binNumbers?.length > 0 && (
+                                                              <span className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
+                                                                  BIN: {a.binNumbers.join(", ")}
+                                                              </span>
+                                                          )}
+                                                      </div>
+                                                      <div className="flex items-center gap-2 shrink-0">
+                                                          <span className="text-[10px] font-medium text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                                                              {a.discountPercent}% off
+                                                          </span>
+                                                          {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                                      </div>
+                                                  </button>
+                                              );
+                                          })}
+                                      </div>
                                  </div>
                              )}
                         </div>

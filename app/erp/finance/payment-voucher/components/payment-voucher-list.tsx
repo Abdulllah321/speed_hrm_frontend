@@ -253,6 +253,8 @@ export function PaymentVoucherList({
         } finally {
             setUpdatingStatusId(null);
         }
+    };
+
     const handleUnapprove = async (id: string) => {
         if (updatingStatusId) return;
         try {
