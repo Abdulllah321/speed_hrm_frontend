@@ -22,6 +22,7 @@ interface OrderSummaryProps {
     selectedCashierId: string;
     isLoadingCashiers: boolean;
     onCashierChange: (id: string) => void;
+    salesmanError?: boolean;
     // Customer
     customers: Customer[];
     selectedCustomer: Customer | null;
@@ -42,7 +43,7 @@ interface OrderSummaryProps {
 }
 
 export function OrderSummary({
-    cashiers, selectedCashierId, isLoadingCashiers, onCashierChange,
+    cashiers, selectedCashierId, isLoadingCashiers, onCashierChange, salesmanError,
     customers, selectedCustomer, customerSearch, isLoadingCustomers,
     requireCustomer, canAddCustomer, onCustomerChange, onCustomerSearch,
     onAddCustomer, onClearCustomer,
@@ -98,16 +99,30 @@ export function OrderSummary({
             </div>
 
             {/* Salesman Selection */}
-            <div className="px-4 py-4 border-b space-y-3 bg-muted/5">
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <UserRound className="h-3 w-3" /> Salesman
-                </Label>
+            <div className={cn(
+                "px-4 py-4 border-b space-y-3 transition-colors",
+                salesmanError ? "bg-destructive/10 border-destructive/30" : "bg-muted/5"
+            )}>
+                <div className="flex items-center justify-between">
+                    <Label className={cn(
+                        "text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5",
+                        salesmanError ? "text-destructive font-bold" : "text-muted-foreground"
+                    )}>
+                        <UserRound className="h-3.5 w-3.5" /> Salesman <span className="text-destructive font-bold">*</span>
+                    </Label>
+                    <span className="text-[9px] font-mono text-primary font-bold uppercase">[Alt+A] Select</span>
+                </div>
                 <Select value={selectedCashierId} onValueChange={onCashierChange}>
                     <SelectTrigger 
                         id="cashier-select-trigger"
-                        className="w-full bg-muted/20 border-none h-10 px-3 font-medium"
+                        className={cn(
+                            "w-full h-10 px-3 font-medium transition-all",
+                            salesmanError
+                                ? "border-destructive bg-destructive/5 ring-2 ring-destructive/20 text-destructive focus:ring-destructive"
+                                : "bg-muted/20 border-border/40"
+                        )}
                     >
-                        <SelectValue placeholder={isLoadingCashiers ? "Loading salesmen..." : "Select Salesman"} />
+                        <SelectValue placeholder={isLoadingCashiers ? "Loading salesmen..." : "Select Salesman (Required) *"} />
                     </SelectTrigger>
                     <SelectContent>
                         {isLoadingCashiers ? (
@@ -123,13 +138,18 @@ export function OrderSummary({
                                 <SelectItem key={c.userId} value={c.userId}>
                                     <div className="flex flex-col">
                                         <span className="font-medium">{c.name}</span>
-                                        <span className="text-[10px] opacity-70 font-mono">{c.empCode} · {c.email}</span>
+                                        <span className="text-[10px] opacity-70 font-mono">{c.empCode ? `${c.empCode} · ` : ""}{c.email || ""}</span>
                                     </div>
                                 </SelectItem>
                             ))
                         )}
                     </SelectContent>
                 </Select>
+                {salesmanError && (
+                    <p className="text-[11px] font-medium text-destructive animate-in fade-in slide-in-from-top-1 duration-150">
+                        * Please select a salesman to proceed with checkout.
+                    </p>
+                )}
             </div>
 
             {/* Customer Section */}

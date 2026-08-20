@@ -24,13 +24,14 @@ export default function AddLocationPage() {
     name: string;
     code: string;
     shortCode: string;
+    centerId: string;
     address: string;
     cityId: string;
     isStockLocation: boolean;
     brandIds: string[];
   }
   const [locations, setLocations] = useState<LocationState[]>([
-    { id: 1, name: "", code: "", shortCode: "", address: "", cityId: "", isStockLocation: true, brandIds: [] },
+    { id: 1, name: "", code: "", shortCode: "", centerId: "", address: "", cityId: "", isStockLocation: true, brandIds: [] },
   ]);
   const [cities, setCities] = useState<City[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -51,7 +52,7 @@ export default function AddLocationPage() {
   const addRow = () => {
     setLocations([
       ...locations,
-      { id: Date.now(), name: "", code: "", shortCode: "", address: "", cityId: "", isStockLocation: true, brandIds: [] },
+      { id: Date.now(), name: "", code: "", shortCode: "", centerId: "", address: "", cityId: "", isStockLocation: true, brandIds: [] },
     ]);
   };
 
@@ -92,6 +93,7 @@ export default function AddLocationPage() {
           name: l.name.trim(),
           code: l.code.trim(),
           shortCode: l.shortCode.trim() || undefined,
+          centerId: l.centerId.trim() || undefined,
           address: l.address.trim() || undefined,
           cityId: l.cityId || undefined,
           isStockLocation: l.isStockLocation,
@@ -137,7 +139,7 @@ export default function AddLocationPage() {
               <Label>Locations</Label>
               {locations.map((loc, index) => (
                 <div key={loc.id} className="space-y-3 p-4 border rounded-lg bg-muted/10 relative group">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Location Name</Label>
                       <Input
@@ -164,6 +166,16 @@ export default function AddLocationPage() {
                         placeholder="e.g. SSDMC"
                         value={loc.shortCode}
                         onChange={(e) => updateLocation(loc.id, "shortCode", e.target.value.toUpperCase())}
+                        disabled={isPending}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Center ID (Optional)</Label>
+                      <Input
+                        placeholder="e.g. 101"
+                        value={loc.centerId}
+                        onChange={(e) => updateLocation(loc.id, "centerId", e.target.value)}
                         disabled={isPending}
                         className="bg-background"
                       />

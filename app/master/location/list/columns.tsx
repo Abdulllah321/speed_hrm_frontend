@@ -170,6 +170,20 @@ export const columns: ColumnDef<LocationRow>[] = [
       ),
   },
   {
+    header: "Center ID",
+    accessorKey: "centerId",
+    size: 100,
+    enableSorting: true,
+    cell: ({ row }) =>
+      row.original.centerId ? (
+        <Badge variant="outline" className="font-mono text-[11px] bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700">
+          {row.original.centerId}
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground italic">N/A</span>
+      ),
+  },
+  {
     header: "City",
     accessorKey: "city.name",
     size: 130,
@@ -374,6 +388,7 @@ function RowActions({ row }: RowActionsProps) {
         name: formData.get("name") as string,
         code: formData.get("code") as string,
         shortCode: (formData.get("shortCode") as string) || undefined,
+        centerId: (formData.get("centerId") as string)?.trim() || undefined,
         address: formData.get("address") as string,
         cityId: formData.get("cityId") as string,
         cashGLCode,
@@ -527,7 +542,7 @@ function RowActions({ row }: RowActionsProps) {
               </TabsList>
 
               <TabsContent value="general" className="space-y-4 py-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-name">Name</Label>
                     <Input
@@ -550,13 +565,25 @@ function RowActions({ row }: RowActionsProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit-short-code">
-                      Short Code (Optional)
+                      Short Code
                     </Label>
                     <Input
                       id="edit-short-code"
                       name="shortCode"
                       defaultValue={location.shortCode || ""}
                       disabled={isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-center-id">
+                      Center ID
+                    </Label>
+                    <Input
+                      id="edit-center-id"
+                      name="centerId"
+                      defaultValue={location.centerId || ""}
+                      disabled={isPending}
+                      placeholder="e.g. 101"
                     />
                   </div>
                 </div>

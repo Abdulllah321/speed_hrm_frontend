@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Building2, MapPin, Package, ArrowRight, Loader2, ArrowLeftRight } from "lucide-react";
+import { Building2, MapPin, Package, ArrowRight, Loader2, ArrowLeftRight, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DirectTransferModal } from "@/components/pos/inventory/direct-transfer-modal";
@@ -186,44 +186,61 @@ export function StockLocationDrawer({
                                         <p className="text-sm font-medium">No stock found in any location</p>
                                     </div>
                                 ) : (
-                                    locations.map((loc) => (
-                                        <div
-                                            key={loc.id}
-                                            className="group p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
-                                        >
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className="flex gap-3">
-                                                    <div className="p-2 bg-muted rounded-lg text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                                        <Building2 className="w-4 h-4" />
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-foreground text-sm tracking-tight">
-                                                            {loc.location.warehouse.name}
-                                                        </h4>
-                                                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground mt-0.5 uppercase tracking-wider">
-                                                            <MapPin className="h-3 w-3 text-primary/70" />
-                                                            {loc.location.name}
+                                    locations.map((loc) => {
+                                        const isOutlet = Boolean(loc.location?.name);
+                                        const displayName = isOutlet
+                                            ? loc.location.name
+                                            : (loc.location?.warehouse?.name || "LOGISTIC AREA");
+
+                                        return (
+                                            <div
+                                                key={loc.id}
+                                                className="group p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+                                            >
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div className="flex gap-3 items-center">
+                                                        <div className="p-2 bg-muted rounded-lg text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                            {isOutlet ? (
+                                                                <Store className="w-4 h-4 text-primary/80" />
+                                                            ) : (
+                                                                <Building2 className="w-4 h-4 text-amber-600" />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-foreground text-sm tracking-tight">
+                                                                {displayName}
+                                                            </h4>
+                                                            {!isOutlet ? (
+                                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 mt-0.5">
+                                                                    Warehouse (WH)
+                                                                </span>
+                                                            ) : (
+                                                                <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground mt-0.5">
+                                                                    <MapPin className="h-3 w-3 text-primary/70" />
+                                                                    <span>Outlet Location</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
+                                                    <Badge variant="outline" className="font-mono text-[10px] text-primary bg-primary/5 border-primary/20">
+                                                        {loc.quantity} Qty
+                                                    </Badge>
                                                 </div>
-                                                <Badge variant="outline" className="font-mono text-[10px] text-primary bg-primary/5 border-primary/20">
-                                                    {loc.quantity} Qty
-                                                </Badge>
+
+                                                <Separator className="my-3 opacity-30" />
+
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="w-full justify-between hover:bg-primary hover:text-primary-foreground group-hover:border-transparent transition-all duration-300"
+                                                    onClick={() => handleRequestStock(loc)}
+                                                >
+                                                    <span className="text-xs font-bold uppercase tracking-wider">Request Transfer</span>
+                                                    <ArrowRight className="w-3.5 h-3.5" />
+                                                </Button>
                                             </div>
-
-                                            <Separator className="my-3 opacity-30" />
-
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="w-full justify-between hover:bg-primary hover:text-primary-foreground group-hover:border-transparent transition-all duration-300"
-                                                onClick={() => handleRequestStock(loc)}
-                                            >
-                                                <span className="text-xs font-bold uppercase tracking-wider">Request Transfer</span>
-                                                <ArrowRight className="w-3.5 h-3.5" />
-                                            </Button>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </ScrollArea>

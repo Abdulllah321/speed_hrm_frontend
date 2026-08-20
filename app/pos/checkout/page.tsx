@@ -404,20 +404,16 @@ export default function CheckoutPage() {
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState<boolean>(false);
 
-  // ── Cashier state ──────────────────────────────────────────────────
+  // ── Cashier / Salesman state ───────────────────────────────────────
   const [cashiers, setCashiers] = useState<any[]>([]);
   const [selectedCashierId, setSelectedCashierId] = useState<string>("");
   const [isLoadingCashiers, setIsLoadingCashiers] = useState(false);
+  const [salesmanError, setSalesmanError] = useState(false);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem("pos_selected_cashier_id");
-    if (saved) setSelectedCashierId(saved);
+    // Clear any previous persisted salesman ID on checkout mount
+    sessionStorage.removeItem("pos_selected_cashier_id");
   }, []);
-
-  useEffect(() => {
-    if (selectedCashierId)
-      sessionStorage.setItem("pos_selected_cashier_id", selectedCashierId);
-  }, [selectedCashierId]);
 
   useEffect(() => {
     setIsLoadingCashiers(true);
@@ -426,15 +422,11 @@ export default function CheckoutPage() {
         if (res.ok && res.data?.status) {
           const list = res.data.data || [];
           setCashiers(list);
-          if (!sessionStorage.getItem("pos_selected_cashier_id") && user?.id) {
-            if (list.some((c: any) => c.userId === user.id))
-              setSelectedCashierId(user.id);
-          }
         }
       })
       .catch(() => {})
       .finally(() => setIsLoadingCashiers(false));
-  }, [user?.id]);
+  }, []);
 
   // ── Hold state ──────────────────────────────────────────────────────
   const [showHoldModal, setShowHoldModal] = useState(false);
@@ -1073,6 +1065,14 @@ export default function CheckoutPage() {
 
   // ── Confirm sale ───────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
+    if (!selectedCashierId) {
+      setSalesmanError(true);
+      toast.error("Please select a salesman to complete this sale.");
+      const trigger = document.getElementById("cashier-select-trigger");
+      trigger?.focus();
+      trigger?.click();
+      return;
+    }
     if (balanceDue > 0) {
       toast.error("Balance due must be 0 before completing.");
       return;
@@ -1235,9 +1235,16 @@ export default function CheckoutPage() {
         body,
       });
       if (res.ok && res.data?.status) {
-        setCompletedOrder(res.data.data);
+        const chosenSalesman = cashiers.find((c) => c.userId === selectedCashierId);
+        const orderData = {
+          ...res.data.data,
+          cashierName: chosenSalesman?.name || res.data.data?.cashierName || res.data.data?.cashier?.name,
+          cashier: chosenSalesman || res.data.data?.cashier,
+        };
+        setCompletedOrder(orderData);
         sessionStorage.removeItem("pos_cart");
         sessionStorage.removeItem("pos_hold_order_id");
+        sessionStorage.removeItem("pos_selected_cashier_id");
       } else {
         toast.error(res.data?.message || "Checkout failed");
       }
@@ -1264,6 +1271,7 @@ export default function CheckoutPage() {
     balanceDue,
     selectedCustomer,
     selectedCashierId,
+    cashiers,
     isGiftReceipt,
     appliedVouchers,
     holdOrderId,
@@ -1276,6 +1284,14 @@ export default function CheckoutPage() {
 
   // ── Credit Sale ────────────────────────────────────────────────────
   const handleCreditSale = useCallback(async () => {
+    if (!selectedCashierId) {
+      setSalesmanError(true);
+      toast.error("Please select a salesman to complete this credit sale.");
+      const trigger = document.getElementById("cashier-select-trigger");
+      trigger?.focus();
+      trigger?.click();
+      return;
+    }
     if (!selectedCustomer) {
       toast.error("Please select a customer for credit sale.");
       return;
@@ -1370,6 +1386,7 @@ export default function CheckoutPage() {
         items: orderItems,
         tenders: tenders.length > 0 ? tenders : [],
         customerId: selectedCustomer.id,
+        cashierUserId: selectedCashierId || null,
         isCreditSale: true,
         creditAmount: balanceDue,
         isGiftReceipt,
@@ -1429,9 +1446,16 @@ export default function CheckoutPage() {
         toast.success(
           `Credit sale completed! Balance added to ${selectedCustomer.name}'s ledger.`,
         );
-        setCompletedOrder(res.data.data);
+        const chosenSalesman = cashiers.find((c) => c.userId === selectedCashierId);
+        const orderData = {
+          ...res.data.data,
+          cashierName: chosenSalesman?.name || res.data.data?.cashierName || res.data.data?.cashier?.name,
+          cashier: chosenSalesman || res.data.data?.cashier,
+        };
+        setCompletedOrder(orderData);
         sessionStorage.removeItem("pos_cart");
         sessionStorage.removeItem("pos_hold_order_id");
+        sessionStorage.removeItem("pos_selected_cashier_id");
       } else {
         toast.error(res.data?.message || "Credit sale failed");
       }
@@ -1457,6 +1481,8 @@ export default function CheckoutPage() {
     grandTotal,
     balanceDue,
     selectedCustomer,
+    selectedCashierId,
+    cashiers,
     holdOrderId,
     isGiftReceipt,
     selectedMerchant,
@@ -1763,7 +1789,11 @@ export default function CheckoutPage() {
             cashiers={cashiers}
             selectedCashierId={selectedCashierId}
             isLoadingCashiers={isLoadingCashiers}
-            onCashierChange={setSelectedCashierId}
+            onCashierChange={(val) => {
+              setSelectedCashierId(val);
+              if (val) setSalesmanError(false);
+            }}
+            salesmanError={salesmanError}
             customers={customers}
             selectedCustomer={selectedCustomer}
             customerSearch={customerSearch}
@@ -2051,6 +2081,8 @@ export default function CheckoutPage() {
           autoPrint={true}
           creditVouchers={completedOrder.creditVouchers}
           onClose={() => {
+            setSelectedCashierId("");
+            setSalesmanError(false);
             setCompletedOrder(null);
             setShowGiftReceiptAfterSales(false);
             router.push("/pos/new-sale");
