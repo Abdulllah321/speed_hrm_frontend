@@ -54,6 +54,7 @@ import {
   createEmployee,
   updateEmployee,
   getEmployees,
+  getNextEmployeeCode,
   type Employee,
 } from "@/lib/actions/employee";
 import { BasicInfoSection } from "@/app/hr/employee/create/components/basic-info-section";
@@ -639,6 +640,16 @@ export function EmployeeForm({
   const department = watch("department");
   const state = watch("state");
   const avatarUrl = watch("avatarUrl");
+
+  useEffect(() => {
+    if (mode === "create" && !initialData?.employeeId) {
+      getNextEmployeeCode().then((res) => {
+        if (res?.status && res?.code) {
+          setValue("employeeId", res.code);
+        }
+      });
+    }
+  }, [mode, initialData, setValue]);
 
   // Local state for dynamic dropdowns
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>(

@@ -18,13 +18,13 @@ import { useAuth } from "@/components/providers/auth-provider";
 export type VendorRow = {
   id: string;
   code: string;
-  code2?: string;
   name: string;
   type: "LOCAL" | "IMPORT";
   contactNo?: string;
   address?: string;
   nature?: string;
   brand?: string;
+  brandIds?: string[];
   strnNo?: string;
 };
 
@@ -32,11 +32,6 @@ export const columns: ColumnDef<VendorRow>[] = [
   {
     accessorKey: "code",
     header: "Code",
-  },
-  {
-    accessorKey: "code2",
-    header: "GL Code 2",
-    cell: ({ row }) => row.original.code2 || "-",
   },
   {
     accessorKey: "name",
@@ -70,8 +65,16 @@ export const columns: ColumnDef<VendorRow>[] = [
   },
   {
     accessorKey: "brand",
-    header: "Brand",
-    cell: ({ row }) => row.original.brand || "-",
+    header: "Brand(s)",
+    cell: ({ row }) => {
+      const brandStr = row.original.brand;
+      if (!brandStr) return "-";
+      return (
+        <span className="font-medium text-xs text-primary max-w-[200px] truncate block" title={brandStr}>
+          {brandStr}
+        </span>
+      );
+    },
   },
   {
     id: "actions",

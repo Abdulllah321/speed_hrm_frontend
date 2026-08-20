@@ -41,6 +41,141 @@ import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { cn, getApiBaseUrl, formatCurrency } from "@/lib/utils";
 
+// ─── Highlight helper ──────────────────────────────────────────────────────────
+function highlight(text: string, query: string | string[]) {
+    if (!text) return <></>;
+    const tokens = Array.isArray(query) 
+        ? query.filter(q => Boolean(q && q.trim())) 
+        : (query && query.trim() ? [query.trim()] : []);
+    
+    if (tokens.length === 0) return <>{text}</>;
+
+    try {
+        const escapedTokens = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(`(${escapedTokens.join('|')})`, 'gi');
+        const parts = text.split(pattern);
+
+        return (
+            <>
+                {parts.map((part, i) => {
+                    const isMatch = tokens.some(t => t.toLowerCase() === part.toLowerCase());
+                    return isMatch ? (
+                        <mark key={i} className="bg-amber-200 dark:bg-amber-700/60 text-inherit rounded-sm px-0.5 font-semibold">
+                            {part}
+                        </mark>
+                    ) : (
+                        part
+                    );
+                })}
+            </>
+        );
+    } catch {
+        return <>{text}</>;
+    }
+}
+
+// ─── Autocomplete multi-select ─────────────────────────────────────────────────
+function AutocompleteMultiSelect({
+    label, options, selected, onToggle, searchable = true,
+}: {
+    label: string;
+    options: string[];
+    selected: Set<string>;
+    onToggle: (val: string) => void;
+    searchable?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    const filtered = useMemo(() =>
+        options.filter(o => o.toLowerCase().includes(search.toLowerCase())),
+        [options, search]
+    );
+
+    const selectedCount = selected.size;
+
+    return (
+        <div ref={ref} className="relative">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all",
+                    selectedCount > 0
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                )}
+            >
+                <span>{label}</span>
+                {selectedCount > 0 && (
+                    <span className="bg-white/20 text-inherit px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none">{selectedCount}</span>
+                )}
+                <svg className={cn("h-3 w-3 transition-transform", open && "rotate-180")} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            {open && (
+                <div className="absolute z-50 top-full mt-1.5 left-0 min-w-[200px] max-w-[280px] bg-background border border-border rounded-xl shadow-xl overflow-hidden">
+                    {searchable && (
+                        <div className="p-2 border-b border-border">
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder={`Search ${label}...`}
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-border bg-muted/40 outline-none focus:border-primary"
+                            />
+                        </div>
+                    )}
+                    <div className="max-h-56 overflow-y-auto py-1">
+                        {filtered.length === 0 && (
+                            <p className="text-xs text-muted-foreground px-3 py-2 text-center">No results</p>
+                        )}
+                        {filtered.map(opt => (
+                            <label
+                                key={opt}
+                                className="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-muted/60 transition-colors"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={selected.has(opt)}
+                                    onChange={() => onToggle(opt)}
+                                    className="h-3.5 w-3.5 accent-primary cursor-pointer"
+                                />
+                                <span className="text-xs font-medium text-foreground">
+                                    {highlight(opt, search)}
+                                </span>
+                            </label>
+                        ))}
+                    </div>
+                    {selectedCount > 0 && (
+                        <div className="px-3 py-2 border-t border-border">
+                            <button
+                                type="button"
+                                onClick={() => filtered.forEach(o => selected.has(o) && onToggle(o))}
+                                className="text-[11px] text-muted-foreground hover:text-destructive font-semibold transition-colors"
+                            >
+                                Clear all
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function ERPAvailableStockSummaryReportPage() {
     const [locations, setLocations] = useState<Location[]>([]);
     const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
@@ -49,13 +184,30 @@ export default function ERPAvailableStockSummaryReportPage() {
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>([]);
 
+    const getFiscalYearStart = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth(); // 0 = Jan, 6 = July
+        const fyYear = month >= 6 ? year : year - 1;
+        return new Date(fyYear, 6, 1);
+    };
+
     const [dateRange, setDateRange] = useState<DateRange>({
-        from: startOfMonth(new Date()),
-        to: endOfMonth(new Date()),
+        from: getFiscalYearStart(),
+        to: new Date(),
     });
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+    const [reportType, setReportType] = useState<"merged" | "separate">("separate");
+
+    // Client-side attribute & multi-select filters
+    const [filterBrands, setFilterBrands] = useState<Set<string>>(new Set());
+    const [filterDivisions, setFilterDivisions] = useState<Set<string>>(new Set());
+    const [filterGenders, setFilterGenders] = useState<Set<string>>(new Set());
+    const [filterSilhouettes, setFilterSilhouettes] = useState<Set<string>>(new Set());
+    const [filterCategories, setFilterCategories] = useState<Set<string>>(new Set());
+    const [filterSizes, setFilterSizes] = useState<Set<string>>(new Set());
+    const [filterColors, setFilterColors] = useState<Set<string>>(new Set());
 
     const [groupingLevels, setGroupingLevels] = useState({
         brand: true,
@@ -167,14 +319,14 @@ export default function ERPAvailableStockSummaryReportPage() {
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
                 reportType,
-                summaryOnly,
-                showBrand: groupingLevels.brand,
-                showDivision: groupingLevels.division,
-                showCategory: groupingLevels.category,
-                showGender: groupingLevels.gender,
-                showSilhouette: groupingLevels.silhouette,
-                showArticle: groupingLevels.article,
-                showVariant: groupingLevels.variant,
+                summaryOnly: false,
+                showBrand: true,
+                showDivision: true,
+                showCategory: true,
+                showGender: true,
+                showSilhouette: true,
+                showArticle: true,
+                showVariant: true,
             });
 
             setIsQueueingJob(false);
@@ -187,14 +339,14 @@ export default function ERPAvailableStockSummaryReportPage() {
                 toast.error("Failed to queue report preview");
             }
         });
-    }, [locationParam, warehouseParam, dateRange, reportType, groupingLevels, summaryOnly]);
+    }, [locationParam, warehouseParam, dateRange, reportType]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchReport();
         }, 400);
         return () => clearTimeout(timer);
-    }, [fetchReport]);
+    }, [dateRange, reportType]);
 
     // Handle SSE completion to fetch GZIP report result with loading state & silent filter change handling
     useEffect(() => {
@@ -472,43 +624,152 @@ export default function ERPAvailableStockSummaryReportPage() {
         }
     };
 
-    // Advanced Hierarchical Client-Side Search
+    // Parse search text into tokens (supporting spaces, commas, newlines copied from Excel)
+    const searchTokens = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        return searchQuery
+            .split(/[\r\n,;\s]+/)
+            .map(t => t.trim().toLowerCase())
+            .filter(t => t.length > 0);
+    }, [searchQuery]);
+
+    // Extract filter options dynamically from reportData tree
+    const filterOptions = useMemo(() => {
+        const brands = new Set<string>();
+        const divisions = new Set<string>();
+        const categories = new Set<string>();
+        const genders = new Set<string>();
+        const silhouettes = new Set<string>();
+        const sizes = new Set<string>();
+        const colors = new Set<string>();
+
+        const walk = (node: any) => {
+            if (!node) return;
+            if (node.level === 'brand' && node.value) brands.add(String(node.value));
+            if (node.level === 'division' && node.value) divisions.add(String(node.value));
+            if (node.level === 'category' && node.value) categories.add(String(node.value));
+            if (node.level === 'gender' && node.value) genders.add(String(node.value));
+            if (node.level === 'silhouette' && node.value) silhouettes.add(String(node.value));
+            if (node.size && node.size !== 'Default') sizes.add(String(node.size));
+            if (node.color && node.color !== 'Default') colors.add(String(node.color));
+
+            if (Array.isArray(node.children)) {
+                for (const child of node.children) walk(child);
+            }
+        };
+
+        if (Array.isArray(reportData)) {
+            for (const node of reportData) walk(node);
+        }
+
+        return {
+            brands: Array.from(brands).sort(),
+            divisions: Array.from(divisions).sort(),
+            categories: Array.from(categories).sort(),
+            genders: Array.from(genders).sort(),
+            silhouettes: Array.from(silhouettes).sort(),
+            sizes: Array.from(sizes).sort(),
+            colors: Array.from(colors).sort(),
+        };
+    }, [reportData]);
+
+    const toggleFilter = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, val: string) => {
+        setter(prev => {
+            const next = new Set(prev);
+            if (next.has(val)) next.delete(val); else next.add(val);
+            return next;
+        });
+    };
+
+    const hasActiveFilters =
+        searchTokens.length > 0 ||
+        filterBrands.size > 0 ||
+        filterDivisions.size > 0 ||
+        filterGenders.size > 0 ||
+        filterSilhouettes.size > 0 ||
+        filterCategories.size > 0 ||
+        filterSizes.size > 0 ||
+        filterColors.size > 0;
+
+    const clearAllFilters = () => {
+        setSearchQuery("");
+        setFilterBrands(new Set());
+        setFilterDivisions(new Set());
+        setFilterGenders(new Set());
+        setFilterSilhouettes(new Set());
+        setFilterCategories(new Set());
+        setFilterSizes(new Set());
+        setFilterColors(new Set());
+    };
+
+    // Advanced Hierarchical Client-Side Filtration Engine (Zero API hits on filter change!)
     const filteredReportData = useMemo(() => {
         if (!Array.isArray(reportData)) return [];
-        if (!searchQuery.trim()) return reportData;
-        const query = searchQuery.toLowerCase().trim();
 
-        const filterNode = (node: any): any => {
+        const hasTokens = searchTokens.length > 0;
+
+        const filterNode = (node: any, currentContext: {
+            brand?: string;
+            division?: string;
+            category?: string;
+            gender?: string;
+            silhouette?: string;
+        }): any => {
             if (!node) return null;
-            const nodeMatches =
-                (node.value && String(node.value).toLowerCase().includes(query)) ||
-                (node.sku && String(node.sku).toLowerCase().includes(query)) ||
-                (node.articleName && String(node.articleName).toLowerCase().includes(query)) ||
-                (node.color && String(node.color).toLowerCase().includes(query)) ||
-                (node.size && String(node.size).toLowerCase().includes(query));
 
-            if (nodeMatches) {
-                return node;
+            const ctx = { ...currentContext };
+            if (node.level === 'brand' && node.value) ctx.brand = String(node.value);
+            if (node.level === 'division' && node.value) ctx.division = String(node.value);
+            if (node.level === 'category' && node.value) ctx.category = String(node.value);
+            if (node.level === 'gender' && node.value) ctx.gender = String(node.value);
+            if (node.level === 'silhouette' && node.value) ctx.silhouette = String(node.value);
+
+            // Filter checks by dropdown selection
+            if (ctx.brand && filterBrands.size > 0 && !filterBrands.has(ctx.brand)) return null;
+            if (ctx.division && filterDivisions.size > 0 && !filterDivisions.has(ctx.division)) return null;
+            if (ctx.category && filterCategories.size > 0 && !filterCategories.has(ctx.category)) return null;
+            if (ctx.gender && filterGenders.size > 0 && !filterGenders.has(ctx.gender)) return null;
+            if (ctx.silhouette && filterSilhouettes.size > 0 && !filterSilhouettes.has(ctx.silhouette)) return null;
+
+            if (node.level === 'variant' || node.size || node.color) {
+                if (node.size && filterSizes.size > 0 && !filterSizes.has(node.size)) return null;
+                if (node.color && filterColors.size > 0 && !filterColors.has(node.color)) return null;
             }
 
-            if (Array.isArray(node.children) && node.children.length > 0) {
-                const filteredChildren = node.children
-                    .map(filterNode)
-                    .filter(Boolean);
+            // Check search text tokens
+            let tokenMatched = !hasTokens;
+            if (hasTokens) {
+                const targetText = [
+                    node.value, node.sku, node.articleName, node.color, node.size, node.barCode,
+                    ctx.brand, ctx.division, ctx.category, ctx.gender, ctx.silhouette
+                ].filter(Boolean).join(" ").toLowerCase();
 
-                if (filteredChildren.length > 0) {
-                    return {
-                        ...node,
-                        children: filteredChildren,
-                    };
-                }
+                tokenMatched = searchTokens.some(token => targetText.includes(token));
+            }
+
+            // Recursive check on children
+            let filteredChildren: any[] = [];
+            if (Array.isArray(node.children) && node.children.length > 0) {
+                filteredChildren = node.children
+                    .map((child: any) => filterNode(child, ctx))
+                    .filter(Boolean);
+            }
+
+            if (tokenMatched || filteredChildren.length > 0) {
+                return {
+                    ...node,
+                    children: filteredChildren.length > 0 ? filteredChildren : node.children,
+                };
             }
 
             return null;
         };
 
-        return reportData.map(filterNode).filter(Boolean);
-    }, [reportData, searchQuery]);
+        return reportData.map(node => filterNode(node, {})).filter(Boolean);
+    }, [
+        reportData, searchTokens, filterBrands, filterDivisions, filterCategories,
+        filterGenders, filterSilhouettes, filterSizes, filterColors
+    ]);
 
     // Calculate Grand Totals (based on filtered data!)
     const grandTotals = useMemo(() => {
@@ -561,28 +822,36 @@ export default function ERPAvailableStockSummaryReportPage() {
             const currentPath = path ? `${path}-${node.level}-${node.value}` : `${node.level}-${node.value}`;
 
             if (node.level === 'article') {
-                rows.push({
-                    id: `art-${node.sku}`,
-                    type: 'article',
-                    label: node.articleName,
-                    sku: node.sku,
-                    totals: node.totals,
-                });
+                if (groupingLevels.article) {
+                    rows.push({
+                        id: `art-${node.sku}`,
+                        type: 'article',
+                        label: node.articleName,
+                        sku: node.sku,
+                        totals: node.totals,
+                    });
+                }
             } else if (node.level === 'variant') {
-                rows.push({
-                    id: `var-${currentPath}`,
-                    type: 'variant',
-                    color: node.color,
-                    size: node.size,
-                    totals: node.totals,
-                });
+                if (groupingLevels.variant) {
+                    rows.push({
+                        id: `var-${currentPath}`,
+                        type: 'variant',
+                        color: node.color,
+                        size: node.size,
+                        barCode: node.barCode || node.barcode || node.sku || '',
+                        totals: node.totals,
+                    });
+                }
             } else {
-                rows.push({
-                    id: `${node.level}-${currentPath}`,
-                    type: node.level,
-                    label: `${node.value ? String(node.value).toUpperCase() : ''}`,
-                    totals: node.totals,
-                });
+                const levelKey = node.level as keyof typeof groupingLevels;
+                if (levelKey in groupingLevels ? groupingLevels[levelKey] : true) {
+                    rows.push({
+                        id: `${node.level}-${currentPath}`,
+                        type: node.level,
+                        label: `${node.value ? String(node.value).toUpperCase() : ''}`,
+                        totals: node.totals,
+                    });
+                }
             }
 
             if (Array.isArray(node.children) && node.children.length > 0) {
@@ -861,31 +1130,40 @@ export default function ERPAvailableStockSummaryReportPage() {
                         </div>
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="flex flex-col gap-1.5 flex-1 min-w-[260px]">
+                    {/* Multi-Item Search Bar */}
+                    <div className="flex flex-col gap-1.5 flex-1 min-w-[280px]">
                         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 leading-none">
                             <Search className="h-3.5 w-3.5 text-primary" />
-                            Quick Search
+                            Multi-Item Search / Paste Barcodes
                         </span>
                         <div className="relative">
-                            <Input
-                                placeholder="Search by SKU, Product Name, Size, Color, Category..."
+                            <textarea
+                                rows={searchTokens.length > 1 ? 2 : 1}
+                                placeholder="Search or paste multiple Barcodes/SKUs (space, comma, or newline)..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="h-10 pl-9 pr-9 text-sm bg-background border-slate-200"
+                                className="w-full text-xs pl-8 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-background outline-none focus:border-primary transition-all resize-none font-mono"
                             />
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
-                                <Search className="h-4 w-4" />
+                            <div className="absolute top-2.5 left-2.5 flex items-center pointer-events-none text-muted-foreground">
+                                <Search className="h-3.5 w-3.5" />
                             </div>
                             {searchQuery && (
                                 <button
                                     onClick={() => setSearchQuery("")}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+                                    className="absolute top-2.5 right-2.5 flex items-center text-muted-foreground hover:text-foreground"
                                 >
-                                    <X className="h-4 w-4" />
+                                    <X className="h-3.5 w-3.5" />
                                 </button>
                             )}
                         </div>
+                        {searchTokens.length > 1 && (
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold px-1">
+                                <span className="text-primary font-bold bg-primary/10 px-1.5 py-0.5 rounded">
+                                    {searchTokens.length} Barcodes / SKUs pasted
+                                </span>
+                                <span>Multi-item search active</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -899,6 +1177,153 @@ export default function ERPAvailableStockSummaryReportPage() {
                         Refresh Report
                     </Button>
                 </div>
+            </div>
+
+            {/* ── Client-Side Multi-Attribute Autocomplete Filters ── */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3 no-print">
+                <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mr-1">
+                        <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
+                        Quick Filters:
+                    </span>
+
+                    {/* Autocomplete dropdowns */}
+                    {filterOptions.brands.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Brand"
+                            options={filterOptions.brands}
+                            selected={filterBrands}
+                            onToggle={v => toggleFilter(setFilterBrands, v)}
+                        />
+                    )}
+                    {filterOptions.divisions.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Division"
+                            options={filterOptions.divisions}
+                            selected={filterDivisions}
+                            onToggle={v => toggleFilter(setFilterDivisions, v)}
+                        />
+                    )}
+                    {filterOptions.categories.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Category"
+                            options={filterOptions.categories}
+                            selected={filterCategories}
+                            onToggle={v => toggleFilter(setFilterCategories, v)}
+                        />
+                    )}
+                    {filterOptions.genders.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Gender"
+                            options={filterOptions.genders}
+                            selected={filterGenders}
+                            onToggle={v => toggleFilter(setFilterGenders, v)}
+                        />
+                    )}
+                    {filterOptions.silhouettes.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Silhouette"
+                            options={filterOptions.silhouettes}
+                            selected={filterSilhouettes}
+                            onToggle={v => toggleFilter(setFilterSilhouettes, v)}
+                        />
+                    )}
+                    {filterOptions.sizes.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Size"
+                            options={filterOptions.sizes}
+                            selected={filterSizes}
+                            onToggle={v => toggleFilter(setFilterSizes, v)}
+                        />
+                    )}
+                    {filterOptions.colors.length > 0 && (
+                        <AutocompleteMultiSelect
+                            label="Color"
+                            options={filterOptions.colors}
+                            selected={filterColors}
+                            onToggle={v => toggleFilter(setFilterColors, v)}
+                        />
+                    )}
+
+                    {hasActiveFilters && (
+                        <>
+                            <div className="h-5 w-px bg-border hidden sm:block" />
+                            <button
+                                onClick={clearAllFilters}
+                                className="flex items-center gap-1 text-[11px] font-bold text-destructive hover:text-destructive/80 transition-colors"
+                            >
+                                <X className="h-3 w-3" />
+                                Clear Filters
+                            </button>
+                        </>
+                    )}
+
+                    <div className="ml-auto text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                        {hasActiveFilters ? (
+                            <span className="bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold">
+                                {filteredReportData.length} / {reportData.length} nodes active
+                            </span>
+                        ) : (
+                            <span>{flatRows.filter(r => r.type === 'article').length} articles loaded</span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Active filter chips */}
+                {hasActiveFilters && (
+                    <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border">
+                        {searchTokens.length > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[11px] bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-semibold">
+                                {searchTokens.length === 1 
+                                    ? `Search: "${searchTokens[0]}"` 
+                                    : `Multi Search (${searchTokens.length} tokens)`}
+                                <button onClick={() => setSearchQuery("")} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                            </span>
+                        )}
+                        {Array.from(filterBrands).map(b => (
+                            <span key={`b-${b}`} className="inline-flex items-center gap-1 text-[11px] bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full font-semibold">
+                                Brand: {b}
+                                <button onClick={() => toggleFilter(setFilterBrands, b)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                            </span>
+                        ))}
+                        {Array.from(filterDivisions).map(d => (
+                            <span key={`d-${d}`} className="inline-flex items-center gap-1 text-[11px] bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-semibold">
+                                Division: {d}
+                                <button onClick={() => toggleFilter(setFilterDivisions, d)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                            </span>
+                        ))}
+                        {Array.from(filterCategories).map(c => (
+                            <span key={`c-${c}`} className="inline-flex items-center gap-1 text-[11px] bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-semibold">
+                                Category: {c}
+                                <button onClick={() => toggleFilter(setFilterCategories, c)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                            </span>
+                        ))}
+                        {Array.from(filterGenders).map(g => (
+                            <span key={`g-${g}`} className="inline-flex items-center gap-1 text-[11px] bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded-full font-semibold">
+                                Gender: {g}
+                                <button onClick={() => toggleFilter(setFilterGenders, g)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                            </span>
+                        ))}
+                        {Array.from(filterSilhouettes).map(s => (
+                            <span key={`s-${s}`} className="inline-flex items-center gap-1 text-[11px] bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-semibold">
+                                Silhouette: {s}
+                                <button onClick={() => toggleFilter(setFilterSilhouettes, s)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                            </span>
+                        ))}
+                        {Array.from(filterSizes).map(s => (
+                            <span key={`sz-${s}`} className="inline-flex items-center gap-1 text-[11px] bg-fuchsia-100 dark:bg-fuchsia-950/50 text-fuchsia-700 dark:text-fuchsia-300 px-2 py-0.5 rounded-full font-semibold">
+                                Size: {s}
+                                <button onClick={() => toggleFilter(setFilterSizes, s)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                            </span>
+                        ))}
+                        {Array.from(filterColors).map(cl => (
+                            <span key={`cl-${cl}`} className="inline-flex items-center gap-1 text-[11px] bg-cyan-100 dark:bg-cyan-950/50 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded-full font-semibold">
+                                Color: {cl}
+                                <button onClick={() => toggleFilter(setFilterColors, cl)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Hierarchy Configuration */}
@@ -1269,8 +1694,11 @@ export default function ERPAvailableStockSummaryReportPage() {
                                         if (row.type === 'variant') {
                                             return (
                                                 <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className="bg-background hover:bg-slate-50 dark:hover:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400">
-                                                    <td className="p-2 pl-24 italic text-muted-foreground">
-                                                        &mdash; Variant Detail
+                                                    <td className="p-2 pl-24 flex flex-col gap-0.5">
+                                                        <span className="italic text-muted-foreground">&mdash; Variant Detail</span>
+                                                        <span className="font-mono text-xs text-muted-foreground">
+                                                            Barcode: <span className="font-bold text-foreground">{row.barCode || '—'}</span>
+                                                        </span>
                                                     </td>
                                                     <td className="p-2 text-center font-bold text-foreground">{row.size}</td>
                                                     <td className="p-2 text-center font-medium">{row.color}</td>

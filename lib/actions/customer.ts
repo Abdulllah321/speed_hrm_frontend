@@ -24,6 +24,15 @@ export interface Customer {
   balance?: number;
 }
 
+export async function getNextCustomerCode() {
+  try {
+    const response = await authFetch("/sales/customers/next-code");
+    return response.data;
+  } catch (error) {
+    return { status: false, code: "310001" };
+  }
+}
+
 export async function getCustomers() {
   try {
     const response = await authFetch("/sales/customers");

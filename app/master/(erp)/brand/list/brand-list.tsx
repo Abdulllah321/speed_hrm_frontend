@@ -35,7 +35,7 @@ export function BrandList({
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [bulkEditOpen, setBulkEditOpen] = useState(false);
-    const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
+    const [editRows, setEditRows] = useState<{ id: string; code?: string; name: string }[]>([]);
     const { hasPermission } = useAuth();
     const showAddAction = hasPermission("master.brand.create");
     const canBulkEdit = hasPermission("master.brand.update");
@@ -64,15 +64,16 @@ export function BrandList({
         setEditRows(
             items.map((item) => ({
                 id: item.id,
+                code: item.code || "",
                 name: item.name,
             }))
         );
         setBulkEditOpen(true);
     };
 
-    const updateEditRow = (id: string, value: string) => {
+    const updateEditRow = (id: string, field: "name" | "code", value: string) => {
         setEditRows((rows) =>
-            rows.map((r) => (r.id === id ? { ...r, name: value } : r))
+            rows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
         );
     };
 
@@ -135,13 +136,18 @@ export function BrandList({
                     </DialogHeader>
                     <div className="space-y-3 max-h-[400px] overflow-y-auto py-4">
                         {editRows.map((row, index) => (
-                            <div key={row.id} className="flex gap-2">
+                            <div key={row.id} className="grid grid-cols-2 gap-2">
                                 <Input
-                                    placeholder={`Brand ${index + 1}`}
-                                    value={row.name}
-                                    onChange={(e) => updateEditRow(row.id, e.target.value)}
+                                    placeholder="Code"
+                                    value={row.code || ""}
+                                    onChange={(e) => updateEditRow(row.id, "code", e.target.value)}
                                     disabled={isPending}
-                                    className="flex-1"
+                                />
+                                <Input
+                                    placeholder={`Brand Name ${index + 1}`}
+                                    value={row.name}
+                                    onChange={(e) => updateEditRow(row.id, "name", e.target.value)}
+                                    disabled={isPending}
                                 />
                             </div>
                         ))}

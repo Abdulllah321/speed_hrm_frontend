@@ -257,7 +257,7 @@ export default function PaymentVoucherDetailPage({
             display: table-header-group;
           }
           tfoot {
-            display: table-footer-group;
+            display: table-row-group;
           }
           @page {
             margin: 10mm;

@@ -3,6 +3,16 @@
 import { authFetch } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
+export async function getNextSupplierCode() {
+    try {
+        const response = await authFetch("/finance/suppliers/next-code");
+        return response.data;
+    } catch (error) {
+        console.error("Get next supplier code error:", error);
+        return { status: false, code: "120001" };
+    }
+}
+
 export async function getVendors() {
     try {
         const response = await authFetch("/finance/suppliers");
@@ -32,7 +42,8 @@ export async function updateVendor(id: string, data: any) {
             ...data,
             type: data.type === "local" ? "LOCAL" : "IMPORT",
             nature: data.type === "local" ? data.nature : undefined,
-            brand: data.type === "import" ? data.brand : undefined,
+            brand: data.brand || undefined,
+            brandIds: data.brandIds || undefined,
             cnicNo: data.cnic,
             ntnNo: data.ntn,
             strnNo: data.strn,
@@ -75,7 +86,8 @@ export async function createVendor(data: any) {
             ...data,
             type: data.type === "local" ? "LOCAL" : "IMPORT",
             nature: data.type === "local" ? data.nature : undefined,
-            brand: data.type === "import" ? data.brand : undefined,
+            brand: data.brand || undefined,
+            brandIds: data.brandIds || undefined,
             cnicNo: data.cnic,
             ntnNo: data.ntn,
             strnNo: data.strn,

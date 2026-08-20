@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { createVendor, updateVendor } from "@/lib/actions/procurement";
+import { useState, useEffect } from "react";
+import { createVendor, updateVendor, getNextSupplierCode } from "@/lib/actions/procurement";
+import { getBrands, type Brand } from "@/lib/actions/brand";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { vendorSchema, type VendorFormValues } from "@/lib/validations/vendor";
@@ -9,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, User, Globe } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, User, Globe, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -32,13 +34,13 @@ interface VendorFormProps {
 export function VendorForm({ initialData, id, readOnly = false }: VendorFormProps) {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
+    const [masterBrands, setMasterBrands] = useState<Brand[]>([]);
 
     const form = useForm<VendorFormValues>({
         resolver: zodResolver(vendorSchema) as any,
         defaultValues: {
             type: initialData?.type ? (initialData.type === "LOCAL" ? "local" : "import") : "local",
             code: initialData?.code || "",
-            code2: initialData?.code2 || "",
             name: initialData?.name || "",
             address: initialData?.address || "",
             contactNo: initialData?.contactNo || initialData?.contactNumber || "",
@@ -51,8 +53,27 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
             pra: initialData?.praNo || "",
             ict: initialData?.ictNo || "",
             brand: initialData?.brand || "",
+            brandIds: initialData?.brandIds || [],
         },
     });
+
+    useEffect(() => {
+        getBrands().then((res) => {
+            if (res?.status && res?.data) {
+                setMasterBrands(res.data);
+            }
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!id && !initialData?.code) {
+            getNextSupplierCode().then((res) => {
+                if (res?.status && res?.code) {
+                    form.setValue("code", res.code);
+                }
+            });
+        }
+    }, [id, initialData, form]);
 
     const vendorType = form.watch("type");
 
@@ -219,25 +240,61 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
                         </div>
                     )}
 
-                    {/* Import Supplier Specific Fields */}
-                    {vendorType === "import" && (
-                        <div className="space-y-6 border-t pt-6">
-                            <h3 className="text-lg font-semibold">Import Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground uppercase font-semibold">Brand <span className="text-destructive">*</span></Label>
-                                    <Input {...form.register("brand")} placeholder="e.g. NIKE, ADIDAS" disabled={readOnly} />
-                                    {form.formState.errors.brand && (
-                                        <p className="text-xs text-destructive">{form.formState.errors.brand.message}</p>
-                                    )}
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground uppercase font-semibold">GL Code 2 (Import)</Label>
-                                    <Input {...form.register("code2")} placeholder="Enter GL Code for Import" disabled={readOnly} />
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {/* Registered Brands Selection */}
+                    <div className="space-y-4 border-t pt-6">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                            Registered Brands
+                            {vendorType === "import" && <span className="text-destructive">*</span>}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">Select all registered brands associated with this vendor.</p>
+                        
+                        <Controller
+                            control={form.control}
+                            name="brandIds"
+                            render={({ field }) => {
+                                const selectedIds: string[] = field.value || [];
+                                const toggleBrand = (bId: string) => {
+                                    if (readOnly) return;
+                                    const next = selectedIds.includes(bId)
+                                        ? selectedIds.filter((i) => i !== bId)
+                                        : [...selectedIds, bId];
+                                    field.onChange(next);
+
+                                    const selectedNames = masterBrands
+                                        .filter((b) => next.includes(b.id))
+                                        .map((b) => b.name);
+                                    form.setValue("brand", selectedNames.join(", "));
+                                };
+
+                                return (
+                                    <div className="flex flex-wrap gap-2 pt-2">
+                                        {masterBrands.map((b) => {
+                                            const isSelected = selectedIds.includes(b.id);
+                                            return (
+                                                <Badge
+                                                    key={b.id}
+                                                    variant={isSelected ? "default" : "outline"}
+                                                    className={`cursor-pointer px-3 py-1.5 text-xs transition-all flex items-center gap-1.5 ${
+                                                        isSelected ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-accent"
+                                                    }`}
+                                                    onClick={() => toggleBrand(b.id)}
+                                                >
+                                                    {isSelected && <Check className="h-3.5 w-3.5" />}
+                                                    {b.code ? `[${b.code}] ${b.name}` : b.name}
+                                                </Badge>
+                                            );
+                                        })}
+                                        {masterBrands.length === 0 && (
+                                            <p className="text-xs text-muted-foreground italic">No master brands found. Create brands in Master data first.</p>
+                                        )}
+                                    </div>
+                                );
+                            }}
+                        />
+                        {form.formState.errors.brandIds && (
+                            <p className="text-xs text-destructive">{form.formState.errors.brandIds.message}</p>
+                        )}
+                    </div>
 
                     {!readOnly && (
                         <div className="flex justify-end pt-6 border-t font-primary">

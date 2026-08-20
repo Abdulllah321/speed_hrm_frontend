@@ -86,6 +86,17 @@ export interface Employee {
     documentUrl?: string | null;
   }>;
 }
+
+export async function getNextEmployeeCode(): Promise<{ status: boolean; code: string }> {
+  try {
+    const res = await authFetch('/employees/next-code', {});
+    return res.data;
+  } catch (error) {
+    console.error('Error fetching next employee code:', error);
+    return { status: false, code: 'EMP001' };
+  }
+}
+
 // Get all employees (with pagination)
 export async function getEmployees(params?: {
   page?: number;

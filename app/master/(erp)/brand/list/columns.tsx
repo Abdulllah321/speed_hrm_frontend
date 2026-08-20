@@ -65,6 +65,13 @@ export const columns: ColumnDef<BrandRow>[] = [
         size: 28,
     },
     {
+        header: "Code",
+        accessorKey: "code",
+        size: 150,
+        enableSorting: true,
+        cell: ({ row }) => <HighlightText text={row.original.code || "—"} />,
+    },
+    {
         header: "Name",
         accessorKey: "name",
         size: 250,
@@ -201,6 +208,16 @@ function RowActions({ row }: RowActionsProps) {
                     </DialogHeader>
                     <form action={handleEditSubmit}>
                         <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-code">Brand Code</Label>
+                                <Input
+                                    id="edit-code"
+                                    name="code"
+                                    defaultValue={brand.code || ""}
+                                    disabled={isPending}
+                                    placeholder="Enter Brand Code"
+                                />
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="edit-name">Brand Name</Label>
                                 <Input

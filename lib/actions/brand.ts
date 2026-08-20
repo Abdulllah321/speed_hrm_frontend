@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/auth";
 
 export interface Brand {
     id: string;
+    code?: string;
     name: string;
     status: string;
     createdById?: string;
@@ -39,7 +40,7 @@ export async function getBrandById(id: string): Promise<{ status: boolean; data:
     }
 }
 
-export async function createBrands(items: { name: string; status?: string }[]): Promise<{ status: boolean; message: string; data?: Brand[] }> {
+export async function createBrands(items: { name: string; code?: string; status?: string }[]): Promise<{ status: boolean; message: string; data?: Brand[] }> {
     if (!items.length) {
         return { status: false, message: "At least one brand is required" };
     }
@@ -63,6 +64,7 @@ export async function createBrands(items: { name: string; status?: string }[]): 
 
 export async function updateBrand(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: Brand }> {
     const name = formData.get("name") as string;
+    const code = (formData.get("code") as string) || undefined;
     const status = formData.get("status") as string;
 
     if (!name?.trim()) {
@@ -72,7 +74,7 @@ export async function updateBrand(id: string, formData: FormData): Promise<{ sta
     try {
         const res = await authFetch(`/brands/${id}`, {
             method: "PUT",
-            body: JSON.stringify({ name, status }),
+            body: JSON.stringify({ name, code, status }),
         });
         const data = res.data;
 
@@ -86,7 +88,7 @@ export async function updateBrand(id: string, formData: FormData): Promise<{ sta
     }
 }
 
-export async function updateBrands(items: { id: string; name: string; status?: string }[]): Promise<{ status: boolean; message: string }> {
+export async function updateBrands(items: { id: string; name: string; code?: string; status?: string }[]): Promise<{ status: boolean; message: string }> {
     if (!items.length) {
         return { status: false, message: "No items to update" };
     }
