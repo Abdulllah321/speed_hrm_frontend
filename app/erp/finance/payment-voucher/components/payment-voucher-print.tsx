@@ -64,7 +64,7 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
             display: table-header-group;
           }
           tfoot {
-            display: table-footer-group;
+            display: table-row-group;
           }
           .print-page-number::after {
             content: counter(page);
@@ -321,7 +321,7 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
         </tbody>
 
         {/* Page footer — repeated at the bottom of every printed page */}
-        <tfoot className="display-table-footer-group">
+        <tfoot className="display-table-row-group">
           <tr>
             <td colSpan={4} className="pt-3 pb-0 font-normal text-left">
               <div className="flex justify-between items-center text-[8px] sm:text-[9px] text-gray-500 border-t border-gray-300 pt-1 mt-2">

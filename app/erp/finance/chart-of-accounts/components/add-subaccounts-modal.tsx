@@ -218,6 +218,7 @@ export function AddSubAccountsModal({
         item.brand?.toLowerCase().includes(query) ||
         item.code?.toLowerCase().includes(query) ||
         item.code2?.toLowerCase().includes(query) ||
+        item.subCode?.toLowerCase().includes(query) ||
         item.employeeId?.toLowerCase().includes(query) ||
         item.employeeName?.toLowerCase().includes(query)
     );
@@ -412,7 +413,7 @@ export function AddSubAccountsModal({
       };
 
       addItems('suppliers', 'SUPPLIER');
-      addItems('customers', 'CUSTOMER');
+      addItems('customers', 'CUSTOMER', 'subCode');
       addItems('locations', 'LOCATION');
       addItems('directors', 'DIRECTOR');
       addItems('employees', 'EMPLOYEE', 'employeeId');
@@ -595,7 +596,7 @@ export function AddSubAccountsModal({
                               : (item.name || item.employeeName);
                             const itemCode = activeTab === 'merchandise'
                               ? (item.code2 || item.code)
-                              : (item.code || item.employeeId);
+                              : (item.subCode || item.code || item.employeeId);
                             const isEditing = editingPayeeId === item.id;
                             
                             if (isEditing) {

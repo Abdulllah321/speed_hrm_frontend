@@ -277,7 +277,7 @@ export default function PurchaseReturnRegisterPage() {
     return () => clearInterval(interval);
   }, [pdfExportState, pdfJobId]);
 
-  const handleExportExcelClick = async () => {
+  const handleExportExcelClick = async (exportType: "hierarchical" | "flat" = "hierarchical") => {
     if (exportState === "completed" && exportJobId) {
       const baseUrl = getApiBaseUrl();
       window.open(`${baseUrl}/purchase/purchase-returns/register-report/export/${exportJobId}/download`, "_blank");
@@ -301,6 +301,7 @@ export default function PurchaseReturnRegisterPage() {
           returnType: returnType !== "ALL" ? returnType : undefined,
           sourceType: sourceType !== "ALL" ? sourceType : undefined,
           format: "xlsx",
+          exportType,
           search: search || undefined,
         }),
       });
@@ -308,7 +309,7 @@ export default function PurchaseReturnRegisterPage() {
       if (res.ok && res.data?.jobId) {
         setExportJobId(res.data.jobId);
         setExportState("processing");
-        toast.info("Excel export queued in background...");
+        toast.info(`Background ${exportType === "flat" ? "Flat Data" : "Hierarchical"} Excel export queued...`);
       } else {
         setExportState("failed");
         toast.error("Failed to queue Excel export");
@@ -522,11 +523,13 @@ export default function PurchaseReturnRegisterPage() {
             <Button
               variant={exportState === "completed" ? "default" : "outline"}
               size="sm"
-              onClick={handleExportExcelClick}
+              onClick={() => handleExportExcelClick("flat")}
               disabled={exportState === "queueing" || exportState === "processing"}
               className={cn(
                 "h-9 font-bold text-xs gap-1.5 transition-all shadow-xs",
-                exportState === "completed" && "bg-emerald-600 hover:bg-emerald-700 text-white"
+                exportState === "completed"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : "border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
               )}
             >
               {exportState === "queueing" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -535,8 +538,19 @@ export default function PurchaseReturnRegisterPage() {
               {exportState === "queueing" && "Queueing..."}
               {exportState === "processing" && `Generating ${exportProgress}%`}
               {exportState === "completed" && "Download Excel"}
-              {exportState === "failed" && "Retry Excel Export"}
-              {exportState === "idle" && "Export Excel"}
+              {exportState === "failed" && "Retry Flat Export"}
+              {exportState === "idle" && "Excel (Flat Data)"}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExportExcelClick("hierarchical")}
+              disabled={exportState === "queueing" || exportState === "processing"}
+              className="h-9 font-bold text-xs gap-1.5 border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 transition-all shadow-xs"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+              Excel (Hierarchy)
             </Button>
 
             <Button
