@@ -8,6 +8,7 @@ export interface Location {
     name: string;
     code: string;
     shortCode: string | null;
+    centerId: string | null;
     address: string | null;
     cityId: string | null;
     companyId: string | null;
@@ -87,7 +88,7 @@ export async function getLocationById(id: string): Promise<{ status: boolean; da
 }
 
 // Create locations bulk
-export async function createLocations(items: { name: string; code: string; address?: string; cityId?: string; companyId?: string; shortCode?: string; isStockLocation?: boolean; brandIds?: string[] }[]): Promise<{ status: boolean; message: string; data?: Location[] }> {
+export async function createLocations(items: { name: string; code: string; address?: string; cityId?: string; companyId?: string; shortCode?: string; centerId?: string; isStockLocation?: boolean; brandIds?: string[] }[]): Promise<{ status: boolean; message: string; data?: Location[] }> {
     if (!items.length) {
         return { status: false, message: "At least one location is required" };
     }
@@ -113,6 +114,7 @@ export async function updateSingleLocation(
         name?: string;
         code?: string;
         shortCode?: string;
+        centerId?: string;
         address?: string;
         cityId?: string;
         cashGLCode?: string | null;
@@ -151,6 +153,7 @@ export async function updateLocations(
         ipWhitelistEnabled?: boolean;
         cashGLCode?: string | null;
         shortCode?: string | null;
+        centerId?: string | null;
         isStockLocation?: boolean;
         brandIds?: string[];
     }[]): Promise<{ status: boolean; message: string }> {
@@ -258,4 +261,45 @@ export async function updateLocationOnlineStatus(
     } catch (error) {
         return { status: false, message: 'Failed to update online status' };
     }
-}
+}
+
+// ─── Export Locations ─────────────────────────────────────────────────────────
+
+export async function queueLocationsExport(
+    search?: string,
+    status?: string,
+    isOnline?: string,
+    isStockLocation?: string,
+): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        if (status) params.append('status', status);
+        if (isOnline) params.append('isOnline', isOnline);
+        if (isStockLocation) params.append('isStockLocation', isStockLocation);
+        const qs = params.toString();
+
+        const res = await authFetch(`/locations/export${qs ? `?${qs}` : ''}`, {
+            method: 'POST',
+        });
+        return res.data ?? { status: false, message: 'No response from server' };
+    } catch (error) {
+        console.error('Queue location export error:', error);
+        return { status: false, message: 'Failed to connect to server' };
+    }
+}
+
+export async function getLocationExportStatus(
+    jobId: string,
+): Promise<{ status: boolean; data?: { state: string; progress: number }; message?: string }> {
+    try {
+        const res = await authFetch(`/locations/export/${jobId}/status`, {
+            method: 'GET',
+        });
+        return res.data ?? { status: false, message: 'No response from server' };
+    } catch (error) {
+        console.error('Get location export status error:', error);
+        return { status: false, message: 'Failed to connect to server' };
+    }
+}
+

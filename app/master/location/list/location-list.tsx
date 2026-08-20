@@ -14,6 +14,7 @@ import {
   Location,
   deleteLocations,
   updateLocations,
+  queueLocationsExport,
 } from "@/lib/actions/location";
 import { toast } from "sonner";
 import {
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, FileSpreadsheet } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -68,6 +69,24 @@ export function LocationList({
   const canBulkDelete = hasPermission("master.location.delete");
   // Filter: 'all' | 'online' | 'offline'
   const [onlineFilter, setOnlineFilter] = useState<'all' | 'online' | 'offline'>('all');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const isOnlineVal = onlineFilter === 'all' ? undefined : onlineFilter === 'online' ? 'true' : 'false';
+      const result = await queueLocationsExport(undefined, undefined, isOnlineVal);
+      if (result.status) {
+        toast.success(result.message || "Export queued! You'll receive a notification when it's ready.");
+      } else {
+        toast.error(result.message || "Failed to queue export");
+      }
+    } catch (error) {
+      toast.error("An error occurred while queueing export");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const fetchBrandsData = async () => {
     const result = await getBrands();
@@ -177,36 +196,56 @@ export function LocationList({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Locations</h2>
-        <p className="text-muted-foreground">
-          Manage your organization locations
-        </p>
-      </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Locations</h2>
+          <p className="text-muted-foreground">
+            Manage your organization locations
+          </p>
+        </div>
 
-      {/* Online / Offline filter */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">Outlet Status:</span>
-        <Select value={onlineFilter} onValueChange={(v) => setOnlineFilter(v as any)}>
-          <SelectTrigger className="h-8 w-[130px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Outlets</SelectItem>
-            <SelectItem value="online">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                Online
-              </span>
-            </SelectItem>
-            <SelectItem value="offline">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-gray-400" />
-                Offline
-              </span>
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          {/* Online / Offline filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Outlet Status:</span>
+            <Select value={onlineFilter} onValueChange={(v) => setOnlineFilter(v as any)}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Outlets</SelectItem>
+                <SelectItem value="online">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    Online
+                  </span>
+                </SelectItem>
+                <SelectItem value="offline">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-gray-400" />
+                    Offline
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Export Excel Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={isExporting || initialLocations.length === 0}
+            className="h-8 gap-1.5 text-xs font-medium"
+          >
+            {isExporting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+            )}
+            <span>{isExporting ? "Queuing..." : "Export Excel"}</span>
+          </Button>
+        </div>
       </div>
 
       <DataTable<LocationRow>
