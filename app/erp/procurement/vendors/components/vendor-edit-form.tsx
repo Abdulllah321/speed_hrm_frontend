@@ -247,7 +247,7 @@ export function VendorEditForm({ vendor }: VendorEditFormProps) {
                                                         onClick={() => toggleBrand(b.id)}
                                                     >
                                                         {isSelected && <Check className="h-3.5 w-3.5" />}
-                                                        {b.name} {b.code ? `(${b.code})` : ""}
+                                                        {b.code ? `[${b.code}] ${b.name}` : b.name}
                                                     </Badge>
                                                 );
                                             })}
