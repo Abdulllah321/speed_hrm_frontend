@@ -29,6 +29,7 @@ import { formatCurrency } from "@/lib/utils";
 import { CustomerBulkUploadModal } from "@/components/customers/customer-bulk-upload-modal";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { queueCustomersExport } from "@/lib/actions/customers";
+import { getNextCustomerCode } from "@/lib/actions/customer";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -101,6 +102,19 @@ export default function CustomersPage() {
       strn: "",
     });
     setEditingCustomer(null);
+  };
+
+  const handleOpenCreate = async () => {
+    resetForm();
+    setIsCreateOpen(true);
+    const res = await getNextCustomerCode();
+    if (res?.status && res?.code) {
+      setFormData((prev) => ({
+        ...prev,
+        subCode: res.code,
+        traderId: prev.traderId || res.code,
+      }));
+    }
   };
 
   const handleOpenEdit = (customer: Customer) => {
@@ -227,7 +241,7 @@ export default function CustomersPage() {
                 if (!open) resetForm();
               }}>
                 <DialogTrigger asChild>
-                  <Button onClick={resetForm}>
+                  <Button onClick={handleOpenCreate}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Trader / Customer
                   </Button>

@@ -3,7 +3,6 @@ import { z } from "zod";
 export const vendorSchema = z.object({
     type: z.enum(["local", "import"]),
     code: z.string().min(1, "Code is required"), // Common for both
-    code2: z.string().optional(), // GL code for import
     name: z.string().min(1, "Name is required"), // Common for both
     address: z.string().min(1, "Address is required"), // Common for both
     contactNo: z.string().optional(), // Common for both
@@ -20,6 +19,7 @@ export const vendorSchema = z.object({
 
     // Import Supplier Specific
     brand: z.string().optional(),
+    brandIds: z.array(z.string()).optional(),
 }).superRefine((data, ctx) => {
     if (data.type === "local") {
         if (!data.nature) {
@@ -31,11 +31,11 @@ export const vendorSchema = z.object({
         }
     }
     if (data.type === "import") {
-        if (!data.brand) {
+        if (!data.brand && (!data.brandIds || data.brandIds.length === 0)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "Brand is required for import suppliers",
-                path: ["brand"],
+                path: ["brandIds"],
             });
         }
     }

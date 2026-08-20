@@ -79,7 +79,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
 
       <div className="space-y-2">
         <Label>Employee ID <span className="text-destructive">*</span></Label>
-        <Input placeholder="456XXXXXXXXXX" {...register("employeeId")} disabled={isPending} />
+        <Input placeholder="Auto-generated (e.g. EMP001)" {...register("employeeId")} disabled={isPending} />
         {errors?.employeeId && <p className="text-xs text-red-500">{errors.employeeId.message}</p>}
       </div>
       <div className="space-y-2">

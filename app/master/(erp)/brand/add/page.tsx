@@ -15,10 +15,12 @@ import { PermissionGuard } from "@/components/auth/permission-guard";
 export default function AddBrandPage() {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
-    const [brands, setBrands] = useState([{ id: 1, name: "", status: "active" }]);
+    const [brands, setBrands] = useState<{ id: number; code: string; name: string; status: string }[]>([
+        { id: 1, code: "", name: "", status: "active" },
+    ]);
 
     const addRow = () => {
-        setBrands([...brands, { id: Date.now(), name: "", status: "active" }]);
+        setBrands([...brands, { id: Date.now(), code: "", name: "", status: "active" }]);
     };
 
     const removeRow = (id: number) => {
@@ -27,8 +29,8 @@ export default function AddBrandPage() {
         }
     };
 
-    const updateName = (id: number, name: string) => {
-        setBrands(brands.map((d) => (d.id === id ? { ...d, name } : d)));
+    const updateField = (id: number, field: "name" | "code", value: string) => {
+        setBrands(brands.map((d) => (d.id === id ? { ...d, [field]: value } : d)));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -43,6 +45,7 @@ export default function AddBrandPage() {
         startTransition(async () => {
             const items = validBrands.map((d) => ({
                 name: d.name.trim(),
+                code: d.code.trim() || undefined,
                 status: d.status,
             }));
 
@@ -85,11 +88,20 @@ export default function AddBrandPage() {
                                         <div className="flex gap-2 items-start">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
                                                 <div className="space-y-1">
-                                                    <Label className="text-xs text-muted-foreground">Name</Label>
+                                                    <Label className="text-xs text-muted-foreground">Code</Label>
+                                                    <Input
+                                                        placeholder="Brand Code (e.g. BR001)"
+                                                        value={brand.code}
+                                                        onChange={(e) => updateField(brand.id, "code", e.target.value)}
+                                                        disabled={isPending}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-muted-foreground">Name *</Label>
                                                     <Input
                                                         placeholder={`Brand Name`}
                                                         value={brand.name}
-                                                        onChange={(e) => updateName(brand.id, e.target.value)}
+                                                        onChange={(e) => updateField(brand.id, "name", e.target.value)}
                                                         disabled={isPending}
                                                     />
                                                 </div>
