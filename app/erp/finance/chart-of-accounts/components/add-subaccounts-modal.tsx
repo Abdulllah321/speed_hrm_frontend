@@ -401,10 +401,15 @@ export function AddSubAccountsModal({
           if (selected[typeMap].has(item.id)) {
             const rawName = typeMap === 'merchandise'
               ? (item.brand || item.name || "")
+              : typeMap === 'customers'
+              ? (item.name || item.company || "")
               : (item.name || item.employeeName || "");
+            const rawCode = typeMap === 'customers'
+              ? (item.subCode || item.traderId || item.code || "")
+              : (item[itemCodeKey] || "");
             itemsToCreate.push({
-              name: rawName.toUpperCase(),
-              code: (item[itemCodeKey] || "").toUpperCase(),
+              name: String(rawName).toUpperCase(),
+              code: String(rawCode || "").toUpperCase(),
               type: typeStr,
               referenceId: item.id,
             });
@@ -417,7 +422,7 @@ export function AddSubAccountsModal({
       addItems('locations', 'LOCATION');
       addItems('directors', 'DIRECTOR');
       addItems('employees', 'EMPLOYEE', 'employeeId');
-      addItems('merchandise', 'MERCHANDISE', 'code2');
+      addItems('merchandise', 'MERCHANDISE', 'code');
       addItems('salaries', 'SALARY');
       addItems('taxes', 'TAX');
 
@@ -593,9 +598,13 @@ export function AddSubAccountsModal({
                           filteredItems.map((item) => {
                             const itemName = activeTab === 'merchandise'
                               ? (item.brand || item.name)
+                              : activeTab === 'customers'
+                              ? (item.name || item.company)
                               : (item.name || item.employeeName);
                             const itemCode = activeTab === 'merchandise'
-                              ? (item.code2 || item.code)
+                              ? (item.code || item.code2)
+                              : activeTab === 'customers'
+                              ? (item.subCode || item.traderId || item.code)
                               : (item.subCode || item.code || item.employeeId);
                             const isEditing = editingPayeeId === item.id;
                             
