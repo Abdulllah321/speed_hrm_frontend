@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { FlatItemRecord, TransactionTotals } from "./types";
-import { Package, ChevronRight, ChevronDown, ArrowUpRight, ArrowDownRight, Truck, FileText, Copy, Check } from "lucide-react";
+import { Package, ChevronRight, ChevronDown, FileText, Copy, Check, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -51,10 +51,10 @@ export function StockTransactionDetailTable({
     const [expandedItemIds, setExpandedItemIds] = useState<Set<string>>(new Set());
     const [copiedRef, setCopiedRef] = useState<string | null>(null);
 
-    const toggleExpand = (itemId: string) => {
+    const toggleExpand = (key: string) => {
         const next = new Set(expandedItemIds);
-        if (next.has(itemId)) next.delete(itemId);
-        else next.add(itemId);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
         setExpandedItemIds(next);
     };
 
@@ -65,9 +65,24 @@ export function StockTransactionDetailTable({
         setTimeout(() => setCopiedRef(null), 2000);
     };
 
+    // Standardized Virtualizer matching overall-available-reserved-table setup
+    const rowVirtualizer = useVirtualizer({
+        count: filteredItems.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: (index) => {
+            const item = filteredItems[index];
+            const key = item.itemId || `${item.sku}-${index}`;
+            const isExpanded = expandedItemIds.has(key);
+            if (!isExpanded) return 44;
+            const txCount = item.transactions?.length || 0;
+            return 44 + 52 + (txCount * 36);
+        },
+        overscan: 15,
+    });
+
     const getDocBadgeClass = (docType: string) => {
         const dt = docType.toLowerCase();
-        if (dt.includes("in") || dt.includes("rir") || dt.includes("received")) {
+        if (dt.includes("in") || dt.includes("rir") || dt.includes("received") || dt.includes("receipt")) {
             return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
         }
         if (dt.includes("sale retail")) {
@@ -93,7 +108,7 @@ export function StockTransactionDetailTable({
             <div className="p-12 text-center border border-border rounded-2xl bg-card shadow-sm">
                 <div className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground animate-pulse">
                     <Package className="h-5 w-5 animate-spin text-primary" />
-                    Loading stock transaction movement detail report...
+                    Loading stock transaction detail movement data...
                 </div>
             </div>
         );
@@ -134,20 +149,34 @@ export function StockTransactionDetailTable({
                         <div className="w-28 text-right shrink-0">Closing Bal</div>
                     </div>
 
-                    {/* Non-virtualized or Collapsible Rows List */}
-                    <div className="w-full divide-y divide-border/40">
-                        {filteredItems.map((item, idx) => {
-                            const isExpanded = expandedItemIds.has(item.itemId || item.sku + idx);
+                    {/* Virtualized Body */}
+                    <div
+                        className="w-full relative"
+                        style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+                    >
+                        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                            const idx = virtualRow.index;
+                            const item = filteredItems[idx];
+                            const itemKey = item.itemId || `${item.sku}-${idx}`;
+                            const isExpanded = expandedItemIds.has(itemKey);
                             const txCount = item.transactions?.length || 0;
                             const bgStyle = idx % 2 === 0 ? "bg-background" : "bg-muted/15";
 
                             return (
-                                <div key={item.itemId || item.sku + idx} className="w-full flex flex-col">
-                                    {/* Main Item Row */}
+                                <div
+                                    key={virtualRow.key}
+                                    data-index={virtualRow.index}
+                                    ref={rowVirtualizer.measureElement}
+                                    className="absolute top-0 left-0 w-full flex flex-col border-b border-border/40"
+                                    style={{
+                                        transform: `translateY(${virtualRow.start}px)`,
+                                    }}
+                                >
+                                    {/* Main Product Row */}
                                     <div
-                                        onClick={() => toggleExpand(item.itemId || item.sku + idx)}
+                                        onClick={() => toggleExpand(itemKey)}
                                         className={cn(
-                                            "text-xs transition-colors hover:bg-muted/60 flex items-center px-3 py-2.5 whitespace-nowrap cursor-pointer select-none",
+                                            "text-xs transition-colors hover:bg-muted/60 flex items-center px-3 py-2.5 whitespace-nowrap cursor-pointer select-none h-[44px]",
                                             bgStyle,
                                             isExpanded && "bg-muted/70 font-medium"
                                         )}
@@ -216,7 +245,7 @@ export function StockTransactionDetailTable({
 
                                     {/* Expanded Transaction History Drawer */}
                                     {isExpanded && (
-                                        <div className="p-4 bg-muted/20 border-b border-border/60 space-y-2.5 animate-in fade-in-50">
+                                        <div className="p-3.5 bg-muted/20 border-t border-border/60 space-y-2 animate-in fade-in-50">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                                                     <FileText className="h-4 w-4 text-primary" />
@@ -228,7 +257,7 @@ export function StockTransactionDetailTable({
                                             </div>
 
                                             {txCount === 0 ? (
-                                                <p className="text-xs text-muted-foreground py-3 text-center italic">
+                                                <p className="text-xs text-muted-foreground py-2 text-center italic">
                                                     No movement transactions recorded for this item in selected date range.
                                                 </p>
                                             ) : (
@@ -247,16 +276,16 @@ export function StockTransactionDetailTable({
                                                         </thead>
                                                         <tbody className="divide-y divide-border/40 font-mono">
                                                             {item.transactions.map((tx, txIdx) => (
-                                                                <tr key={tx.id || txIdx} className="hover:bg-muted/40 transition-colors">
-                                                                    <td className="py-2 px-3 text-muted-foreground whitespace-nowrap">
+                                                                <tr key={tx.id || txIdx} className="hover:bg-muted/40 transition-colors h-[36px]">
+                                                                    <td className="py-1.5 px-3 text-muted-foreground whitespace-nowrap">
                                                                         {tx.date ? format(new Date(tx.date), "yyyy-MM-dd HH:mm") : "-"}
                                                                     </td>
-                                                                    <td className="py-2 px-3 whitespace-nowrap">
+                                                                    <td className="py-1.5 px-3 whitespace-nowrap">
                                                                         <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border", getDocBadgeClass(tx.docType))}>
                                                                             {tx.docType}
                                                                         </span>
                                                                     </td>
-                                                                    <td className="py-2 px-3 font-bold text-foreground whitespace-nowrap">
+                                                                    <td className="py-1.5 px-3 font-bold text-foreground whitespace-nowrap">
                                                                         <div className="flex items-center gap-1.5">
                                                                             <span>{highlight(tx.docRef || "-", searchQuery)}</span>
                                                                             {tx.docRef && tx.docRef !== "-" && (
@@ -275,16 +304,16 @@ export function StockTransactionDetailTable({
                                                                             )}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="py-2 px-3 font-sans text-muted-foreground">
+                                                                    <td className="py-1.5 px-3 font-sans text-muted-foreground">
                                                                         {highlight(tx.remarks || "-", searchQuery)}
                                                                     </td>
-                                                                    <td className={cn("py-2 px-3 text-right font-bold", tx.inQty > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40")}>
+                                                                    <td className={cn("py-1.5 px-3 text-right font-bold", tx.inQty > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40")}>
                                                                         {tx.inQty > 0 ? `+${tx.inQty}` : "-"}
                                                                     </td>
-                                                                    <td className={cn("py-2 px-3 text-right font-bold", tx.outQty > 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground/40")}>
+                                                                    <td className={cn("py-1.5 px-3 text-right font-bold", tx.outQty > 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground/40")}>
                                                                         {tx.outQty > 0 ? `-${tx.outQty}` : "-"}
                                                                     </td>
-                                                                    <td className="py-2 px-3 text-right font-bold text-indigo-600 dark:text-indigo-400">
+                                                                    <td className="py-1.5 px-3 text-right font-bold text-indigo-600 dark:text-indigo-400">
                                                                         {tx.runningBalance?.toLocaleString() ?? "-"}
                                                                     </td>
                                                                 </tr>

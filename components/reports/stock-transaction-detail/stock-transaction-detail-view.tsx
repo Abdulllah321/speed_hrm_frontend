@@ -344,6 +344,7 @@ export function StockTransactionDetailView({
                 isLoading={isFetchingData}
                 fetchProgressPercent={sseState.progressPercent}
                 fetchProgressMessage={sseState.message || fetchProgressMessage}
+                fetchProgressStage={sseState.stage}
                 onRefresh={fetchDataset}
                 onExcelExport={handleExcelExport}
                 onPdfExport={handlePdfExport}

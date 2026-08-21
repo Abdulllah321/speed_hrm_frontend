@@ -6,6 +6,7 @@ export interface ReportSseState {
   status: "idle" | "queued" | "active" | "processing" | "completed" | "failed";
   progressPercent: number;
   message?: string;
+  stage?: string;
   queuePosition: number;
   waitingCount: number;
   failedReason?: string;
@@ -20,6 +21,7 @@ export function useReportSse(
     status: "idle",
     progressPercent: 0,
     message: "",
+    stage: "",
     queuePosition: 0,
     waitingCount: 0,
   });
@@ -30,6 +32,7 @@ export function useReportSse(
         status: "idle",
         progressPercent: 0,
         message: "",
+        stage: "",
         queuePosition: 0,
         waitingCount: 0,
       });
@@ -41,6 +44,7 @@ export function useReportSse(
       status: "queued",
       progressPercent: 5,
       message: "Submitting report calculation job to background queue...",
+      stage: "INIT",
       queuePosition: 1,
       waitingCount: 0,
     });
@@ -61,7 +65,7 @@ export function useReportSse(
     eventSource.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        const { status, progress, message, queuePosition, waitingCount, failedReason } = payload;
+        const { status, progress, message, stage, queuePosition, waitingCount, failedReason } = payload;
 
         let normalizedStatus: ReportSseState["status"] = "processing";
         if (status === "waiting" || status === "delayed" || status === "queued") {
@@ -78,6 +82,7 @@ export function useReportSse(
           status: normalizedStatus,
           progressPercent: progress || (normalizedStatus === "completed" ? 100 : 0),
           message: message || (normalizedStatus === "completed" ? "Report computation complete!" : ""),
+          stage: stage || (normalizedStatus === "completed" ? "READY" : "PROCESSING"),
           queuePosition: queuePosition || 0,
           waitingCount: waitingCount || 0,
           failedReason: failedReason,

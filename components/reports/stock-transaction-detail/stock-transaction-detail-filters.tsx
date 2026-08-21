@@ -42,6 +42,7 @@ interface FiltersProps {
     isLoading: boolean;
     fetchProgressPercent: number;
     fetchProgressMessage: string;
+    fetchProgressStage?: string;
     onRefresh: () => void;
 
     onExcelExport: () => void;
@@ -186,6 +187,7 @@ export function StockTransactionDetailFilters({
     isLoading,
     fetchProgressPercent,
     fetchProgressMessage,
+    fetchProgressStage,
     onRefresh,
     onExcelExport,
     onPdfExport,
@@ -380,16 +382,25 @@ export function StockTransactionDetailFilters({
 
             {/* Realtime Data Calculation / Export Progress Bar */}
             {(isLoading || isExporting) && (
-                <div className="p-3 rounded-2xl border border-primary/30 bg-primary/5 shadow-sm space-y-1.5 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between text-xs font-bold text-primary">
+                <div className="p-3.5 rounded-2xl border border-primary/30 bg-primary/5 shadow-sm space-y-2 animate-in fade-in duration-200">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-primary">
                         <span className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
                             {isExporting
                                 ? exportProgressMessage || "Generating export file..."
                                 : fetchProgressMessage || "Calculating stock transaction movements..."}
                         </span>
-                        <span>{isExporting ? exportProgressPercent : fetchProgressPercent}%</span>
+
+                        <div className="flex items-center gap-2">
+                            {!isExporting && fetchProgressStage && (
+                                <span className="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-mono font-bold tracking-wide uppercase">
+                                    Stage: {fetchProgressStage}
+                                </span>
+                            )}
+                            <span className="font-mono text-sm">{isExporting ? exportProgressPercent : fetchProgressPercent}%</span>
+                        </div>
                     </div>
+
                     <div className="h-2 w-full bg-primary/20 rounded-full overflow-hidden">
                         <div
                             className="h-full bg-primary transition-all duration-300 rounded-full"
