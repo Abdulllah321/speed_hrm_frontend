@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useDeferredValue } from "react";
 import { FlatItemRecord, GroupingLevels, StockTotals, TreeNode } from "./types";
 
 function createEmptyTotals(): StockTotals {
@@ -54,6 +54,7 @@ export function useAvailableStockData({
     reportType: "merged" | "separate";
     groupingLevels: GroupingLevels;
 }) {
+    const deferredSearchQuery = useDeferredValue(searchQuery);
     // 1. Extract distinct attribute options from rawItems for filter dropdowns
     const attributeOptions = useMemo(() => {
         const brands = new Set<string>();
@@ -87,7 +88,7 @@ export function useAvailableStockData({
 
     // 2. Filter raw items based on selected locations, warehouses, search text, and attribute filters
     const filteredItems = useMemo(() => {
-        const q = searchQuery.trim().toLowerCase();
+        const q = deferredSearchQuery.trim().toLowerCase();
         const selLocs = new Set(selectedLocationIds);
         const selWhs = new Set(selectedWarehouseIds);
         const hasLocFilter = selLocs.size > 0 || selWhs.size > 0;
@@ -126,7 +127,7 @@ export function useAvailableStockData({
         rawItems,
         selectedLocationIds,
         selectedWarehouseIds,
-        searchQuery,
+        deferredSearchQuery,
         filterBrands,
         filterDivisions,
         filterCategories,

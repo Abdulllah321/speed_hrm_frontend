@@ -138,10 +138,19 @@ export function AvailableStockSummaryView({
                     if (activeJobIdRef.current !== targetJobId) return;
                     setIsFetchingData(false);
 
-                    if (res && res.status !== false && res.data) {
-                        const itemsList: FlatItemRecord[] = Array.isArray(res.data?.flatItemsList)
-                            ? res.data.flatItemsList
-                            : [];
+                    if (res && res.status !== false) {
+                        const payload = res.data?.flatItemsList
+                            ? res.data
+                            : (res.flatItemsList
+                                ? res
+                                : (res.data?.data ? res.data.data : res.data));
+
+                        const itemsList: FlatItemRecord[] = Array.isArray(payload?.flatItemsList)
+                            ? payload.flatItemsList
+                            : (Array.isArray(payload?.root)
+                                ? payload.root
+                                : (Array.isArray(payload) ? payload : []));
+
                         setRawItems(itemsList);
                     } else {
                         setRawItems([]);
@@ -289,6 +298,8 @@ export function AvailableStockSummaryView({
                 filterColors={filterColors}
                 setFilterColors={setFilterColors}
                 isLoading={isFetchingData}
+                fetchProgressPercent={sseState.progressPercent}
+                fetchProgressMessage={fetchProgressMessage}
                 onRefresh={fetchDataset}
                 onExcelExport={handleExcelExport}
                 onPdfExport={handlePdfExport}

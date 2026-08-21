@@ -151,6 +151,8 @@ interface FiltersProps {
     filterColors: Set<string>;
     setFilterColors: React.Dispatch<React.SetStateAction<Set<string>>>;
     isLoading: boolean;
+    fetchProgressPercent?: number;
+    fetchProgressMessage?: string;
     onRefresh: () => void;
     onExcelExport: () => void;
     onPdfExport: () => void;
@@ -190,6 +192,8 @@ export function AvailableStockFilters({
     filterColors,
     setFilterColors,
     isLoading,
+    fetchProgressPercent = 0,
+    fetchProgressMessage = "",
     onRefresh,
     onExcelExport,
     onPdfExport,
@@ -453,17 +457,22 @@ export function AvailableStockFilters({
                 </div>
             )}
 
-            {/* Realtime Export / Load Progress Bar */}
-            {isExporting && (
-                <div className="p-3 rounded-xl border border-primary/30 bg-primary/5 space-y-1.5">
+            {/* Realtime Data Calculation / Export Progress Bar */}
+            {(isLoading || isExporting) && (
+                <div className="p-3 rounded-xl border border-primary/30 bg-primary/5 space-y-1.5 shadow-sm animate-in fade-in duration-200">
                     <div className="flex items-center justify-between text-xs font-bold text-primary">
-                        <span>{exportProgressMessage || "Processing Excel Export..."}</span>
-                        <span>{exportProgressPercent}%</span>
+                        <span className="flex items-center gap-2">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            {isExporting
+                                ? exportProgressMessage || "Processing Excel Export..."
+                                : fetchProgressMessage || "Calculating Available Stock Summary..."}
+                        </span>
+                        <span>{isExporting ? exportProgressPercent : fetchProgressPercent}%</span>
                     </div>
                     <div className="w-full bg-primary/20 h-2 rounded-full overflow-hidden">
                         <div
                             className="bg-primary h-full transition-all duration-300 rounded-full"
-                            style={{ width: `${exportProgressPercent}%` }}
+                            style={{ width: `${isExporting ? exportProgressPercent : fetchProgressPercent}%` }}
                         />
                     </div>
                 </div>
