@@ -540,6 +540,22 @@ export async function registerClientGeneratedExport(
     }
 }
 
+export async function registerOverallAvailableReservedStockClientExport(
+    formData: FormData
+): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const url = `/stock-ledger/overall-available-reserved-stock/export/register-client-export`;
+        const response = await authFetch(url, {
+            method: "POST",
+            body: formData,
+        });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Register overall available reserved stock client export error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
 export async function getOverallAvailableReservedStockReport(filters: {
     locationId?: string;
     warehouseId?: string;

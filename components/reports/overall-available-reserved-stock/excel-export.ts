@@ -2,7 +2,7 @@
 
 import * as XLSX from "xlsx";
 import { TreeNode, StockTotals, FlatItemRecord } from "./types";
-import { registerClientGeneratedExport } from "@/lib/actions/stock-ledger";
+import { registerOverallAvailableReservedStockClientExport } from "@/lib/actions/stock-ledger";
 
 interface ExportExcelOptions {
     treeData: TreeNode[];
@@ -16,10 +16,9 @@ interface ExportExcelOptions {
     onProgress?: (percent: number, message: string) => void;
 }
 
-// Yield execution to the browser main thread so UI stays 100% responsive
 const yieldToMain = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-export async function exportAvailableStockSummaryToExcel({
+export async function exportOverallAvailableReservedStockToExcel({
     treeData,
     filteredItems,
     grandTotals,
@@ -35,14 +34,14 @@ export async function exportAvailableStockSummaryToExcel({
         await yieldToMain();
 
         const formattedDate = new Date().toLocaleString();
-        const dateRangeStr = `Period: ${dateFromStr || "All Time"} to ${dateToStr || "Present"}`;
+        const dateRangeStr = `As Of Date: ${dateToStr || format(new Date(), "yyyy-MM-dd")}`;
 
-        // ─── 1. Build Color-Coded Hierarchy View HTML Table ─────────────────────────
+        // ─── 1. Build Color-Coded Hierarchy View Rows ──────────────────────────────
         let hierarchyRowsHtml = "";
         let hierarchyFlatRows: any[][] = [];
 
         hierarchyFlatRows.push([companyName.toUpperCase()]);
-        hierarchyFlatRows.push([`AVAILABLE STOCK SUMMARY REPORT (${reportType.toUpperCase()} HIERARCHY VIEW)`]);
+        hierarchyFlatRows.push([`OVERALL AVAILABLE RESERVED STOCK REPORT (${reportType.toUpperCase()} HIERARCHY VIEW)`]);
         hierarchyFlatRows.push([dateRangeStr]);
         hierarchyFlatRows.push([`Generated At: ${formattedDate}`]);
         hierarchyFlatRows.push([]);
@@ -102,36 +101,6 @@ export async function exportAvailableStockSummaryToExcel({
                     node.totals.costingValue,
                 ]);
 
-                // Build HTML row with distinct level background colors
-                let bgStyle = "background-color: #FFFFFF; color: #0F172A;";
-                let fontStyle = "font-size: 11px;";
-                if (depth === 0) {
-                    bgStyle = "background-color: #1E293B; color: #FFFFFF; font-weight: bold;";
-                    fontStyle = "font-size: 12px;";
-                } else if (depth === 1) {
-                    bgStyle = "background-color: #334155; color: #FFFFFF; font-weight: bold;";
-                } else if (depth === 2) {
-                    bgStyle = "background-color: #475569; color: #FFFFFF; font-weight: bold;";
-                } else if (depth === 3) {
-                    bgStyle = "background-color: #E0F2FE; color: #0369A1; font-weight: bold;";
-                }
-
-                const paddingLeft = depth * 16 + 8;
-
-                hierarchyRowsHtml += `
-                    <tr style="${bgStyle}">
-                        <td style="padding-left: ${paddingLeft}px; ${fontStyle}">${label.trim()}</td>
-                        <td style="text-align: center; ${fontStyle}">${node.size || "-"}</td>
-                        <td style="text-align: center; ${fontStyle}">${node.color || "-"}</td>
-                        <td style="text-align: right; ${fontStyle}">${node.totals.quantity.toLocaleString()}</td>
-                        <td style="text-align: right; ${fontStyle}">${node.totals.transit.toLocaleString()}</td>
-                        <td style="text-align: right; ${fontStyle}">${node.totals.reserved.toLocaleString()}</td>
-                        <td style="text-align: right; font-weight: bold; ${fontStyle}">${node.totals.total.toLocaleString()}</td>
-                        <td style="text-align: right; ${fontStyle}">${node.totals.unitPrice ? "Rs. " + node.totals.unitPrice.toLocaleString() : "-"}</td>
-                        <td style="text-align: right; font-weight: bold; ${fontStyle}">Rs. ${node.totals.value.toLocaleString()}</td>
-                    </tr>
-                `;
-
                 if (i % 80 === 0) {
                     const pct = 15 + Math.floor((i / totalTreeItems) * 30);
                     onProgress?.(pct, `Formatting hierarchy rows (${i}/${totalTreeItems})...`);
@@ -155,12 +124,11 @@ export async function exportAvailableStockSummaryToExcel({
             ]);
         }
 
-        // ─── 2. Build Color-Coded Flat Detail Ledger HTML Table ────────────────────
-        let flatRowsHtml = "";
+        // ─── 2. Build Color-Coded Flat Detail Ledger Rows ──────────────────────────
         let flatDataRows: any[][] = [];
 
         flatDataRows.push([companyName.toUpperCase()]);
-        flatDataRows.push([`AVAILABLE STOCK SUMMARY REPORT (FLAT DETAIL LEDGER VIEW)`]);
+        flatDataRows.push([`OVERALL AVAILABLE RESERVED STOCK REPORT (FLAT DETAIL LEDGER VIEW)`]);
         flatDataRows.push([dateRangeStr]);
         flatDataRows.push([`Generated At: ${formattedDate}`]);
         flatDataRows.push([]);
@@ -217,27 +185,6 @@ export async function exportAvailableStockSummaryToExcel({
                     item.costingValue,
                 ]);
 
-                const bgStyle = i % 2 === 0 ? "background-color: #FFFFFF;" : "background-color: #F8FAFC;";
-
-                flatRowsHtml += `
-                    <tr style="${bgStyle} color: #0F172A; font-size: 11px;">
-                        <td>${item.locationName}</td>
-                        <td style="text-align: center; font-weight: 600;">${item.barCode}</td>
-                        <td style="text-align: center;">${item.sku}</td>
-                        <td>${item.articleName}</td>
-                        <td>${item.brand}</td>
-                        <td>${item.category}</td>
-                        <td style="text-align: center;">${item.size || "-"}</td>
-                        <td style="text-align: center;">${item.color || "-"}</td>
-                        <td style="text-align: right; color: #059669; font-weight: 600;">${item.quantity.toLocaleString()}</td>
-                        <td style="text-align: right; color: #D97706;">${item.transit.toLocaleString()}</td>
-                        <td style="text-align: right; color: #9333EA;">${item.reserved.toLocaleString()}</td>
-                        <td style="text-align: right; font-weight: bold;">${item.total.toLocaleString()}</td>
-                        <td style="text-align: right;">Rs. ${item.unitPrice.toLocaleString()}</td>
-                        <td style="text-align: right; font-weight: bold;">Rs. ${item.value.toLocaleString()}</td>
-                    </tr>
-                `;
-
                 if (i % 100 === 0) {
                     const pct = 45 + Math.floor((i / totalFlatItems) * 35);
                     onProgress?.(pct, `Formatting flat detail item ${i}/${totalFlatItems}...`);
@@ -269,7 +216,7 @@ export async function exportAvailableStockSummaryToExcel({
             ]);
         }
 
-        onProgress?.(85, "Creating color-styled XLSX Excel file...");
+        onProgress?.(85, "Creating XLSX workbook...");
         await yieldToMain();
 
         // ─── 3. Construct Multi-Sheet XLSX Workbook ─────────────────────────────
@@ -297,7 +244,7 @@ export async function exportAvailableStockSummaryToExcel({
             XLSX.utils.book_append_sheet(workbook, wsFlat, "Flat Detail Ledger");
         }
 
-        const fileName = `available-stock-summary-${exportMode}-${reportType}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        const fileName = `overall-available-reserved-stock-${exportMode}-${reportType}-${new Date().toISOString().slice(0, 10)}.xlsx`;
         const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
 
         onProgress?.(92, "Triggering instant browser download...");
@@ -323,7 +270,7 @@ export async function exportAvailableStockSummaryToExcel({
             formData.append("file", blob, fileName);
             formData.append("fileName", fileName);
             formData.append("format", "xlsx");
-            await registerClientGeneratedExport(formData);
+            await registerOverallAvailableReservedStockClientExport(formData);
         } catch (s3Err) {
             console.warn("Background S3 export registration warning:", s3Err);
         }

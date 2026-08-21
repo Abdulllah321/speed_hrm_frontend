@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
 import { GroupingLevels } from "./types";
@@ -18,7 +18,16 @@ import {
     X,
     Loader2,
     Calendar,
+    ChevronDownIcon,
 } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 // ─── Multi-select Popover ───────────────────────────────────────────────────
@@ -34,78 +43,67 @@ function FilterDropdown({
     onToggle: (val: string) => void;
 }) {
     const [open, setOpen] = useState(false);
-    const [search, setSearch] = useState("");
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        const handleClickOutside = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
         };
-        document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const filtered = useMemo(() =>
-        options.filter((o) => o.toLowerCase().includes(search.toLowerCase())),
-        [options, search]
-    );
-
-    const selectedCount = selected.size;
+    const count = selected.size;
 
     return (
-        <div ref={ref} className="relative">
+        <div ref={ref} className="relative inline-block text-left">
             <button
                 type="button"
                 onClick={() => setOpen((o) => !o)}
                 className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all",
-                    selectedCount > 0
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all shadow-sm",
+                    count > 0
+                        ? "bg-primary/10 border-primary text-primary"
+                        : "bg-background border-border text-foreground hover:bg-muted"
                 )}
             >
                 <span>{label}</span>
-                {selectedCount > 0 && (
-                    <span className="bg-white/20 text-inherit px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none">
-                        {selectedCount}
+                {count > 0 && (
+                    <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                        {count}
                     </span>
                 )}
-                <svg className={cn("h-3 w-3 transition-transform", open && "rotate-180")} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
+                <ChevronDownIcon className="h-3 w-3 opacity-60" />
             </button>
 
             {open && (
-                <div className="absolute z-50 top-full mt-1.5 left-0 min-w-[200px] max-w-[280px] bg-background border border-border rounded-xl shadow-xl overflow-hidden">
-                    <div className="p-2 border-b border-border">
-                        <input
-                            autoFocus
-                            type="text"
-                            placeholder={`Search ${label}...`}
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-border bg-muted/40 outline-none focus:border-primary"
-                        />
+                <div className="absolute z-50 mt-1.5 w-56 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl p-2 max-h-60 overflow-y-auto animate-in fade-in duration-150">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1 tracking-wider border-b border-border/50 mb-1">
+                        Filter by {label}
                     </div>
-                    <div className="max-h-56 overflow-y-auto py-1">
-                        {filtered.length === 0 && (
-                            <p className="text-xs text-muted-foreground px-3 py-2 text-center">No results</p>
-                        )}
-                        {filtered.map((opt) => (
-                            <label
-                                key={opt}
-                                className="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-muted/60 transition-colors"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selected.has(opt)}
-                                    onChange={() => onToggle(opt)}
-                                    className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
-                                />
-                                <span className="text-xs font-medium text-foreground truncate">{opt}</span>
-                            </label>
-                        ))}
-                    </div>
+                    {options.length === 0 ? (
+                        <div className="text-xs text-muted-foreground p-2 text-center">No options available</div>
+                    ) : (
+                        options.map((opt) => {
+                            const checked = selected.has(opt);
+                            return (
+                                <label
+                                    key={opt}
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-muted cursor-pointer transition-colors"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => onToggle(opt)}
+                                        className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                                    />
+                                    <span className="truncate">{opt}</span>
+                                </label>
+                            );
+                        })
+                    )}
                 </div>
             )}
         </div>
@@ -113,8 +111,8 @@ function FilterDropdown({
 }
 
 interface FiltersProps {
-    dateRange: DateRange;
-    setDateRange: React.Dispatch<React.SetStateAction<DateRange>>;
+    asOfDate: string;
+    setAsOfDate: (d: string) => void;
     locations: Location[];
     warehouses: Warehouse[];
     selectedLocationIds: string[];
@@ -161,9 +159,9 @@ interface FiltersProps {
     isExporting: boolean;
 }
 
-export function AvailableStockFilters({
-    dateRange,
-    setDateRange,
+export function OverallAvailableReservedFilters({
+    asOfDate,
+    setAsOfDate,
     locations,
     warehouses,
     selectedLocationIds,
@@ -274,8 +272,17 @@ export function AvailableStockFilters({
                         />
                     </div>
 
-                    {/* Date Range Picker */}
-                    <DateRangePicker value={dateRange} onChange={setDateRange} />
+                    {/* As Of Date Picker */}
+                    <div className="flex items-center gap-1.5 bg-muted/40 p-1.5 rounded-xl border border-border">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                        <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">As Of:</span>
+                        <input
+                            type="date"
+                            value={asOfDate}
+                            onChange={(e) => setAsOfDate(e.target.value)}
+                            className="text-xs bg-transparent text-foreground border-0 focus:ring-0 p-0 font-medium cursor-pointer"
+                        />
+                    </div>
 
                     {/* Manual Refresh Button */}
                     <Button
@@ -283,16 +290,27 @@ export function AvailableStockFilters({
                         size="sm"
                         onClick={onRefresh}
                         disabled={isLoading}
-                        className="h-9 px-3 gap-1.5 font-semibold text-xs rounded-xl"
+                        className="h-9 px-3 rounded-xl gap-1.5 text-xs font-semibold"
                     >
-                        <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
+                        <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin text-primary")} />
                         Refresh
                     </Button>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Merged vs Separate Toggle */}
-                    <div className="inline-flex items-center p-1 bg-muted/60 rounded-xl border border-border">
+                    {/* Column Grouping Levels Toggle Button */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowLevelPanel((p) => !p)}
+                        className="h-9 px-3 gap-1.5 font-semibold text-xs rounded-xl"
+                    >
+                        <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
+                        Hierarchy Levels
+                    </Button>
+
+                    {/* Merged vs Separate Switch */}
+                    <div className="flex items-center gap-1.5 bg-muted p-1 rounded-xl border border-border">
                         <button
                             type="button"
                             onClick={() => setReportType("merged")}
@@ -319,7 +337,7 @@ export function AvailableStockFilters({
                         </button>
                     </div>
 
-                    {/* Export Actions with Dropdown Choices */}
+                    {/* Export Actions */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
@@ -450,42 +468,36 @@ export function AvailableStockFilters({
                             onClick={clearAllFilters}
                             className="text-xs text-rose-500 hover:text-rose-600 font-semibold px-2 py-1 flex items-center gap-1"
                         >
-                            <X className="h-3 w-3" /> Clear
+                            <X className="h-3 w-3" /> Clear filters
                         </button>
                     )}
                 </div>
-
-                {/* Column Grouping Levels Panel Toggle */}
-                <button
-                    type="button"
-                    onClick={() => setShowLevelPanel((p) => !p)}
-                    className="text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                    <SlidersHorizontal className="h-3.5 w-3.5" />
-                    <span>Hierarchy Levels</span>
-                </button>
             </div>
 
-            {/* Hierarchy Levels Selection Panel */}
+            {/* Expandable Hierarchy Level Selector */}
             {showLevelPanel && (
-                <div className="p-3 rounded-xl border border-border bg-muted/30 flex flex-wrap items-center gap-4 text-xs font-semibold">
-                    <span className="text-muted-foreground uppercase text-[10px] tracking-wider font-bold">Columns Hierarchy:</span>
-                    {Object.keys(groupingLevels).map((levelKey) => (
-                        <label key={levelKey} className="flex items-center gap-1.5 cursor-pointer capitalize">
-                            <input
-                                type="checkbox"
-                                checked={(groupingLevels as any)[levelKey]}
-                                onChange={(e) =>
-                                    setGroupingLevels((prev) => ({
-                                        ...prev,
-                                        [levelKey]: e.target.checked,
-                                    }))
-                                }
-                                className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
-                            />
-                            <span>{levelKey}</span>
-                        </label>
-                    ))}
+                <div className="p-3 rounded-xl border border-border bg-card/80 space-y-2 animate-in fade-in duration-200">
+                    <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Toggle Hierarchy Columns
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-foreground">
+                        {Object.keys(groupingLevels).map((levelKey) => (
+                            <label key={levelKey} className="flex items-center gap-1.5 cursor-pointer capitalize">
+                                <input
+                                    type="checkbox"
+                                    checked={(groupingLevels as any)[levelKey]}
+                                    onChange={(e) =>
+                                        setGroupingLevels((prev) => ({
+                                            ...prev,
+                                            [levelKey]: e.target.checked,
+                                        }))
+                                    }
+                                    className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                                />
+                                <span>{levelKey}</span>
+                            </label>
+                        ))}
+                    </div>
                 </div>
             )}
 
@@ -497,7 +509,7 @@ export function AvailableStockFilters({
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             {isExporting
                                 ? exportProgressMessage || "Processing Excel Export..."
-                                : fetchProgressMessage || "Calculating Available Stock Summary..."}
+                                : fetchProgressMessage || "Calculating Overall Available Reserved Stock..."}
                         </span>
                         <span>{isExporting ? exportProgressPercent : fetchProgressPercent}%</span>
                     </div>

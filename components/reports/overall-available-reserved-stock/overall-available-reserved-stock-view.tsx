@@ -1,39 +1,34 @@
 "use client";
 
-import React, { useEffect, useState, useTransition, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { getLocations, Location } from "@/lib/actions/location";
 import { getWarehouses, Warehouse } from "@/lib/actions/warehouse";
 import {
-    queueAvailableStockSummaryPreview,
-    getAvailableStockSummaryResult,
+    queueOverallAvailableReservedStockPreview,
+    getOverallAvailableReservedStockResult,
 } from "@/lib/actions/stock-ledger";
 import { useReportSse } from "@/hooks/use-report-sse";
-import { DateRange } from "@/components/ui/date-range-picker";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import { format } from "date-fns";
 import { toast } from "sonner";
 
 import { FlatItemRecord, GroupingLevels } from "./types";
-import { useAvailableStockData } from "./use-available-stock-data";
-import { AvailableStockHeader } from "./available-stock-header";
-import { AvailableStockFilters } from "./available-stock-filters";
-import { AvailableStockTable } from "./available-stock-table";
-import { exportAvailableStockSummaryToExcel } from "./excel-export";
-import { exportAvailableStockSummaryToPdf } from "./pdf-export";
+import { useOverallAvailableReservedStockData } from "./use-overall-available-reserved-stock-data";
+import { OverallAvailableReservedHeader } from "./overall-available-reserved-header";
+import { OverallAvailableReservedFilters } from "./overall-available-reserved-filters";
+import { OverallAvailableReservedTable } from "./overall-available-reserved-table";
+import { exportOverallAvailableReservedStockToExcel } from "./excel-export";
+import { exportOverallAvailableReservedStockToPdf } from "./pdf-export";
 
-interface AvailableStockSummaryViewProps {
+interface OverallAvailableReservedStockViewProps {
     title?: string;
     companyName?: string;
 }
 
-export function AvailableStockSummaryView({
-    title = "Available Stock Summary",
+export function OverallAvailableReservedStockView({
+    title = "Overall Available & Reserved Stock Report",
     companyName = "Speed Limit ERP",
-}: AvailableStockSummaryViewProps) {
-    const now = new Date();
-    const [dateRange, setDateRange] = useState<DateRange>({
-        from: startOfMonth(now),
-        to: endOfMonth(now),
-    });
+}: OverallAvailableReservedStockViewProps) {
+    const [asOfDate, setAsOfDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
     const [locations, setLocations] = useState<Location[]>([]);
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -72,7 +67,7 @@ export function AvailableStockSummaryView({
     const [exportProgressPercent, setExportProgressPercent] = useState(0);
     const [exportProgressMessage, setExportProgressMessage] = useState("");
 
-    const sseState = useReportSse(previewJobId);
+    const sseState = useReportSse(previewJobId, "overall-reserved");
 
     // Fetch Locations & Warehouses on mount
     useEffect(() => {
@@ -92,18 +87,16 @@ export function AvailableStockSummaryView({
         loadMetadata();
     }, []);
 
-    // Main Single API Fetch function (runs on initial load, date range change, or manual refresh)
+    // Main Single API Fetch function
     const fetchDataset = useCallback(() => {
-        if (!dateRange.from || !dateRange.to) return;
-
         setIsFetchingData(true);
-        setFetchProgressMessage("Queueing available stock summary query...");
+        setFetchProgressMessage("Queueing overall available reserved stock query...");
         setPreviewJobId(null);
 
-        queueAvailableStockSummaryPreview({
-            startDate: dateRange.from?.toISOString(),
-            endDate: dateRange.to?.toISOString(),
-            reportType: "separate", // Always fetch per-location stock separately from server
+        queueOverallAvailableReservedStockPreview({
+            asOfDate,
+            reportType: "separate",
+            includeCosting: true,
         }).then((queueRes) => {
             if (queueRes && queueRes.status && queueRes.data?.jobId) {
                 const newJobId = queueRes.data.jobId;
@@ -114,14 +107,14 @@ export function AvailableStockSummaryView({
                 toast.error("Failed to queue stock data fetch");
             }
         });
-    }, [dateRange]);
+    }, [asOfDate]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchDataset();
         }, 300);
         return () => clearTimeout(timer);
-    }, [dateRange]);
+    }, [asOfDate]);
 
     // Handle SSE progress & completed event
     useEffect(() => {
@@ -130,10 +123,10 @@ export function AvailableStockSummaryView({
         }
 
         if (sseState.status === "completed" && previewJobId && activeJobIdRef.current === previewJobId) {
-            setFetchProgressMessage("Loading completed available stock dataset...");
+            setFetchProgressMessage("Loading completed available reserved stock dataset...");
             const targetJobId = previewJobId;
 
-            getAvailableStockSummaryResult(targetJobId)
+            getOverallAvailableReservedStockResult(targetJobId)
                 .then((res) => {
                     if (activeJobIdRef.current !== targetJobId) return;
                     setIsFetchingData(false);
@@ -154,7 +147,7 @@ export function AvailableStockSummaryView({
                         setRawItems(itemsList);
                     } else {
                         setRawItems([]);
-                        toast.error("Failed to load completed available stock data");
+                        toast.error("Failed to load completed stock data");
                     }
                 })
                 .catch((err) => {
@@ -167,7 +160,7 @@ export function AvailableStockSummaryView({
     }, [sseState.status, sseState.message, previewJobId]);
 
     // Custom React hook doing 100% client side filtering, searching, merging, and tree construction
-    const { attributeOptions, filteredItems, treeData, grandTotals } = useAvailableStockData({
+    const { attributeOptions, filteredItems, treeData, grandTotals } = useOverallAvailableReservedStockData({
         rawItems,
         selectedLocationIds,
         selectedWarehouseIds,
@@ -183,7 +176,7 @@ export function AvailableStockSummaryView({
         groupingLevels,
     });
 
-    // Handle instant client-side Excel Export
+    // Handle non-blocking client-side Excel Export
     const handleExcelExport = async (exportMode: "hierarchy" | "flat" | "both" = "both") => {
         if (treeData.length === 0 && filteredItems.length === 0) {
             toast.error("No items available to export");
@@ -195,14 +188,13 @@ export function AvailableStockSummaryView({
         setExportProgressMessage("Preparing Excel file...");
 
         try {
-            await exportAvailableStockSummaryToExcel({
+            await exportOverallAvailableReservedStockToExcel({
                 treeData,
                 filteredItems,
                 grandTotals,
                 reportType,
                 exportMode,
-                dateFromStr: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
-                dateToStr: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
+                dateToStr: asOfDate,
                 companyName,
                 onProgress: (percent, message) => {
                     setExportProgressPercent(percent);
@@ -217,7 +209,7 @@ export function AvailableStockSummaryView({
         }
     };
 
-    // Handle instant client-side PDF Export
+    // Handle non-blocking client-side PDF Export
     const handlePdfExport = async (exportMode: "hierarchy" | "flat" = "hierarchy") => {
         if (treeData.length === 0 && filteredItems.length === 0) {
             toast.error("No items available to export");
@@ -229,14 +221,13 @@ export function AvailableStockSummaryView({
         setExportProgressMessage("Preparing PDF print layout...");
 
         try {
-            await exportAvailableStockSummaryToPdf({
+            await exportOverallAvailableReservedStockToPdf({
                 treeData,
                 filteredItems,
                 grandTotals,
                 reportType,
                 exportMode,
-                dateFromStr: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
-                dateToStr: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
+                dateToStr: asOfDate,
                 companyName,
                 onProgress: (percent, message) => {
                     setExportProgressPercent(percent);
@@ -258,22 +249,22 @@ export function AvailableStockSummaryView({
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        Real-time stock ledger analysis across all outlets and warehouses
+                        Real-time available and reserved stock valuation across all outlets and warehouses
                     </p>
                 </div>
             </div>
 
             {/* KPI Summary Cards Header */}
-            <AvailableStockHeader
+            <OverallAvailableReservedHeader
                 grandTotals={grandTotals}
                 totalItemsCount={filteredItems.length}
                 isLoading={isFetchingData}
             />
 
             {/* Filters Toolbar */}
-            <AvailableStockFilters
-                dateRange={dateRange}
-                setDateRange={setDateRange}
+            <OverallAvailableReservedFilters
+                asOfDate={asOfDate}
+                setAsOfDate={setAsOfDate}
                 locations={locations}
                 warehouses={warehouses}
                 selectedLocationIds={selectedLocationIds}
@@ -313,7 +304,7 @@ export function AvailableStockSummaryView({
             />
 
             {/* Hierarchical Tree Table View */}
-            <AvailableStockTable
+            <OverallAvailableReservedTable
                 treeData={treeData}
                 grandTotals={grandTotals}
                 searchQuery={searchQuery}

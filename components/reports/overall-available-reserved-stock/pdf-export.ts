@@ -1,7 +1,7 @@
 "use client";
 
 import { TreeNode, StockTotals, FlatItemRecord } from "./types";
-import { registerClientGeneratedExport } from "@/lib/actions/stock-ledger";
+import { registerOverallAvailableReservedStockClientExport } from "@/lib/actions/stock-ledger";
 
 interface ExportPdfOptions {
     treeData: TreeNode[];
@@ -17,7 +17,7 @@ interface ExportPdfOptions {
 
 const yieldToMain = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-export async function exportAvailableStockSummaryToPdf({
+export async function exportOverallAvailableReservedStockToPdf({
     treeData,
     filteredItems = [],
     grandTotals,
@@ -95,7 +95,6 @@ export async function exportAvailableStockSummaryToPdf({
                 }
             }
         } else {
-            // Flat detail mode
             onProgress?.(25, "Formatting flat detail item rows...");
             await yieldToMain();
 
@@ -168,7 +167,7 @@ export async function exportAvailableStockSummaryToPdf({
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Available Stock Summary - ${companyName}</title>
+                <title>Overall Available Reserved Stock - ${companyName}</title>
                 <style>
                     body { font-family: system-ui, -apple-system, sans-serif; margin: 20px; color: #111; }
                     .header { margin-bottom: 20px; border-bottom: 2px solid #1E293B; padding-bottom: 10px; }
@@ -187,8 +186,8 @@ export async function exportAvailableStockSummaryToPdf({
             <body>
                 <div class="header">
                     <h1>${companyName}</h1>
-                    <p><strong>AVAILABLE STOCK SUMMARY REPORT (${reportType.toUpperCase()} ${exportMode.toUpperCase()} VIEW)</strong></p>
-                    <p>Period: ${dateFromStr || "All Time"} to ${dateToStr || "Present"} | Generated: ${new Date().toLocaleString()}</p>
+                    <p><strong>OVERALL AVAILABLE RESERVED STOCK REPORT (${reportType.toUpperCase()} ${exportMode.toUpperCase()} VIEW)</strong></p>
+                    <p>As Of Date: ${dateToStr || new Date().toISOString().slice(0, 10)} | Generated: ${new Date().toLocaleString()}</p>
                 </div>
 
                 <table>
@@ -232,12 +231,12 @@ export async function exportAvailableStockSummaryToPdf({
 
         try {
             const blob = new Blob([printHtml], { type: "text/html" });
-            const fileName = `available-stock-summary-${exportMode}-${reportType}-${new Date().toISOString().slice(0, 10)}.html`;
+            const fileName = `overall-available-reserved-stock-${exportMode}-${reportType}-${new Date().toISOString().slice(0, 10)}.html`;
             const formData = new FormData();
             formData.append("file", blob, fileName);
             formData.append("fileName", fileName);
             formData.append("format", "html");
-            await registerClientGeneratedExport(formData);
+            await registerOverallAvailableReservedStockClientExport(formData);
         } catch (s3Err) {
             console.warn("Background S3 export registration warning:", s3Err);
         }
