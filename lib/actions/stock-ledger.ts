@@ -687,4 +687,44 @@ export async function getOverallAvailableReservedStockReportExportStatus(jobId: 
     }
 }
 
+export async function queueStockTransactionDetailPreview(filters: {
+    locationId?: string;
+    warehouseId?: string;
+    itemId?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const url = `/stock-ledger/stock-transaction-detail/queue`;
+        const response = await authFetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Queue stock transaction detail report preview error:", error);
+        return { status: false, message: "Failed to queue preview computation" };
+    }
+}
+
+export async function getStockTransactionDetailResult(jobId: string): Promise<any> {
+    try {
+        const url = `/stock-ledger/stock-transaction-detail/result/${jobId}`;
+        const response = await authFetch(url, { method: "GET" });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Get stock transaction detail result error:", error);
+        return { status: false, message: "Failed to fetch report result" };
+    }
+}
+
 

@@ -14,7 +14,7 @@ export interface ReportSseState {
 
 export function useReportSse(
   jobId: string | null,
-  reportType: "available" | "valuation" | "overall-reserved" = "available"
+  reportType: "available" | "valuation" | "overall-reserved" | "transaction-detail" = "available"
 ): ReportSseState {
   const [state, setState] = useState<ReportSseState>({
     status: "idle",
@@ -36,7 +36,7 @@ export function useReportSse(
       return;
     }
 
-    // Immediately reset state when switching to a new jobId (0ms reset)
+    // Immediately reset state when switching to a new jobId
     setState({
       status: "queued",
       progressPercent: 5,
@@ -51,6 +51,8 @@ export function useReportSse(
         ? `/api/stock-ledger/valuation-report/stream/${jobId}`
         : reportType === "overall-reserved"
         ? `/api/stock-ledger/overall-available-reserved-stock/stream/${jobId}`
+        : reportType === "transaction-detail"
+        ? `/api/stock-ledger/stock-transaction-detail/stream/${jobId}`
         : `/api/stock-ledger/available-stock-summary/stream/${jobId}`;
     const streamUrl = `${baseUrl}${endpoint}`;
 
