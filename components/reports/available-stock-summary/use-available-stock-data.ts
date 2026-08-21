@@ -194,7 +194,9 @@ export function useAvailableStockData({
                     extraFields.articleName = item.articleName || "Unknown Article";
                     extraFields.barCode = item.barCode;
                 } else if (levelName === "variant") {
-                    nodeVal = `${item.color || "Default"}-${item.size || "Default"}`;
+                    nodeVal = item.barCode
+                        ? `[${item.barCode}] ${item.color || "Default"}-${item.size || "Default"}`
+                        : `${item.color || "Default"}-${item.size || "Default"}`;
                     extraFields.color = item.color || "Default";
                     extraFields.size = item.size || "Default";
                     extraFields.barCode = item.barCode;
