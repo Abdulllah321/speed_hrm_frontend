@@ -909,6 +909,7 @@ export const menuData: MenuItem[] = [
             title: "Stock Requisition",
             href: "/erp/inventory/transactions/stock-requisition",
             permissions: [
+              "erp.inventory.stock-requisition.read",
               "erp.inventory.stock-transfer.read",
               "erp.inventory.transfer.create",
             ],
@@ -917,6 +918,8 @@ export const menuData: MenuItem[] = [
             title: "Requisition Pending List",
             href: "/erp/inventory/transactions/stock-requisition/pending",
             permissions: [
+              "erp.inventory.stock-requisition.pending.read",
+              "erp.inventory.warehouse.stock-requisition.pending",
               "erp.inventory.stock-transfer.read",
               "erp.inventory.transfer.create",
             ],
@@ -926,6 +929,8 @@ export const menuData: MenuItem[] = [
             href: "/erp/inventory/transactions/stock-transfer",
             permissions: [
               "erp.inventory.stock-transfer.read",
+              "erp.inventory.stock-transfer.create",
+              "erp.inventory.warehouse.stock-transfer",
               "erp.inventory.transfer.create",
             ],
           },

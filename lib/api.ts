@@ -1695,6 +1695,7 @@ export const stockRequisitionApi = {
     remarks?: string;
     notes?: string;
     financialYear?: string;
+    status?: string;
     items: { itemId: string; quantity: number }[];
   }) => fetchApi<{ status: boolean; data: any }>('/stock-requisition', {
     method: 'POST',
