@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Printer, Receipt, Loader2, FileSpreadsheet, Download, FileText } from "lucide-react";
+import { Printer, Receipt, Loader2, FileSpreadsheet, Download, FileText, MessageSquare } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import type { PosSettings } from "@/hooks/use-pos-settings";
 import { POS_SETTINGS_DEFAULTS } from "@/hooks/use-pos-settings";
@@ -543,6 +543,111 @@ const handleDownloadPdf = async () => {
     hasFbrInfo,
   };
 
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+  const formatWhatsAppPhone = (phone: string) => {
+    let cleaned = (phone || "").replace(/[^0-9]/g, "");
+    if (cleaned.startsWith("0")) {
+      cleaned = "92" + cleaned.slice(1);
+    }
+    return cleaned;
+  };
+
+  const handleSendWhatsApp = async () => {
+    try {
+      setIsGeneratingImage(true);
+
+      const itemsList = items
+        .map(
+          (i) =>
+            `• ${i.name}${i.size ? ` (${i.size})` : ""} x ${i.quantity} = Rs. ${fmtDec(
+              i.price * i.quantity
+            )}`
+        )
+        .join("\n");
+
+      const custName = order?.customer?.name || order?.customerName || "";
+      const custPhone = order?.customer?.contactNo || order?.customer?.phone || order?.customerPhone || order?.customerMobile || "";
+      const custEmail = order?.customer?.email || order?.customerEmail || "";
+      const custAddr = order?.customer?.deliveryAddress || order?.customer?.address || order?.customerAddress || "";
+      const extRef = order?.externalOrderNo || (
+        order?.notes && order.notes.includes("EZCommerce Order")
+          ? order.notes.split("|")[0].replace("EZCommerce Order", "").trim()
+          : null
+      );
+
+      const itemsValInclTax = Math.round(finalGrandTotal - fbrPosFee);
+      const calcShipping = Math.max(0, Math.round(finalGrandTotal - fbrPosFee - (valueForSales + totalTax)));
+      const shipFee = Number(order?.shippingFee ?? 0) || calcShipping;
+      const itemsTotInclTax = itemsValInclTax - shipFee;
+
+      const pStatus = String(order?.paymentStatus || "unpaid").toUpperCase();
+      const pMethod = String(order?.paymentMethod || "COD").toUpperCase();
+      const statusIcon = pStatus === "PAID" ? "🟢" : "🔴";
+
+      const text = `🛍️ *${storeName}*
+Sales Tax Invoice: *${order?.orderNumber || "INV"}*
+${extRef ? `Shopify / Order Ref #: *${extRef}*\n` : ""}Date: ${fmtDate(order?.createdAt)} ${fmtTime(order?.createdAt)}
+
+👤 *Customer & Delivery Details:*
+Name: ${custName || "Walk-in Customer"}
+${custPhone ? `Phone: ${custPhone}\n` : ""}${custEmail ? `Email: ${custEmail}\n` : ""}${custAddr ? `Address: ${custAddr}\n` : ""}
+📦 *Items Purchased:*
+${itemsList}
+
+💵 *Bill Breakdown:*
+• Subtotal (excl. Tax): Rs. ${fmt(Math.round(subtotal))}
+• Total Sales Tax: Rs. ${fmt(Math.round(totalTax))}
+• Items Total (incl. Tax): Rs. ${fmt(Math.round(itemsTotInclTax))}
+${shipFee > 0 ? `• Shipping / Delivery Fee: Rs. ${fmt(Math.round(shipFee))}\n` : ""}-------------------------
+*Grand Total: Rs. ${fmt(Math.round(finalGrandTotal))}*
+${statusIcon} Payment Status: *${pStatus}* (${pMethod})
+
+Thank you for shopping with us!
+Software by Innovative Network (pvt.) Limited`;
+
+      // Copy text to clipboard
+      await navigator.clipboard.writeText(text);
+
+      // Attempt to generate PNG snapshot of printed cash memo
+      const printRootNode = reportRef.current;
+      if (printRootNode) {
+        try {
+          const dataUrl = await htmlToImage.toPng(printRootNode, {
+            backgroundColor: "#ffffff",
+            pixelRatio: 2,
+            cacheBust: true,
+          });
+
+          // Download Cash Memo PNG Image automatically
+          const link = document.createElement("a");
+          link.download = `CashMemo-${order?.orderNumber || "Receipt"}.png`;
+          link.href = dataUrl;
+          link.click();
+          toast.success("Cash memo PNG saved & receipt copied to clipboard!");
+        } catch (imgErr) {
+          console.warn("Could not snapshot thermal image:", imgErr);
+          toast.success("Receipt text copied to clipboard!");
+        }
+      } else {
+        toast.success("Receipt text copied to clipboard!");
+      }
+
+      // Open wa.me direct link with customer phone and text message
+      const waPhone = formatWhatsAppPhone(custPhone);
+      const waUrl = waPhone
+        ? `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`
+        : `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+      window.open(waUrl, "_blank");
+    } catch (e) {
+      console.error("WhatsApp Send Error:", e);
+      toast.error("Failed to send WhatsApp receipt.");
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
   return (
     <>
       <style>{`
@@ -673,6 +778,22 @@ const handleDownloadPdf = async () => {
           <DialogFooter className="px-5 py-3 border-t shrink-0 gap-2">
             <Button variant="outline" onClick={onClose} className="flex-1">
               Close
+            </Button>
+            <Button
+              onClick={handleSendWhatsApp}
+              variant="outline"
+              className="flex-1 gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-semibold"
+              disabled={isLoading || isGeneratingImage}
+            >
+              {isGeneratingImage ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-600" /> Preparing Cash Memo…
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="h-4 w-4 text-emerald-600" /> Send via WhatsApp
+                </>
+              )}
             </Button>
             <Button
               onClick={handleDownloadPdf}
@@ -898,10 +1019,56 @@ function ReceiptBody({
       {/* ── Receipt meta ── */}
       <div className="space-y-0.5 text-[11px]">
         <Row label="Receipt No." value={order?.orderNumber ?? ""} bold />
+        {(() => {
+          const extRef = order?.externalOrderNo || (
+            order?.notes && order.notes.includes("EZCommerce Order")
+              ? order.notes.split("|")[0].replace("EZCommerce Order", "").trim()
+              : null
+          );
+          return extRef ? <Row label="Original Order Ref #" value={extRef} bold /> : null;
+        })()}
+        {order?.paymentStatus && (
+          <Row
+            label="Payment Status"
+            value={`${String(order.paymentStatus).toUpperCase()} (${(order.paymentMethod || "COD").toUpperCase()})`}
+            bold
+          />
+        )}
         <Row label="Date" value={`${fmtDate(order?.createdAt)} ${fmtTime(order?.createdAt)}`} />
         {cashierName && <Row label="Sales By" value={cashierName} />}
         {terminalName && <Row label="Terminal" value={terminalName} />}
       </div>
+
+      {/* ── Customer & Delivery Details ── */}
+      {(() => {
+        const custName = order?.customer?.name || order?.customerName || "";
+        const custPhone = order?.customer?.contactNo || order?.customer?.phone || order?.customerPhone || order?.customerMobile || "";
+        const custEmail = order?.customer?.email || order?.customerEmail || "";
+        const custAddr = order?.customer?.deliveryAddress || order?.customer?.address || order?.customerAddress || "";
+        const hasCustInfo = !!(custName || custPhone || custEmail || custAddr);
+
+        if (!hasCustInfo) return null;
+
+        return (
+          <>
+            <Separator />
+            <div className="space-y-0.5 text-[11px]">
+              <p className="font-bold text-[10px] uppercase tracking-wider text-zinc-900">
+                Customer &amp; Delivery Details
+              </p>
+              {custName && <Row label="Customer Name" value={custName} />}
+              {custPhone && <Row label="Phone" value={custPhone} />}
+              {custEmail && <Row label="Email" value={custEmail} />}
+              {custAddr && (
+                <div className="pt-0.5 text-[10px]">
+                  <span className="font-semibold block">Delivery Address:</span>
+                  <span className="text-zinc-800 block leading-tight">{custAddr}</span>
+                </div>
+              )}
+            </div>
+          </>
+        );
+      })()}
 
       <Separator />
 
@@ -1108,17 +1275,31 @@ function ReceiptBody({
           {settings.receiptShowTax && (
             <Row label="Total Sales Tax" value={fmt(Math.round(totalTax))} />
           )}
-          <div
-            className="rpt-flex flex justify-between font-bold text-[11px] border-t pt-0.5 mt-0.5"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontWeight: "bold",
-            }}
-          >
-            <span>Total Value Including Sales Tax</span>
-            <span>{fmt(Math.round(finalGrandTotal - fbrPosFee))}</span>
-          </div>
+          {(() => {
+            const itemsValInclTax = Math.round(finalGrandTotal - fbrPosFee);
+            const calcShipping = Math.max(0, Math.round(finalGrandTotal - fbrPosFee - (valueForSales + totalTax)));
+            const shipFee = Number(order?.shippingFee ?? 0) || calcShipping;
+            const itemsTotInclTax = itemsValInclTax - shipFee;
+
+            return (
+              <>
+                <div
+                  className="rpt-flex flex justify-between font-bold text-[11px] border-t pt-0.5 mt-0.5"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontWeight: "bold",
+                  }}
+                >
+                  <span>Total Value Including Sales Tax</span>
+                  <span>{fmt(Math.round(itemsTotInclTax))}</span>
+                </div>
+                {shipFee > 0 && (
+                  <Row label="Shipping / Delivery Fee" value={fmt(Math.round(shipFee))} bold />
+                )}
+              </>
+            );
+          })()}
           {hasFbrInfo && fbrPosFee > 0 && (
             <Row label="FBR POS Fee" value={fmt(Math.round(fbrPosFee))} />
           )}
@@ -1434,7 +1615,21 @@ function A4InvoiceBody({
               )}
               <Row label="Value Excluding Sales Tax" value={fmtDec(valueForSales)} />
               {settings.receiptShowTax && <Row label="Sales Tax" value={fmtDec(totalTax)} />}
-              <Row label="Value Including Sales Tax" value={fmtDec(grandTotal)} />
+              {(() => {
+                const itemsValInclTax = Math.round(finalGrandTotal - fbrPosFee);
+                const calcShipping = Math.max(0, Math.round(finalGrandTotal - fbrPosFee - (valueForSales + totalTax)));
+                const shipFee = Number(order?.shippingFee ?? 0) || calcShipping;
+                const itemsTotInclTax = itemsValInclTax - shipFee;
+
+                return (
+                  <>
+                    <Row label="Value Including Sales Tax" value={fmtDec(itemsTotInclTax)} />
+                    {shipFee > 0 && (
+                      <Row label="Shipping / Delivery Fee" value={fmtDec(shipFee)} bold />
+                    )}
+                  </>
+                );
+              })()}
               {hasFbrInfo && fbrPosFee > 0 && (
                 <Row label="POS Services Fee Re." value={fmtDec(fbrPosFee)} />
               )}
