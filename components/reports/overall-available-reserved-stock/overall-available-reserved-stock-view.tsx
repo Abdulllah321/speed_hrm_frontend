@@ -11,7 +11,7 @@ import { useReportSse } from "@/hooks/use-report-sse";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-import { FlatItemRecord, GroupingLevels } from "./types";
+import { FlatItemRecord } from "./types";
 import { useOverallAvailableReservedStockData } from "./use-overall-available-reserved-stock-data";
 import { OverallAvailableReservedHeader } from "./overall-available-reserved-header";
 import { OverallAvailableReservedFilters } from "./overall-available-reserved-filters";
@@ -36,7 +36,6 @@ export function OverallAvailableReservedStockView({
     const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>([]);
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [reportType, setReportType] = useState<"merged" | "separate">("separate");
 
     const [filterBrands, setFilterBrands] = useState<Set<string>>(new Set());
     const [filterDivisions, setFilterDivisions] = useState<Set<string>>(new Set());
@@ -45,16 +44,6 @@ export function OverallAvailableReservedStockView({
     const [filterSilhouettes, setFilterSilhouettes] = useState<Set<string>>(new Set());
     const [filterSizes, setFilterSizes] = useState<Set<string>>(new Set());
     const [filterColors, setFilterColors] = useState<Set<string>>(new Set());
-
-    const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
-        brand: true,
-        division: true,
-        category: true,
-        gender: true,
-        silhouette: true,
-        article: true,
-        variant: true,
-    });
 
     const [rawItems, setRawItems] = useState<FlatItemRecord[]>([]);
     const [isFetchingData, setIsFetchingData] = useState(false);
@@ -69,7 +58,7 @@ export function OverallAvailableReservedStockView({
 
     const sseState = useReportSse(previewJobId, "overall-reserved");
 
-    // Fetch Locations & Warehouses on mount
+    // Fetch Outlets & Warehouses on mount
     useEffect(() => {
         async function loadMetadata() {
             try {
@@ -90,12 +79,12 @@ export function OverallAvailableReservedStockView({
     // Main Single API Fetch function
     const fetchDataset = useCallback(() => {
         setIsFetchingData(true);
-        setFetchProgressMessage("Queueing overall available reserved stock query...");
+        setFetchProgressMessage("Queueing overall available reserved stock matrix query...");
         setPreviewJobId(null);
 
         queueOverallAvailableReservedStockPreview({
             asOfDate,
-            reportType: "separate",
+            summaryOnly: false,
             includeCosting: true,
         }).then((queueRes) => {
             if (queueRes && queueRes.status && queueRes.data?.jobId) {
@@ -116,6 +105,59 @@ export function OverallAvailableReservedStockView({
         return () => clearTimeout(timer);
     }, [asOfDate]);
 
+    // Flatten tree payload into individual SKU/variant items if backend returned hierarchical root
+    const flattenNodesToItems = (nodes: any[]): FlatItemRecord[] => {
+        const items: FlatItemRecord[] = [];
+
+        function traverse(list: any[], parentInfo: Partial<FlatItemRecord> = {}) {
+            for (const node of list) {
+                const currentInfo: Partial<FlatItemRecord> = { ...parentInfo };
+
+                if (node.level === "brand") currentInfo.brand = node.value;
+                if (node.level === "division") currentInfo.division = node.value;
+                if (node.level === "category") currentInfo.category = node.value;
+                if (node.level === "gender") currentInfo.gender = node.value;
+                if (node.level === "silhouette") currentInfo.silhouette = node.value;
+                if (node.level === "article") {
+                    currentInfo.sku = node.sku || node.value;
+                    currentInfo.articleName = node.articleName;
+                }
+                if (node.level === "variant" || !node.children || node.children.length === 0) {
+                    items.push({
+                        itemId: node.itemId || node.value,
+                        brand: currentInfo.brand || node.brand || "",
+                        division: currentInfo.division || node.division || "",
+                        category: currentInfo.category || node.category || "",
+                        gender: currentInfo.gender || node.gender || "",
+                        silhouette: currentInfo.silhouette || node.silhouette || "",
+                        sku: currentInfo.sku || node.sku || "",
+                        articleName: currentInfo.articleName || node.articleName || node.description || "",
+                        barCode: node.barCode || node.totals?.barCode || "",
+                        size: node.size || node.totals?.size || "",
+                        color: node.color || node.totals?.color || "",
+                        unitPrice: node.totals?.unitPrice || node.unitPrice || 0,
+                        value: node.totals?.value || node.value || 0,
+                        unitCost: node.totals?.unitCost || node.unitCost || 0,
+                        costingValue: node.totals?.costingValue || node.costingValue || 0,
+                        quantity: node.totals?.quantity ?? node.quantity ?? 0,
+                        transit: node.totals?.transit ?? node.transit ?? 0,
+                        reserved: node.totals?.reserved ?? node.reserved ?? 0,
+                        total: node.totals?.total ?? node.total ?? 0,
+                        locationStocks: node.totals?.locationStocks || node.locationStocks || {},
+                        warehouseStocks: node.totals?.warehouseStocks || node.warehouseStocks || {},
+                    });
+                }
+
+                if (node.children && node.children.length > 0) {
+                    traverse(node.children, currentInfo);
+                }
+            }
+        }
+
+        traverse(nodes);
+        return items;
+    };
+
     // Handle SSE progress & completed event
     useEffect(() => {
         if (sseState.message) {
@@ -123,7 +165,7 @@ export function OverallAvailableReservedStockView({
         }
 
         if (sseState.status === "completed" && previewJobId && activeJobIdRef.current === previewJobId) {
-            setFetchProgressMessage("Loading completed available reserved stock dataset...");
+            setFetchProgressMessage("Loading completed overall stock matrix dataset...");
             const targetJobId = previewJobId;
 
             getOverallAvailableReservedStockResult(targetJobId)
@@ -138,16 +180,26 @@ export function OverallAvailableReservedStockView({
                                 ? res
                                 : (res.data?.data ? res.data.data : res.data));
 
-                        const itemsList: FlatItemRecord[] = Array.isArray(payload?.flatItemsList)
-                            ? payload.flatItemsList
-                            : (Array.isArray(payload?.root)
-                                ? payload.root
-                                : (Array.isArray(payload) ? payload : []));
+                        if (Array.isArray(payload?.warehouses) && payload.warehouses.length > 0) {
+                            setWarehouses(payload.warehouses);
+                        }
+                        if (Array.isArray(payload?.stockLocations) && payload.stockLocations.length > 0) {
+                            setLocations(payload.stockLocations);
+                        }
+
+                        let itemsList: FlatItemRecord[] = [];
+                        if (Array.isArray(payload?.flatItemsList)) {
+                            itemsList = payload.flatItemsList;
+                        } else if (Array.isArray(payload?.root)) {
+                            itemsList = flattenNodesToItems(payload.root);
+                        } else if (Array.isArray(payload)) {
+                            itemsList = flattenNodesToItems(payload);
+                        }
 
                         setRawItems(itemsList);
                     } else {
                         setRawItems([]);
-                        toast.error("Failed to load completed stock data");
+                        toast.error("Failed to load completed stock matrix");
                     }
                 })
                 .catch((err) => {
@@ -159,9 +211,11 @@ export function OverallAvailableReservedStockView({
         }
     }, [sseState.status, sseState.message, previewJobId]);
 
-    // Custom React hook doing 100% client side filtering, searching, merging, and tree construction
-    const { attributeOptions, filteredItems, treeData, grandTotals } = useOverallAvailableReservedStockData({
+    // Custom React hook doing matrix calculations and store column mappings
+    const { locationHeaders, attributeOptions, filteredItems, grandTotals } = useOverallAvailableReservedStockData({
         rawItems,
+        locations,
+        warehouses,
         selectedLocationIds,
         selectedWarehouseIds,
         searchQuery,
@@ -172,62 +226,56 @@ export function OverallAvailableReservedStockView({
         filterSilhouettes,
         filterSizes,
         filterColors,
-        reportType,
-        groupingLevels,
     });
 
-    // Handle non-blocking client-side Excel Export
-    const handleExcelExport = async (exportMode: "hierarchy" | "flat" | "both" = "both") => {
-        if (treeData.length === 0 && filteredItems.length === 0) {
-            toast.error("No items available to export");
+    // Handle non-blocking client-side Excel Matrix Export
+    const handleExcelExport = async () => {
+        if (filteredItems.length === 0) {
+            toast.error("No stock items available to export");
             return;
         }
 
         setIsExporting(true);
         setExportProgressPercent(0);
-        setExportProgressMessage("Preparing Excel file...");
+        setExportProgressMessage("Preparing Excel Matrix file...");
 
         try {
             await exportOverallAvailableReservedStockToExcel({
-                treeData,
                 filteredItems,
+                locationHeaders,
                 grandTotals,
-                reportType,
-                exportMode,
-                dateToStr: asOfDate,
+                asOfDate,
                 companyName,
                 onProgress: (percent, message) => {
                     setExportProgressPercent(percent);
                     setExportProgressMessage(message);
                 },
             });
-            toast.success("Excel report generated successfully");
+            toast.success("Excel stock matrix report generated successfully");
         } catch (err) {
-            toast.error("Failed to generate Excel export");
+            toast.error("Failed to generate Excel matrix export");
         } finally {
             setIsExporting(false);
         }
     };
 
-    // Handle non-blocking client-side PDF Export
-    const handlePdfExport = async (exportMode: "hierarchy" | "flat" = "hierarchy") => {
-        if (treeData.length === 0 && filteredItems.length === 0) {
-            toast.error("No items available to export");
+    // Handle non-blocking client-side PDF Matrix Export
+    const handlePdfExport = async () => {
+        if (filteredItems.length === 0) {
+            toast.error("No stock items available to export");
             return;
         }
 
         setIsExporting(true);
         setExportProgressPercent(0);
-        setExportProgressMessage("Preparing PDF print layout...");
+        setExportProgressMessage("Preparing PDF matrix print layout...");
 
         try {
             await exportOverallAvailableReservedStockToPdf({
-                treeData,
                 filteredItems,
+                locationHeaders,
                 grandTotals,
-                reportType,
-                exportMode,
-                dateToStr: asOfDate,
+                asOfDate,
                 companyName,
                 onProgress: (percent, message) => {
                     setExportProgressPercent(percent);
@@ -243,13 +291,13 @@ export function OverallAvailableReservedStockView({
     };
 
     return (
-        <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-4">
+        <div className="p-4 sm:p-6 max-w-[1700px] mx-auto space-y-4">
             {/* Page Title */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        Real-time available and reserved stock valuation across all outlets and warehouses
+                        Overall stock matrix breakdown with store-wise stock quantities across all outlets & warehouses
                     </p>
                 </div>
             </div>
@@ -273,10 +321,6 @@ export function OverallAvailableReservedStockView({
                 setSelectedWarehouseIds={setSelectedWarehouseIds}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
-                reportType={reportType}
-                setReportType={setReportType}
-                groupingLevels={groupingLevels}
-                setGroupingLevels={setGroupingLevels}
                 attributeOptions={attributeOptions}
                 filterBrands={filterBrands}
                 setFilterBrands={setFilterBrands}
@@ -303,9 +347,10 @@ export function OverallAvailableReservedStockView({
                 isExporting={isExporting}
             />
 
-            {/* Hierarchical Tree Table View */}
+            {/* Store/Warehouse Matrix Table View */}
             <OverallAvailableReservedTable
-                treeData={treeData}
+                filteredItems={filteredItems}
+                locationHeaders={locationHeaders}
                 grandTotals={grandTotals}
                 searchQuery={searchQuery}
                 isLoading={isFetchingData}

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { TreeNode, StockTotals } from "./types";
-import { ChevronRight, ChevronDown, Folder, Package, Layers, QrCode } from "lucide-react";
+import { FlatItemRecord, LocationHeader, StockTotals } from "./types";
+import { Package } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 
 function highlight(text: string, query: string) {
@@ -34,65 +34,26 @@ function highlight(text: string, query: string) {
 }
 
 interface TableProps {
-    treeData: TreeNode[];
+    filteredItems: FlatItemRecord[];
+    locationHeaders: LocationHeader[];
     grandTotals: StockTotals;
     searchQuery: string;
     isLoading: boolean;
 }
 
-interface FlatRowItem {
-    id: string;
-    node: TreeNode;
-    depth: number;
-    hasChildren: boolean;
-    isExpanded: boolean;
-}
-
-export function OverallAvailableReservedTable({ treeData, grandTotals, searchQuery, isLoading }: TableProps) {
+export function OverallAvailableReservedTable({
+    filteredItems,
+    locationHeaders,
+    grandTotals,
+    searchQuery,
+    isLoading,
+}: TableProps) {
     const parentRef = useRef<HTMLDivElement>(null);
-    const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
-
-    const toggleCollapse = (key: string) => {
-        setCollapsedKeys((prev) => {
-            const next = new Set(prev);
-            if (next.has(key)) next.delete(key);
-            else next.add(key);
-            return next;
-        });
-    };
-
-    const flatVisibleRows = useMemo(() => {
-        const rows: FlatRowItem[] = [];
-
-        function traverse(nodes: TreeNode[], depth: number = 0, parentKey: string = "root") {
-            for (let i = 0; i < nodes.length; i++) {
-                const node = nodes[i];
-                const nodeKey = `${parentKey}_${node.level}_${node.value}_${i}`;
-                const hasChildren = Boolean(node.children && node.children.length > 0);
-                const isCollapsed = collapsedKeys.has(nodeKey);
-
-                rows.push({
-                    id: nodeKey,
-                    node,
-                    depth,
-                    hasChildren,
-                    isExpanded: !isCollapsed,
-                });
-
-                if (hasChildren && !isCollapsed) {
-                    traverse(node.children, depth + 1, nodeKey);
-                }
-            }
-        }
-
-        traverse(treeData, 0, "root");
-        return rows;
-    }, [treeData, collapsedKeys]);
 
     const rowVirtualizer = useVirtualizer({
-        count: flatVisibleRows.length,
+        count: filteredItems.length,
         getScrollElement: () => parentRef.current,
-        estimateSize: () => 44,
+        estimateSize: () => 40,
         overscan: 25,
     });
 
@@ -101,13 +62,13 @@ export function OverallAvailableReservedTable({ treeData, grandTotals, searchQue
             <div className="p-12 text-center border border-border rounded-2xl bg-card shadow-sm">
                 <div className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground animate-pulse">
                     <Package className="h-5 w-5 animate-spin text-primary" />
-                    Loading overall available reserved stock report data...
+                    Loading overall stock report matrix data...
                 </div>
             </div>
         );
     }
 
-    if (!treeData || treeData.length === 0) {
+    if (!filteredItems || filteredItems.length === 0) {
         return (
             <div className="p-12 text-center border border-border rounded-2xl bg-card shadow-sm">
                 <p className="text-sm font-semibold text-muted-foreground">No stock records found matching current filters.</p>
@@ -121,23 +82,44 @@ export function OverallAvailableReservedTable({ treeData, grandTotals, searchQue
         <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden flex flex-col">
             <div
                 ref={parentRef}
-                className="max-h-[680px] overflow-y-auto relative scrollbar-thin scrollbar-thumb-border"
+                className="max-h-[680px] overflow-x-auto overflow-y-auto relative scrollbar-thin scrollbar-thumb-border"
             >
-                <div className="min-w-[1100px]">
+                <div className="inline-block min-w-full align-middle">
                     {/* Header Row */}
-                    <div className="sticky top-0 z-20 border-b border-border bg-muted/95 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider text-muted-foreground shadow-sm flex items-center h-10 px-4">
-                        <div className="flex-1 min-w-[340px] pr-3">GPC / Category / Product / Barcode</div>
-                        <div className="w-20 text-center shrink-0">Size</div>
-                        <div className="w-44 text-center shrink-0">Color</div>
-                        <div className="w-28 text-right shrink-0">Available Qty</div>
-                        <div className="w-24 text-right shrink-0">In Transit</div>
-                        <div className="w-28 text-right shrink-0">Reserved</div>
-                        <div className="w-28 text-right shrink-0">Total Balance</div>
-                        <div className="w-32 text-right shrink-0">Selling Price</div>
-                        <div className="w-36 text-right shrink-0">Selling Value</div>
+                    <div className="sticky top-0 z-20 border-b border-border bg-muted/95 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider text-muted-foreground shadow-sm flex items-center h-10 px-3">
+                        <div className="w-28 shrink-0 pr-2">Brand</div>
+                        <div className="w-28 shrink-0 pr-2">Division</div>
+                        <div className="w-28 shrink-0 pr-2">Category</div>
+                        <div className="w-24 shrink-0 pr-2">Gender</div>
+                        <div className="w-24 shrink-0 pr-2">Silhouette</div>
+                        <div className="w-28 shrink-0 pr-2">SKU</div>
+                        <div className="w-48 shrink-0 pr-2">Article Name</div>
+                        <div className="w-16 text-center shrink-0">Size</div>
+                        <div className="w-24 text-center shrink-0">Color</div>
+                        <div className="w-32 text-center shrink-0">Barcode</div>
+                        <div className="w-24 text-right shrink-0">Total Qty</div>
+                        <div className="w-20 text-right shrink-0">Transit</div>
+                        <div className="w-20 text-right shrink-0">Reserved</div>
+                        <div className="w-24 text-right shrink-0">Total Bal</div>
+                        <div className="w-28 text-right shrink-0">Price</div>
+                        <div className="w-32 text-right shrink-0">Value</div>
+
+                        {/* Dynamic Store / Warehouse Columns Header */}
+                        {locationHeaders.map((hdr) => (
+                            <div
+                                key={hdr.id}
+                                title={`${hdr.name} (${hdr.type})`}
+                                className={cn(
+                                    "w-24 text-right shrink-0 px-2 font-mono font-bold truncate",
+                                    hdr.type === "warehouse" ? "text-amber-600 dark:text-amber-400" : "text-sky-600 dark:text-sky-400"
+                                )}
+                            >
+                                {hdr.code}
+                            </div>
+                        ))}
                     </div>
 
-                    {/* Virtualized Body */}
+                    {/* Virtualized Body Rows */}
                     <div
                         style={{
                             height: `${rowVirtualizer.getTotalSize()}px`,
@@ -146,24 +128,12 @@ export function OverallAvailableReservedTable({ treeData, grandTotals, searchQue
                         className="w-full"
                     >
                         {virtualItems.map((virtualRow) => {
-                            const row = flatVisibleRows[virtualRow.index];
-                            const { node, depth, hasChildren, isExpanded, id } = row;
-                            const paddingLeft = depth * 20 + 12;
-
-                            let displayLabel = node.value;
-                            if (node.sku && node.articleName) {
-                                displayLabel = `[${node.sku}] ${node.articleName}`;
-                            } else if (node.level === "variant" && node.barCode) {
-                                displayLabel = `[${node.barCode}] ${node.color || "Default"}-${node.size || "Default"}`;
-                            }
-
-                            const isSubtotalRow = depth < 3;
-                            const isArticle = node.level === "article";
-                            const isVariant = node.level === "variant";
+                            const item = filteredItems[virtualRow.index];
+                            const bgStyle = virtualRow.index % 2 === 0 ? "bg-background" : "bg-muted/15";
 
                             return (
                                 <div
-                                    key={id}
+                                    key={virtualRow.index}
                                     style={{
                                         position: "absolute",
                                         top: 0,
@@ -173,124 +143,85 @@ export function OverallAvailableReservedTable({ treeData, grandTotals, searchQue
                                         transform: `translateY(${virtualRow.start}px)`,
                                     }}
                                     className={cn(
-                                        "border-b border-border/40 text-xs transition-colors hover:bg-muted/50 flex items-center px-4 whitespace-nowrap",
-                                        isSubtotalRow
-                                            ? "bg-muted/20 font-semibold text-foreground"
-                                            : "bg-background text-foreground/90",
-                                        depth === 0 && "font-bold bg-muted/40 text-foreground"
+                                        "border-b border-border/40 text-xs transition-colors hover:bg-muted/50 flex items-center px-3 whitespace-nowrap",
+                                        bgStyle
                                     )}
                                 >
-                                    {/* Column 1: Node Label & Hierarchy Tree */}
-                                    <div
-                                        style={{ paddingLeft: `${paddingLeft}px` }}
-                                        className="flex-1 min-w-[340px] pr-3 flex items-center gap-1.5 truncate"
-                                    >
-                                        {hasChildren ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => toggleCollapse(id)}
-                                                className="p-0.5 rounded hover:bg-muted text-muted-foreground shrink-0 transition-colors"
-                                            >
-                                                {isExpanded ? (
-                                                    <ChevronDown className="h-3.5 w-3.5" />
-                                                ) : (
-                                                    <ChevronRight className="h-3.5 w-3.5" />
-                                                )}
-                                            </button>
-                                        ) : (
-                                            <span className="w-4 shrink-0" />
-                                        )}
-
-                                        {depth === 0 ? (
-                                            <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
-                                        ) : isVariant ? (
-                                            <QrCode className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-                                        ) : isArticle ? (
-                                            <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                        ) : (
-                                            <Folder className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                                        )}
-
-                                        <span className="truncate max-w-[450px]" title={displayLabel}>
-                                            {highlight(displayLabel, searchQuery)}
+                                    <div className="w-28 shrink-0 pr-2 truncate font-medium">{highlight(item.brand || "-", searchQuery)}</div>
+                                    <div className="w-28 shrink-0 pr-2 truncate text-muted-foreground">{highlight(item.division || "-", searchQuery)}</div>
+                                    <div className="w-28 shrink-0 pr-2 truncate text-muted-foreground">{highlight(item.category || "-", searchQuery)}</div>
+                                    <div className="w-24 shrink-0 pr-2 truncate text-muted-foreground">{highlight(item.gender || "-", searchQuery)}</div>
+                                    <div className="w-24 shrink-0 pr-2 truncate text-muted-foreground">{highlight(item.silhouette || "-", searchQuery)}</div>
+                                    <div className="w-28 shrink-0 pr-2 truncate font-mono font-medium text-foreground">{highlight(item.sku || "-", searchQuery)}</div>
+                                    <div className="w-48 shrink-0 pr-2 truncate font-semibold text-foreground" title={item.articleName}>{highlight(item.articleName || "-", searchQuery)}</div>
+                                    
+                                    {/* Size */}
+                                    <div className="w-16 text-center shrink-0">
+                                        <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-muted text-[11px] font-bold text-foreground border border-border/50">
+                                            {item.size || "-"}
                                         </span>
                                     </div>
 
-                                    {/* Column 2: Size Badge */}
-                                    <div className="w-20 text-center shrink-0 flex items-center justify-center">
-                                        {node.size ? (
-                                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-muted text-[11px] font-bold text-foreground border border-border/50">
-                                                {node.size}
-                                            </span>
-                                        ) : (
-                                            <span className="text-muted-foreground/60">-</span>
-                                        )}
+                                    {/* Color */}
+                                    <div className="w-24 text-center shrink-0 px-1 truncate">
+                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-secondary/80 text-[11px] font-medium text-secondary-foreground border border-border/60 truncate max-w-[85px]">
+                                            {highlight(item.color || "-", searchQuery)}
+                                        </span>
                                     </div>
 
-                                    {/* Column 3: Color Pill Badge */}
-                                    <div className="w-44 text-center shrink-0 flex items-center justify-center px-1">
-                                        {node.color ? (
-                                            <span
-                                                title={node.color}
-                                                className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-secondary/80 text-[11px] font-medium text-secondary-foreground border border-border/60 truncate whitespace-nowrap max-w-[160px]"
+                                    {/* BarCode */}
+                                    <div className="w-32 text-center shrink-0 font-mono font-bold text-primary truncate">
+                                        {highlight(item.barCode || "-", searchQuery)}
+                                    </div>
+
+                                    {/* Available Qty */}
+                                    <div className={cn("w-24 text-right shrink-0 font-semibold", item.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+                                        {item.quantity.toLocaleString()}
+                                    </div>
+
+                                    {/* Transit */}
+                                    <div className={cn("w-20 text-right shrink-0 font-medium", item.transit > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>
+                                        {item.transit.toLocaleString()}
+                                    </div>
+
+                                    {/* Reserved */}
+                                    <div className={cn("w-20 text-right shrink-0 font-medium", item.reserved > 0 ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground")}>
+                                        {item.reserved.toLocaleString()}
+                                    </div>
+
+                                    {/* Total Balance */}
+                                    <div className="w-24 text-right shrink-0 font-bold text-foreground">
+                                        {item.total.toLocaleString()}
+                                    </div>
+
+                                    {/* Price */}
+                                    <div className="w-28 text-right shrink-0 text-muted-foreground">
+                                        {item.unitPrice ? formatCurrency(item.unitPrice) : "-"}
+                                    </div>
+
+                                    {/* Selling Value */}
+                                    <div className="w-32 text-right shrink-0 font-semibold text-foreground">
+                                        {formatCurrency(item.value)}
+                                    </div>
+
+                                    {/* Dynamic Store / Warehouse Quantities */}
+                                    {locationHeaders.map((hdr) => {
+                                        const qty = hdr.type === "warehouse"
+                                            ? (item.warehouseStocks?.[hdr.id] || 0)
+                                            : (item.locationStocks?.[hdr.id] || 0);
+
+                                        return (
+                                            <div
+                                                key={hdr.id}
+                                                className={cn(
+                                                    "w-24 text-right shrink-0 px-2 font-mono text-xs",
+                                                    qty > 0 ? "font-bold text-foreground" : "text-muted-foreground/40"
+                                                )}
                                             >
-                                                {highlight(node.color, searchQuery)}
-                                            </span>
-                                        ) : (
-                                            <span className="text-muted-foreground/60">-</span>
-                                        )}
-                                    </div>
-
-                                    {/* Column 4: Available Qty */}
-                                    <div
-                                        className={cn(
-                                            "w-28 text-right shrink-0 font-medium",
-                                            node.totals.quantity > 0
-                                                ? "text-emerald-600 dark:text-emerald-400 font-semibold"
-                                                : "text-muted-foreground"
-                                        )}
-                                    >
-                                        {node.totals.quantity.toLocaleString()}
-                                    </div>
-
-                                    {/* Column 5: In Transit */}
-                                    <div
-                                        className={cn(
-                                            "w-24 text-right shrink-0 font-medium",
-                                            node.totals.transit > 0
-                                                ? "text-amber-600 dark:text-amber-400 font-semibold"
-                                                : "text-muted-foreground"
-                                        )}
-                                    >
-                                        {node.totals.transit.toLocaleString()}
-                                    </div>
-
-                                    {/* Column 6: Stock Reserved */}
-                                    <div
-                                        className={cn(
-                                            "w-28 text-right shrink-0 font-medium",
-                                            node.totals.reserved > 0
-                                                ? "text-purple-600 dark:text-purple-400 font-semibold"
-                                                : "text-muted-foreground"
-                                        )}
-                                    >
-                                        {node.totals.reserved.toLocaleString()}
-                                    </div>
-
-                                    {/* Column 7: Total Balance */}
-                                    <div className="w-28 text-right shrink-0 font-bold text-foreground">
-                                        {node.totals.total.toLocaleString()}
-                                    </div>
-
-                                    {/* Column 8: Selling Price */}
-                                    <div className="w-32 text-right shrink-0 text-muted-foreground">
-                                        {node.totals.unitPrice ? formatCurrency(node.totals.unitPrice) : "-"}
-                                    </div>
-
-                                    {/* Column 9: Selling Value */}
-                                    <div className="w-36 text-right shrink-0 font-semibold text-foreground">
-                                        {formatCurrency(node.totals.value)}
-                                    </div>
+                                                {qty}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             );
                         })}
@@ -299,26 +230,47 @@ export function OverallAvailableReservedTable({ treeData, grandTotals, searchQue
             </div>
 
             {/* Sticky Grand Totals Footer */}
-            <div className="border-t-2 border-border bg-muted/95 backdrop-blur-md px-4 h-11 text-xs font-bold text-foreground shadow-inner flex items-center min-w-[1100px]">
-                <div className="flex-1 min-w-[340px] uppercase tracking-wider text-muted-foreground">GRAND TOTAL</div>
-                <div className="w-20 text-center text-muted-foreground/60">-</div>
-                <div className="w-44 text-center text-muted-foreground/60">-</div>
-                <div className="w-28 text-right text-emerald-600 dark:text-emerald-400">
+            <div className="border-t-2 border-border bg-muted/95 backdrop-blur-md px-3 h-11 text-xs font-bold text-foreground shadow-inner flex items-center min-w-full">
+                <div className="w-28 shrink-0 uppercase tracking-wider text-muted-foreground">GRAND TOTAL</div>
+                <div className="w-28 shrink-0 text-muted-foreground/40">-</div>
+                <div className="w-28 shrink-0 text-muted-foreground/40">-</div>
+                <div className="w-24 shrink-0 text-muted-foreground/40">-</div>
+                <div className="w-24 shrink-0 text-muted-foreground/40">-</div>
+                <div className="w-28 shrink-0 text-muted-foreground/40">-</div>
+                <div className="w-48 shrink-0 text-muted-foreground/40">-</div>
+                <div className="w-16 text-center text-muted-foreground/40">-</div>
+                <div className="w-24 text-center text-muted-foreground/40">-</div>
+                <div className="w-32 text-center text-muted-foreground/40">-</div>
+
+                <div className="w-24 text-right text-emerald-600 dark:text-emerald-400">
                     {grandTotals.quantity.toLocaleString()}
                 </div>
-                <div className="w-24 text-right text-amber-600 dark:text-amber-400">
+                <div className="w-20 text-right text-amber-600 dark:text-amber-400">
                     {grandTotals.transit.toLocaleString()}
                 </div>
-                <div className="w-28 text-right text-purple-600 dark:text-purple-400">
+                <div className="w-20 text-right text-purple-600 dark:text-purple-400">
                     {grandTotals.reserved.toLocaleString()}
                 </div>
-                <div className="w-28 text-right text-cyan-600 dark:text-cyan-400">
+                <div className="w-24 text-right text-cyan-600 dark:text-cyan-400">
                     {grandTotals.total.toLocaleString()}
                 </div>
-                <div className="w-32 text-right text-muted-foreground/60">-</div>
-                <div className="w-36 text-right text-indigo-600 dark:text-indigo-400 font-bold">
+                <div className="w-28 text-right text-muted-foreground/40">-</div>
+                <div className="w-32 text-right text-indigo-600 dark:text-indigo-400 font-bold">
                     {formatCurrency(grandTotals.value)}
                 </div>
+
+                {/* Grand totals for each store/warehouse column */}
+                {locationHeaders.map((hdr) => {
+                    const totalStoreQty = hdr.type === "warehouse"
+                        ? (grandTotals.warehouseStocks?.[hdr.id] || 0)
+                        : (grandTotals.locationStocks?.[hdr.id] || 0);
+
+                    return (
+                        <div key={hdr.id} className="w-24 text-right shrink-0 px-2 font-mono text-primary font-bold">
+                            {totalStoreQty.toLocaleString()}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

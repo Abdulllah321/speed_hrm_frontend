@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useDeferredValue } from "react";
-import { FlatItemRecord, GroupingLevels, StockTotals, TreeNode } from "./types";
+import { FlatItemRecord, LocationHeader, StockTotals } from "./types";
+import { Location } from "@/lib/actions/location";
+import { Warehouse } from "@/lib/actions/warehouse";
 
 function createEmptyTotals(): StockTotals {
     return {
@@ -13,20 +15,15 @@ function createEmptyTotals(): StockTotals {
         value: 0,
         unitCost: 0,
         costingValue: 0,
+        locationStocks: {},
+        warehouseStocks: {},
     };
-}
-
-function addTotals(target: StockTotals, source: StockTotals) {
-    target.quantity += source.quantity;
-    target.transit += source.transit;
-    target.reserved += source.reserved;
-    target.total += source.total;
-    target.value += source.value;
-    target.costingValue += source.costingValue;
 }
 
 export function useOverallAvailableReservedStockData({
     rawItems,
+    locations,
+    warehouses,
     selectedLocationIds,
     selectedWarehouseIds,
     searchQuery,
@@ -37,10 +34,10 @@ export function useOverallAvailableReservedStockData({
     filterSilhouettes,
     filterSizes,
     filterColors,
-    reportType,
-    groupingLevels,
 }: {
     rawItems: FlatItemRecord[];
+    locations: Location[];
+    warehouses: Warehouse[];
     selectedLocationIds: string[];
     selectedWarehouseIds: string[];
     searchQuery: string;
@@ -51,12 +48,42 @@ export function useOverallAvailableReservedStockData({
     filterSilhouettes: Set<string>;
     filterSizes: Set<string>;
     filterColors: Set<string>;
-    reportType: "merged" | "separate";
-    groupingLevels: GroupingLevels;
 }) {
     const deferredSearchQuery = useDeferredValue(searchQuery);
 
-    // 1. Extract distinct attribute options from rawItems for filter dropdowns
+    // 1. Build Location Headers for dynamic columns (Warehouses then Outlets)
+    const locationHeaders = useMemo<LocationHeader[]>(() => {
+        const headers: LocationHeader[] = [];
+
+        const selLocs = new Set(selectedLocationIds);
+        const selWhs = new Set(selectedWarehouseIds);
+
+        // Active Warehouses
+        for (const wh of warehouses) {
+            if (selWhs.size > 0 && !selWhs.has(wh.id)) continue;
+            headers.push({
+                id: wh.id,
+                code: wh.code || wh.name,
+                name: wh.name,
+                type: "warehouse",
+            });
+        }
+
+        // Active Outlets (Stock Locations)
+        for (const loc of locations) {
+            if (selLocs.size > 0 && !selLocs.has(loc.id)) continue;
+            headers.push({
+                id: loc.id,
+                code: (loc as any).shortCode || loc.code || loc.name,
+                name: loc.name,
+                type: "outlet",
+            });
+        }
+
+        return headers;
+    }, [locations, warehouses, selectedLocationIds, selectedWarehouseIds]);
+
+    // 2. Extract distinct attribute options from rawItems for filter dropdowns
     const attributeOptions = useMemo(() => {
         const brands = new Set<string>();
         const divisions = new Set<string>();
@@ -87,21 +114,11 @@ export function useOverallAvailableReservedStockData({
         };
     }, [rawItems]);
 
-    // 2. Filter raw items based on selected locations, warehouses, search text, and attribute filters
+    // 3. Filter raw items based on search text and attribute filters
     const filteredItems = useMemo(() => {
         const q = deferredSearchQuery.trim().toLowerCase();
-        const selLocs = new Set(selectedLocationIds);
-        const selWhs = new Set(selectedWarehouseIds);
-        const hasLocFilter = selLocs.size > 0 || selWhs.size > 0;
 
         return rawItems.filter((item) => {
-            // Location/Warehouse filtering
-            if (hasLocFilter) {
-                const matchLoc = item.locationId && selLocs.has(item.locationId);
-                const matchWh = item.warehouseId && selWhs.has(item.warehouseId);
-                if (!matchLoc && !matchWh) return false;
-            }
-
             // Attribute filters
             if (filterBrands.size > 0 && !filterBrands.has(item.brand)) return false;
             if (filterDivisions.size > 0 && !filterDivisions.has(item.division)) return false;
@@ -118,8 +135,7 @@ export function useOverallAvailableReservedStockData({
                 const matchDesc = item.articleName?.toLowerCase().includes(q);
                 const matchBrand = item.brand?.toLowerCase().includes(q);
                 const matchCat = item.category?.toLowerCase().includes(q);
-                const matchLoc = item.locationName?.toLowerCase().includes(q);
-                if (!matchBar && !matchSku && !matchDesc && !matchBrand && !matchCat && !matchLoc) {
+                if (!matchBar && !matchSku && !matchDesc && !matchBrand && !matchCat) {
                     return false;
                 }
             }
@@ -128,8 +144,6 @@ export function useOverallAvailableReservedStockData({
         });
     }, [
         rawItems,
-        selectedLocationIds,
-        selectedWarehouseIds,
         deferredSearchQuery,
         filterBrands,
         filterDivisions,
@@ -140,102 +154,45 @@ export function useOverallAvailableReservedStockData({
         filterColors,
     ]);
 
-    // 3. Build dynamic hierarchy tree & calculate grand totals
-    const { treeData, grandTotals } = useMemo(() => {
-        const root: TreeNode[] = [];
-        const grandTotals = createEmptyTotals();
+    // 4. Calculate Grand Totals across filtered items and location columns
+    const grandTotals = useMemo<StockTotals>(() => {
+        const totals = createEmptyTotals();
+        totals.locationStocks = {};
+        totals.warehouseStocks = {};
 
-        const activeLevels: (keyof GroupingLevels)[] = [];
-        if (groupingLevels.brand) activeLevels.push("brand");
-        if (groupingLevels.division) activeLevels.push("division");
-        if (groupingLevels.category) activeLevels.push("category");
-        if (groupingLevels.gender) activeLevels.push("gender");
-        if (groupingLevels.silhouette) activeLevels.push("silhouette");
-        if (groupingLevels.article) activeLevels.push("article");
-        if (groupingLevels.variant) activeLevels.push("variant");
-
-        const levels = reportType === "separate" ? (["location", ...activeLevels] as string[]) : (activeLevels as string[]);
+        for (const header of locationHeaders) {
+            if (header.type === "warehouse") totals.warehouseStocks[header.id] = 0;
+            else totals.locationStocks[header.id] = 0;
+        }
 
         for (const item of filteredItems) {
-            const metrics: StockTotals = {
-                quantity: Number(item.quantity) || 0,
-                transit: Number(item.transit) || 0,
-                reserved: Number(item.reserved) || 0,
-                total: Number(item.total) || 0,
-                unitPrice: Number(item.unitPrice) || 0,
-                value: Number(item.value) || 0,
-                unitCost: Number(item.unitCost) || 0,
-                costingValue: Number(item.costingValue) || 0,
-            };
+            totals.quantity += Number(item.quantity || 0);
+            totals.transit += Number(item.transit || 0);
+            totals.reserved += Number(item.reserved || 0);
+            totals.total += Number(item.total || 0);
+            totals.value += Number(item.value || 0);
+            totals.costingValue += Number(item.costingValue || 0);
 
-            addTotals(grandTotals, metrics);
-
-            let currentLevelNodes = root;
-
-            for (let i = 0; i < levels.length; i++) {
-                const levelName = levels[i];
-                let nodeVal = "";
-                let extraFields: Partial<TreeNode> = {};
-
-                if (levelName === "location") {
-                    nodeVal = item.locationName;
-                } else if (levelName === "brand") {
-                    nodeVal = item.brand || "No Brand";
-                } else if (levelName === "division") {
-                    nodeVal = item.division || "No Division";
-                } else if (levelName === "category") {
-                    nodeVal = item.category || "No Category";
-                } else if (levelName === "gender") {
-                    nodeVal = item.gender || "No Gender";
-                } else if (levelName === "silhouette") {
-                    nodeVal = item.silhouette || "No Silhouette";
-                } else if (levelName === "article") {
-                    nodeVal = item.sku;
-                    extraFields.sku = item.sku;
-                    extraFields.articleName = item.articleName || "Unknown Article";
-                    extraFields.barCode = item.barCode;
-                } else if (levelName === "variant") {
-                    nodeVal = item.barCode
-                        ? `[${item.barCode}] ${item.color || "Default"}-${item.size || "Default"}`
-                        : `${item.color || "Default"}-${item.size || "Default"}`;
-                    extraFields.color = item.color || "Default";
-                    extraFields.size = item.size || "Default";
-                    extraFields.barCode = item.barCode;
+            if (item.warehouseStocks) {
+                for (const [whId, qty] of Object.entries(item.warehouseStocks)) {
+                    totals.warehouseStocks[whId] = (totals.warehouseStocks[whId] || 0) + Number(qty || 0);
                 }
+            }
 
-                let existingNode = currentLevelNodes.find(
-                    (n) => n.level === levelName && n.value === nodeVal
-                );
-
-                if (!existingNode) {
-                    existingNode = {
-                        level: levelName,
-                        value: nodeVal,
-                        totals: createEmptyTotals(),
-                        ...extraFields,
-                        children: [],
-                    };
-                    currentLevelNodes.push(existingNode);
+            if (item.locationStocks) {
+                for (const [locId, qty] of Object.entries(item.locationStocks)) {
+                    totals.locationStocks[locId] = (totals.locationStocks[locId] || 0) + Number(qty || 0);
                 }
-
-                addTotals(existingNode.totals, metrics);
-
-                if (levelName === "article" || levelName === "variant") {
-                    existingNode.totals.unitPrice = metrics.unitPrice;
-                    existingNode.totals.unitCost = metrics.unitCost;
-                }
-
-                currentLevelNodes = existingNode.children;
             }
         }
 
-        return { treeData: root, grandTotals };
-    }, [filteredItems, reportType, groupingLevels]);
+        return totals;
+    }, [filteredItems, locationHeaders]);
 
     return {
+        locationHeaders,
         attributeOptions,
         filteredItems,
-        treeData,
         grandTotals,
     };
 }

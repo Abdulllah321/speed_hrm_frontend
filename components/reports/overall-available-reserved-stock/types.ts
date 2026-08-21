@@ -1,19 +1,22 @@
 "use client";
 
+export interface LocationHeader {
+    id: string;
+    code: string;
+    name: string;
+    type: "outlet" | "warehouse";
+}
+
 export interface FlatItemRecord {
     itemId: string;
-    locationId: string | null;
-    warehouseId: string | null;
-    locationName: string;
-    locationType: "outlet" | "warehouse";
-    sku: string;
-    articleName: string;
-    barCode: string;
     brand: string;
     division: string;
     category: string;
     gender: string;
     silhouette: string;
+    sku: string;
+    articleName: string;
+    barCode: string;
     size: string;
     color: string;
     unitPrice: number;
@@ -24,16 +27,8 @@ export interface FlatItemRecord {
     transit: number;  // In Transit Qty
     reserved: number; // Reserved Qty
     total: number;    // Total Balance Qty
-}
-
-export interface GroupingLevels {
-    brand: boolean;
-    division: boolean;
-    category: boolean;
-    gender: boolean;
-    silhouette: boolean;
-    article: boolean;
-    variant: boolean;
+    locationStocks?: Record<string, number>;
+    warehouseStocks?: Record<string, number>;
 }
 
 export interface StockTotals {
@@ -45,16 +40,6 @@ export interface StockTotals {
     value: number;
     unitCost: number;
     costingValue: number;
-}
-
-export interface TreeNode {
-    level: string;
-    value: string;
-    sku?: string;
-    articleName?: string;
-    barCode?: string;
-    size?: string;
-    color?: string;
-    totals: StockTotals;
-    children: TreeNode[];
+    locationStocks?: Record<string, number>;
+    warehouseStocks?: Record<string, number>;
 }

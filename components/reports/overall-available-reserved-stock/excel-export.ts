@@ -1,17 +1,14 @@
 "use client";
 
 import * as XLSX from "xlsx";
-import { TreeNode, StockTotals, FlatItemRecord } from "./types";
+import { FlatItemRecord, LocationHeader, StockTotals } from "./types";
 import { registerOverallAvailableReservedStockClientExport } from "@/lib/actions/stock-ledger";
 
 interface ExportExcelOptions {
-    treeData: TreeNode[];
     filteredItems: FlatItemRecord[];
+    locationHeaders: LocationHeader[];
     grandTotals: StockTotals;
-    reportType: "merged" | "separate";
-    exportMode?: "hierarchy" | "flat" | "both";
-    dateFromStr?: string;
-    dateToStr?: string;
+    asOfDate?: string;
     companyName?: string;
     onProgress?: (percent: number, message: string) => void;
 }
@@ -19,13 +16,10 @@ interface ExportExcelOptions {
 const yieldToMain = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 export async function exportOverallAvailableReservedStockToExcel({
-    treeData,
     filteredItems,
+    locationHeaders,
     grandTotals,
-    reportType,
-    exportMode = "both",
-    dateFromStr,
-    dateToStr,
+    asOfDate,
     companyName = "Speed Limit ERP",
     onProgress,
 }: ExportExcelOptions): Promise<void> {
@@ -34,217 +28,129 @@ export async function exportOverallAvailableReservedStockToExcel({
         await yieldToMain();
 
         const formattedDate = new Date().toLocaleString();
-        const dateRangeStr = `As Of Date: ${dateToStr || format(new Date(), "yyyy-MM-dd")}`;
+        const dateRangeStr = `As Of Date: ${asOfDate || new Date().toISOString().slice(0, 10)}`;
 
-        // ─── 1. Build Color-Coded Hierarchy View Rows ──────────────────────────────
-        let hierarchyRowsHtml = "";
-        let hierarchyFlatRows: any[][] = [];
+        const dataRows: any[][] = [];
 
-        hierarchyFlatRows.push([companyName.toUpperCase()]);
-        hierarchyFlatRows.push([`OVERALL AVAILABLE RESERVED STOCK REPORT (${reportType.toUpperCase()} HIERARCHY VIEW)`]);
-        hierarchyFlatRows.push([dateRangeStr]);
-        hierarchyFlatRows.push([`Generated At: ${formattedDate}`]);
-        hierarchyFlatRows.push([]);
-        hierarchyFlatRows.push([
-            "GPC / Category / Product / Barcode",
-            "Size",
-            "Color",
-            "Available Qty",
-            "In Transit",
-            "Stock Reserved",
-            "Total Balance",
-            "Selling Price (Rs.)",
-            "Selling Value (Rs.)",
-            "Unit Cost (Rs.)",
-            "Costing Value (Rs.)",
-        ]);
+        // Title Block
+        dataRows.push([companyName.toUpperCase()]);
+        dataRows.push([`OVERALL STOCK MATRIX REPORT (OUTLETS & WAREHOUSES STORE-WISE BREAKDOWN)`]);
+        dataRows.push([dateRangeStr]);
+        dataRows.push([`Generated At: ${formattedDate}`]);
+        dataRows.push([]);
 
-        if (exportMode === "hierarchy" || exportMode === "both") {
-            onProgress?.(15, "Formatting color-coded hierarchy tree...");
-            await yieldToMain();
-
-            const flatNodeList: { node: TreeNode; depth: number }[] = [];
-            function flattenTree(nodes: TreeNode[], depth: number) {
-                for (const node of nodes) {
-                    flatNodeList.push({ node, depth });
-                    if (node.children && node.children.length > 0) {
-                        flattenTree(node.children, depth + 1);
-                    }
-                }
-            }
-            flattenTree(treeData, 0);
-
-            const totalTreeItems = Math.max(1, flatNodeList.length);
-
-            for (let i = 0; i < flatNodeList.length; i++) {
-                const { node, depth } = flatNodeList[i];
-                const indent = "  ".repeat(depth);
-
-                let label = `${indent}${node.value}`;
-                if (node.sku && node.articleName) {
-                    label = `${indent}[${node.sku}] ${node.articleName}`;
-                } else if (node.level === "variant" && node.barCode) {
-                    label = `${indent}[${node.barCode}] ${node.color || "Default"}-${node.size || "Default"}`;
-                }
-
-                hierarchyFlatRows.push([
-                    label,
-                    node.size || "",
-                    node.color || "",
-                    node.totals.quantity,
-                    node.totals.transit,
-                    node.totals.reserved,
-                    node.totals.total,
-                    node.totals.unitPrice || "",
-                    node.totals.value,
-                    node.totals.unitCost || "",
-                    node.totals.costingValue,
-                ]);
-
-                if (i % 80 === 0) {
-                    const pct = 15 + Math.floor((i / totalTreeItems) * 30);
-                    onProgress?.(pct, `Formatting hierarchy rows (${i}/${totalTreeItems})...`);
-                    await yieldToMain();
-                }
-            }
-
-            hierarchyFlatRows.push([]);
-            hierarchyFlatRows.push([
-                "GRAND TOTAL",
-                "",
-                "",
-                grandTotals.quantity,
-                grandTotals.transit,
-                grandTotals.reserved,
-                grandTotals.total,
-                "",
-                grandTotals.value,
-                "",
-                grandTotals.costingValue,
-            ]);
-        }
-
-        // ─── 2. Build Color-Coded Flat Detail Ledger Rows ──────────────────────────
-        let flatDataRows: any[][] = [];
-
-        flatDataRows.push([companyName.toUpperCase()]);
-        flatDataRows.push([`OVERALL AVAILABLE RESERVED STOCK REPORT (FLAT DETAIL LEDGER VIEW)`]);
-        flatDataRows.push([dateRangeStr]);
-        flatDataRows.push([`Generated At: ${formattedDate}`]);
-        flatDataRows.push([]);
-        flatDataRows.push([
-            "Location / Store",
-            "Barcode",
-            "SKU",
-            "Article Name",
+        // Header Row
+        const headerRow = [
             "Brand",
             "Division",
             "Category",
             "Gender",
             "Silhouette",
+            "SKU",
+            "Article Name",
             "Size",
             "Color",
+            "Barcode",
             "Available Qty",
             "In Transit",
             "Stock Reserved",
             "Total Balance",
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
-            "Unit Cost (Rs.)",
-            "Costing Value (Rs.)",
-        ]);
+            ...locationHeaders.map((h) => h.code),
+        ];
+        dataRows.push(headerRow);
 
-        if (exportMode === "flat" || exportMode === "both") {
-            onProgress?.(45, "Formatting color-coded flat detail ledger...");
-            await yieldToMain();
-
-            const totalFlatItems = Math.max(1, filteredItems.length);
-
-            for (let i = 0; i < filteredItems.length; i++) {
-                const item = filteredItems[i];
-
-                flatDataRows.push([
-                    item.locationName,
-                    item.barCode,
-                    item.sku,
-                    item.articleName,
-                    item.brand,
-                    item.division,
-                    item.category,
-                    item.gender,
-                    item.silhouette,
-                    item.size,
-                    item.color,
-                    item.quantity,
-                    item.transit,
-                    item.reserved,
-                    item.total,
-                    item.unitPrice,
-                    item.value,
-                    item.unitCost,
-                    item.costingValue,
-                ]);
-
-                if (i % 100 === 0) {
-                    const pct = 45 + Math.floor((i / totalFlatItems) * 35);
-                    onProgress?.(pct, `Formatting flat detail item ${i}/${totalFlatItems}...`);
-                    await yieldToMain();
-                }
-            }
-
-            flatDataRows.push([]);
-            flatDataRows.push([
-                "GRAND TOTAL",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                grandTotals.quantity,
-                grandTotals.transit,
-                grandTotals.reserved,
-                grandTotals.total,
-                "",
-                grandTotals.value,
-                "",
-                grandTotals.costingValue,
-            ]);
-        }
-
-        onProgress?.(85, "Creating XLSX workbook...");
+        onProgress?.(20, "Formatting store matrix rows...");
         await yieldToMain();
 
-        // ─── 3. Construct Multi-Sheet XLSX Workbook ─────────────────────────────
+        const totalItems = Math.max(1, filteredItems.length);
+
+        for (let i = 0; i < filteredItems.length; i++) {
+            const item = filteredItems[i];
+
+            const locQtys = locationHeaders.map((hdr) => {
+                if (hdr.type === "warehouse") {
+                    return item.warehouseStocks?.[hdr.id] || 0;
+                }
+                return item.locationStocks?.[hdr.id] || 0;
+            });
+
+            dataRows.push([
+                item.brand || "",
+                item.division || "",
+                item.category || "",
+                item.gender || "",
+                item.silhouette || "",
+                item.sku || "",
+                item.articleName || "",
+                item.size || "",
+                item.color || "",
+                item.barCode || "",
+                item.quantity,
+                item.transit,
+                item.reserved,
+                item.total,
+                item.unitPrice,
+                item.value,
+                ...locQtys,
+            ]);
+
+            if (i % 100 === 0) {
+                const pct = 20 + Math.floor((i / totalItems) * 60);
+                onProgress?.(pct, `Formatting item ${i}/${totalItems}...`);
+                await yieldToMain();
+            }
+        }
+
+        // Grand Totals Row
+        const totalsLocQtys = locationHeaders.map((hdr) => {
+            if (hdr.type === "warehouse") {
+                return grandTotals.warehouseStocks?.[hdr.id] || 0;
+            }
+            return grandTotals.locationStocks?.[hdr.id] || 0;
+        });
+
+        dataRows.push([]);
+        dataRows.push([
+            "GRAND TOTAL",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            grandTotals.quantity,
+            grandTotals.transit,
+            grandTotals.reserved,
+            grandTotals.total,
+            "",
+            grandTotals.value,
+            ...totalsLocQtys,
+        ]);
+
+        onProgress?.(85, "Constructing XLSX workbook...");
+        await yieldToMain();
+
         const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
 
-        if (exportMode === "hierarchy" || exportMode === "both") {
-            const wsHierarchy = XLSX.utils.aoa_to_sheet(hierarchyFlatRows);
-            wsHierarchy["!cols"] = [
-                { wch: 48 }, { wch: 10 }, { wch: 16 }, { wch: 14 },
-                { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
-                { wch: 18 }, { wch: 16 }, { wch: 18 },
-            ];
-            XLSX.utils.book_append_sheet(workbook, wsHierarchy, "Hierarchy Stock Summary");
-        }
+        // Column widths
+        const colWidths = [
+            { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 14 },
+            { wch: 14 }, { wch: 16 }, { wch: 32 }, { wch: 10 },
+            { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 12 },
+            { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 18 },
+            ...locationHeaders.map(() => ({ wch: 12 })),
+        ];
+        worksheet["!cols"] = colWidths;
 
-        if (exportMode === "flat" || exportMode === "both") {
-            const wsFlat = XLSX.utils.aoa_to_sheet(flatDataRows);
-            wsFlat["!cols"] = [
-                { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 32 },
-                { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 12 },
-                { wch: 16 }, { wch: 10 }, { wch: 16 }, { wch: 14 },
-                { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
-                { wch: 18 }, { wch: 16 }, { wch: 18 },
-            ];
-            XLSX.utils.book_append_sheet(workbook, wsFlat, "Flat Detail Ledger");
-        }
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Overall Stock Matrix");
 
-        const fileName = `overall-available-reserved-stock-${exportMode}-${reportType}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        const fileName = `overall-stock-matrix-${asOfDate || new Date().toISOString().slice(0, 10)}.xlsx`;
         const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
 
         onProgress?.(92, "Triggering instant browser download...");

@@ -2,10 +2,8 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
-import { GroupingLevels } from "./types";
 import { Location } from "@/lib/actions/location";
 import { Warehouse } from "@/lib/actions/warehouse";
 import {
@@ -13,21 +11,11 @@ import {
     RefreshCw,
     Download,
     Printer,
-    SlidersHorizontal,
-    Layers,
     X,
     Loader2,
     Calendar,
     ChevronDownIcon,
 } from "lucide-react";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 // ─── Multi-select Popover ───────────────────────────────────────────────────
@@ -121,10 +109,6 @@ interface FiltersProps {
     setSelectedWarehouseIds: React.Dispatch<React.SetStateAction<string[]>>;
     searchQuery: string;
     setSearchQuery: (v: string) => void;
-    reportType: "merged" | "separate";
-    setReportType: (v: "merged" | "separate") => void;
-    groupingLevels: GroupingLevels;
-    setGroupingLevels: React.Dispatch<React.SetStateAction<GroupingLevels>>;
     attributeOptions: {
         brands: string[];
         divisions: string[];
@@ -152,8 +136,8 @@ interface FiltersProps {
     fetchProgressPercent?: number;
     fetchProgressMessage?: string;
     onRefresh: () => void;
-    onExcelExport: (mode: "hierarchy" | "flat" | "both") => void;
-    onPdfExport: (mode: "hierarchy" | "flat") => void;
+    onExcelExport: () => void;
+    onPdfExport: () => void;
     exportProgressPercent: number;
     exportProgressMessage: string;
     isExporting: boolean;
@@ -170,10 +154,6 @@ export function OverallAvailableReservedFilters({
     setSelectedWarehouseIds,
     searchQuery,
     setSearchQuery,
-    reportType,
-    setReportType,
-    groupingLevels,
-    setGroupingLevels,
     attributeOptions,
     filterBrands,
     setFilterBrands,
@@ -199,13 +179,11 @@ export function OverallAvailableReservedFilters({
     exportProgressMessage,
     isExporting,
 }: FiltersProps) {
-    const [showLevelPanel, setShowLevelPanel] = useState(false);
-
     const locationOptions: MultiSelectOption[] = useMemo(() => {
         return locations.map((loc) => ({
             value: loc.id,
             label: loc.name,
-            description: loc.code ? `Code: ${loc.code}` : undefined,
+            description: (loc as any).shortCode || loc.code ? `Code: ${(loc as any).shortCode || loc.code}` : undefined,
         }));
     }, [locations]);
 
@@ -298,99 +276,28 @@ export function OverallAvailableReservedFilters({
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Column Grouping Levels Toggle Button */}
+                    {/* Export Actions */}
+                    <Button
+                        variant="default"
+                        size="sm"
+                        onClick={onExcelExport}
+                        disabled={isExporting || isLoading}
+                        className="h-9 px-3 gap-1.5 font-semibold text-xs rounded-xl"
+                    >
+                        {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                        Export Excel Matrix
+                    </Button>
+
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setShowLevelPanel((p) => !p)}
+                        onClick={onPdfExport}
+                        disabled={isExporting || isLoading}
                         className="h-9 px-3 gap-1.5 font-semibold text-xs rounded-xl"
                     >
-                        <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
-                        Hierarchy Levels
+                        <Printer className="h-3.5 w-3.5" />
+                        PDF / Print Matrix
                     </Button>
-
-                    {/* Merged vs Separate Switch */}
-                    <div className="flex items-center gap-1.5 bg-muted p-1 rounded-xl border border-border">
-                        <button
-                            type="button"
-                            onClick={() => setReportType("merged")}
-                            className={cn(
-                                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
-                                reportType === "merged"
-                                    ? "bg-background text-foreground shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground"
-                            )}
-                        >
-                            Merged
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setReportType("separate")}
-                            className={cn(
-                                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
-                                reportType === "separate"
-                                    ? "bg-background text-foreground shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground"
-                            )}
-                        >
-                            Separate
-                        </button>
-                    </div>
-
-                    {/* Export Actions */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="default"
-                                size="sm"
-                                disabled={isExporting || isLoading}
-                                className="h-9 px-3 gap-1.5 font-semibold text-xs rounded-xl"
-                            >
-                                {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                                Export Excel
-                                <ChevronDownIcon className="h-3 w-3 opacity-70" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel className="text-[11px] font-bold text-muted-foreground uppercase">Excel Export Formats</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => onExcelExport("hierarchy")} className="cursor-pointer text-xs font-medium">
-                                Hierarchy View (Color-Coded)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onExcelExport("flat")} className="cursor-pointer text-xs font-medium">
-                                Flat Detail View (Color-Coded)
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => onExcelExport("both")} className="cursor-pointer text-xs font-bold text-primary">
-                                Combined Workbook (Both Views)
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={isExporting || isLoading}
-                                className="h-9 px-3 gap-1.5 font-semibold text-xs rounded-xl"
-                            >
-                                <Printer className="h-3.5 w-3.5" />
-                                PDF / Print
-                                <ChevronDownIcon className="h-3 w-3 opacity-70" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-52">
-                            <DropdownMenuLabel className="text-[11px] font-bold text-muted-foreground uppercase">PDF / Print Layouts</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => onPdfExport("hierarchy")} className="cursor-pointer text-xs font-medium">
-                                Hierarchy Print Layout
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onPdfExport("flat")} className="cursor-pointer text-xs font-medium">
-                                Flat Detail Print Layout
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </div>
             </div>
 
@@ -474,33 +381,6 @@ export function OverallAvailableReservedFilters({
                 </div>
             </div>
 
-            {/* Expandable Hierarchy Level Selector */}
-            {showLevelPanel && (
-                <div className="p-3 rounded-xl border border-border bg-card/80 space-y-2 animate-in fade-in duration-200">
-                    <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                        Toggle Hierarchy Columns
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-foreground">
-                        {Object.keys(groupingLevels).map((levelKey) => (
-                            <label key={levelKey} className="flex items-center gap-1.5 cursor-pointer capitalize">
-                                <input
-                                    type="checkbox"
-                                    checked={(groupingLevels as any)[levelKey]}
-                                    onChange={(e) =>
-                                        setGroupingLevels((prev) => ({
-                                            ...prev,
-                                            [levelKey]: e.target.checked,
-                                        }))
-                                    }
-                                    className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
-                                />
-                                <span>{levelKey}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            )}
-
             {/* Realtime Data Calculation / Export Progress Bar */}
             {(isLoading || isExporting) && (
                 <div className="p-3 rounded-xl border border-primary/30 bg-primary/5 space-y-1.5 shadow-sm animate-in fade-in duration-200">
@@ -508,8 +388,8 @@ export function OverallAvailableReservedFilters({
                         <span className="flex items-center gap-2">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             {isExporting
-                                ? exportProgressMessage || "Processing Excel Export..."
-                                : fetchProgressMessage || "Calculating Overall Available Reserved Stock..."}
+                                ? exportProgressMessage || "Processing Excel Export Matrix..."
+                                : fetchProgressMessage || "Calculating Overall Stock Matrix..."}
                         </span>
                         <span>{isExporting ? exportProgressPercent : fetchProgressPercent}%</span>
                     </div>
