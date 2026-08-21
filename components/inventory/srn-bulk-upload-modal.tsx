@@ -14,6 +14,7 @@ import { getApiBaseUrl } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Autocomplete } from '@/components/ui/autocomplete';
 
 const BASE = () => `${getApiBaseUrl()}/stock-requisition/bulk-upload`;
 
@@ -214,33 +215,41 @@ export function SrnBulkUploadModal({
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Source Warehouse <span className="text-destructive">*</span></Label>
-                                    <Select value={fromWarehouseId} onValueChange={setFromWarehouseId} disabled={!!uploadId}>
-                                        <SelectTrigger className="bg-background h-10"><SelectValue placeholder="Select Warehouse" /></SelectTrigger>
-                                        <SelectContent>
-                                            {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <Autocomplete
+                                        options={warehouses.map(w => ({ value: w.id, label: w.name }))}
+                                        value={fromWarehouseId}
+                                        onValueChange={setFromWarehouseId}
+                                        disabled={!!uploadId}
+                                        placeholder="Search & select warehouse..."
+                                        searchPlaceholder="Search warehouse..."
+                                    />
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Destination Outlet <span className="text-destructive">*</span></Label>
-                                    <Select value={toLocationId} onValueChange={setToLocationId} disabled={!!uploadId}>
-                                        <SelectTrigger className="bg-background h-10"><SelectValue placeholder="Select Outlet" /></SelectTrigger>
-                                        <SelectContent>
-                                            {locations.map(l => <SelectItem key={l.id} value={l.id}>{l.code ? `${l.code} · ${l.name}` : l.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <Autocomplete
+                                        options={locations.map(l => ({ value: l.id, label: l.code ? `${l.code} · ${l.name}` : l.name }))}
+                                        value={toLocationId}
+                                        onValueChange={setToLocationId}
+                                        disabled={!!uploadId}
+                                        placeholder="Search & select destination outlet..."
+                                        searchPlaceholder="Search outlet code or name..."
+                                    />
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Brand (Optional)</Label>
-                                    <Select value={brandId} onValueChange={setBrandId} disabled={!!uploadId}>
-                                        <SelectTrigger className="bg-background h-10"><SelectValue placeholder="No Brand Filter" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">No Brand Filter</SelectItem>
-                                            {brands.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <Autocomplete
+                                        options={[
+                                            { value: 'none', label: 'No Brand Filter' },
+                                            ...brands.map(b => ({ value: b.id, label: b.name }))
+                                        ]}
+                                        value={brandId || 'none'}
+                                        onValueChange={(val) => setBrandId(val === 'none' ? '' : val)}
+                                        disabled={!!uploadId}
+                                        placeholder="Search & select brand..."
+                                        searchPlaceholder="Search brand name..."
+                                    />
                                 </div>
 
                                 <div className="space-y-2">

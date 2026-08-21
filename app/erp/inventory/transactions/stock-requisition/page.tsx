@@ -493,23 +493,27 @@ export default function StockRequisitionPage() {
     toast.info('Edit cancelled');
   };
 
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterSearch, setFilterSearch] = useState<string>('');
+
   const handleApproveRequisition = async (id: string) => {
-    setSubmitting(true);
+    setApprovingId(id);
     try {
       const res = await stockRequisitionApi.approve(id);
       if (res.status) {
         toast.success('Stock Requisition Note approved and stock reserved!');
         setDetailSheetOpen(false);
-        router.push('/erp/inventory/transactions/stock-requisition/pending');
+        await loadRequisitions();
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to approve requisition note');
     } finally {
-      setSubmitting(false);
+      setApprovingId(null);
     }
   };
 
-  const handleCreateRequisition = async () => {
+  const handleCreateRequisition = async (asDraft = false) => {
     if (!selectedWarehouseId) {
       toast.error('Please select source warehouse');
       return;
@@ -528,11 +532,12 @@ export default function StockRequisitionPage() {
       const payload = {
         fromWarehouseId: selectedWarehouseId,
         toLocationId: destLocationId,
-        brandId: selectedBrandId || undefined,
+        brandId: selectedBrandId && selectedBrandId !== 'none' ? selectedBrandId : undefined,
         documentType,
         remarks,
         notes,
         financialYear,
+        status: asDraft ? 'DRAFT' : 'PENDING',
         items: requisitionItems.map((i) => ({
           itemId: i.itemId,
           quantity: i.quantity,
@@ -548,19 +553,24 @@ export default function StockRequisitionPage() {
           setRequisitionItems([]);
           setRemarks('');
           setNotes('');
-          loadRequisitions();
-          fetchNextRequisitionNumber();
+          await loadRequisitions();
+          await fetchNextRequisitionNumber();
           setActiveTab('all');
         }
       } else {
         const res = await stockRequisitionApi.create(payload);
         if (res.status) {
-          toast.success('Stock Requisition Note created and stock reserved!');
+          toast.success(
+            asDraft
+              ? 'Draft Stock Requisition created successfully!'
+              : 'Stock Requisition Note created and stock reserved successfully!'
+          );
           setRequisitionItems([]);
           setRemarks('');
           setNotes('');
-          fetchNextRequisitionNumber();
-          router.push('/erp/inventory/transactions/stock-requisition/pending');
+          await loadRequisitions();
+          await fetchNextRequisitionNumber();
+          setActiveTab('all');
         }
       }
     } catch (error: any) {
@@ -641,19 +651,47 @@ export default function StockRequisitionPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'DRAFT':
-        return <Badge className="bg-amber-400 hover:bg-amber-500 text-black font-semibold">Draft (Outlet Request)</Badge>;
+        return <Badge className="bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 font-bold">Draft (Pending Approval)</Badge>;
       case 'PENDING':
-        return <Badge className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold">Pending</Badge>;
+        return <Badge className="bg-indigo-100 hover:bg-indigo-200 text-indigo-900 border-indigo-300 font-bold">Approved (Pending Transfer)</Badge>;
       case 'COMPLETED':
-        return <Badge className="bg-green-500 hover:bg-green-600 text-white font-semibold">Completed</Badge>;
+        return <Badge className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300 font-bold">Completed (STN Issued)</Badge>;
       case 'PARTIALLY_FULFILLED':
         return <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-semibold">Partial</Badge>;
       case 'CANCELLED':
-        return <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-semibold">Cancelled</Badge>;
+        return <Badge className="bg-rose-100 hover:bg-rose-200 text-rose-900 border-rose-300 font-bold">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  const filteredRequisitions = requisitions.filter((req) => {
+    if (filterStatus !== 'all' && req.status !== filterStatus) return false;
+    if (filterSearch.trim()) {
+      const q = filterSearch.toLowerCase();
+      const matchNo = req.requisitionNo?.toLowerCase().includes(q);
+      const matchFrom = (req.fromLocation?.name || req.fromWarehouse?.name || '').toLowerCase().includes(q);
+      const matchTo = (req.toLocation?.name || '').toLowerCase().includes(q);
+      const matchRemarks = (req.remarks || '').toLowerCase().includes(q);
+      const matchType = (req.documentType || '').toLowerCase().includes(q);
+      return matchNo || matchFrom || matchTo || matchRemarks || matchType;
+    }
+    return true;
+  });
+
+  const draftCount = requisitions.filter((r) => r.status === 'DRAFT').length;
+  const pendingCount = requisitions.filter((r) => r.status === 'PENDING').length;
+  const completedCount = requisitions.filter((r) => r.status === 'COMPLETED').length;
+
+  const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
+  const locationOptions = locations.map((l) => ({
+    value: l.id,
+    label: l.code ? `${l.code} · ${l.name}` : l.name,
+  }));
+  const brandOptions = [
+    { value: 'none', label: 'No Brand Filter' },
+    ...brands.map((b) => ({ value: b.id, label: b.name })),
+  ];
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -674,6 +712,11 @@ export default function StockRequisitionPage() {
           <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
             <Link href="/erp/inventory/transactions/stock-requisition/pending">
               <Package className="h-4 w-4 mr-2 text-indigo-600" /> Warehouse Pending List
+              {pendingCount > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-indigo-600 text-white rounded-full font-bold">
+                  {pendingCount}
+                </span>
+              )}
             </Link>
           </Button>
           <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
@@ -692,14 +735,14 @@ export default function StockRequisitionPage() {
               className="font-bold data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 px-6 py-2.5"
             >
               <History className="h-4 w-4 mr-2" />
-              All Requisitions
+              All Requisitions ({requisitions.length})
             </TabsTrigger>
             <TabsTrigger
               value="create"
               className="font-bold data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 px-6 py-2.5"
             >
               <Plus className="h-4 w-4 mr-2" />
-              New Requisition
+              {editId ? 'Edit Requisition' : 'New Requisition'}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -708,73 +751,188 @@ export default function StockRequisitionPage() {
         <TabsContent value="all">
           <Card className="border shadow-md">
             <CardHeader className="pb-3 border-b">
-              <CardTitle className="text-xl font-bold text-gray-800">All Requisition History</CardTitle>
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <CardTitle className="text-xl font-bold text-gray-800">All Requisitions</CardTitle>
+                
+                {/* Search & Filter bar */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-64">
+                    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search SRN #, outlet, WH..."
+                      value={filterSearch}
+                      onChange={(e) => setFilterSearch(e.target.value)}
+                      className="pl-9 h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="flex bg-gray-100 p-1 rounded-md text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatus('all')}
+                      className={`px-3 py-1 rounded transition-colors ${filterStatus === 'all' ? 'bg-white shadow-sm text-indigo-700 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
+                    >
+                      All ({requisitions.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatus('DRAFT')}
+                      className={`px-3 py-1 rounded transition-colors ${filterStatus === 'DRAFT' ? 'bg-white shadow-sm text-amber-700 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
+                    >
+                      Drafts ({draftCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatus('PENDING')}
+                      className={`px-3 py-1 rounded transition-colors ${filterStatus === 'PENDING' ? 'bg-white shadow-sm text-indigo-700 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
+                    >
+                      Approved ({pendingCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatus('COMPLETED')}
+                      className={`px-3 py-1 rounded transition-colors ${filterStatus === 'COMPLETED' ? 'bg-white shadow-sm text-emerald-700 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
+                    >
+                      Completed ({completedCount})
+                    </button>
+                  </div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
               {loading ? (
                 <div className="flex justify-center items-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
                 </div>
-              ) : requisitions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  No stock requisition notes found.
+              ) : filteredRequisitions.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground font-semibold">
+                  {filterSearch || filterStatus !== 'all'
+                    ? 'No stock requisition notes matching current filters.'
+                    : 'No stock requisition notes found. Click "New Requisition" to create one.'}
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                      <TableHead className="font-bold">Requisition No</TableHead>
-                      <TableHead className="font-bold">Date</TableHead>
-                      <TableHead className="font-bold">From Warehouse</TableHead>
-                      <TableHead className="font-bold">To Location</TableHead>
-                      <TableHead className="font-bold">Brand</TableHead>
-                      <TableHead className="font-bold">Type</TableHead>
-                      <TableHead className="font-bold">Status</TableHead>
-                      <TableHead className="text-right font-bold">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {requisitions.map((req) => (
-                      <TableRow key={req.id} className="hover:bg-indigo-50/20 transition-colors">
-                        <TableCell className="font-bold text-indigo-600">{req.requisitionNo}</TableCell>
-                        <TableCell>{new Date(req.requisitionDate).toLocaleDateString()}</TableCell>
-                        <TableCell className="font-medium">{req.fromLocation?.name || req.fromWarehouse?.name || '—'}</TableCell>
-                        <TableCell className="font-medium">{req.toLocation?.name}</TableCell>
-                        <TableCell>{req.brand?.name || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="border-indigo-300 text-indigo-700 bg-indigo-50/50">
-                            {req.documentType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(req.status)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" onClick={() => openDetailSheet(req)}>
-                              View Detail
-                            </Button>
-                            {(req.status === 'PENDING' || req.status === 'DRAFT') && (
+                <div className="border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
+                        <TableHead className="font-bold">Requisition No</TableHead>
+                        <TableHead className="font-bold">Date</TableHead>
+                        <TableHead className="font-bold">From Warehouse</TableHead>
+                        <TableHead className="font-bold">To Location</TableHead>
+                        <TableHead className="font-bold">Brand</TableHead>
+                        <TableHead className="font-bold">Type</TableHead>
+                        <TableHead className="font-bold">Status</TableHead>
+                        <TableHead className="text-right font-bold">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRequisitions.map((req) => (
+                        <TableRow key={req.id} className="hover:bg-indigo-50/20 transition-colors">
+                          <TableCell className="font-bold text-indigo-600 font-mono">{req.requisitionNo}</TableCell>
+                          <TableCell className="text-xs">{new Date(req.requisitionDate).toLocaleDateString()}</TableCell>
+                          <TableCell className="font-medium text-xs">{req.fromLocation?.name || req.fromWarehouse?.name || '—'}</TableCell>
+                          <TableCell className="font-medium text-xs">{req.toLocation?.name}</TableCell>
+                          <TableCell className="text-xs">{req.brand?.name || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="border-indigo-300 text-indigo-700 bg-indigo-50/50 text-[11px]">
+                              {req.documentType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(req.status)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end items-center gap-1.5 flex-wrap">
+                              {/* If DRAFT: Show Approve button */}
+                              {req.status === 'DRAFT' && (
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white font-bold h-8 text-xs"
+                                  disabled={approvingId === req.id}
+                                  onClick={() => handleApproveRequisition(req.id)}
+                                >
+                                  {approvingId === req.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                                  ) : (
+                                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                  )}
+                                  Approve
+                                </Button>
+                              )}
+
+                              {/* If PENDING: Show Transfer Stock button */}
+                              {req.status === 'PENDING' && (
+                                <Button
+                                  size="sm"
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs"
+                                  asChild
+                                >
+                                  <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${req.id}`}>
+                                    <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Transfer Stock
+                                  </Link>
+                                </Button>
+                              )}
+
+                              {/* If DRAFT: Show Edit button */}
+                              {req.status === 'DRAFT' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-xs font-semibold"
+                                  onClick={() => handleStartEdit(req)}
+                                >
+                                  Edit
+                                </Button>
+                              )}
+
+                              {/* View Detail button */}
                               <Button
                                 size="sm"
-                                variant="destructive"
-                                onClick={() => handleCancelRequisition(req.id)}
+                                variant="outline"
+                                className="h-8 text-xs font-semibold"
+                                onClick={() => openDetailSheet(req)}
                               >
-                                Cancel
+                                View Detail
                               </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+
+                              {/* Print Slip */}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                asChild
+                              >
+                                <Link
+                                  href={`/erp/inventory/transactions/stock-requisition/slip/${req.id}`}
+                                  target="_blank"
+                                  title="Print Slip"
+                                >
+                                  <Printer className="h-4 w-4 text-gray-600" />
+                                </Link>
+                              </Button>
+
+                              {/* Cancel */}
+                              {(req.status === 'PENDING' || req.status === 'DRAFT') && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="h-8 text-xs font-semibold"
+                                  onClick={() => handleCancelRequisition(req.id)}
+                                >
+                                  Cancel
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-
-
-        {/* Tab 3: Create Requisition */}
+        {/* Tab 2: Create Requisition */}
         <TabsContent value="create">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left Context Form */}
@@ -787,56 +945,40 @@ export default function StockRequisitionPage() {
               <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
                   <Label>Requisition Number</Label>
-                  <Input value={editId ? editRequisitionNo : (nextRequisitionNumber || 'Generating...')} disabled className="font-mono bg-gray-50" />
+                  <Input value={editId ? editRequisitionNo : (nextRequisitionNumber || 'Generating...')} disabled className="font-mono bg-gray-50 font-bold" />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Source Warehouse (From)</Label>
-                  <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select Warehouse" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {warehouses.map((w) => (
-                        <SelectItem key={w.id} value={w.id}>
-                          {w.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    options={warehouseOptions}
+                    value={selectedWarehouseId}
+                    onValueChange={setSelectedWarehouseId}
+                    placeholder="Search & select warehouse..."
+                    searchPlaceholder="Search warehouse..."
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Destination Location (Shop/Outlet)</Label>
-                  <Select value={destLocationId} onValueChange={setDestLocationId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select Outlet" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.code ? `${l.code} · ${l.name}` : l.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    options={locationOptions}
+                    value={destLocationId}
+                    onValueChange={setDestLocationId}
+                    placeholder="Search & select destination outlet..."
+                    searchPlaceholder="Search outlet code or name..."
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Brand (Optional)</Label>
-                  <Select value={selectedBrandId} onValueChange={setSelectedBrandId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select Brand" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Brand Filter</SelectItem>
-                      {brands.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    options={brandOptions}
+                    value={selectedBrandId || 'none'}
+                    onValueChange={(val) => setSelectedBrandId(val === 'none' ? '' : val)}
+                    placeholder="Search & select brand..."
+                    searchPlaceholder="Search brand name..."
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -876,35 +1018,76 @@ export default function StockRequisitionPage() {
                   />
                 </div>
 
-                <Button
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold mb-2"
-                  size="lg"
-                  disabled={submitting || requisitionItems.length === 0}
-                  onClick={handleCreateRequisition}
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" /> {editId ? 'Updating...' : 'Reserving...'}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-5 w-5 mr-2" /> {editId ? 'Update Requisition' : 'Confirm & Reserve Stock'}
-                    </>
-                  )}
-                </Button>
+                {/* Form Action Buttons */}
+                {editId ? (
+                  <div className="space-y-2 pt-2">
+                    <Button
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold"
+                      size="lg"
+                      disabled={submitting || requisitionItems.length === 0}
+                      onClick={() => handleCreateRequisition(false)}
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-5 w-5 mr-2" /> Update Requisition
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      className="w-full font-bold"
+                      variant="outline"
+                      onClick={handleCancelEdit}
+                    >
+                      Cancel Edit
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-2">
+                    {/* Primary Button: Confirm & Reserve Stock */}
+                    <Button
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold shadow-md text-white"
+                      size="lg"
+                      disabled={submitting || requisitionItems.length === 0}
+                      onClick={() => handleCreateRequisition(false)}
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Creating & Reserving...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-5 w-5 mr-2" /> Confirm & Reserve Stock
+                        </>
+                      )}
+                    </Button>
 
-                {editId && (
-                  <Button
-                    className="w-full font-bold"
-                    variant="outline"
-                    onClick={handleCancelEdit}
-                  >
-                    Cancel Edit
-                  </Button>
+                    {/* Secondary Button: Save as Draft */}
+                    <Button
+                      className="w-full border-2 border-amber-500 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold"
+                      size="lg"
+                      variant="outline"
+                      disabled={submitting || requisitionItems.length === 0}
+                      onClick={() => handleCreateRequisition(true)}
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Saving Draft...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-5 w-5 mr-2 text-amber-600" /> Save as Draft
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 )}
 
                 <Button
-                  className="w-full border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold"
+                  className="w-full border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold mt-2"
                   variant="outline"
                   size="lg"
                   disabled={requisitionItems.length === 0}
@@ -1201,7 +1384,7 @@ export default function StockRequisitionPage() {
                         </Button>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center flex-wrap">
                       {selectedRequisition.status === 'DRAFT' && (
                         <>
                           <Button
@@ -1214,9 +1397,33 @@ export default function StockRequisitionPage() {
                           <Button
                             className="bg-green-600 hover:bg-green-700 font-bold text-white"
                             onClick={() => handleApproveRequisition(selectedRequisition.id)}
-                            disabled={submitting}
+                            disabled={approvingId === selectedRequisition.id}
                           >
-                            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve & Reserve"}
+                            {approvingId === selectedRequisition.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 mr-1.5" />
+                            )}
+                            Approve & Reserve
+                          </Button>
+                        </>
+                      )}
+                      {selectedRequisition.status === 'PENDING' && (
+                        <>
+                          <Button
+                            className="bg-indigo-600 hover:bg-indigo-700 font-bold text-white"
+                            asChild
+                          >
+                            <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${selectedRequisition.id}`}>
+                              <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Transfer Stock
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-100 font-bold"
+                            onClick={() => setIsConverting(true)}
+                          >
+                            WH Picking / STN
                           </Button>
                         </>
                       )}
