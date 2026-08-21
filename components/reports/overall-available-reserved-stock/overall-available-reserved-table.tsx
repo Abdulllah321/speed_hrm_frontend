@@ -226,51 +226,51 @@ export function OverallAvailableReservedTable({
                             );
                         })}
                     </div>
-                </div>
-            </div>
 
-            {/* Sticky Grand Totals Footer */}
-            <div className="border-t-2 border-border bg-muted/95 backdrop-blur-md px-3 h-11 text-xs font-bold text-foreground shadow-inner flex items-center min-w-full">
-                <div className="w-28 shrink-0 uppercase tracking-wider text-muted-foreground">GRAND TOTAL</div>
-                <div className="w-28 shrink-0 text-muted-foreground/40">-</div>
-                <div className="w-28 shrink-0 text-muted-foreground/40">-</div>
-                <div className="w-24 shrink-0 text-muted-foreground/40">-</div>
-                <div className="w-24 shrink-0 text-muted-foreground/40">-</div>
-                <div className="w-28 shrink-0 text-muted-foreground/40">-</div>
-                <div className="w-48 shrink-0 text-muted-foreground/40">-</div>
-                <div className="w-16 text-center text-muted-foreground/40">-</div>
-                <div className="w-24 text-center text-muted-foreground/40">-</div>
-                <div className="w-32 text-center text-muted-foreground/40">-</div>
+                    {/* Sticky Grand Totals Footer (inside scroll container to scroll horizontally in sync) */}
+                    <div className="sticky bottom-0 z-20 border-t-2 border-border bg-muted/95 backdrop-blur-md px-3 h-11 text-xs font-bold text-foreground shadow-lg flex items-center whitespace-nowrap">
+                        <div className="w-28 shrink-0 uppercase tracking-wider text-muted-foreground">GRAND TOTAL</div>
+                        <div className="w-28 shrink-0 text-muted-foreground/40">-</div>
+                        <div className="w-28 shrink-0 text-muted-foreground/40">-</div>
+                        <div className="w-24 shrink-0 text-muted-foreground/40">-</div>
+                        <div className="w-24 shrink-0 text-muted-foreground/40">-</div>
+                        <div className="w-28 shrink-0 text-muted-foreground/40">-</div>
+                        <div className="w-48 shrink-0 text-muted-foreground/40">-</div>
+                        <div className="w-16 text-center text-muted-foreground/40">-</div>
+                        <div className="w-24 text-center text-muted-foreground/40">-</div>
+                        <div className="w-32 text-center text-muted-foreground/40">-</div>
 
-                <div className="w-24 text-right text-emerald-600 dark:text-emerald-400">
-                    {grandTotals.quantity.toLocaleString()}
-                </div>
-                <div className="w-20 text-right text-amber-600 dark:text-amber-400">
-                    {grandTotals.transit.toLocaleString()}
-                </div>
-                <div className="w-20 text-right text-purple-600 dark:text-purple-400">
-                    {grandTotals.reserved.toLocaleString()}
-                </div>
-                <div className="w-24 text-right text-cyan-600 dark:text-cyan-400">
-                    {grandTotals.total.toLocaleString()}
-                </div>
-                <div className="w-28 text-right text-muted-foreground/40">-</div>
-                <div className="w-32 text-right text-indigo-600 dark:text-indigo-400 font-bold">
-                    {formatCurrency(grandTotals.value)}
-                </div>
-
-                {/* Grand totals for each store/warehouse column */}
-                {locationHeaders.map((hdr) => {
-                    const totalStoreQty = hdr.type === "warehouse"
-                        ? (grandTotals.warehouseStocks?.[hdr.id] || 0)
-                        : (grandTotals.locationStocks?.[hdr.id] || 0);
-
-                    return (
-                        <div key={hdr.id} className="w-24 text-right shrink-0 px-2 font-mono text-primary font-bold">
-                            {totalStoreQty.toLocaleString()}
+                        <div className="w-24 text-right shrink-0 text-emerald-600 dark:text-emerald-400">
+                            {grandTotals.quantity.toLocaleString()}
                         </div>
-                    );
-                })}
+                        <div className="w-20 text-right shrink-0 text-amber-600 dark:text-amber-400">
+                            {grandTotals.transit.toLocaleString()}
+                        </div>
+                        <div className="w-20 text-right shrink-0 text-purple-600 dark:text-purple-400">
+                            {grandTotals.reserved.toLocaleString()}
+                        </div>
+                        <div className="w-24 text-right shrink-0 text-cyan-600 dark:text-cyan-400">
+                            {grandTotals.total.toLocaleString()}
+                        </div>
+                        <div className="w-28 text-right shrink-0 text-muted-foreground/40">-</div>
+                        <div className="w-32 text-right shrink-0 text-indigo-600 dark:text-indigo-400 font-bold">
+                            {formatCurrency(grandTotals.value)}
+                        </div>
+
+                        {/* Grand totals for each store/warehouse column */}
+                        {locationHeaders.map((hdr) => {
+                            const totalStoreQty = hdr.type === "warehouse"
+                                ? (grandTotals.warehouseStocks?.[hdr.id] || 0)
+                                : (grandTotals.locationStocks?.[hdr.id] || 0);
+
+                            return (
+                                <div key={hdr.id} className="w-24 text-right shrink-0 px-2 font-mono text-primary font-bold">
+                                    {totalStoreQty.toLocaleString()}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
         </div>
     );
