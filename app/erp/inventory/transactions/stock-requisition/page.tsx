@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Autocomplete } from '@/components/ui/autocomplete';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 import {
   Dialog,
   DialogContent,
@@ -694,7 +695,8 @@ export default function StockRequisitionPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PermissionGuard permissions={["erp.inventory.stock-requisition.read", "erp.inventory.stock-requisition.create"]}>
+      <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -1654,6 +1656,7 @@ export default function StockRequisitionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PermissionGuard>
   );
 }
