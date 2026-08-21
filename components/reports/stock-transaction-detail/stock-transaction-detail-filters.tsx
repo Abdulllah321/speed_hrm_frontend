@@ -5,6 +5,7 @@ import { Location } from "@/lib/actions/location";
 import { Warehouse } from "@/lib/actions/warehouse";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { Button } from "@/components/ui/button";
+import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { AttributeOptions } from "./types";
 import { Search, RefreshCw, FileSpreadsheet, Printer, ChevronDown, Check, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,7 +40,10 @@ interface FiltersProps {
     setFilterColors: (colors: Set<string>) => void;
 
     isLoading: boolean;
+    fetchProgressPercent: number;
+    fetchProgressMessage: string;
     onRefresh: () => void;
+
     onExcelExport: () => void;
     onPdfExport: () => void;
 
@@ -180,6 +184,8 @@ export function StockTransactionDetailFilters({
     filterColors,
     setFilterColors,
     isLoading,
+    fetchProgressPercent,
+    fetchProgressMessage,
     onRefresh,
     onExcelExport,
     onPdfExport,
@@ -187,6 +193,16 @@ export function StockTransactionDetailFilters({
     exportProgressMessage,
     isExporting,
 }: FiltersProps) {
+    const locationOptions: MultiSelectOption[] = useMemo(
+        () => locations.map((loc) => ({ value: loc.id, label: loc.name, description: loc.code })),
+        [locations]
+    );
+
+    const warehouseOptions: MultiSelectOption[] = useMemo(
+        () => warehouses.map((wh) => ({ value: wh.id, label: wh.name, description: wh.code })),
+        [warehouses]
+    );
+
     const toggleFilter = (set: Set<string>, setter: (s: Set<string>) => void, val: string) => {
         const next = new Set(set);
         if (next.has(val)) next.delete(val);
@@ -219,6 +235,26 @@ export function StockTransactionDetailFilters({
             {/* Control Bar */}
             <div className="p-3 rounded-2xl border border-border bg-card shadow-sm flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Outlets Multi-Select */}
+                    <div className="w-44 sm:w-52">
+                        <MultiSelect
+                            options={locationOptions}
+                            selected={selectedLocationIds}
+                            onChange={setSelectedLocationIds}
+                            placeholder="All Outlets (Stores)"
+                        />
+                    </div>
+
+                    {/* Warehouses Multi-Select */}
+                    <div className="w-44 sm:w-52">
+                        <MultiSelect
+                            options={warehouseOptions}
+                            selected={selectedWarehouseIds}
+                            onChange={setSelectedWarehouseIds}
+                            placeholder="All Warehouses"
+                        />
+                    </div>
+
                     {/* Date Range Picker */}
                     <DateRangePicker
                         value={dateRange}
@@ -234,7 +270,7 @@ export function StockTransactionDetailFilters({
                         disabled={isLoading}
                         className="h-9 px-3 rounded-xl gap-1.5 text-xs font-semibold"
                     >
-                        <RefreshCw className={cn("h-3.5 w-3.5 text-muted-foreground", isLoading && "animate-spin")} />
+                        <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin text-primary")} />
                         Refresh
                     </Button>
                 </div>
@@ -342,20 +378,22 @@ export function StockTransactionDetailFilters({
                 </div>
             </div>
 
-            {/* Export Progress Bar */}
-            {isExporting && (
-                <div className="p-3 rounded-2xl border border-primary/30 bg-primary/5 shadow-sm space-y-1.5 animate-in fade-in-50">
-                    <div className="flex items-center justify-between text-xs font-semibold text-primary">
+            {/* Realtime Data Calculation / Export Progress Bar */}
+            {(isLoading || isExporting) && (
+                <div className="p-3 rounded-2xl border border-primary/30 bg-primary/5 shadow-sm space-y-1.5 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs font-bold text-primary">
                         <span className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            {exportProgressMessage || "Generating export file..."}
+                            <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                            {isExporting
+                                ? exportProgressMessage || "Generating export file..."
+                                : fetchProgressMessage || "Calculating stock transaction movements..."}
                         </span>
-                        <span>{exportProgressPercent}%</span>
+                        <span>{isExporting ? exportProgressPercent : fetchProgressPercent}%</span>
                     </div>
-                    <div className="h-1.5 w-full bg-primary/20 rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-primary/20 rounded-full overflow-hidden">
                         <div
                             className="h-full bg-primary transition-all duration-300 rounded-full"
-                            style={{ width: `${exportProgressPercent}%` }}
+                            style={{ width: `${isExporting ? exportProgressPercent : fetchProgressPercent}%` }}
                         />
                     </div>
                 </div>

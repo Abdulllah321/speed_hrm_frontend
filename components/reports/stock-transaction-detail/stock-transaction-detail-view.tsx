@@ -342,6 +342,8 @@ export function StockTransactionDetailView({
                 filterColors={filterColors}
                 setFilterColors={setFilterColors}
                 isLoading={isFetchingData}
+                fetchProgressPercent={sseState.progressPercent}
+                fetchProgressMessage={sseState.message || fetchProgressMessage}
                 onRefresh={fetchDataset}
                 onExcelExport={handleExcelExport}
                 onPdfExport={handlePdfExport}
