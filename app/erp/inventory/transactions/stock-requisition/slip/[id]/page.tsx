@@ -262,9 +262,8 @@ export default function StockRequisitionSlipPage() {
         
         {/* Header Logo + Titles */}
         <div className="flex justify-between items-start border-b pb-4 mb-6">
-          {/* Stylized Logo mimicking client standard */}
           <div className="flex items-center gap-3">
-            <img src="/image.png" alt="Logo" className="w-20 object-contain print:w-24" />
+            <img src="/image.png" alt="Logo" className="w-28 object-contain print:w-32" />
           </div>
 
           <div className="text-center flex-1 pr-14">
@@ -290,6 +289,10 @@ export default function StockRequisitionSlipPage() {
               <span className="font-bold text-gray-800">{requisition.toLocation?.name || '-'}</span>
             </div>
             <div className="flex">
+              <span className="font-semibold w-32 text-gray-600">From WH :</span>
+              <span className="font-bold text-gray-800">{requisition.fromLocation?.name || requisition.fromWarehouse?.name || '-'}</span>
+            </div>
+            <div className="flex">
               <span className="font-semibold w-32 text-gray-600">Document Type :</span>
               <span className="font-bold text-gray-800">{requisition.documentType || 'New Arrival'}</span>
             </div>
@@ -300,19 +303,35 @@ export default function StockRequisitionSlipPage() {
               </span>
             </div>
             <div className="flex">
-              <span className="font-semibold w-32 text-gray-600">Employee :</span>
-              <span className="font-medium text-gray-800">Shehriyar</span>
-            </div>
-            <div className="flex">
               <span className="font-semibold w-32 text-gray-600">Remarks :</span>
               <span className="font-medium text-gray-800">{requisition.remarks || '-'}</span>
             </div>
           </div>
 
-          <div className="space-y-1.5 text-right flex flex-col items-end justify-start">
+          <div className="space-y-2 text-right flex flex-col items-end justify-start">
             <div className="flex gap-2">
               <span className="font-semibold text-gray-600">Date :</span>
               <span className="font-bold text-gray-800">{formatRequisitionDate(requisition.requisitionDate)}</span>
+            </div>
+            <div className="flex gap-2 items-center">
+              <span className="font-semibold text-gray-600">Status :</span>
+              <span className={`font-bold uppercase tracking-wider text-xs px-2.5 py-0.5 rounded border ${
+                requisition.status === 'PENDING'
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  : requisition.status === 'DRAFT'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : requisition.status === 'COMPLETED'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}>
+                {requisition.status === 'PENDING'
+                  ? 'APPROVED (PENDING TRANSFER)'
+                  : requisition.status === 'DRAFT'
+                  ? 'DRAFT (PENDING APPROVAL)'
+                  : requisition.status === 'COMPLETED'
+                  ? 'COMPLETED (TRANSFERRED)'
+                  : requisition.status}
+              </span>
             </div>
           </div>
         </div>
