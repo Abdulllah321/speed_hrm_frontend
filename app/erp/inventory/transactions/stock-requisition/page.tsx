@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -45,6 +45,7 @@ import {
   Trash2,
   FileSpreadsheet,
   Upload,
+  Download,
   CheckCircle,
   XCircle,
   FileText,
@@ -79,6 +80,7 @@ export default function StockRequisitionPage() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState<boolean>(false);
+  const excelInputRef = useRef<HTMLInputElement>(null);
 
   // Dropdown options
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -360,9 +362,10 @@ export default function StockRequisitionPage() {
     formData.append('file', file);
 
     setUploading(true);
+    const toastId = toast.loading('Uploading and parsing Excel / CSV items...');
     try {
       const res = await stockRequisitionApi.uploadExcel(formData);
-      if (res.status && res.data.length > 0) {
+      if (res.status && Array.isArray(res.data) && res.data.length > 0) {
         const parsedItems: SRNItem[] = res.data.map((item: any) => ({
           itemId: item.itemId,
           sku: item.sku,
@@ -373,7 +376,7 @@ export default function StockRequisitionPage() {
           gender: item.gender || null,
           segment: item.segment || null,
           unitPrice: Number(item.unitPrice || 0),
-          quantity: item.quantity,
+          quantity: Number(item.quantity || 1),
         }));
 
         setRequisitionItems((prev) => {
@@ -381,7 +384,7 @@ export default function StockRequisitionPage() {
           parsedItems.forEach((newItem) => {
             const idx = merged.findIndex((i) => i.itemId === newItem.itemId);
             if (idx > -1) {
-              merged[idx].quantity = newItem.quantity; // Overwrite or add quantity
+              merged[idx].quantity += newItem.quantity;
             } else {
               merged.push(newItem);
             }
@@ -389,16 +392,29 @@ export default function StockRequisitionPage() {
           return merged;
         });
 
-        toast.success(`Successfully parsed ${parsedItems.length} items from Excel.`);
+        setActiveTab('create');
+        toast.success(`Successfully imported ${parsedItems.length} items! Review list below, then Save as Draft or Confirm & Reserve.`, { id: toastId });
       } else {
-        toast.error('No items found in Excel');
+        toast.error('No valid items found in uploaded file', { id: toastId });
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to parse Excel sheet');
+      toast.error(error.message || 'Failed to parse Excel / CSV file', { id: toastId });
     } finally {
       setUploading(false);
       e.target.value = ''; // Reset input
     }
+  };
+
+  const handleDownloadTemplate = () => {
+    const csvContent = 'data:text/csv;charset=utf-8,BarCode,Quantity\n8901234567890,10\n8901234567891,5\n';
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'srn_items_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Downloaded CSV template');
   };
 
   const updateItemQty = (itemId: string, qty: number) => {
@@ -708,9 +724,14 @@ export default function StockRequisitionPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-2 font-bold shadow-sm" onClick={() => setBulkUploadOpen(true)}>
-            <FileSpreadsheet className="h-4 w-4 mr-2 text-indigo-600" /> Bulk Upload
-          </Button>
+          {/* Hidden file input for direct Excel/CSV import */}
+          <input
+            type="file"
+            ref={excelInputRef}
+            accept=".xlsx,.xls,.csv"
+            onChange={handleExcelUpload}
+            className="hidden"
+          />
           <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
             <Link href="/erp/inventory/transactions/stock-requisition/pending">
               <Package className="h-4 w-4 mr-2 text-indigo-600" /> Warehouse Pending List
@@ -1102,28 +1123,67 @@ export default function StockRequisitionPage() {
 
             {/* Right Items Grid & Upload */}
             <Card className="lg:col-span-3 border shadow-md">
-              <CardHeader className="pb-3 border-b flex flex-row justify-between items-center">
-                <div>
+              <CardHeader className="pb-3 border-b flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div className="flex items-center gap-3">
                   <CardTitle className="text-xl font-bold">Items & Quantities</CardTitle>
+                  {requisitionItems.length > 0 && (
+                    <Badge className="bg-indigo-100 text-indigo-900 border-indigo-300 font-bold">
+                      {requisitionItems.length} items ({requisitionItems.reduce((s, i) => s + Number(i.quantity), 0)} pcs)
+                    </Badge>
+                  )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
-                    className="border-amber-600 text-amber-700 bg-amber-50 hover:bg-amber-100 font-bold"
-                    onClick={openReplenishModal}
+                    size="sm"
+                    className="border-indigo-600 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold h-9"
+                    onClick={() => excelInputRef.current?.click()}
+                    disabled={uploading}
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" /> Auto Replenish (Net Sales)
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin text-indigo-600" />
+                    ) : (
+                      <FileSpreadsheet className="h-4 w-4 mr-1.5 text-indigo-600" />
+                    )}
+                    Import Excel / CSV
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold"
+                    size="sm"
+                    className="text-xs font-semibold h-9"
+                    onClick={handleDownloadTemplate}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1" /> Template
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-600 text-amber-700 bg-amber-50 hover:bg-amber-100 font-bold h-9"
+                    onClick={openReplenishModal}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1.5" /> Auto Replenish
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold h-9"
                     disabled={requisitionItems.length === 0}
                     onClick={handlePrintPreview}
                   >
-                    <Printer className="h-4 w-4 mr-2" /> Print Preview
+                    <Printer className="h-4 w-4 mr-1.5" /> Print Preview
                   </Button>
-
-
+                  {requisitionItems.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-destructive hover:bg-red-50 h-9"
+                      onClick={() => {
+                        if (confirm('Clear all items from list?')) setRequisitionItems([]);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Clear
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
@@ -1167,9 +1227,9 @@ export default function StockRequisitionPage() {
                 {requisitionItems.length === 0 ? (
                   <div className="border-2 border-dashed rounded-lg p-12 text-center text-muted-foreground flex flex-col items-center justify-center space-y-2 bg-gray-50/30">
                     <FileSpreadsheet className="h-10 w-10 text-indigo-300" />
-                    <p className="font-semibold text-gray-600">Requisition List is empty</p>
-                    <p className="text-xs max-w-md">
-                      Add items manually by searching above, or calculate replenishment from net sales summary.
+                    <p className="font-semibold text-gray-700">Requisition List is empty</p>
+                    <p className="text-xs text-muted-foreground max-w-md">
+                      Add items manually by searching above, calculate replenishment from net sales, or click <strong>Import Excel / CSV</strong> above.
                     </p>
                   </div>
                 ) : (

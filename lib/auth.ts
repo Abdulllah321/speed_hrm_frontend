@@ -223,6 +223,7 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
 
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
     try {
       if (process.env.NODE_ENV === 'development') {
@@ -232,12 +233,12 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
       const response = await fetch(fullUrl, {
         method: options.method || 'GET',
         headers: {
-          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(options.body && !isFormData ? { "Content-Type": "application/json" } : {}),
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           ...(cookieHeader ? { Cookie: cookieHeader } : {}),
           ...options.headers,
         },
-        body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
+        body: options.body ? (isFormData || typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
         cache: "no-store",    // ✅ yeh sirf yahan add karo
         next: { revalidate: 0 }, // ✅ yeh bhi
         signal: options.signal,
@@ -267,14 +268,16 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
     }
   } else {
     // Client-side
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
     try {
       const response = await fetch(fullUrl, {
         method: options.method || 'GET',
         headers: {
-          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(options.body && !isFormData ? { "Content-Type": "application/json" } : {}),
           ...options.headers,
         },
-        body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
+        body: options.body ? (isFormData || typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
         credentials: "include",
         signal: options.signal,
       });

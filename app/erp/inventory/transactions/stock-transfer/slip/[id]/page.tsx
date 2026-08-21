@@ -401,17 +401,10 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
       {/* A4 Printable Area — same layout as SRN */}
       <div className="bg-white p-10 max-w-4xl mx-auto shadow-md print:shadow-none print:max-w-none print:p-0 print:m-0 border print:border-0 rounded-md">
 
-        {/* Header — same as SRN */}
+        {/* Header — same as SRN / Purchase Order */}
         <div className="flex justify-between items-start border-b pb-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="border-[3px] border-black p-2 flex flex-col justify-center items-center w-14 h-14 font-black tracking-tighter leading-none">
-              <span className="text-xl">S</span>
-              <span className="text-[10px] -mt-1">PEED</span>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase font-bold tracking-widest text-gray-500 leading-none">SPEED</p>
-              <p className="text-xs uppercase font-extrabold text-black leading-none">PRIVATE LIMITED</p>
-            </div>
+            <img src="/image.png" alt="Logo" className="w-28 object-contain print:w-32" />
           </div>
 
           <div className="text-center flex-1 pr-14">
@@ -486,14 +479,30 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
             )}
           </div>
 
-          <div className="space-y-1.5 text-right flex flex-col items-end justify-start">
+          <div className="space-y-2 text-right flex flex-col items-end justify-start">
             <div className="flex gap-2">
               <span className="font-semibold text-gray-600">Date :</span>
               <span className="font-bold text-gray-800">{formatDate(transfer.createdAt)}</span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <span className="font-semibold text-gray-600">Status :</span>
-              <span className="font-bold text-indigo-600">{transfer.status}</span>
+              <span className={`font-bold uppercase tracking-wider text-xs px-2.5 py-0.5 rounded border ${
+                transfer.status === 'PENDING'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : transfer.status === 'APPROVED' || transfer.status === 'COMPLETED'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : transfer.status === 'SOURCE_APPROVED'
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}>
+                {transfer.status === 'PENDING'
+                  ? 'PENDING (READY FOR RECEIVING)'
+                  : transfer.status === 'COMPLETED'
+                  ? 'COMPLETED (RECEIVED)'
+                  : transfer.status === 'APPROVED'
+                  ? 'APPROVED'
+                  : transfer.status}
+              </span>
             </div>
           </div>
         </div>
