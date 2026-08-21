@@ -97,7 +97,7 @@ export default function StockRequisitionPage() {
   const [documentType, setDocumentType] = useState<string>('New Arrival');
   const [remarks, setRemarks] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [financialYear, setFinancialYear] = useState<string>('25-26');
+  const [financialYear, setFinancialYear] = useState<string>('26-27');
   const [nextRequisitionNumber, setNextRequisitionNumber] = useState<string>('');
   const [editRequisitionNo, setEditRequisitionNo] = useState<string>('');
 
@@ -273,7 +273,11 @@ export default function StockRequisitionPage() {
       ]);
       setWarehouses(whs);
       if (whs.length > 0) {
-        setSelectedWarehouseId(whs[0].id);
+        const logisticWH = whs.find((w: any) =>
+          w.name?.toLowerCase().includes('logistic') ||
+          w.code?.toLowerCase().includes('logistic')
+        );
+        setSelectedWarehouseId(logisticWH ? logisticWH.id : whs[0].id);
       }
       if (locs.status) {
         setLocations(locs.data);
