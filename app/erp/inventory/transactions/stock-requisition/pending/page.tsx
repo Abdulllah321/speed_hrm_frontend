@@ -24,6 +24,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function StockRequisitionPendingPage() {
   const router = useRouter();
@@ -95,7 +96,16 @@ export default function StockRequisitionPendingPage() {
   );
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <PermissionGuard
+      permissions={[
+        'erp.inventory.stock-requisition.pending.read',
+        'erp.inventory.warehouse.stock-requisition.pending',
+        'erp.inventory.warehouse.view',
+        'erp.inventory.warehouse.stock-transfer',
+        'erp.inventory.stock-requisition.read',
+      ]}
+    >
+      <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -407,7 +417,8 @@ export default function StockRequisitionPendingPage() {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+      </div>
+    </PermissionGuard>
   );
 }
 
