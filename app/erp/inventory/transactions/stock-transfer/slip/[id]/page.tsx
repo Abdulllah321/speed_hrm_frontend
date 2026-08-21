@@ -421,7 +421,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
           <div className="space-y-1.5">
             <div className="flex">
               <span className="font-semibold w-36 text-gray-600">From Location/WH :</span>
-              <span className="font-bold text-gray-800">{transfer.fromLocation?.name || transfer.fromWarehouse?.name || '-'}</span>
+              <span className="font-bold text-gray-800">{transfer.fromWarehouse?.name || transfer.fromLocation?.name || transfer.stockRequisition?.fromWarehouse?.name || '-'}</span>
             </div>
             <div className="flex">
               <span className="font-semibold w-36 text-gray-600">To Location :</span>

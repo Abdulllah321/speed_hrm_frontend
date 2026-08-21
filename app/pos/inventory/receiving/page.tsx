@@ -117,7 +117,13 @@ export default function StockReceivingPage() {
                         </Card>
                     ) : (
                         <div className="grid gap-4">
-                            {requests.map((request) => (
+                            {requests.map((request) => {
+                                const totalQty = (request.items || []).reduce((sum: number, i: any) => sum + Number(i.quantity || 0), 0);
+                                const totalItemsCount = request.items?.length || 0;
+                                const firstItem = request.items?.[0]?.item;
+                                const brandName = request.brand?.name || firstItem?.brand?.name;
+
+                                return (
                                 <Card key={request.id} className="overflow-hidden border-2 hover:border-primary/20 transition-all shadow-sm !py-0">
                                     <div className="flex flex-col md:flex-row md:items-stretch">
                                         {/* Status Sidebar */}
@@ -143,26 +149,49 @@ export default function StockReceivingPage() {
                                         <CardContent className="p-4 md:p-6 flex-1 flex flex-col md:flex-row items-center justify-between gap-6">
                                             <div className="flex-1 w-full space-y-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="bg-primary/10 p-2 rounded-lg text-primary">
+                                                    <div className="bg-primary/10 p-2.5 rounded-lg text-primary">
                                                         <Package className="h-6 w-6" />
                                                     </div>
                                                     <div>
                                                         <h3 className="font-bold text-lg leading-tight">
-                                                            {request.items[0]?.item?.description || "Inventory Items"}
+                                                            {totalItemsCount > 1
+                                                                ? `Stock Transfer Note (${totalItemsCount} Products${brandName ? ` · ${brandName}` : ''})`
+                                                                : (firstItem?.description || "Inventory Item")}
                                                         </h3>
-                                                        <p className="text-sm text-muted-foreground font-medium">SKU: {request.items[0]?.item?.sku || "N/A"}</p>
+                                                        <p className="text-sm text-muted-foreground font-medium">
+                                                            {totalItemsCount > 1
+                                                                ? `${totalItemsCount} line items · Total ${totalQty} pcs`
+                                                                : `SKU: ${firstItem?.sku || "N/A"}`}
+                                                        </p>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex flex-wrap items-center gap-6">
                                                     <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Quantity</span>
-                                                        <span className="text-xl font-black text-primary">{Number(request.items[0]?.quantity || 0)}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Qty</span>
+                                                        <span className="text-xl font-black text-primary">
+                                                            {totalQty} <span className="text-xs font-bold text-muted-foreground">Pcs</span>
+                                                        </span>
                                                     </div>
                                                     <div className="h-10 w-px bg-border hidden sm:block" />
                                                     <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Source</span>
-                                                        <span className="text-sm font-semibold">{request.fromLocation?.name || "Main Warehouse"}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Items</span>
+                                                        <span className="text-xl font-black text-foreground">
+                                                            {totalItemsCount} <span className="text-xs font-bold text-muted-foreground">Items</span>
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-10 w-px bg-border hidden sm:block" />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Source Warehouse</span>
+                                                        <span className="text-sm font-bold text-gray-900">
+                                                            {request.fromWarehouse?.name || 
+                                                             request.warehouse?.name || 
+                                                             request.sourceWarehouse?.name || 
+                                                             request.stockRequisition?.fromWarehouse?.name || 
+                                                             request.fromLocation?.name || 
+                                                             request.fromWarehouse?.code || 
+                                                             "LOGISTIC AREA"}
+                                                        </span>
                                                     </div>
                                                     <div className="h-10 w-px bg-border hidden sm:block" />
                                                     <div className="flex flex-col">
@@ -192,9 +221,10 @@ export default function StockReceivingPage() {
                                                 </Button>
                                             </div>
                                         </CardContent>
-                                    </div>
-                                </Card>
-                            ))}
+                                        </div>
+                                    </Card>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
