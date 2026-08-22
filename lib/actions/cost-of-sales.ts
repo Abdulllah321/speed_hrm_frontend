@@ -9,6 +9,10 @@ export interface CostOfSalesSizeItem {
   quantity: number;
   costPrice: number;
   totalCost: number;
+  unitPrice: number;
+  totalRevenue: number;
+  grossProfit: number;
+  profitMargin: number;
 }
 
 export interface CostOfSalesProductNode {
@@ -20,6 +24,9 @@ export interface CostOfSalesProductNode {
     quantity: number;
     totalCost: number;
     avgUnitCost: number;
+    totalRevenue: number;
+    grossProfit: number;
+    profitMargin: number;
   };
 }
 
@@ -31,6 +38,9 @@ export interface CostOfSalesCategoryNode {
     quantity: number;
     totalCost: number;
     avgUnitCost: number;
+    totalRevenue: number;
+    grossProfit: number;
+    profitMargin: number;
   };
 }
 
@@ -42,6 +52,9 @@ export interface CostOfSalesGenderNode {
     quantity: number;
     totalCost: number;
     avgUnitCost: number;
+    totalRevenue: number;
+    grossProfit: number;
+    profitMargin: number;
   };
 }
 
@@ -53,6 +66,9 @@ export interface CostOfSalesDivisionNode {
     quantity: number;
     totalCost: number;
     avgUnitCost: number;
+    totalRevenue: number;
+    grossProfit: number;
+    profitMargin: number;
   };
 }
 
@@ -64,18 +80,51 @@ export interface CostOfSalesBrandNode {
     quantity: number;
     totalCost: number;
     avgUnitCost: number;
+    totalRevenue: number;
+    grossProfit: number;
+    profitMargin: number;
   };
+}
+
+export interface CostOfSalesFlatRecord {
+  id: string;
+  brand: string;
+  division: string;
+  category: string;
+  gender: string;
+  silhouette: string;
+  sku: string;
+  articleName: string;
+  color: string;
+  size: string;
+  barCode: string;
+  locationName: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  unitPrice: number;
+  totalRevenue: number;
+  grossProfit: number;
+  profitMargin: number;
 }
 
 export interface CostOfSalesReportData {
   brands: CostOfSalesBrandNode[];
+  flatItems: CostOfSalesFlatRecord[];
   grandTotals: {
     quantity: number;
     totalCost: number;
     avgUnitCost: number;
+    totalRevenue: number;
+    grossProfit: number;
+    profitMargin: number;
   };
   startDate: string;
   endDate: string;
+  meta?: {
+    totalItems: number;
+    locationsCount: number;
+  };
 }
 
 export interface GetCostOfSalesReportParams {
@@ -108,12 +157,48 @@ export async function getCostOfSalesReport(
   }
 }
 
+export async function queueCostOfSalesPreview(
+  params: GetCostOfSalesReportParams,
+): Promise<{ status: boolean; data?: { jobId: string; queuePosition: number; waitingCount: number }; message?: string }> {
+  try {
+    const res = await authFetch("/pos-sales/reports/cost-of-sales/queue", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+
+    if (res.ok && res.data?.status) {
+      return { status: true, data: res.data.data };
+    }
+    return { status: false, message: res.data?.message || "Failed to queue preview calculation job" };
+  } catch (error: any) {
+    console.error("queueCostOfSalesPreview error:", error);
+    return { status: false, message: error?.message || "Error queueing calculation job" };
+  }
+}
+
+export async function getCostOfSalesResult(
+  jobId: string,
+): Promise<{ status: boolean; data?: CostOfSalesReportData; message?: string }> {
+  try {
+    const res = await authFetch(`/pos-sales/reports/cost-of-sales/result/${jobId}`);
+    if (res.ok && res.data?.status) {
+      return { status: true, data: res.data.data };
+    }
+    return { status: false, message: res.data?.message || "Failed to fetch calculation result" };
+  } catch (error: any) {
+    console.error("getCostOfSalesResult error:", error);
+    return { status: false, message: error?.message || "Error fetching result" };
+  }
+}
+
 export async function queueCostOfSalesExport(params: {
   locationId?: string;
   startDate?: string;
   endDate?: string;
   format: "xlsx" | "pdf";
+  exportType?: "hierarchical" | "flat";
   search?: string;
+  previewJobId?: string;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
   try {
     const res = await authFetch("/pos-sales/reports/cost-of-sales/export", {
@@ -128,6 +213,27 @@ export async function queueCostOfSalesExport(params: {
   } catch (error: any) {
     console.error("queueCostOfSalesExport error:", error);
     return { status: false, message: error?.message || "Network error queueing export" };
+  }
+}
+
+export async function registerClientCostOfSalesExport(opts: {
+  fileName: string;
+  fileBase64: string;
+  mimeType: string;
+}): Promise<{ status: boolean; data?: { jobId: string; s3Url?: string }; message?: string }> {
+  try {
+    const res = await authFetch("/pos-sales/reports/cost-of-sales/export/register-client-export", {
+      method: "POST",
+      body: JSON.stringify(opts),
+    });
+
+    if (res.ok && res.data?.status) {
+      return { status: true, data: res.data.data };
+    }
+    return { status: false, message: res.data?.message || "Failed to register client export" };
+  } catch (error: any) {
+    console.error("registerClientCostOfSalesExport error:", error);
+    return { status: false, message: error?.message || "Error registering export file" };
   }
 }
 
