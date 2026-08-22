@@ -45,6 +45,10 @@ export interface CostOfSalesTableRow {
   totalRevenue?: number;
   grossProfit?: number;
   profitMargin?: number;
+  depth?: number;
+  hasChildren?: boolean;
+  isExpanded?: boolean;
+  nodeId?: string;
   totals?: {
     quantity: number;
     totalCost: number;

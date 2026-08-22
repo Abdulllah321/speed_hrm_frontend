@@ -150,6 +150,9 @@ export function CostOfSalesView() {
     filteredBrands,
     grandTotals,
     flatRows,
+    toggleNode,
+    expandAll,
+    collapseAll,
   } = useCostOfSalesData(reportData);
 
   // Client-side Excel Export Handler (Flat or Hierarchical)
@@ -284,8 +287,14 @@ export function CostOfSalesView() {
         </p>
       </div>
 
-      {/* Virtualized Matrix Table */}
-      <CostOfSalesTable rows={flatRows} grandTotals={grandTotals} />
+      {/* Virtualized Matrix Table with Collapsible Accordion */}
+      <CostOfSalesTable
+        rows={flatRows}
+        grandTotals={grandTotals}
+        onToggleNode={toggleNode}
+        onExpandAll={expandAll}
+        onCollapseAll={collapseAll}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import {
   CostOfSalesReportData,
   CostOfSalesTotals,
@@ -24,6 +24,22 @@ export function useCostOfSalesData(reportData: CostOfSalesReportData | null) {
   const [filterSilhouettes, setFilterSilhouettes] = useState<Set<string>>(new Set());
   const [filterSizes, setFilterSizes] = useState<Set<string>>(new Set());
   const [filterColors, setFilterColors] = useState<Set<string>>(new Set());
+
+  // Set of node IDs that are collapsed
+  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
+
+  const toggleNode = useCallback((nodeId: string) => {
+    setCollapsedNodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  }, []);
+
+  const expandAll = useCallback(() => {
+    setCollapsedNodes(new Set());
+  }, []);
 
   // Extract available attribute filter options
   const attributeOptions = useMemo(() => {
@@ -210,79 +226,154 @@ export function useCostOfSalesData(reportData: CostOfSalesReportData | null) {
     return totals;
   }, [filteredBrands]);
 
-  // Flatten hierarchy into table rows for virtualization
+  // Collapse All Nodes function
+  const collapseAll = useCallback(() => {
+    const allNodeIds = new Set<string>();
+    if (filteredBrands) {
+      for (const brand of filteredBrands) {
+        allNodeIds.add(`brand-${brand.brandId}`);
+        for (const div of brand.divisions) {
+          allNodeIds.add(`div-${brand.brandId}-${div.divisionId}`);
+          for (const gender of div.genders) {
+            allNodeIds.add(`gender-${brand.brandId}-${div.divisionId}-${gender.genderId}`);
+            for (const cat of gender.categories) {
+              allNodeIds.add(`cat-${brand.brandId}-${div.divisionId}-${gender.genderId}-${cat.categoryId}`);
+              for (const prod of cat.products) {
+                allNodeIds.add(`prod-${brand.brandId}-${cat.categoryId}-${prod.sku}`);
+              }
+            }
+          }
+        }
+      }
+    }
+    setCollapsedNodes(allNodeIds);
+  }, [filteredBrands]);
+
+  // Flatten hierarchy into table rows respecting collapse state & grouping levels
   const flatRows = useMemo<CostOfSalesTableRow[]>(() => {
     const rows: CostOfSalesTableRow[] = [];
     if (!filteredBrands) return rows;
 
     for (const brand of filteredBrands) {
+      const brandId = `brand-${brand.brandId}`;
+      const isBrandCollapsed = collapsedNodes.has(brandId);
+      const hasDivisions = brand.divisions.length > 0;
+
       if (groupingLevels.brand) {
         rows.push({
           type: "brand",
-          id: `brand-${brand.brandId}`,
-          label: `BRAND: ${brand.brandName.toUpperCase()}`,
+          id: brandId,
+          nodeId: brandId,
+          label: brand.brandName.toUpperCase(),
           totals: brand.totals,
+          depth: 0,
+          hasChildren: hasDivisions,
+          isExpanded: !isBrandCollapsed,
         });
       }
 
-      for (const div of brand.divisions) {
-        if (groupingLevels.division) {
-          rows.push({
-            type: "division",
-            id: `div-${div.divisionId}`,
-            label: `DIVISION: ${div.divisionName.toUpperCase()}`,
-            totals: div.totals,
-          });
-        }
+      if (!isBrandCollapsed) {
+        for (const div of brand.divisions) {
+          const divId = `div-${brand.brandId}-${div.divisionId}`;
+          const isDivCollapsed = collapsedNodes.has(divId);
+          const hasGenders = div.genders.length > 0;
 
-        for (const gender of div.genders) {
-          if (groupingLevels.gender) {
+          if (groupingLevels.division) {
             rows.push({
-              type: "gender",
-              id: `gender-${gender.genderId}`,
-              label: `GENDER: ${gender.genderName.toUpperCase()}`,
-              totals: gender.totals,
+              type: "division",
+              id: divId,
+              nodeId: divId,
+              label: div.divisionName.toUpperCase(),
+              totals: div.totals,
+              depth: 1,
+              hasChildren: hasGenders,
+              isExpanded: !isDivCollapsed,
             });
           }
 
-          for (const cat of gender.categories) {
-            if (groupingLevels.category) {
-              rows.push({
-                type: "category",
-                id: `cat-${cat.categoryId}`,
-                label: `CATEGORY: ${cat.categoryName.toUpperCase()}`,
-                totals: cat.totals,
-              });
-            }
+          if (!isDivCollapsed) {
+            for (const gender of div.genders) {
+              const genderId = `gender-${brand.brandId}-${div.divisionId}-${gender.genderId}`;
+              const isGenderCollapsed = collapsedNodes.has(genderId);
+              const hasCategories = gender.categories.length > 0;
 
-            for (const prod of cat.products) {
-              if (groupingLevels.article) {
+              if (groupingLevels.gender) {
                 rows.push({
-                  type: "article",
-                  id: `prod-${prod.sku}`,
-                  sku: prod.sku,
-                  label: prod.description || prod.sku,
-                  totals: prod.totals,
+                  type: "gender",
+                  id: genderId,
+                  nodeId: genderId,
+                  label: gender.genderName.toUpperCase(),
+                  totals: gender.totals,
+                  depth: 2,
+                  hasChildren: hasCategories,
+                  isExpanded: !isGenderCollapsed,
                 });
               }
 
-              if (groupingLevels.variant) {
-                for (const item of prod.sizes) {
-                  rows.push({
-                    type: "variant",
-                    id: `item-${item.id}`,
-                    sku: prod.sku,
-                    barCode: item.barCode,
-                    size: item.size,
-                    color: item.color,
-                    quantity: item.quantity,
-                    unitCost: item.costPrice,
-                    totalCost: item.totalCost,
-                    unitPrice: item.unitPrice,
-                    totalRevenue: item.totalRevenue,
-                    grossProfit: item.grossProfit,
-                    profitMargin: item.profitMargin,
-                  });
+              if (!isGenderCollapsed) {
+                for (const cat of gender.categories) {
+                  const catId = `cat-${brand.brandId}-${div.divisionId}-${gender.genderId}-${cat.categoryId}`;
+                  const isCatCollapsed = collapsedNodes.has(catId);
+                  const hasProducts = cat.products.length > 0;
+
+                  if (groupingLevels.category) {
+                    rows.push({
+                      type: "category",
+                      id: catId,
+                      nodeId: catId,
+                      label: cat.categoryName.toUpperCase(),
+                      totals: cat.totals,
+                      depth: 3,
+                      hasChildren: hasProducts,
+                      isExpanded: !isCatCollapsed,
+                    });
+                  }
+
+                  if (!isCatCollapsed) {
+                    for (const prod of cat.products) {
+                      const prodId = `prod-${brand.brandId}-${cat.categoryId}-${prod.sku}`;
+                      const isProdCollapsed = collapsedNodes.has(prodId);
+                      const hasSizes = prod.sizes.length > 0;
+
+                      if (groupingLevels.article) {
+                        rows.push({
+                          type: "article",
+                          id: prodId,
+                          nodeId: prodId,
+                          sku: prod.sku,
+                          label: prod.description || prod.sku,
+                          totals: prod.totals,
+                          depth: 4,
+                          hasChildren: hasSizes,
+                          isExpanded: !isProdCollapsed,
+                        });
+                      }
+
+                      if (!isProdCollapsed && groupingLevels.variant) {
+                        for (const item of prod.sizes) {
+                          rows.push({
+                            type: "variant",
+                            id: `item-${item.id}`,
+                            nodeId: `item-${item.id}`,
+                            sku: prod.sku,
+                            barCode: item.barCode,
+                            size: item.size,
+                            color: item.color,
+                            quantity: item.quantity,
+                            unitCost: item.costPrice,
+                            totalCost: item.totalCost,
+                            unitPrice: item.unitPrice,
+                            totalRevenue: item.totalRevenue,
+                            grossProfit: item.grossProfit,
+                            profitMargin: item.profitMargin,
+                            depth: 5,
+                            hasChildren: false,
+                            isExpanded: false,
+                          });
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -292,7 +383,7 @@ export function useCostOfSalesData(reportData: CostOfSalesReportData | null) {
     }
 
     return rows;
-  }, [filteredBrands, groupingLevels]);
+  }, [filteredBrands, groupingLevels, collapsedNodes]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => {
@@ -327,5 +418,8 @@ export function useCostOfSalesData(reportData: CostOfSalesReportData | null) {
     filteredBrands,
     grandTotals,
     flatRows,
+    toggleNode,
+    expandAll,
+    collapseAll,
   };
 }
