@@ -4,6 +4,7 @@ import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { ReportQueueProgress } from "@/components/reports/ReportQueueProgress";
+import { ReportSseState } from "@/hooks/use-report-sse";
 import {
   Download,
   Printer,
@@ -39,14 +40,7 @@ interface CostOfSalesFiltersProps {
   
   // SSE Queue Progress
   previewJobId: string | null;
-  sseState: {
-    status: string;
-    progressPercent: number;
-    message: string;
-    queuePosition: number;
-    waitingCount: number;
-    failedReason?: string;
-  };
+  sseState: ReportSseState;
   isQueueingJob: boolean;
   isFetchingResult: boolean;
 
@@ -204,7 +198,7 @@ export function CostOfSalesFilters({
             ? "Submitting Cost of Sales calculation job to background queue..."
             : isFetchingResult
             ? "Downloading and rendering report table..."
-            : sseState.message
+            : sseState.message || ""
         }
         queuePosition={sseState.queuePosition}
         waitingCount={sseState.waitingCount}

@@ -152,7 +152,7 @@ export function CostOfSalesView() {
     setExportProgressPercent(5);
 
     try {
-      const { fileBuffer, fileName } = await generateCostOfSalesExcel({
+      const { excelBuffer, fileName, fileBase64 } = await generateCostOfSalesExcel({
         exportType: type,
         brands: filteredBrands,
         flatItems: reportData.flatItems || [],
@@ -163,7 +163,7 @@ export function CostOfSalesView() {
       });
 
       // Trigger browser download
-      const blob = new Blob([fileBuffer], {
+      const blob = new Blob([excelBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       const url = URL.createObjectURL(blob);
@@ -176,10 +176,9 @@ export function CostOfSalesView() {
       URL.revokeObjectURL(url);
 
       // Register export in background with S3 and ExportHistory
-      const base64 = fileBuffer.toString("base64");
       registerClientCostOfSalesExport({
         fileName,
-        fileBase64: base64,
+        fileBase64,
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       }).catch((e) => console.warn("Failed to register export history:", e));
 
