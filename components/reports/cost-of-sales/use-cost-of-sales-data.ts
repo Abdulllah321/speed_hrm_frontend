@@ -17,40 +17,110 @@ export function useCostOfSalesData(reportData: CostOfSalesReportData | null) {
     variant: true,
   });
 
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedDivisions, setSelectedDivisions] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [filterBrands, setFilterBrands] = useState<Set<string>>(new Set());
+  const [filterDivisions, setFilterDivisions] = useState<Set<string>>(new Set());
+  const [filterCategories, setFilterCategories] = useState<Set<string>>(new Set());
+  const [filterGenders, setFilterGenders] = useState<Set<string>>(new Set());
+  const [filterSilhouettes, setFilterSilhouettes] = useState<Set<string>>(new Set());
+  const [filterSizes, setFilterSizes] = useState<Set<string>>(new Set());
+  const [filterColors, setFilterColors] = useState<Set<string>>(new Set());
+
+  // Extract available attribute filter options
+  const attributeOptions = useMemo(() => {
+    const brands = new Set<string>();
+    const divisions = new Set<string>();
+    const categories = new Set<string>();
+    const genders = new Set<string>();
+    const silhouettes = new Set<string>();
+    const sizes = new Set<string>();
+    const colors = new Set<string>();
+
+    if (reportData?.flatItems && reportData.flatItems.length > 0) {
+      for (const item of reportData.flatItems) {
+        if (item.brand) brands.add(item.brand);
+        if (item.division) divisions.add(item.division);
+        if (item.category) categories.add(item.category);
+        if (item.gender) genders.add(item.gender);
+        if (item.silhouette) silhouettes.add(item.silhouette);
+        if (item.size) sizes.add(item.size);
+        if (item.color) colors.add(item.color);
+      }
+    } else if (reportData?.brands) {
+      for (const b of reportData.brands) {
+        if (b.brandName) brands.add(b.brandName);
+        for (const d of b.divisions) {
+          if (d.divisionName) divisions.add(d.divisionName);
+          for (const g of d.genders) {
+            if (g.genderName) genders.add(g.genderName);
+            for (const c of g.categories) {
+              if (c.categoryName) categories.add(c.categoryName);
+              for (const p of c.products) {
+                for (const s of p.sizes) {
+                  if (s.size) sizes.add(s.size);
+                  if (s.color) colors.add(s.color);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      brands: Array.from(brands).sort(),
+      divisions: Array.from(divisions).sort(),
+      categories: Array.from(categories).sort(),
+      genders: Array.from(genders).sort(),
+      silhouettes: Array.from(silhouettes).sort(),
+      sizes: Array.from(sizes).sort(),
+      colors: Array.from(colors).sort(),
+    };
+  }, [reportData]);
 
   // Filtered tree data based on search & attribute selections
   const filteredBrands = useMemo(() => {
     if (!reportData || !reportData.brands) return [];
     let list = reportData.brands;
 
-    if (selectedBrands.length > 0) {
-      const bSet = new Set(selectedBrands);
-      list = list.filter((b) => bSet.has(b.brandName));
-    }
-
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return list;
 
     return list
       .map((brand) => {
+        if (filterBrands.size > 0 && !filterBrands.has(brand.brandName)) {
+          return null;
+        }
+
         const filteredDivisions = brand.divisions
           .map((div) => {
-            if (selectedDivisions.length > 0 && !selectedDivisions.includes(div.divisionName)) {
+            if (filterDivisions.size > 0 && !filterDivisions.has(div.divisionName)) {
               return null;
             }
 
             const filteredGenders = div.genders
               .map((gender) => {
+                if (filterGenders.size > 0 && !filterGenders.has(gender.genderName)) {
+                  return null;
+                }
+
                 const filteredCategories = gender.categories
                   .map((cat) => {
-                    if (selectedCategories.length > 0 && !selectedCategories.includes(cat.categoryName)) {
+                    if (filterCategories.size > 0 && !filterCategories.has(cat.categoryName)) {
                       return null;
                     }
 
                     const filteredProducts = cat.products.filter((prod) => {
+                      const filteredSizes = prod.sizes.filter((s) => {
+                        if (filterSizes.size > 0 && !filterSizes.has(s.size)) return false;
+                        if (filterColors.size > 0 && !filterColors.has(s.color)) return false;
+                        return true;
+                      });
+
+                      if (filterSizes.size > 0 || filterColors.size > 0) {
+                        if (filteredSizes.length === 0) return false;
+                      }
+
+                      if (!q) return true;
+
                       const matchesProd =
                         prod.sku.toLowerCase().includes(q) ||
                         prod.description.toLowerCase().includes(q) ||
@@ -63,43 +133,44 @@ export function useCostOfSalesData(reportData: CostOfSalesReportData | null) {
                       return matchesProd || matchesSizeOrColor;
                     });
 
-                    if (
-                      filteredProducts.length > 0 ||
-                      cat.categoryName.toLowerCase().includes(q)
-                    ) {
-                      return { ...cat, products: filteredProducts.length > 0 ? filteredProducts : cat.products };
+                    if (filteredProducts.length > 0) {
+                      return { ...cat, products: filteredProducts };
                     }
                     return null;
                   })
                   .filter(Boolean) as any[];
 
-                if (
-                  filteredCategories.length > 0 ||
-                  gender.genderName.toLowerCase().includes(q)
-                ) {
+                if (filteredCategories.length > 0) {
                   return { ...gender, categories: filteredCategories };
                 }
                 return null;
               })
               .filter(Boolean) as any[];
 
-            if (
-              filteredGenders.length > 0 ||
-              div.divisionName.toLowerCase().includes(q)
-            ) {
+            if (filteredGenders.length > 0) {
               return { ...div, genders: filteredGenders };
             }
             return null;
           })
           .filter(Boolean) as any[];
 
-        if (filteredDivisions.length > 0 || brand.brandName.toLowerCase().includes(q)) {
+        if (filteredDivisions.length > 0) {
           return { ...brand, divisions: filteredDivisions };
         }
         return null;
       })
       .filter(Boolean) as typeof reportData.brands;
-  }, [reportData, searchQuery, selectedBrands, selectedDivisions, selectedCategories]);
+  }, [
+    reportData,
+    searchQuery,
+    filterBrands,
+    filterDivisions,
+    filterCategories,
+    filterGenders,
+    filterSilhouettes,
+    filterSizes,
+    filterColors,
+  ]);
 
   // Grand Totals Calculation
   const grandTotals = useMemo<CostOfSalesTotals>(() => {
@@ -235,13 +306,23 @@ export function useCostOfSalesData(reportData: CostOfSalesReportData | null) {
     searchQuery,
     setSearchQuery,
     groupingLevels,
+    setGroupingLevels,
     handleToggleLevel,
-    selectedBrands,
-    setSelectedBrands,
-    selectedDivisions,
-    setSelectedDivisions,
-    selectedCategories,
-    setSelectedCategories,
+    attributeOptions,
+    filterBrands,
+    setFilterBrands,
+    filterDivisions,
+    setFilterDivisions,
+    filterCategories,
+    setFilterCategories,
+    filterGenders,
+    setFilterGenders,
+    filterSilhouettes,
+    setFilterSilhouettes,
+    filterSizes,
+    setFilterSizes,
+    filterColors,
+    setFilterColors,
     filteredBrands,
     grandTotals,
     flatRows,

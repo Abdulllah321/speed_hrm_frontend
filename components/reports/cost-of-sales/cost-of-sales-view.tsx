@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useTransition } from "react";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { toast } from "sonner";
-import { MultiSelectOption } from "@/components/ui/multi-select";
 import { DateRange } from "@/components/ui/date-range-picker";
 import { useReportSse } from "@/hooks/use-report-sse";
 import { getLocations, Location } from "@/lib/actions/location";
@@ -62,16 +61,6 @@ export function CostOfSalesView() {
   const locationParam = useMemo(
     () => (selectedLocationIds.length > 0 ? selectedLocationIds.join(",") : undefined),
     [selectedLocationIds],
-  );
-
-  const locationOptions: MultiSelectOption[] = useMemo(
-    () =>
-      locations.map((loc) => ({
-        value: loc.id,
-        label: loc.name,
-        description: loc.code ? `Code: ${loc.code}` : undefined,
-      })),
-    [locations],
   );
 
   const activeSelectionNames = useMemo(() => {
@@ -143,6 +132,21 @@ export function CostOfSalesView() {
     setSearchQuery,
     groupingLevels,
     handleToggleLevel,
+    attributeOptions,
+    filterBrands,
+    setFilterBrands,
+    filterDivisions,
+    setFilterDivisions,
+    filterCategories,
+    setFilterCategories,
+    filterGenders,
+    setFilterGenders,
+    filterSilhouettes,
+    setFilterSilhouettes,
+    filterSizes,
+    setFilterSizes,
+    filterColors,
+    setFilterColors,
     filteredBrands,
     grandTotals,
     flatRows,
@@ -229,17 +233,32 @@ export function CostOfSalesView() {
       {/* KPI Cards */}
       <CostOfSalesHeader totals={grandTotals} />
 
-      {/* Filter Bar, SSE Queue Progress & Checkboxes */}
+      {/* Filter Bar, SSE Queue Progress & Attribute Popover Dropdowns */}
       <CostOfSalesFilters
-        locationOptions={locationOptions}
-        selectedLocationIds={selectedLocationIds}
-        onLocationChange={setSelectedLocationIds}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
+        locations={locations}
+        selectedLocationIds={selectedLocationIds}
+        onLocationChange={setSelectedLocationIds}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
         groupingLevels={groupingLevels}
         onToggleLevel={handleToggleLevel}
+        attributeOptions={attributeOptions}
+        filterBrands={filterBrands}
+        setFilterBrands={setFilterBrands}
+        filterDivisions={filterDivisions}
+        setFilterDivisions={setFilterDivisions}
+        filterCategories={filterCategories}
+        setFilterCategories={setFilterCategories}
+        filterGenders={filterGenders}
+        setFilterGenders={setFilterGenders}
+        filterSilhouettes={filterSilhouettes}
+        setFilterSilhouettes={setFilterSilhouettes}
+        filterSizes={filterSizes}
+        setFilterSizes={setFilterSizes}
+        filterColors={filterColors}
+        setFilterColors={setFilterColors}
         onRefresh={handleFetchReport}
         isPending={isPending || isQueueingJob || isFetchingResult}
         previewJobId={previewJobId}
