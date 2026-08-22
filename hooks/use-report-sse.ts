@@ -67,14 +67,15 @@ export function useReportSse(
     eventSource.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        const { status, progress, message, stage, queuePosition, waitingCount, failedReason } = payload;
+        const { status: statusProp, state: stateProp, progress, message, stage, queuePosition, waitingCount, failedReason } = payload;
+        const status = statusProp || stateProp;
 
         let normalizedStatus: ReportSseState["status"] = "processing";
         if (status === "waiting" || status === "delayed" || status === "queued") {
           normalizedStatus = "queued";
         } else if (status === "active" || status === "processing") {
           normalizedStatus = "processing";
-        } else if (status === "completed") {
+        } else if (status === "completed" || progress === 100) {
           normalizedStatus = "completed";
         } else if (status === "failed") {
           normalizedStatus = "failed";

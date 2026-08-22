@@ -119,7 +119,10 @@ export function CostOfSalesView() {
 
   // Fetch gzipped preview result when SSE completes
   useEffect(() => {
-    if (sseState.status === "completed" && previewJobId) {
+    if (
+      (sseState.status === "completed" || sseState.progressPercent === 100) &&
+      previewJobId
+    ) {
       setIsFetchingResult(true);
       getCostOfSalesResult(previewJobId)
         .then((res) => {
@@ -132,7 +135,7 @@ export function CostOfSalesView() {
         .catch(() => toast.error("Error downloading report calculation result"))
         .finally(() => setIsFetchingResult(false));
     }
-  }, [sseState.status, previewJobId]);
+  }, [sseState.status, sseState.progressPercent, previewJobId]);
 
   // Client-side filtration & matrix hook
   const {
