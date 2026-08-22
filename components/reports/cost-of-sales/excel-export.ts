@@ -117,8 +117,9 @@ export async function generateCostOfSalesExcel(opts: {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Flat Data");
   } else {
     const headers = [
-      "GPC / Product Hierarchy",
+      "Hierarchy / Item Description",
       "SKU",
+      "Barcode",
       "Size",
       "Color",
       "Sold Qty",
@@ -137,6 +138,7 @@ export async function generateCostOfSalesExcel(opts: {
         "-",
         "-",
         "-",
+        "-",
         brand.totals.quantity,
         brand.totals.avgUnitCost,
         brand.totals.totalCost,
@@ -148,6 +150,7 @@ export async function generateCostOfSalesExcel(opts: {
       for (const div of brand.divisions) {
         dataRows.push([
           `  DIVISION: ${div.divisionName.toUpperCase()}`,
+          "-",
           "-",
           "-",
           "-",
@@ -166,6 +169,7 @@ export async function generateCostOfSalesExcel(opts: {
               "-",
               "-",
               "-",
+              "-",
               cat.totals.quantity,
               cat.totals.avgUnitCost,
               cat.totals.totalCost,
@@ -178,6 +182,7 @@ export async function generateCostOfSalesExcel(opts: {
               dataRows.push([
                 `      ${prod.description}`,
                 prod.sku,
+                "All Barcodes",
                 "All Sizes",
                 "All Colors",
                 prod.totals.quantity,
@@ -190,8 +195,9 @@ export async function generateCostOfSalesExcel(opts: {
 
               for (const item of prod.sizes) {
                 dataRows.push([
-                  `        — Variant: ${item.color || "Default"}`,
+                  `        Barcode: ${item.barCode || "N/A"}`,
                   prod.sku,
+                  item.barCode || "-",
                   item.size,
                   item.color || "N/A",
                   item.quantity,
@@ -213,6 +219,7 @@ export async function generateCostOfSalesExcel(opts: {
       "-",
       "-",
       "-",
+      "-",
       grandTotals.quantity,
       grandTotals.avgUnitCost,
       grandTotals.totalCost,
@@ -223,7 +230,7 @@ export async function generateCostOfSalesExcel(opts: {
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
     worksheet["!cols"] = [
-      { wch: 38 }, { wch: 14 }, { wch: 8 }, { wch: 12 },
+      { wch: 38 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 12 },
       { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
       { wch: 14 }, { wch: 12 },
     ];

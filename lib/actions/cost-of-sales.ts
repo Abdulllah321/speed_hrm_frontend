@@ -6,6 +6,7 @@ export interface CostOfSalesSizeItem {
   id: string;
   size: string;
   color: string;
+  barCode?: string;
   quantity: number;
   costPrice: number;
   totalCost: number;

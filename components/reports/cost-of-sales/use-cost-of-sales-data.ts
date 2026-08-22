@@ -272,6 +272,7 @@ export function useCostOfSalesData(reportData: CostOfSalesReportData | null) {
                     type: "variant",
                     id: `item-${item.id}`,
                     sku: prod.sku,
+                    barCode: item.barCode,
                     size: item.size,
                     color: item.color,
                     quantity: item.quantity,
