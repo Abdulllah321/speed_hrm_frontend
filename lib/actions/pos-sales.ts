@@ -615,6 +615,45 @@ export async function getAllianceRegisterReportExportStatus(jobId: string) {
     }
 }
 
+// ─── PRO ERP Sales List Actions ──────────────────────────────────────────
+
+export async function queueSalesListPreview(opts: {
+    locationId?: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    reportType?: "merged" | "separate";
+    search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const res = await authFetch("/pos-sales/reports/sales-list/queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(opts),
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error queueing sales list calculation" };
+    }
+}
+
+export async function getSalesListResult(
+    jobId: string,
+): Promise<{ status: boolean; data?: any; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-sales/reports/sales-list/result/${jobId}`, {
+            method: "GET",
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error fetching sales list result" };
+    }
+}
+
 
 
 
