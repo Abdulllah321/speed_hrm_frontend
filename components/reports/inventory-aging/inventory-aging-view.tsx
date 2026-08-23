@@ -130,8 +130,9 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
   // Handle SSE completed state
   useEffect(() => {
     if (sseState.status === "completed" && previewJobId && !isFetchingResult) {
+      const currentJobId = previewJobId;
       setIsFetchingResult(true);
-      getInventoryAgingResult(previewJobId)
+      getInventoryAgingResult(currentJobId)
         .then((res) => {
           const payload = res?.data?.data || res?.data || res;
           if (payload && (payload.flatItemsList || res?.status)) {
@@ -148,6 +149,7 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         })
         .finally(() => {
           setIsFetchingResult(false);
+          setPreviewJobId(null);
         });
     }
   }, [sseState.status, previewJobId, isFetchingResult]);
