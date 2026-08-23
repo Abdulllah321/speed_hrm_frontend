@@ -7,6 +7,7 @@ import {
   WarehouseHeader,
 } from "./types";
 import { cn } from "@/lib/utils";
+import { Loader2, PackageX, RefreshCw } from "lucide-react";
 
 interface InventoryAgingTableProps {
   items: InventoryAgingRecord[];
@@ -15,6 +16,9 @@ interface InventoryAgingTableProps {
   warehouses: WarehouseHeader[];
   reportType: "merged" | "separate";
   isPending: boolean;
+  isLoading?: boolean;
+  progressPercent?: number;
+  progressMessage?: string;
 }
 
 export function InventoryAgingTable({
@@ -24,6 +28,9 @@ export function InventoryAgingTable({
   warehouses,
   reportType,
   isPending,
+  isLoading = false,
+  progressPercent = 0,
+  progressMessage = "",
 }: InventoryAgingTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +42,33 @@ export function InventoryAgingTable({
   });
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden no-print">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden no-print relative">
+      {/* Real-time Calculation / Fetch Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs flex flex-col items-center justify-center p-6 space-y-4">
+          <div className="p-3.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 shadow-sm">
+            <RefreshCw className="h-7 w-7 animate-spin" />
+          </div>
+          <div className="text-center max-w-sm space-y-1.5">
+            <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+              {progressMessage || "Calculating Inventory Aging & Valuation..."}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Evaluating stock movement ledger & FIFO entry buckets
+            </p>
+          </div>
+          <div className="w-64 bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div
+              className="bg-indigo-600 dark:bg-indigo-400 h-full transition-all duration-300 rounded-full"
+              style={{ width: `${Math.max(5, progressPercent)}%` }}
+            />
+          </div>
+          <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+            {progressPercent}% Complete
+          </span>
+        </div>
+      )}
+
       <div
         ref={parentRef}
         className="max-h-[680px] overflow-auto relative"
@@ -81,6 +114,21 @@ export function InventoryAgingTable({
             </div>
           </div>
 
+          {/* Empty State */}
+          {!isLoading && items.length === 0 && (
+            <div className="py-24 text-center flex flex-col items-center justify-center space-y-3">
+              <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
+                <PackageX className="h-8 w-8" />
+              </div>
+              <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                No inventory aging items found
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+                Try selecting different stores, warehouses, or aging brackets.
+              </p>
+            </div>
+          )}
+
           {/* Table Body (Virtualized Rows) */}
           <div
             style={{
@@ -124,8 +172,8 @@ export function InventoryAgingTable({
                   <div className="w-32 shrink-0 text-slate-600 dark:text-slate-400 truncate">
                     {item.categoryName}
                   </div>
-                  <div className="w-24 shrink-0 text-right font-mono text-slate-700 dark:text-slate-300">
-                    Rs. {item.unitCost.toLocaleString()}
+                  <div className="w-24 shrink-0 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
+                    Rs. {item.unitCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                   </div>
                   <div className="w-24 shrink-0 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
                     {item.totalQty.toLocaleString()}

@@ -135,7 +135,10 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         .then((res) => {
           const payload = res?.data?.data || res?.data || res;
           if (payload && (payload.flatItemsList || res?.status)) {
-            setReportData(payload.flatItemsList ? payload : payload.data);
+            const dataToSet = payload.flatItemsList ? payload : payload.data;
+            setReportData(dataToSet);
+            const count = dataToSet?.flatItemsList?.length || 0;
+            toast.success(`Inventory Aging calculated successfully across ${count} items!`);
           } else {
             toast.error(res?.message || "Failed to load inventory aging preview data");
           }
@@ -148,6 +151,12 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         });
     }
   }, [sseState.status, previewJobId, isFetchingResult]);
+
+  const isReportLoading =
+    isQueueingJob ||
+    isFetchingResult ||
+    (!!previewJobId && sseState.status !== "completed") ||
+    (!reportData && isPending);
 
   // Client-side filtration hook
   const { filteredItems, grandTotals } = useInventoryAgingData({
@@ -248,6 +257,9 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         warehouses={reportData?.warehouses || warehouses}
         reportType={reportType}
         isPending={isPending}
+        isLoading={isReportLoading}
+        progressPercent={sseState.progressPercent || (isQueueingJob ? 5 : 0)}
+        progressMessage={sseState.message || (isQueueingJob ? "Submitting calculation job..." : "Loading inventory aging data...")}
       />
     </div>
   );
