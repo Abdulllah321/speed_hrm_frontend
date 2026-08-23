@@ -19,6 +19,9 @@ export interface GrossSalesReturnLineItem {
   description: string;
   categoryName: string;
   brandName: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   sizeName: string;
   colorName: string;
   quantity: number;
@@ -67,6 +70,9 @@ export interface GrossSalesReturnFlatRecord {
   description: string;
   categoryName: string;
   brandName: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   sizeName: string;
   colorName: string;
   quantity: number;
@@ -91,9 +97,16 @@ export interface GrossSalesReturnReportData {
 }
 
 export interface GroupingLevels {
-  location: boolean;
-  returnNote: boolean;
-  item: boolean;
+  brand?: boolean;
+  division?: boolean;
+  category?: boolean;
+  gender?: boolean;
+  silhouette?: boolean;
+  article?: boolean;
+  variant?: boolean;
+  returnNote?: boolean;
+  item?: boolean;
+  location?: boolean;
 }
 
 export interface GrossSalesReturnTableRow {
@@ -114,6 +127,9 @@ export interface GrossSalesReturnTableRow {
   description?: string;
   categoryName?: string;
   brandName?: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   sizeName?: string;
   colorName?: string;
   quantity?: number;

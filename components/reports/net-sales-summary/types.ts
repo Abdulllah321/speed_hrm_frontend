@@ -17,6 +17,9 @@ export interface NetSalesSummaryLineItem {
   description: string;
   categoryName: string;
   brandName: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   sizeName: string;
   colorName: string;
   soldQty: number;
@@ -32,6 +35,9 @@ export interface NetSalesSummaryLineItem {
 export interface NetSalesSummaryCategoryNode {
   categoryName: string;
   brandName: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   totals: NetSalesSummaryTotals;
   items: NetSalesSummaryLineItem[];
 }
@@ -48,6 +54,9 @@ export interface NetSalesSummaryFlatRecord {
   locationName: string;
   categoryName: string;
   brandName: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   sku: string;
   barCode: string;
   description: string;
@@ -74,17 +83,25 @@ export interface NetSalesSummaryReportData {
 }
 
 export interface GroupingLevels {
-  location: boolean;
+  brand: boolean;
+  division: boolean;
   category: boolean;
-  item: boolean;
+  gender: boolean;
+  silhouette: boolean;
+  article: boolean;
+  variant: boolean;
+  location?: boolean;
 }
 
 export interface NetSalesSummaryTableRow {
   id: string;
-  type: "location" | "category" | "item";
+  type: "location" | "category" | "brand" | "division" | "gender" | "silhouette" | "article" | "item";
   label?: string;
   categoryName?: string;
   brandName?: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   sku?: string;
   barCode?: string;
   description?: string;

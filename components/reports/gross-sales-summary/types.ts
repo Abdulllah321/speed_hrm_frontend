@@ -14,6 +14,9 @@ export interface GrossSalesSummaryLineItem {
   description: string;
   categoryName: string;
   brandName: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   sizeName: string;
   colorName: string;
   quantity: number;
@@ -26,6 +29,9 @@ export interface GrossSalesSummaryLineItem {
 export interface GrossSalesSummaryCategoryNode {
   categoryName: string;
   brandName: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   totals: GrossSalesSummaryTotals;
   items: GrossSalesSummaryLineItem[];
 }
@@ -42,6 +48,9 @@ export interface GrossSalesSummaryFlatRecord {
   locationName: string;
   categoryName: string;
   brandName: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   sku: string;
   barCode: string;
   description: string;
@@ -65,17 +74,25 @@ export interface GrossSalesSummaryReportData {
 }
 
 export interface GroupingLevels {
-  location: boolean;
+  brand: boolean;
+  division: boolean;
   category: boolean;
-  item: boolean;
+  gender: boolean;
+  silhouette: boolean;
+  article: boolean;
+  variant: boolean;
+  location?: boolean;
 }
 
 export interface GrossSalesSummaryTableRow {
   id: string;
-  type: "location" | "category" | "item";
+  type: "location" | "category" | "brand" | "division" | "gender" | "silhouette" | "article" | "item";
   label?: string;
   categoryName?: string;
   brandName?: string;
+  divisionName?: string;
+  genderName?: string;
+  silhouetteName?: string;
   sku?: string;
   barCode?: string;
   description?: string;

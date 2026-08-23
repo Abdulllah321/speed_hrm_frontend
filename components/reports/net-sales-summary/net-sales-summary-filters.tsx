@@ -227,13 +227,31 @@ export function NetSalesSummaryFilters({
                 </Button>
               </div>
               <div className="space-y-2.5 text-xs">
+                {reportType === "separate" && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-loc-net"
+                      checked={!!groupingLevels.location}
+                      onCheckedChange={(c) => onToggleLevel("location", !!c)}
+                    />
+                    <Label htmlFor="lvl-loc-net">Store Location</Label>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-loc-net"
-                    checked={groupingLevels.location}
-                    onCheckedChange={(c) => onToggleLevel("location", !!c)}
+                    id="lvl-brand-net"
+                    checked={groupingLevels.brand}
+                    onCheckedChange={(c) => onToggleLevel("brand", !!c)}
                   />
-                  <Label htmlFor="lvl-loc-net">Store Location</Label>
+                  <Label htmlFor="lvl-brand-net">Brand</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="lvl-div-net"
+                    checked={groupingLevels.division}
+                    onCheckedChange={(c) => onToggleLevel("division", !!c)}
+                  />
+                  <Label htmlFor="lvl-div-net">Division</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -241,15 +259,39 @@ export function NetSalesSummaryFilters({
                     checked={groupingLevels.category}
                     onCheckedChange={(c) => onToggleLevel("category", !!c)}
                   />
-                  <Label htmlFor="lvl-cat-net">Product Category / Brand</Label>
+                  <Label htmlFor="lvl-cat-net">Category</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-item-net"
-                    checked={groupingLevels.item}
-                    onCheckedChange={(c) => onToggleLevel("item", !!c)}
+                    id="lvl-gen-net"
+                    checked={groupingLevels.gender}
+                    onCheckedChange={(c) => onToggleLevel("gender", !!c)}
                   />
-                  <Label htmlFor="lvl-item-net">Product Line Items (Barcode / Size)</Label>
+                  <Label htmlFor="lvl-gen-net">Gender</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="lvl-sil-net"
+                    checked={groupingLevels.silhouette}
+                    onCheckedChange={(c) => onToggleLevel("silhouette", !!c)}
+                  />
+                  <Label htmlFor="lvl-sil-net">Silhouette</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="lvl-art-net"
+                    checked={groupingLevels.article}
+                    onCheckedChange={(c) => onToggleLevel("article", !!c)}
+                  />
+                  <Label htmlFor="lvl-art-net">Article (SKU)</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="lvl-var-net"
+                    checked={groupingLevels.variant}
+                    onCheckedChange={(c) => onToggleLevel("variant", !!c)}
+                  />
+                  <Label htmlFor="lvl-var-net">Variant (Size / Color)</Label>
                 </div>
               </div>
             </PopoverContent>

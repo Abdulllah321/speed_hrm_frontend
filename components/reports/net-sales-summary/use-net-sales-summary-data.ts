@@ -4,7 +4,6 @@ import {
   NetSalesSummaryTotals,
   GroupingLevels,
   NetSalesSummaryTableRow,
-  NetSalesSummaryCategoryNode,
 } from "./types";
 
 const createEmptyTotals = (): NetSalesSummaryTotals => ({
@@ -19,6 +18,18 @@ const createEmptyTotals = (): NetSalesSummaryTotals => ({
   netSalesAmount: 0,
 });
 
+const addTotals = (target: NetSalesSummaryTotals, source: NetSalesSummaryTotals) => {
+  target.orderCount += source.orderCount;
+  target.totalItemsSold += source.totalItemsSold;
+  target.totalItemsReturned += source.totalItemsReturned;
+  target.netItems += source.netItems;
+  target.grossSalesAmount += source.grossSalesAmount;
+  target.returnAmount += source.returnAmount;
+  target.discountAmount += source.discountAmount;
+  target.taxAmount += source.taxAmount;
+  target.netSalesAmount += source.netSalesAmount;
+};
+
 export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | null) {
   const [reportType, setReportType] = useState<"merged" | "separate">("merged");
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,9 +37,14 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
   const [fbrOnlyFilter, setFbrOnlyFilter] = useState(false);
 
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
-    location: true,
+    brand: true,
+    division: true,
     category: true,
-    item: true,
+    gender: true,
+    silhouette: true,
+    article: true,
+    variant: true,
+    location: true,
   });
 
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
@@ -53,19 +69,8 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
   }, []);
 
   const collapseAll = useCallback(() => {
-    const allNodeIds = new Set<string>();
-    if (reportData?.locations) {
-      for (const loc of reportData.locations) {
-        allNodeIds.add(`loc-${loc.locationKey}`);
-      }
-    }
-    if (reportData?.categories) {
-      for (const cat of reportData.categories) {
-        allNodeIds.add(`cat-${cat.categoryName}`);
-      }
-    }
-    setCollapsedNodes(allNodeIds);
-  }, [reportData]);
+    setCollapsedNodes(new Set(["root"]));
+  }, []);
 
   const grandTotals = useMemo<NetSalesSummaryTotals>(() => {
     if (!reportData) return createEmptyTotals();
@@ -74,113 +79,159 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
 
   const flatRows = useMemo<NetSalesSummaryTableRow[]>(() => {
     const rows: NetSalesSummaryTableRow[] = [];
-    if (!reportData) return rows;
+    if (!reportData || !reportData.flatItems) return rows;
 
     const q = searchQuery.toLowerCase().trim();
 
-    const filterCategory = (cat: NetSalesSummaryCategoryNode) => {
+    // 1. Filter flat items
+    const filteredFlatItems = reportData.flatItems.filter((item) => {
       if (!q) return true;
-      const matchesCategory = cat.categoryName.toLowerCase().includes(q) || cat.brandName.toLowerCase().includes(q);
-      const matchesItem = cat.items.some(
-        (i) =>
-          i.sku.toLowerCase().includes(q) ||
-          i.barCode.toLowerCase().includes(q) ||
-          i.description.toLowerCase().includes(q),
+      return (
+        item.locationName.toLowerCase().includes(q) ||
+        (item.brandName && item.brandName.toLowerCase().includes(q)) ||
+        (item.divisionName && item.divisionName.toLowerCase().includes(q)) ||
+        (item.categoryName && item.categoryName.toLowerCase().includes(q)) ||
+        (item.genderName && item.genderName.toLowerCase().includes(q)) ||
+        (item.silhouetteName && item.silhouetteName.toLowerCase().includes(q)) ||
+        item.sku.toLowerCase().includes(q) ||
+        item.barCode.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q)
       );
-      return matchesCategory || matchesItem;
-    };
+    });
 
-    const flattenCategories = (categoriesList: NetSalesSummaryCategoryNode[], depthOffset: number, prefix: string) => {
-      const filteredCategories = categoriesList.filter(filterCategory);
+    // 2. Build level sequence matching available-stock-summary
+    const isSeparate = reportData.reportType === "separate";
+    const levels: string[] = [];
 
-      for (const cat of filteredCategories) {
-        const catNodeId = `${prefix}-cat-${cat.categoryName}`;
-        const isCatCollapsed = collapsedNodes.has(catNodeId);
-        const hasItems = cat.items.length > 0;
+    if (isSeparate && groupingLevels.location) levels.push("location");
+    if (groupingLevels.brand) levels.push("brand");
+    if (groupingLevels.division) levels.push("division");
+    if (groupingLevels.category) levels.push("category");
+    if (groupingLevels.gender) levels.push("gender");
+    if (groupingLevels.silhouette) levels.push("silhouette");
+    if (groupingLevels.article) levels.push("article");
+    if (groupingLevels.variant) levels.push("variant");
 
-        if (groupingLevels.category) {
-          rows.push({
-            type: "category",
-            id: catNodeId,
-            nodeId: catNodeId,
-            label: cat.categoryName,
-            categoryName: cat.categoryName,
-            brandName: cat.brandName,
-            totals: cat.totals,
-            depth: depthOffset,
-            hasChildren: hasItems,
-            isExpanded: !isCatCollapsed,
-          });
-        }
-
-        if (!isCatCollapsed && groupingLevels.item) {
-          for (const line of cat.items) {
-            rows.push({
-              type: "item",
-              id: `${prefix}-item-${line.id}`,
-              nodeId: `${prefix}-item-${line.id}`,
-              categoryName: cat.categoryName,
-              brandName: line.brandName,
-              sku: line.sku,
-              barCode: line.barCode,
-              description: line.description,
-              sizeName: line.sizeName,
-              colorName: line.colorName,
-              soldQty: line.soldQty,
-              returnQty: line.returnQty,
-              netQty: line.netQty,
-              grossAmount: line.grossAmount,
-              returnAmount: line.returnAmount,
-              discountAmount: line.discountAmount,
-              taxAmount: line.taxAmount,
-              netAmount: line.netAmount,
-              totals: {
-                orderCount: 1,
-                totalItemsSold: line.soldQty,
-                totalItemsReturned: line.returnQty,
-                netItems: line.netQty,
-                grossSalesAmount: line.grossAmount,
-                returnAmount: line.returnAmount,
-                discountAmount: line.discountAmount,
-                taxAmount: line.taxAmount,
-                netSalesAmount: line.netAmount,
-              },
-              depth: depthOffset + 1,
-              hasChildren: false,
-              isExpanded: false,
-            });
-          }
-        }
-      }
-    };
-
-    if (reportData.reportType === "separate" && reportData.locations && reportData.locations.length > 0) {
-      for (const loc of reportData.locations) {
-        const locId = `loc-${loc.locationKey}`;
-        const isLocCollapsed = collapsedNodes.has(locId);
-        const hasCategories = loc.categories.length > 0;
-
-        if (groupingLevels.location) {
-          rows.push({
-            type: "location",
-            id: locId,
-            nodeId: locId,
-            label: loc.locationName.toUpperCase(),
-            totals: loc.totals,
-            depth: 0,
-            hasChildren: hasCategories,
-            isExpanded: !isLocCollapsed,
-          });
-        }
-
-        if (!isLocCollapsed && hasCategories) {
-          flattenCategories(loc.categories, groupingLevels.location ? 1 : 0, loc.locationKey);
-        }
-      }
-    } else if (reportData.categories) {
-      flattenCategories(reportData.categories, 0, "merged");
+    if (levels.length === 0) {
+      levels.push(isSeparate ? "location" : "brand");
     }
 
+    interface InternalTreeNode {
+      level: string;
+      value: string;
+      sku?: string;
+      barCode?: string;
+      description?: string;
+      sizeName?: string;
+      colorName?: string;
+      brandName?: string;
+      categoryName?: string;
+      divisionName?: string;
+      genderName?: string;
+      silhouetteName?: string;
+      totals: NetSalesSummaryTotals;
+      childrenMap: Map<string, InternalTreeNode>;
+    }
+
+    const rootMap = new Map<string, InternalTreeNode>();
+
+    for (const item of filteredFlatItems) {
+      const itemTotals: NetSalesSummaryTotals = {
+        orderCount: 1,
+        totalItemsSold: item.soldQty,
+        totalItemsReturned: item.returnQty,
+        netItems: item.netQty,
+        grossSalesAmount: item.grossAmount,
+        returnAmount: item.returnAmount,
+        discountAmount: item.discountAmount,
+        taxAmount: item.taxAmount,
+        netSalesAmount: item.netAmount,
+      };
+
+      let currentMap = rootMap;
+
+      for (let i = 0; i < levels.length; i++) {
+        const levelName = levels[i];
+        let val = "";
+
+        if (levelName === "location") val = item.locationName;
+        else if (levelName === "brand") val = item.brandName || "Default Brand";
+        else if (levelName === "division") val = item.divisionName || "Default Division";
+        else if (levelName === "category") val = item.categoryName || "Default Category";
+        else if (levelName === "gender") val = item.genderName || "Default Gender";
+        else if (levelName === "silhouette") val = item.silhouetteName || "Default Silhouette";
+        else if (levelName === "article") val = item.sku || item.barCode || "Article";
+        else if (levelName === "variant") val = `${item.colorName || "Default"}-${item.sizeName || "Default"}`;
+
+        let existing = currentMap.get(val);
+        if (!existing) {
+          existing = {
+            level: levelName,
+            value: val,
+            sku: item.sku,
+            barCode: item.barCode,
+            description: item.description,
+            sizeName: item.sizeName,
+            colorName: item.colorName,
+            brandName: item.brandName,
+            categoryName: item.categoryName,
+            divisionName: item.divisionName,
+            genderName: item.genderName,
+            silhouetteName: item.silhouetteName,
+            totals: createEmptyTotals(),
+            childrenMap: new Map(),
+          };
+          currentMap.set(val, existing);
+        }
+
+        addTotals(existing.totals, itemTotals);
+        currentMap = existing.childrenMap;
+      }
+    }
+
+    // Recursively flatten tree into TableRows
+    function flattenTree(map: Map<string, InternalTreeNode>, depth: number, parentKey: string) {
+      for (const [key, node] of map.entries()) {
+        const nodeId = `${parentKey}_${node.level}_${key}`;
+        const hasChildren = node.childrenMap.size > 0;
+        const isExpanded = !collapsedNodes.has(nodeId);
+
+        rows.push({
+          id: nodeId,
+          nodeId,
+          type: node.level as any,
+          label: node.value,
+          categoryName: node.categoryName,
+          brandName: node.brandName,
+          divisionName: node.divisionName,
+          genderName: node.genderName,
+          silhouetteName: node.silhouetteName,
+          sku: node.sku,
+          barCode: node.barCode,
+          description: node.description,
+          sizeName: node.sizeName,
+          colorName: node.colorName,
+          soldQty: node.totals.totalItemsSold,
+          returnQty: node.totals.totalItemsReturned,
+          netQty: node.totals.netItems,
+          grossAmount: node.totals.grossSalesAmount,
+          returnAmount: node.totals.returnAmount,
+          discountAmount: node.totals.discountAmount,
+          taxAmount: node.totals.taxAmount,
+          netAmount: node.totals.netSalesAmount,
+          totals: node.totals,
+          depth,
+          hasChildren,
+          isExpanded,
+        });
+
+        if (hasChildren && isExpanded) {
+          flattenTree(node.childrenMap, depth + 1, nodeId);
+        }
+      }
+    }
+
+    flattenTree(rootMap, 0, "root");
     return rows;
   }, [reportData, groupingLevels, collapsedNodes, searchQuery]);
 
