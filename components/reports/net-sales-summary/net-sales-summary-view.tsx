@@ -1,132 +1,108 @@
 "use client";
 
-import React, { useEffect, useState, useTransition, useCallback, useMemo } from "react";
-import { DateRange } from "@/components/ui/date-range-picker";
-import { startOfMonth, endOfMonth } from "date-fns";
-import { getLocations, Location } from "@/lib/actions/location";
-import { getUsers, User } from "@/lib/actions/users";
+import React, { useState, useEffect, useTransition } from "react";
+import {
+  NetSalesSummaryReportData,
+} from "./types";
+import { NetSalesSummaryHeader } from "./net-sales-summary-header";
+import { NetSalesSummaryFilters } from "./net-sales-summary-filters";
+import { NetSalesSummaryTable } from "./net-sales-summary-table";
+import { useNetSalesSummaryData } from "./use-net-sales-summary-data";
+import { generateNetSalesSummaryExcel } from "./excel-export";
+import { generateNetSalesSummaryPdf } from "./pdf-export";
+import { useReportSse } from "@/hooks/use-report-sse";
 import {
   queueNetSalesSummaryPreview,
   getNetSalesSummaryResult,
 } from "@/lib/actions/pos-sales";
-import { useReportSse } from "@/hooks/use-report-sse";
-import { NetSalesSummaryReportData } from "./types";
-import { useNetSalesSummaryData } from "./use-net-sales-summary-data";
-import { NetSalesSummaryHeader } from "./net-sales-summary-header";
-import { NetSalesSummaryFilters } from "./net-sales-summary-filters";
-import { NetSalesSummaryTable } from "./net-sales-summary-table";
-import { generateNetSalesSummaryExcel } from "./excel-export";
-import { generateNetSalesSummaryPdf } from "./pdf-export";
 import { toast } from "sonner";
+import { DateRange } from "@/components/ui/date-range-picker";
 
-export function NetSalesSummaryView() {
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [cashiers, setCashiers] = useState<User[]>([]);
+interface NetSalesSummaryViewProps {
+  initialReportData?: NetSalesSummaryReportData | null;
+  locations?: any[];
+  cashiers?: any[];
+  userId?: string;
+}
+
+export function NetSalesSummaryView({
+  initialReportData = null,
+  locations = [],
+  cashiers = [],
+  userId = "system",
+}: NetSalesSummaryViewProps = {}) {
+  const [reportData, setReportData] = useState<NetSalesSummaryReportData | null>(
+    initialReportData
+  );
+  const [reportType, setReportType] = useState<"merged" | "separate">(
+    initialReportData?.reportType || "merged"
+  );
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
-  const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>(undefined);
-
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>();
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
+    from: new Date(new Date().setDate(new Date().getDate() - 30)),
+    to: new Date(),
   });
 
-  const [reportData, setReportData] = useState<NetSalesSummaryReportData | null>(null);
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);
   const [isQueueingJob, setIsQueueingJob] = useState(false);
   const [isFetchingResult, setIsFetchingResult] = useState(false);
-  const [isPending, startTransition] = useTransition();
-
-  // Client export state
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  // SSE Stream Monitoring
+  const [isPending, startTransition] = useTransition();
+
   const sseState = useReportSse(previewJobId, "net-sales-summary");
 
-  // Load Outlets & Cashiers on mount
-  useEffect(() => {
-    async function loadOptions() {
-      try {
-        const [locRes, cashierRes] = await Promise.all([getLocations(), getUsers()]);
-        const locData = Array.isArray(locRes) ? locRes : (locRes as any)?.data || [];
-        const userList = Array.isArray(cashierRes) ? cashierRes : (cashierRes as any)?.data || [];
-
-        if (Array.isArray(locData)) setLocations(locData);
-        if (Array.isArray(userList)) setCashiers(userList);
-      } catch (err) {
-        console.error("Failed to load outlet or cashier options:", err);
-      }
-    }
-    loadOptions();
-  }, []);
-
-  const locationParam = useMemo(
-    () => (selectedLocationIds.length > 0 ? selectedLocationIds.join(",") : undefined),
-    [selectedLocationIds],
-  );
-
-  const activeSelectionNames = useMemo(() => {
-    if (selectedLocationIds.length === 0) return "All Outlets (Stores)";
-    return locations
-      .filter((l) => selectedLocationIds.includes(l.id))
-      .map((l) => l.name)
-      .join(", ");
+  const activeSelectionNames = React.useMemo(() => {
+    if (selectedLocationIds.length === 0) return "All Outlets";
+    const selected = locations.filter((loc) => selectedLocationIds.includes(loc.id));
+    return selected.map((loc) => loc.name).join(", ");
   }, [selectedLocationIds, locations]);
 
-  // Queue preview calculation
-  const handleFetchReport = useCallback(() => {
-    if (!dateRange.from || !dateRange.to) return;
-
+  const handleFetchReport = () => {
     setIsQueueingJob(true);
-    setPreviewJobId(null);
-
     startTransition(async () => {
       try {
+        const startStr = dateRange.from ? dateRange.from.toISOString() : undefined;
+        const endStr = dateRange.to ? dateRange.to.toISOString() : undefined;
+
         const res = await queueNetSalesSummaryPreview({
-          locationId: locationParam,
-          startDate: dateRange.from?.toISOString(),
-          endDate: dateRange.to?.toISOString(),
+          locationId: selectedLocationIds.join(","),
           cashierUserId: selectedCashierId,
+          startDate: startStr,
+          endDate: endStr,
           reportType,
         });
 
-        if (res && res.status && res.data?.jobId) {
-          setPreviewJobId(res.data.jobId);
+        const jobId = res.data?.jobId;
+        if (res.status && jobId) {
+          setPreviewJobId(jobId);
+          toast.success("Queued preview calculation in background...");
         } else {
-          toast.error(res?.message || "Failed to queue net sales summary calculation");
+          toast.error(res.message || "Failed to queue summary report preview.");
         }
       } catch (err: any) {
-        toast.error("Error queueing net sales summary calculation job");
+        toast.error("Error launching summary calculation");
       } finally {
         setIsQueueingJob(false);
       }
     });
-  }, [locationParam, dateRange, selectedCashierId, reportType]);
+  };
 
-  // Initial fetch on mount or parameters change
   useEffect(() => {
-    handleFetchReport();
-  }, [locationParam, dateRange, selectedCashierId, reportType]);
-
-  // Fetch result when SSE completes
-  useEffect(() => {
-    if (
-      (sseState.status === "completed" || sseState.progressPercent === 100) &&
-      previewJobId
-    ) {
+    if (sseState.status === "completed" && previewJobId && !isFetchingResult) {
       setIsFetchingResult(true);
       getNetSalesSummaryResult(previewJobId)
         .then((res) => {
-          if (res && res.status && res.data) {
+          if (res.status && res.data) {
             setReportData(res.data);
+            toast.success("Net sales summary updated");
           } else {
-            toast.error("Failed to load completed net sales summary dataset");
+            toast.error(res.message || "Failed to load summary result");
           }
         })
-        .catch((err) => {
-          toast.error("Error retrieving completed net sales summary preview");
-        })
+        .catch(() => toast.error("Error fetching preview result"))
         .finally(() => {
           setIsFetchingResult(false);
         });
@@ -139,13 +115,9 @@ export function NetSalesSummaryView() {
     groupingLevels,
     handleToggleLevel,
     grandTotals,
-    flatRows,
-    toggleNode,
-    expandAll,
-    collapseAll,
+    treeData,
   } = useNetSalesSummaryData(reportData);
 
-  // Client Excel Export Handler
   const handleExportExcel = async (type: "flat" | "hierarchical") => {
     if (!reportData) return;
     setIsExportingExcel(true);
@@ -153,7 +125,7 @@ export function NetSalesSummaryView() {
     try {
       const { excelBuffer, fileName } = await generateNetSalesSummaryExcel({
         exportType: type,
-        categories: reportData.categories || [],
+        treeData,
         flatItems: reportData.flatItems || [],
         grandTotals,
         dateRange,
@@ -179,14 +151,13 @@ export function NetSalesSummaryView() {
     }
   };
 
-  // Client PDF Print Handler
   const handleExportPdf = async () => {
     if (!reportData) return;
     setIsExportingPdf(true);
 
     try {
       await generateNetSalesSummaryPdf({
-        categories: reportData.categories || [],
+        flatItems: reportData.flatItems || [],
         grandTotals,
         dateRange,
         locationNames: activeSelectionNames,
@@ -200,10 +171,8 @@ export function NetSalesSummaryView() {
 
   return (
     <div className="p-6 space-y-6 max-w-[1750px] mx-auto">
-      {/* KPI Header Cards */}
       <NetSalesSummaryHeader totals={grandTotals} />
 
-      {/* Filter Bar, SSE Queue Progress Banner */}
       <NetSalesSummaryFilters
         reportType={reportType}
         onReportTypeChange={setReportType}
@@ -232,13 +201,11 @@ export function NetSalesSummaryView() {
         isExportingPdf={isExportingPdf}
       />
 
-      {/* Virtualized Minimal Light Theme Matrix Table */}
       <NetSalesSummaryTable
-        rows={flatRows}
+        treeData={treeData}
         grandTotals={grandTotals}
-        onToggleNode={toggleNode}
-        onExpandAll={expandAll}
-        onCollapseAll={collapseAll}
+        searchQuery={searchQuery}
+        isLoading={isPending || isQueueingJob || isFetchingResult}
       />
     </div>
   );

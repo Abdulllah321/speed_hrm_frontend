@@ -32,24 +32,6 @@ export interface NetSalesSummaryLineItem {
   netAmount: number;
 }
 
-export interface NetSalesSummaryCategoryNode {
-  categoryName: string;
-  brandName: string;
-  divisionName?: string;
-  genderName?: string;
-  silhouetteName?: string;
-  totals: NetSalesSummaryTotals;
-  items: NetSalesSummaryLineItem[];
-}
-
-export interface NetSalesSummaryLocationNode {
-  locationKey: string;
-  locationId?: string;
-  locationName: string;
-  categories: NetSalesSummaryCategoryNode[];
-  totals: NetSalesSummaryTotals;
-}
-
 export interface NetSalesSummaryFlatRecord {
   locationName: string;
   categoryName: string;
@@ -74,8 +56,6 @@ export interface NetSalesSummaryFlatRecord {
 
 export interface NetSalesSummaryReportData {
   reportType: "merged" | "separate";
-  locations?: NetSalesSummaryLocationNode[];
-  categories: NetSalesSummaryCategoryNode[];
   flatItems: NetSalesSummaryFlatRecord[];
   grandTotals: NetSalesSummaryTotals;
   dateRange: { startDate?: string; endDate?: string };
@@ -93,31 +73,15 @@ export interface GroupingLevels {
   location?: boolean;
 }
 
-export interface NetSalesSummaryTableRow {
-  id: string;
-  type: "location" | "category" | "brand" | "division" | "gender" | "silhouette" | "article" | "item";
-  label?: string;
-  categoryName?: string;
-  brandName?: string;
-  divisionName?: string;
-  genderName?: string;
-  silhouetteName?: string;
+export interface NetSalesSummaryTreeNode {
+  level: string; // "location" | "brand" | "division" | "category" | "gender" | "silhouette" | "article" | "variant"
+  value: string;
   sku?: string;
+  articleName?: string;
+  color?: string;
+  size?: string;
   barCode?: string;
-  description?: string;
-  sizeName?: string;
-  colorName?: string;
-  soldQty?: number;
-  returnQty?: number;
-  netQty?: number;
-  grossAmount?: number;
-  returnAmount?: number;
-  discountAmount?: number;
-  taxAmount?: number;
-  netAmount?: number;
-  depth?: number;
-  hasChildren?: boolean;
-  isExpanded?: boolean;
-  nodeId?: string;
+  brandName?: string;
   totals: NetSalesSummaryTotals;
+  children: NetSalesSummaryTreeNode[];
 }

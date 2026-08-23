@@ -26,24 +26,6 @@ export interface GrossSalesSummaryLineItem {
   subTotal: number;
 }
 
-export interface GrossSalesSummaryCategoryNode {
-  categoryName: string;
-  brandName: string;
-  divisionName?: string;
-  genderName?: string;
-  silhouetteName?: string;
-  totals: GrossSalesSummaryTotals;
-  items: GrossSalesSummaryLineItem[];
-}
-
-export interface GrossSalesSummaryLocationNode {
-  locationKey: string;
-  locationId?: string;
-  locationName: string;
-  categories: GrossSalesSummaryCategoryNode[];
-  totals: GrossSalesSummaryTotals;
-}
-
 export interface GrossSalesSummaryFlatRecord {
   locationName: string;
   categoryName: string;
@@ -65,8 +47,6 @@ export interface GrossSalesSummaryFlatRecord {
 
 export interface GrossSalesSummaryReportData {
   reportType: "merged" | "separate";
-  locations?: GrossSalesSummaryLocationNode[];
-  categories: GrossSalesSummaryCategoryNode[];
   flatItems: GrossSalesSummaryFlatRecord[];
   grandTotals: GrossSalesSummaryTotals;
   dateRange: { startDate?: string; endDate?: string };
@@ -84,28 +64,15 @@ export interface GroupingLevels {
   location?: boolean;
 }
 
-export interface GrossSalesSummaryTableRow {
-  id: string;
-  type: "location" | "category" | "brand" | "division" | "gender" | "silhouette" | "article" | "item";
-  label?: string;
-  categoryName?: string;
-  brandName?: string;
-  divisionName?: string;
-  genderName?: string;
-  silhouetteName?: string;
+export interface GrossSalesSummaryTreeNode {
+  level: string; // "location" | "brand" | "division" | "category" | "gender" | "silhouette" | "article" | "variant"
+  value: string;
   sku?: string;
+  articleName?: string;
+  color?: string;
+  size?: string;
   barCode?: string;
-  description?: string;
-  sizeName?: string;
-  colorName?: string;
-  quantity?: number;
-  unitPrice?: number;
-  discountAmount?: number;
-  taxAmount?: number;
-  subTotal?: number;
-  depth?: number;
-  hasChildren?: boolean;
-  isExpanded?: boolean;
-  nodeId?: string;
+  brandName?: string;
   totals: GrossSalesSummaryTotals;
+  children: GrossSalesSummaryTreeNode[];
 }

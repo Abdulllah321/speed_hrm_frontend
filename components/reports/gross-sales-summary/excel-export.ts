@@ -2,13 +2,13 @@
 
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
-import { GrossSalesSummaryCategoryNode, GrossSalesSummaryFlatRecord, GrossSalesSummaryTotals } from "./types";
+import { GrossSalesSummaryTreeNode, GrossSalesSummaryFlatRecord, GrossSalesSummaryTotals } from "./types";
 
 const yieldToMain = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 export async function generateGrossSalesSummaryExcel(opts: {
   exportType: "flat" | "hierarchical";
-  categories: GrossSalesSummaryCategoryNode[];
+  treeData?: GrossSalesSummaryTreeNode[];
   flatItems: GrossSalesSummaryFlatRecord[];
   grandTotals: GrossSalesSummaryTotals;
   dateRange: { from?: Date; to?: Date };
@@ -17,7 +17,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
 }): Promise<{ excelBuffer: ArrayBuffer; fileName: string; fileBase64: string }> {
   const {
     exportType,
-    categories,
+    treeData = [],
     flatItems,
     grandTotals,
     dateRange,
@@ -35,8 +35,11 @@ export async function generateGrossSalesSummaryExcel(opts: {
   if (exportType === "flat") {
     const headers = [
       "Outlet / Location",
-      "Category",
       "Brand",
+      "Division",
+      "Category",
+      "Gender",
+      "Silhouette",
       "SKU",
       "Barcode",
       "Description",
@@ -44,8 +47,10 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "Color",
       "Quantity",
       "Unit Price",
-      "Discount",
-      "SubTotal",
+      "Gross Sales",
+      "Discount Amount",
+      "Taxes",
+      "SubTotal Revenue",
     ];
 
     const dataRows: any[][] = [headers];
@@ -54,83 +59,23 @@ export async function generateGrossSalesSummaryExcel(opts: {
     for (let i = 0; i < totalCount; i++) {
       const item = flatItems[i];
       dataRows.push([
-        item.locationName,
-        item.categoryName,
-        item.brandName,
-        item.sku,
-        item.barCode,
-        item.description,
-        item.sizeName,
-        item.colorName,
+        item.locationName || "Main Outlet",
+        item.brandName || "-",
+        item.divisionName || "-",
+        item.categoryName || "-",
+        item.genderName || "-",
+        item.silhouetteName || "-",
+        item.sku || "-",
+        item.barCode || "-",
+        item.description || "-",
+        item.sizeName || "-",
+        item.colorName || "-",
         item.quantity,
         item.unitPrice,
+        item.quantity * item.unitPrice,
         item.discountAmount,
+        item.taxAmount,
         item.subTotal,
-      ]);
-
-      if (i % 500 === 0) {
-        onProgress?.(Math.round((i / Math.max(1, totalCount)) * 70) + 10);
-        await yieldToMain();
-      }
-    }
-
-    dataRows.push([
-      "GRAND TOTAL",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      grandTotals.totalItems,
-      "",
-      grandTotals.discountAmount,
-      grandTotals.netAmount,
-    ]);
-
-    const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
-    worksheet["!cols"] = [
-      { wch: 22 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 16 },
-      { wch: 18 },
-      { wch: 28 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 14 },
-      { wch: 16 },
-    ];
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Gross Line Items");
-  } else {
-    const headers = [
-      "Category Name",
-      "Brand",
-      "Items Count",
-      "Gross Amount",
-      "Discount Amount",
-      "Taxes",
-      "Net Sales Amount",
-    ];
-
-    const dataRows: any[][] = [headers];
-
-    const totalCount = categories.length;
-    for (let i = 0; i < totalCount; i++) {
-      const cat = categories[i];
-      const t = cat.totals;
-      dataRows.push([
-        cat.categoryName,
-        cat.brandName,
-        t.totalItems,
-        t.grossAmount,
-        t.discountAmount,
-        t.taxAmount,
-        t.netAmount,
       ]);
 
       if (i % 300 === 0) {
@@ -142,6 +87,96 @@ export async function generateGrossSalesSummaryExcel(opts: {
     dataRows.push([
       "GRAND TOTAL",
       "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      grandTotals.totalItems,
+      "",
+      grandTotals.grossAmount,
+      grandTotals.discountAmount,
+      grandTotals.taxAmount,
+      grandTotals.netAmount,
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
+    worksheet["!cols"] = [
+      { wch: 20 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 28 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 18 },
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Flat Gross Sales Items");
+  } else {
+    // Hierarchical Tree Excel Export
+    const headers = [
+      "Product Hierarchy / Description",
+      "SKU / Barcode",
+      "Size",
+      "Color",
+      "Sold Qty",
+      "Gross Sales",
+      "Discount Amount",
+      "Taxes",
+      "SubTotal Revenue",
+    ];
+
+    const dataRows: any[][] = [headers];
+
+    function traverseTree(nodes: GrossSalesSummaryTreeNode[], depth: number = 0) {
+      for (const node of nodes) {
+        const indent = "  ".repeat(depth);
+        let displayLabel = `${indent}${node.value}`;
+        if (node.sku && node.articleName) {
+          displayLabel = `${indent}[${node.sku}] ${node.articleName}`;
+        } else if (node.level === "variant" && node.barCode) {
+          displayLabel = `${indent}[${node.barCode}] ${node.color || "Default"}-${node.size || "Default"}`;
+        }
+
+        dataRows.push([
+          displayLabel,
+          node.barCode || node.sku || "-",
+          node.size || "-",
+          node.color || "-",
+          node.totals.totalItems,
+          node.totals.grossAmount,
+          node.totals.discountAmount,
+          node.totals.taxAmount,
+          node.totals.netAmount,
+        ]);
+
+        if (node.children && node.children.length > 0) {
+          traverseTree(node.children, depth + 1);
+        }
+      }
+    }
+
+    traverseTree(treeData, 0);
+
+    dataRows.push([
+      "GRAND TOTAL",
+      "-",
+      "-",
+      "-",
       grandTotals.totalItems,
       grandTotals.grossAmount,
       grandTotals.discountAmount,
@@ -151,16 +186,18 @@ export async function generateGrossSalesSummaryExcel(opts: {
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
     worksheet["!cols"] = [
-      { wch: 24 },
+      { wch: 45 },
       { wch: 18 },
-      { wch: 12 },
+      { wch: 10 },
       { wch: 16 },
-      { wch: 16 },
+      { wch: 10 },
       { wch: 14 },
+      { wch: 14 },
+      { wch: 12 },
       { wch: 18 },
     ];
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Category Summary Matrix");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Hierarchical Gross Sales");
   }
 
   onProgress?.(90);

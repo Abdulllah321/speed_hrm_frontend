@@ -2,13 +2,13 @@
 
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
-import { NetSalesSummaryCategoryNode, NetSalesSummaryFlatRecord, NetSalesSummaryTotals } from "./types";
+import { NetSalesSummaryTreeNode, NetSalesSummaryFlatRecord, NetSalesSummaryTotals } from "./types";
 
 const yieldToMain = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 export async function generateNetSalesSummaryExcel(opts: {
   exportType: "flat" | "hierarchical";
-  categories: NetSalesSummaryCategoryNode[];
+  treeData?: NetSalesSummaryTreeNode[];
   flatItems: NetSalesSummaryFlatRecord[];
   grandTotals: NetSalesSummaryTotals;
   dateRange: { from?: Date; to?: Date };
@@ -17,7 +17,7 @@ export async function generateNetSalesSummaryExcel(opts: {
 }): Promise<{ excelBuffer: ArrayBuffer; fileName: string; fileBase64: string }> {
   const {
     exportType,
-    categories,
+    treeData = [],
     flatItems,
     grandTotals,
     dateRange,
@@ -35,8 +35,11 @@ export async function generateNetSalesSummaryExcel(opts: {
   if (exportType === "flat") {
     const headers = [
       "Outlet / Location",
-      "Category",
       "Brand",
+      "Division",
+      "Category",
+      "Gender",
+      "Silhouette",
       "SKU",
       "Barcode",
       "Description",
@@ -47,8 +50,9 @@ export async function generateNetSalesSummaryExcel(opts: {
       "Net Qty",
       "Gross Sales",
       "Return Amount",
-      "Discount",
-      "Net Sales Amount",
+      "Discount Amount",
+      "Taxes",
+      "Net Sales Revenue",
     ];
 
     const dataRows: any[][] = [headers];
@@ -57,98 +61,25 @@ export async function generateNetSalesSummaryExcel(opts: {
     for (let i = 0; i < totalCount; i++) {
       const item = flatItems[i];
       dataRows.push([
-        item.locationName,
-        item.categoryName,
-        item.brandName,
-        item.sku,
-        item.barCode,
-        item.description,
-        item.sizeName,
-        item.colorName,
+        item.locationName || "Main Outlet",
+        item.brandName || "-",
+        item.divisionName || "-",
+        item.categoryName || "-",
+        item.genderName || "-",
+        item.silhouetteName || "-",
+        item.sku || "-",
+        item.barCode || "-",
+        item.description || "-",
+        item.sizeName || "-",
+        item.colorName || "-",
         item.soldQty,
         item.returnQty,
         item.netQty,
         item.grossAmount,
         item.returnAmount,
         item.discountAmount,
+        item.taxAmount,
         item.netAmount,
-      ]);
-
-      if (i % 500 === 0) {
-        onProgress?.(Math.round((i / Math.max(1, totalCount)) * 70) + 10);
-        await yieldToMain();
-      }
-    }
-
-    dataRows.push([
-      "GRAND TOTAL",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      grandTotals.totalItemsSold,
-      grandTotals.totalItemsReturned,
-      grandTotals.netItems,
-      grandTotals.grossSalesAmount,
-      grandTotals.returnAmount,
-      grandTotals.discountAmount,
-      grandTotals.netSalesAmount,
-    ]);
-
-    const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
-    worksheet["!cols"] = [
-      { wch: 22 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 16 },
-      { wch: 18 },
-      { wch: 28 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 16 },
-    ];
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Net Line Items");
-  } else {
-    const headers = [
-      "Category Name",
-      "Brand",
-      "Sold Qty",
-      "Return Qty",
-      "Net Qty",
-      "Gross Sales",
-      "Return Amount",
-      "Discount Amount",
-      "Taxes",
-      "Net Sales Amount",
-    ];
-
-    const dataRows: any[][] = [headers];
-
-    const totalCount = categories.length;
-    for (let i = 0; i < totalCount; i++) {
-      const cat = categories[i];
-      const t = cat.totals;
-      dataRows.push([
-        cat.categoryName,
-        cat.brandName,
-        t.totalItemsSold,
-        t.totalItemsReturned,
-        t.netItems,
-        t.grossSalesAmount,
-        t.returnAmount,
-        t.discountAmount,
-        t.taxAmount,
-        t.netSalesAmount,
       ]);
 
       if (i % 300 === 0) {
@@ -159,6 +90,15 @@ export async function generateNetSalesSummaryExcel(opts: {
 
     dataRows.push([
       "GRAND TOTAL",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
       "",
       grandTotals.totalItemsSold,
       grandTotals.totalItemsReturned,
@@ -172,8 +112,17 @@ export async function generateNetSalesSummaryExcel(opts: {
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
     worksheet["!cols"] = [
-      { wch: 24 },
+      { wch: 20 },
       { wch: 18 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 28 },
+      { wch: 10 },
+      { wch: 12 },
       { wch: 10 },
       { wch: 10 },
       { wch: 10 },
@@ -184,7 +133,91 @@ export async function generateNetSalesSummaryExcel(opts: {
       { wch: 18 },
     ];
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Category Net Matrix");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Flat Net Sales Items");
+  } else {
+    // Hierarchical Tree Excel Export
+    const headers = [
+      "Product Hierarchy / Description",
+      "SKU / Barcode",
+      "Size",
+      "Color",
+      "Sold Qty",
+      "Return Qty",
+      "Net Qty",
+      "Gross Sales",
+      "Return Amount",
+      "Discount Amount",
+      "Taxes",
+      "Net Sales Revenue",
+    ];
+
+    const dataRows: any[][] = [headers];
+
+    function traverseTree(nodes: NetSalesSummaryTreeNode[], depth: number = 0) {
+      for (const node of nodes) {
+        const indent = "  ".repeat(depth);
+        let displayLabel = `${indent}${node.value}`;
+        if (node.sku && node.articleName) {
+          displayLabel = `${indent}[${node.sku}] ${node.articleName}`;
+        } else if (node.level === "variant" && node.barCode) {
+          displayLabel = `${indent}[${node.barCode}] ${node.color || "Default"}-${node.size || "Default"}`;
+        }
+
+        dataRows.push([
+          displayLabel,
+          node.barCode || node.sku || "-",
+          node.size || "-",
+          node.color || "-",
+          node.totals.totalItemsSold,
+          node.totals.totalItemsReturned,
+          node.totals.netItems,
+          node.totals.grossSalesAmount,
+          node.totals.returnAmount,
+          node.totals.discountAmount,
+          node.totals.taxAmount,
+          node.totals.netSalesAmount,
+        ]);
+
+        if (node.children && node.children.length > 0) {
+          traverseTree(node.children, depth + 1);
+        }
+      }
+    }
+
+    traverseTree(treeData, 0);
+
+    dataRows.push([
+      "GRAND TOTAL",
+      "-",
+      "-",
+      "-",
+      grandTotals.totalItemsSold,
+      grandTotals.totalItemsReturned,
+      grandTotals.netItems,
+      grandTotals.grossSalesAmount,
+      grandTotals.returnAmount,
+      grandTotals.discountAmount,
+      grandTotals.taxAmount,
+      grandTotals.netSalesAmount,
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
+    worksheet["!cols"] = [
+      { wch: 45 },
+      { wch: 18 },
+      { wch: 10 },
+      { wch: 16 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 18 },
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Hierarchical Net Sales");
   }
 
   onProgress?.(90);

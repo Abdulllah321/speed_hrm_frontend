@@ -1,24 +1,26 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   NetSalesSummaryReportData,
   NetSalesSummaryTotals,
   GroupingLevels,
-  NetSalesSummaryTableRow,
+  NetSalesSummaryTreeNode,
 } from "./types";
 
-const createEmptyTotals = (): NetSalesSummaryTotals => ({
-  orderCount: 0,
-  totalItemsSold: 0,
-  totalItemsReturned: 0,
-  netItems: 0,
-  grossSalesAmount: 0,
-  returnAmount: 0,
-  discountAmount: 0,
-  taxAmount: 0,
-  netSalesAmount: 0,
-});
+function createEmptyTotals(): NetSalesSummaryTotals {
+  return {
+    orderCount: 0,
+    totalItemsSold: 0,
+    totalItemsReturned: 0,
+    netItems: 0,
+    grossSalesAmount: 0,
+    returnAmount: 0,
+    discountAmount: 0,
+    taxAmount: 0,
+    netSalesAmount: 0,
+  };
+}
 
-const addTotals = (target: NetSalesSummaryTotals, source: NetSalesSummaryTotals) => {
+function addTotals(target: NetSalesSummaryTotals, source: NetSalesSummaryTotals) {
   target.orderCount += source.orderCount;
   target.totalItemsSold += source.totalItemsSold;
   target.totalItemsReturned += source.totalItemsReturned;
@@ -28,7 +30,7 @@ const addTotals = (target: NetSalesSummaryTotals, source: NetSalesSummaryTotals)
   target.discountAmount += source.discountAmount;
   target.taxAmount += source.taxAmount;
   target.netSalesAmount += source.netSalesAmount;
-};
+}
 
 export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | null) {
   const [reportType, setReportType] = useState<"merged" | "separate">("merged");
@@ -47,44 +49,19 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
     location: true,
   });
 
-  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
-
   useEffect(() => {
     if (reportData?.reportType) {
       setReportType(reportData.reportType);
     }
   }, [reportData?.reportType]);
 
-  const toggleNode = useCallback((nodeId: string) => {
-    setCollapsedNodes((prev) => {
-      const next = new Set(prev);
-      if (next.has(nodeId)) next.delete(nodeId);
-      else next.add(nodeId);
-      return next;
-    });
-  }, []);
+  const rawItems = reportData?.flatItems || [];
 
-  const expandAll = useCallback(() => {
-    setCollapsedNodes(new Set());
-  }, []);
-
-  const collapseAll = useCallback(() => {
-    setCollapsedNodes(new Set(["root"]));
-  }, []);
-
-  const grandTotals = useMemo<NetSalesSummaryTotals>(() => {
-    if (!reportData) return createEmptyTotals();
-    return reportData.grandTotals || createEmptyTotals();
-  }, [reportData]);
-
-  const flatRows = useMemo<NetSalesSummaryTableRow[]>(() => {
-    const rows: NetSalesSummaryTableRow[] = [];
-    if (!reportData || !reportData.flatItems) return rows;
-
+  const { treeData, grandTotals } = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
 
     // 1. Filter flat items
-    const filteredFlatItems = reportData.flatItems.filter((item) => {
+    const filteredFlatItems = rawItems.filter((item) => {
       if (!q) return true;
       return (
         item.locationName.toLowerCase().includes(q) ||
@@ -99,8 +76,8 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
       );
     });
 
-    // 2. Build level sequence matching available-stock-summary
-    const isSeparate = reportData.reportType === "separate";
+    // 2. Build level sequence
+    const isSeparate = reportType === "separate";
     const levels: string[] = [];
 
     if (isSeparate && groupingLevels.location) levels.push("location");
@@ -116,24 +93,7 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
       levels.push(isSeparate ? "location" : "brand");
     }
 
-    interface InternalTreeNode {
-      level: string;
-      value: string;
-      sku?: string;
-      barCode?: string;
-      description?: string;
-      sizeName?: string;
-      colorName?: string;
-      brandName?: string;
-      categoryName?: string;
-      divisionName?: string;
-      genderName?: string;
-      silhouetteName?: string;
-      totals: NetSalesSummaryTotals;
-      childrenMap: Map<string, InternalTreeNode>;
-    }
-
-    const rootMap = new Map<string, InternalTreeNode>();
+    const root: NetSalesSummaryTreeNode[] = [];
 
     for (const item of filteredFlatItems) {
       const itemTotals: NetSalesSummaryTotals = {
@@ -148,92 +108,70 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
         netSalesAmount: item.netAmount,
       };
 
-      let currentMap = rootMap;
+      let currentLevelNodes = root;
 
       for (let i = 0; i < levels.length; i++) {
         const levelName = levels[i];
-        let val = "";
+        let nodeVal = "";
+        let extraFields: Partial<NetSalesSummaryTreeNode> = {};
 
-        if (levelName === "location") val = item.locationName;
-        else if (levelName === "brand") val = item.brandName || "Default Brand";
-        else if (levelName === "division") val = item.divisionName || "Default Division";
-        else if (levelName === "category") val = item.categoryName || "Default Category";
-        else if (levelName === "gender") val = item.genderName || "Default Gender";
-        else if (levelName === "silhouette") val = item.silhouetteName || "Default Silhouette";
-        else if (levelName === "article") val = item.sku || item.barCode || "Article";
-        else if (levelName === "variant") val = `${item.colorName || "Default"}-${item.sizeName || "Default"}`;
+        if (levelName === "location") {
+          nodeVal = item.locationName || "Main Outlet";
+        } else if (levelName === "brand") {
+          nodeVal = item.brandName || "Default Brand";
+        } else if (levelName === "division") {
+          nodeVal = item.divisionName || "Default Division";
+        } else if (levelName === "category") {
+          nodeVal = item.categoryName || "Default Category";
+        } else if (levelName === "gender") {
+          nodeVal = item.genderName || "Default Gender";
+        } else if (levelName === "silhouette") {
+          nodeVal = item.silhouetteName || "Default Silhouette";
+        } else if (levelName === "article") {
+          nodeVal = item.sku || item.description || "Article";
+          extraFields.sku = item.sku;
+          extraFields.articleName = item.description || "Article";
+          extraFields.barCode = item.barCode;
+        } else if (levelName === "variant") {
+          nodeVal = item.barCode
+            ? `[${item.barCode}] ${item.colorName || "Default"}-${item.sizeName || "Default"}`
+            : `${item.colorName || "Default"}-${item.sizeName || "Default"}`;
+          extraFields.color = item.colorName || "Default";
+          extraFields.size = item.sizeName || "Default";
+          extraFields.barCode = item.barCode;
+          extraFields.sku = item.sku;
+        }
 
-        let existing = currentMap.get(val);
-        if (!existing) {
-          existing = {
+        let existingNode = currentLevelNodes.find(
+          (n) => n.level === levelName && n.value === nodeVal
+        );
+
+        if (!existingNode) {
+          existingNode = {
             level: levelName,
-            value: val,
-            sku: item.sku,
-            barCode: item.barCode,
-            description: item.description,
-            sizeName: item.sizeName,
-            colorName: item.colorName,
-            brandName: item.brandName,
-            categoryName: item.categoryName,
-            divisionName: item.divisionName,
-            genderName: item.genderName,
-            silhouetteName: item.silhouetteName,
+            value: nodeVal,
             totals: createEmptyTotals(),
-            childrenMap: new Map(),
+            ...extraFields,
+            children: [],
           };
-          currentMap.set(val, existing);
+          currentLevelNodes.push(existingNode);
         }
 
-        addTotals(existing.totals, itemTotals);
-        currentMap = existing.childrenMap;
-      }
-    }
+        addTotals(existingNode.totals, itemTotals);
 
-    // Recursively flatten tree into TableRows
-    function flattenTree(map: Map<string, InternalTreeNode>, depth: number, parentKey: string) {
-      for (const [key, node] of map.entries()) {
-        const nodeId = `${parentKey}_${node.level}_${key}`;
-        const hasChildren = node.childrenMap.size > 0;
-        const isExpanded = !collapsedNodes.has(nodeId);
-
-        rows.push({
-          id: nodeId,
-          nodeId,
-          type: node.level as any,
-          label: node.value,
-          categoryName: node.categoryName,
-          brandName: node.brandName,
-          divisionName: node.divisionName,
-          genderName: node.genderName,
-          silhouetteName: node.silhouetteName,
-          sku: node.sku,
-          barCode: node.barCode,
-          description: node.description,
-          sizeName: node.sizeName,
-          colorName: node.colorName,
-          soldQty: node.totals.totalItemsSold,
-          returnQty: node.totals.totalItemsReturned,
-          netQty: node.totals.netItems,
-          grossAmount: node.totals.grossSalesAmount,
-          returnAmount: node.totals.returnAmount,
-          discountAmount: node.totals.discountAmount,
-          taxAmount: node.totals.taxAmount,
-          netAmount: node.totals.netSalesAmount,
-          totals: node.totals,
-          depth,
-          hasChildren,
-          isExpanded,
-        });
-
-        if (hasChildren && isExpanded) {
-          flattenTree(node.childrenMap, depth + 1, nodeId);
+        if (i < levels.length - 1) {
+          currentLevelNodes = existingNode.children;
         }
       }
     }
 
-    flattenTree(rootMap, 0, "root");
-    return rows;
-  }, [reportData, groupingLevels, collapsedNodes, searchQuery]);
+    const calculatedGrandTotals = createEmptyTotals();
+    for (const node of root) {
+      addTotals(calculatedGrandTotals, node.totals);
+    }
+
+    return { treeData: root, grandTotals: calculatedGrandTotals };
+  }, [rawItems, reportType, groupingLevels, searchQuery]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));
@@ -251,10 +189,7 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
     groupingLevels,
     setGroupingLevels,
     handleToggleLevel,
+    treeData,
     grandTotals,
-    flatRows,
-    toggleNode,
-    expandAll,
-    collapseAll,
   };
 }
