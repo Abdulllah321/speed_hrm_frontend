@@ -1899,6 +1899,11 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.view"],
           },
           {
+            title: "Inventory Aging Report",
+            href: "/erp/reports/inventory-aging",
+            permissions: ["erp.report.view"],
+          },
+          {
             title: "Overall Available Stock",
             href: "/erp/reports/overall-available-reserved-stock",
             permissions: ["erp.report.view"],
@@ -1947,6 +1952,11 @@ export const menuData: MenuItem[] = [
           {
             title: "Available Stock Summary",
             href: "/erp/reports/pos/available-stock-summary",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Inventory Aging Report",
+            href: "/erp/reports/pos/inventory-aging",
             permissions: ["erp.report.view"],
           },
           {

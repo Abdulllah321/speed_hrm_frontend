@@ -31,6 +31,7 @@ import {
     PauseCircle,
     BookOpen,
     FileText,
+    Clock,
 } from "lucide-react";
 import { cn, COMPANY_NAME } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -56,6 +57,7 @@ const posMenuGroups = [
             { title: "Stock", icon: TrendingUp, href: "/pos/stock" },
             { title: "Stock Activity", icon: TrendingUp, href: "/pos/reports/stock-activity" },
             { title: "Available Stock Summary", icon: TrendingUp, href: "/pos/reports/available-stock-summary" },
+            { title: "Inventory Aging", icon: Clock, href: "/pos/reports/inventory-aging" },
             { title: "Net Sales Summary", icon: FileText, href: "/pos/reports/net-sales-summary" },
             { title: "Sales List Report", icon: FileText, href: "/pos/reports/sales-list" },
             { title: "Gross Sales Summary", icon: FileText, href: "/pos/reports/gross-sales-summary" },

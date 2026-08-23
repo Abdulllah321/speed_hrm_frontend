@@ -15,7 +15,7 @@ export interface ReportSseState {
 
 export function useReportSse(
   jobId: string | null,
-  reportType: "available" | "valuation" | "stock-activity" | "overall-reserved" | "transaction-detail" | "cost-of-sales" | "sales-list" | "sales-register" | "gross-sales-return" | "gross-sales-summary" | "net-sales-summary" = "available"
+  reportType: "available" | "valuation" | "stock-activity" | "overall-reserved" | "transaction-detail" | "cost-of-sales" | "sales-list" | "sales-register" | "gross-sales-return" | "gross-sales-summary" | "net-sales-summary" | "inventory-aging" = "available"
 ): ReportSseState {
   const [state, setState] = useState<ReportSseState>({
     status: "idle",
@@ -59,6 +59,8 @@ export function useReportSse(
         ? `/api/stock-ledger/overall-available-reserved-stock/stream/${jobId}`
         : reportType === "transaction-detail"
         ? `/api/stock-ledger/stock-transaction-detail/stream/${jobId}`
+        : reportType === "inventory-aging"
+        ? `/api/stock-ledger/inventory-aging/stream/${jobId}`
         : reportType === "cost-of-sales"
         ? `/api/pos-sales/reports/cost-of-sales/stream/${jobId}`
         : reportType === "sales-list"
