@@ -109,8 +109,8 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
           reportType,
         });
 
-        if (res && res.status && res.data?.jobId) {
-          setPreviewJobId(res.data.jobId);
+        if (res && res.status && (res.data?.jobId || res.jobId)) {
+          setPreviewJobId(res.data?.jobId || res.jobId);
         } else {
           toast.error(res?.message || "Failed to queue inventory aging calculation");
         }
@@ -133,8 +133,9 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
       setIsFetchingResult(true);
       getInventoryAgingResult(previewJobId)
         .then((res) => {
-          if (res && res.status && res.data) {
-            setReportData(res.data.data || res.data);
+          const payload = res?.data?.data || res?.data || res;
+          if (payload && (payload.flatItemsList || res?.status)) {
+            setReportData(payload.flatItemsList ? payload : payload.data);
           } else {
             toast.error(res?.message || "Failed to load inventory aging preview data");
           }

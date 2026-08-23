@@ -295,6 +295,46 @@ function normalizePathForComparison(
   return path;
 }
 
+function isMenuItemActive(
+  item: MenuItem,
+  pathname: string,
+  currentSubdomain: string | null,
+): boolean {
+  if (item.href) {
+    const normalizedPathname = normalizePathForComparison(
+      pathname,
+      currentSubdomain,
+    );
+    const normalizedHref = normalizePathForComparison(
+      item.href,
+      currentSubdomain,
+    );
+    if (normalizedHref && normalizedHref !== "#") {
+      if (
+        normalizedHref === "/" ||
+        normalizedHref === "/erp" ||
+        normalizedHref === "/hr" ||
+        normalizedHref === "/pos"
+      ) {
+        if (normalizedPathname === normalizedHref) {
+          return true;
+        }
+      } else if (
+        normalizedPathname === normalizedHref ||
+        normalizedPathname.startsWith(normalizedHref + "/")
+      ) {
+        return true;
+      }
+    }
+  }
+  if (item.children) {
+    return item.children.some((child) =>
+      isMenuItemActive(child, pathname, currentSubdomain),
+    );
+  }
+  return false;
+}
+
 function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
   const currentSubdomain = getCurrentSubdomain();
   const normalizedPathname = normalizePathForComparison(
@@ -306,12 +346,30 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
     currentSubdomain,
   );
   const isActive = normalizedHref === normalizedPathname;
+  const hasActiveChild = React.useMemo(
+    () => (item.children ? isMenuItemActive(item, pathname, currentSubdomain) : false),
+    [item, pathname, currentSubdomain],
+  );
+  const [isOpen, setIsOpen] = React.useState(hasActiveChild);
+
+  React.useEffect(() => {
+    if (hasActiveChild) {
+      setIsOpen(true);
+    }
+  }, [hasActiveChild]);
 
   if (item.children) {
     return (
-      <Collapsible className="group/submenu w-full">
+      <Collapsible
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        className="group/submenu w-full"
+      >
         <CollapsibleTrigger asChild>
-          <SidebarMenuSubButton className="cursor-pointer w-full flex items-center justify-between pr-2">
+          <SidebarMenuSubButton className={cn(
+            "cursor-pointer w-full flex items-center justify-between pr-2",
+            hasActiveChild && "font-semibold text-sidebar-foreground",
+          )}>
             <span className="truncate">{item.title}</span>
             <ChevronRight className="shrink-0 h-4 w-4 transition-transform group-data-[state=open]/submenu:rotate-90" />
           </SidebarMenuSubButton>
@@ -365,6 +423,18 @@ function MenuItemComponent({
   );
   const isActive = normalizedHref === normalizedPathname;
   const { state } = useSidebar();
+
+  const hasActiveChild = React.useMemo(
+    () => (item.children ? isMenuItemActive(item, pathname, currentSubdomain) : false),
+    [item, pathname, currentSubdomain],
+  );
+  const [isOpen, setIsOpen] = React.useState(hasActiveChild);
+
+  React.useEffect(() => {
+    if (hasActiveChild) {
+      setIsOpen(true);
+    }
+  }, [hasActiveChild]);
 
   // Hooks must be at the top level
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
@@ -432,12 +502,22 @@ function MenuItemComponent({
 
     // When sidebar is expanded, show normal collapsible menu
     return (
-      <Collapsible className="group/collapsible">
+      <Collapsible
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        className="group/collapsible"
+      >
         <SidebarMenuItem hasSubMenu={true}>
           <CollapsibleTrigger asChild>
-            <SidebarMenuButton className="cursor-pointer transition-all duration-200 hover:bg-sidebar-accent/80 hover:shadow-sm">
+            <SidebarMenuButton className={cn(
+              "cursor-pointer transition-all duration-200 hover:bg-sidebar-accent/80 hover:shadow-sm",
+              hasActiveChild && "font-semibold text-sidebar-foreground",
+            )}>
               {Icon && (
-                <Icon className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:scale-110" />
+                <Icon className={cn(
+                  "h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:scale-110",
+                  hasActiveChild && "text-primary",
+                )} />
               )}
               <span>{item.title}</span>
               <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />

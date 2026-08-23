@@ -25,7 +25,7 @@ export async function queueInventoryAgingPreview(params: {
       method: "POST",
       body: JSON.stringify(params),
     });
-    return res;
+    return res?.data ?? { status: false, message: "No response from server" };
   } catch (error: any) {
     return { status: false, message: error.message || "Failed to queue inventory aging calculation" };
   }
@@ -36,7 +36,7 @@ export async function getInventoryAgingResult(jobId: string) {
     const res = await authFetch(`/stock-ledger/inventory-aging/result/${jobId}`, {
       method: "GET",
     });
-    return res;
+    return res?.data ?? { status: false, message: "No response from server" };
   } catch (error: any) {
     return { status: false, message: error.message || "Failed to fetch inventory aging result" };
   }
@@ -48,7 +48,7 @@ export async function registerInventoryAgingClientExport(formData: FormData) {
       method: "POST",
       body: formData,
     });
-    return res;
+    return res?.data ?? { status: false, message: "No response from server" };
   } catch (error: any) {
     return { status: false, message: error.message || "Failed to register export record" };
   }
