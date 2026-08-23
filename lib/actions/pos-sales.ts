@@ -693,6 +693,84 @@ export async function getSalesRegisterResult(
     }
 }
 
+// ─── PRO ERP Sales Return Register Actions ────────────────────────────────
+
+export async function queueGrossSalesReturnPreview(opts: {
+    locationId?: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    reportType?: "merged" | "separate";
+    search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const res = await authFetch("/pos-sales/reports/gross-sales-return/queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(opts),
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error queueing sales return register calculation" };
+    }
+}
+
+export async function getGrossSalesReturnResult(
+    jobId: string,
+): Promise<{ status: boolean; data?: any; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-sales/reports/gross-sales-return/result/${jobId}`, {
+            method: "GET",
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error fetching sales return register result" };
+    }
+}
+
+// ─── PRO ERP Gross Sales Summary Actions ──────────────────────────────────
+
+export async function queueGrossSalesSummaryPreview(opts: {
+    locationId?: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    reportType?: "merged" | "separate";
+    search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const res = await authFetch("/pos-sales/reports/gross-sales-summary/queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(opts),
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error queueing gross sales summary calculation" };
+    }
+}
+
+export async function getGrossSalesSummaryResult(
+    jobId: string,
+): Promise<{ status: boolean; data?: any; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-sales/reports/gross-sales-summary/result/${jobId}`, {
+            method: "GET",
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error fetching gross sales summary result" };
+    }
+}
+
 
 
 
