@@ -654,6 +654,45 @@ export async function getSalesListResult(
     }
 }
 
+// ─── PRO ERP Sales Register Actions ──────────────────────────────────────
+
+export async function queueSalesRegisterPreview(opts: {
+    locationId?: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    reportType?: "merged" | "separate";
+    search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const res = await authFetch("/pos-sales/reports/sales-register/queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(opts),
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error queueing sales register calculation" };
+    }
+}
+
+export async function getSalesRegisterResult(
+    jobId: string,
+): Promise<{ status: boolean; data?: any; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-sales/reports/sales-register/result/${jobId}`, {
+            method: "GET",
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error fetching sales register result" };
+    }
+}
+
 
 
 
