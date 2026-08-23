@@ -91,6 +91,10 @@ export function NetSalesSummaryView({
   };
 
   useEffect(() => {
+    handleFetchReport();
+  }, [selectedLocationIds, selectedCashierId, reportType, dateRange.from, dateRange.to]);
+
+  useEffect(() => {
     if (sseState.status === "completed" && previewJobId && !isFetchingResult) {
       setIsFetchingResult(true);
       getNetSalesSummaryResult(previewJobId)
