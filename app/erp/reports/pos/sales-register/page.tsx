@@ -4,5 +4,5 @@ import React from "react";
 import { SalesRegisterView } from "@/components/reports/sales-register/sales-register-view";
 
 export default function ErpSalesRegisterReportPage() {
-  return <SalesRegisterView />;
+  return <SalesRegisterView isPosLevel={false} />;
 }

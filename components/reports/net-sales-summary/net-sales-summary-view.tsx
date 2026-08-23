@@ -18,11 +18,14 @@ import {
 import { toast } from "sonner";
 import { DateRange } from "@/components/ui/date-range-picker";
 
+import { useAuth } from "@/components/providers/auth-provider";
+
 interface NetSalesSummaryViewProps {
   initialReportData?: NetSalesSummaryReportData | null;
   locations?: any[];
   cashiers?: any[];
   userId?: string;
+  isPosLevel?: boolean;
 }
 
 export function NetSalesSummaryView({
@@ -30,7 +33,12 @@ export function NetSalesSummaryView({
   locations = [],
   cashiers = [],
   userId = "system",
+  isPosLevel = false,
 }: NetSalesSummaryViewProps = {}) {
+  const { user } = useAuth();
+  const posLocationId = user?.terminal?.location?.id || user?.locationId || (user as any)?.location?.id;
+  const posLocationName = user?.terminal?.location?.name || (user as any)?.location?.name || "Current Store";
+
   const [reportData, setReportData] = useState<NetSalesSummaryReportData | null>(
     initialReportData
   );
@@ -39,6 +47,13 @@ export function NetSalesSummaryView({
   );
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>();
+
+  // Enforce POS terminal location when on POS level
+  useEffect(() => {
+    if (isPosLevel && posLocationId) {
+      setSelectedLocationIds([posLocationId]);
+    }
+  }, [isPosLevel, posLocationId]);
   const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(new Date().setDate(new Date().getDate() - 30)),
     to: new Date(),
@@ -178,6 +193,8 @@ export function NetSalesSummaryView({
       <NetSalesSummaryHeader totals={grandTotals} />
 
       <NetSalesSummaryFilters
+        isPosLevel={isPosLevel}
+        posLocationName={posLocationName}
         reportType={reportType}
         onReportTypeChange={setReportType}
         dateRange={dateRange}

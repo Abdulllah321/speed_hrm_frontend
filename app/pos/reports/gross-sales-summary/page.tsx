@@ -4,5 +4,5 @@ import React from "react";
 import { GrossSalesSummaryView } from "@/components/reports/gross-sales-summary/gross-sales-summary-view";
 
 export default function PosGrossSalesSummaryReportPage() {
-  return <GrossSalesSummaryView />;
+  return <GrossSalesSummaryView isPosLevel={true} />;
 }

@@ -4,5 +4,5 @@ import React from "react";
 import { AllianceRegisterView } from "@/components/reports/alliance-register/alliance-register-view";
 
 export default function PosAllianceRegisterReportPage() {
-  return <AllianceRegisterView />;
+  return <AllianceRegisterView isPosLevel={true} />;
 }

@@ -20,15 +20,24 @@ import { StockTransactionDetailTable } from "./stock-transaction-detail-table";
 import { exportStockTransactionDetailToExcel } from "./excel-export";
 import { exportStockTransactionDetailToPdf } from "./pdf-export";
 
+import { useAuth } from "@/components/providers/auth-provider";
+
 interface StockTransactionDetailViewProps {
     title?: string;
     companyName?: string;
+    isPosLevel?: boolean;
 }
 
 export function StockTransactionDetailView({
     title = "Stock Transaction Movement Detail Report",
     companyName = "Speed Limit ERP",
+    isPosLevel = false,
 }: StockTransactionDetailViewProps) {
+    const { user } = useAuth();
+    const posLocationId = user?.terminal?.location?.id || user?.locationId || (user as any)?.location?.id;
+    const posWarehouseId = (user as any)?.warehouseId || (user as any)?.warehouse?.id;
+    const posLocationName = user?.terminal?.location?.name || (user as any)?.location?.name || (user as any)?.warehouse?.name || "Current Store";
+
     const now = new Date();
     const [dateRange, setDateRange] = useState<DateRange>({
         from: startOfMonth(now),
@@ -39,6 +48,14 @@ export function StockTransactionDetailView({
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
     const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>([]);
+
+    // Enforce POS terminal location/warehouse when on POS level
+    useEffect(() => {
+        if (isPosLevel) {
+            if (posLocationId) setSelectedLocationIds([posLocationId]);
+            if (posWarehouseId) setSelectedWarehouseIds([posWarehouseId]);
+        }
+    }, [isPosLevel, posLocationId, posWarehouseId]);
 
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -316,6 +333,8 @@ export function StockTransactionDetailView({
 
             {/* Filters Toolbar */}
             <StockTransactionDetailFilters
+                isPosLevel={isPosLevel}
+                posLocationName={posLocationName}
                 dateRange={dateRange}
                 setDateRange={setDateRange}
                 locations={locations}

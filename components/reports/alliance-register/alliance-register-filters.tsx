@@ -14,6 +14,7 @@ import {
   FileSpreadsheet,
   FileText,
   CreditCard,
+  Store,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -36,6 +37,8 @@ interface CashierOption {
 }
 
 interface FiltersProps {
+  isPosLevel?: boolean;
+  posLocationName?: string;
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
   locations?: LocationOption[];
@@ -48,10 +51,10 @@ interface FiltersProps {
   onSearchQueryChange: (q: string) => void;
   onRefresh: () => void;
   isPending: boolean;
-  previewJobId: string | null;
-  sseState: any;
-  isQueueingJob: boolean;
-  isFetchingResult: boolean;
+  previewJobId?: string | null;
+  sseState?: any;
+  isQueueingJob?: boolean;
+  isFetchingResult?: boolean;
   onExportExcelFlat: () => void;
   onExportPdf: () => void;
   isExportingExcel: boolean;
@@ -59,9 +62,14 @@ interface FiltersProps {
 }
 
 export function AllianceRegisterFilters({
+  isPosLevel = false,
+  posLocationName = "Current Store",
   dateRange,
   onDateRangeChange,
+  locations = [],
   cashiers = [],
+  selectedLocationIds = [],
+  onLocationChange,
   selectedCashierId,
   onCashierChange,
   searchQuery,
@@ -82,6 +90,14 @@ export function AllianceRegisterFilters({
       <div className="flex flex-wrap items-center justify-between gap-3 bg-card border border-border/60 p-3.5 rounded-2xl shadow-sm">
         {/* Left Filter Options */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Store Badge on POS level */}
+          {isPosLevel && (
+            <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
+              <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>Current Store: {posLocationName}</span>
+            </div>
+          )}
+
           {/* Search Box */}
           <div className="relative min-w-[220px]">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />

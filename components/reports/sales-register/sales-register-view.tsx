@@ -17,13 +17,29 @@ import { SalesRegisterFilters } from "./sales-register-filters";
 import { SalesRegisterTable } from "./sales-register-table";
 import { generateSalesRegisterExcel } from "./excel-export";
 import { generateSalesRegisterPdf } from "./pdf-export";
+import { useAuth } from "@/components/providers/auth-provider";
 import { toast } from "sonner";
 
-export function SalesRegisterView() {
+interface SalesRegisterViewProps {
+  isPosLevel?: boolean;
+}
+
+export function SalesRegisterView({ isPosLevel = false }: SalesRegisterViewProps) {
+  const { user } = useAuth();
+  const posLocationId = user?.terminal?.location?.id || user?.locationId || (user as any)?.location?.id;
+  const posLocationName = user?.terminal?.location?.name || (user as any)?.location?.name || "Current Store";
+
   const [locations, setLocations] = useState<Location[]>([]);
   const [cashiers, setCashiers] = useState<User[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>(undefined);
+
+  // Enforce POS terminal location when on POS level
+  useEffect(() => {
+    if (isPosLevel && posLocationId) {
+      setSelectedLocationIds([posLocationId]);
+    }
+  }, [isPosLevel, posLocationId]);
 
   const [reportType, setReportType] = useState<"merged" | "separate">("merged");
   const [dateRange, setDateRange] = useState<DateRange>({
@@ -209,6 +225,8 @@ export function SalesRegisterView() {
 
       {/* Filter Bar, SSE Queue Progress Banner */}
       <SalesRegisterFilters
+        isPosLevel={isPosLevel}
+        posLocationName={posLocationName}
         reportType={reportType}
         onReportTypeChange={setReportType}
         dateRange={dateRange}

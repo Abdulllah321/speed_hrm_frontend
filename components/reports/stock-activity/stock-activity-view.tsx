@@ -22,11 +22,30 @@ import { generateStockActivityExcel } from "./excel-export";
 import { generateStockActivityPdfHtml } from "./pdf-export";
 import { COMPANY_NAME } from "@/lib/utils";
 
-export function StockActivityView() {
+import { useAuth } from "@/components/providers/auth-provider";
+
+interface StockActivityViewProps {
+  isPosLevel?: boolean;
+}
+
+export function StockActivityView({ isPosLevel = false }: StockActivityViewProps) {
+  const { user } = useAuth();
+  const posLocationId = user?.terminal?.location?.id || user?.locationId || (user as any)?.location?.id;
+  const posWarehouseId = (user as any)?.warehouseId || (user as any)?.warehouse?.id;
+  const posLocationName = user?.terminal?.location?.name || (user as any)?.location?.name || (user as any)?.warehouse?.name || "Current Store";
+
   const [locations, setLocations] = useState<Location[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>([]);
+
+  // Enforce POS terminal location/warehouse when on POS level
+  useEffect(() => {
+    if (isPosLevel) {
+      if (posLocationId) setSelectedLocationIds([posLocationId]);
+      if (posWarehouseId) setSelectedWarehouseIds([posWarehouseId]);
+    }
+  }, [isPosLevel, posLocationId, posWarehouseId]);
 
   const [reportType, setReportType] = useState<"merged" | "separate">("merged");
   const [dateRange, setDateRange] = useState<DateRange>({
@@ -255,6 +274,8 @@ export function StockActivityView() {
 
       {/* Filter Bar, SSE Queue Progress & Attribute Popover Dropdowns */}
       <StockActivityFilters
+        isPosLevel={isPosLevel}
+        posLocationName={posLocationName}
         reportType={reportType}
         onReportTypeChange={setReportType}
         dateRange={dateRange}

@@ -33,10 +33,13 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SalesRegisterFiltersProps {
+  isPosLevel?: boolean;
+  posLocationName?: string;
   reportType: "merged" | "separate";
   onReportTypeChange: (type: "merged" | "separate") => void;
   dateRange: DateRange;
@@ -78,6 +81,8 @@ interface SalesRegisterFiltersProps {
 }
 
 export function SalesRegisterFilters({
+  isPosLevel = false,
+  posLocationName = "Current Store",
   reportType,
   onReportTypeChange,
   dateRange,
@@ -121,7 +126,7 @@ export function SalesRegisterFilters({
 
   return (
     <div className="space-y-3 mb-4 no-print">
-      {/* Information Container Card: Formula Guidance */}
+      {/* Information Container Card: Sales Register Guidance */}
       {showFormulaInfo && (
         <div className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-indigo-200/80 dark:border-indigo-900/50 bg-indigo-50/60 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-200 text-xs shadow-2xs">
           <div className="flex items-center gap-2.5">
@@ -130,10 +135,10 @@ export function SalesRegisterFilters({
             </div>
             <div>
               <p className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                Sales Register Invoice Equation
+                Sales Register Invoice Matrix
               </p>
               <p className="text-[11px] font-mono text-slate-600 dark:text-slate-300 mt-0.5">
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">Net Register Sales</span> = Gross Retail Total - Line & Order Discounts + Taxes &bull; Excludes Hold and Draft Orders
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">Total Net Sales</span> = Sum of Invoice Grand Totals &bull; Real-time POS Transaction Register
               </p>
             </div>
           </div>
@@ -178,16 +183,23 @@ export function SalesRegisterFilters({
             </button>
           </div>
 
-          {/* Outlets Multi-Select */}
-          <div className="w-44 sm:w-52">
-            <MultiSelect
-              options={locationOptions}
-              value={selectedLocationIds}
-              onValueChange={onLocationChange}
-              placeholder="All Outlets (Stores)"
-              className="bg-background h-9 rounded-xl"
-            />
-          </div>
+          {/* Outlets Multi-Select / Store Badge */}
+          {isPosLevel ? (
+            <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
+              <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>Current Store: {posLocationName}</span>
+            </div>
+          ) : (
+            <div className="w-44 sm:w-52">
+              <MultiSelect
+                options={locationOptions}
+                value={selectedLocationIds}
+                onValueChange={onLocationChange}
+                placeholder="All Outlets (Stores)"
+                className="bg-background h-9 rounded-xl"
+              />
+            </div>
+          )}
 
           {/* Cashier Filter */}
           <div className="w-40 sm:w-48">

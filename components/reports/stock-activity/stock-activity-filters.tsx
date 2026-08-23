@@ -139,6 +139,8 @@ function FilterDropdown({
 }
 
 interface StockActivityFiltersProps {
+  isPosLevel?: boolean;
+  posLocationName?: string;
   reportType: "merged" | "separate";
   onReportTypeChange: (type: "merged" | "separate") => void;
   dateRange: DateRange;
@@ -195,6 +197,8 @@ interface StockActivityFiltersProps {
 }
 
 export function StockActivityFilters({
+  isPosLevel = false,
+  posLocationName = "Current Store",
   reportType,
   onReportTypeChange,
   dateRange,
@@ -348,27 +352,37 @@ export function StockActivityFilters({
             </button>
           </div>
 
-          {/* Outlets Multi-Select */}
-          <div className="w-44 sm:w-52">
-            <MultiSelect
-              options={locationOptions}
-              value={selectedLocationIds}
-              onValueChange={onLocationChange}
-              placeholder="All Outlets (Stores)"
-              className="bg-background h-9 rounded-xl"
-            />
-          </div>
+          {/* Outlets & Warehouses Selectors */}
+          {isPosLevel ? (
+            <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
+              <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>Current Store: {posLocationName}</span>
+            </div>
+          ) : (
+            <>
+              {/* Outlets Multi-Select */}
+              <div className="w-44 sm:w-52">
+                <MultiSelect
+                  options={locationOptions}
+                  value={selectedLocationIds}
+                  onValueChange={onLocationChange}
+                  placeholder="All Outlets (Stores)"
+                  className="bg-background h-9 rounded-xl"
+                />
+              </div>
 
-          {/* Warehouses Multi-Select */}
-          <div className="w-44 sm:w-52">
-            <MultiSelect
-              options={warehouseOptions}
-              value={selectedWarehouseIds}
-              onValueChange={onWarehouseChange}
-              placeholder="All Warehouses"
-              className="bg-background h-9 rounded-xl"
-            />
-          </div>
+              {/* Warehouses Multi-Select */}
+              <div className="w-44 sm:w-52">
+                <MultiSelect
+                  options={warehouseOptions}
+                  value={selectedWarehouseIds}
+                  onValueChange={onWarehouseChange}
+                  placeholder="All Warehouses"
+                  className="bg-background h-9 rounded-xl"
+                />
+              </div>
+            </>
+          )}
 
           {/* Date Range Picker */}
           <DateRangePicker

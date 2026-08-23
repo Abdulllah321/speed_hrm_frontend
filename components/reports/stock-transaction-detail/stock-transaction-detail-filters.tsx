@@ -7,10 +7,12 @@ import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { Button } from "@/components/ui/button";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { AttributeOptions } from "./types";
-import { Search, RefreshCw, FileSpreadsheet, Printer, ChevronDown, Check, X, Loader2 } from "lucide-react";
+import { Search, RefreshCw, FileSpreadsheet, Printer, ChevronDown, Check, X, Loader2, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FiltersProps {
+    isPosLevel?: boolean;
+    posLocationName?: string;
     dateRange: DateRange;
     setDateRange: (range: DateRange) => void;
     locations: Location[];
@@ -159,6 +161,8 @@ function FilterDropdown({
 }
 
 export function StockTransactionDetailFilters({
+    isPosLevel = false,
+    posLocationName = "Current Store",
     dateRange,
     setDateRange,
     locations,
@@ -237,31 +241,43 @@ export function StockTransactionDetailFilters({
             {/* Control Bar */}
             <div className="p-3 rounded-2xl border border-border bg-card shadow-sm flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2.5">
-                    {/* Outlets Multi-Select */}
-                    <div className="w-44 sm:w-52">
-                        <MultiSelect
-                            options={locationOptions}
-                            selected={selectedLocationIds}
-                            onChange={setSelectedLocationIds}
-                            placeholder="All Outlets (Stores)"
-                        />
-                    </div>
+                    {/* Outlets & Warehouses Selectors */}
+                    {isPosLevel ? (
+                        <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
+                            <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span>Current Store: {posLocationName}</span>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Outlets Multi-Select */}
+                            <div className="w-44 sm:w-52">
+                                <MultiSelect
+                                    options={locationOptions}
+                                    selected={selectedLocationIds}
+                                    onChange={setSelectedLocationIds}
+                                    placeholder="All Outlets (Stores)"
+                                />
+                            </div>
 
-                    {/* Warehouses Multi-Select */}
-                    <div className="w-44 sm:w-52">
-                        <MultiSelect
-                            options={warehouseOptions}
-                            selected={selectedWarehouseIds}
-                            onChange={setSelectedWarehouseIds}
-                            placeholder="All Warehouses"
-                        />
-                    </div>
+                            {/* Warehouses Multi-Select */}
+                            <div className="w-44 sm:w-52">
+                                <MultiSelect
+                                    options={warehouseOptions}
+                                    selected={selectedWarehouseIds}
+                                    onChange={setSelectedWarehouseIds}
+                                    placeholder="All Warehouses"
+                                />
+                            </div>
+                        </>
+                    )}
 
                     {/* Date Range Picker */}
                     <DateRangePicker
-                        value={dateRange}
-                        onChange={setDateRange}
-                        className="w-[260px] text-xs font-medium"
+                        initialDateFrom={dateRange.from}
+                        initialDateTo={dateRange.to}
+                        onUpdate={({ range }: { range: DateRange }) => {
+                            if (range) setDateRange(range);
+                        }}
                     />
 
                     {/* Refresh Button */}

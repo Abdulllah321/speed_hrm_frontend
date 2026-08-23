@@ -19,6 +19,7 @@ import {
     Loader2,
     Calendar,
     ChevronDownIcon,
+    Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -122,6 +123,8 @@ function FilterDropdown({
 }
 
 interface FiltersProps {
+    isPosLevel?: boolean;
+    posLocationName?: string;
     dateRange: DateRange;
     setDateRange: React.Dispatch<React.SetStateAction<DateRange>>;
     locations: Location[];
@@ -171,6 +174,8 @@ interface FiltersProps {
 }
 
 export function AvailableStockFilters({
+    isPosLevel = false,
+    posLocationName = "Current Store",
     dateRange,
     setDateRange,
     locations,
@@ -259,29 +264,39 @@ export function AvailableStockFilters({
     };
 
     return (
-        <div className="space-y-3 mb-4">
+        <div className="space-y-3 mb-4 no-print">
             {/* Top Toolbar Row */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl border border-border bg-card shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-border bg-card shadow-sm">
                 <div className="flex flex-wrap items-center gap-2.5">
-                    {/* Outlets Multi-Select */}
-                    <div className="w-48 sm:w-56">
-                        <MultiSelect
-                            options={locationOptions}
-                            selected={selectedLocationIds}
-                            onChange={setSelectedLocationIds}
-                            placeholder="All Outlets (Stores)"
-                        />
-                    </div>
+                    {/* Outlets & Warehouses Selectors */}
+                    {isPosLevel ? (
+                        <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
+                            <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span>Current Store: {posLocationName}</span>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Outlets Multi-Select */}
+                            <div className="w-48 sm:w-56">
+                                <MultiSelect
+                                    options={locationOptions}
+                                    selected={selectedLocationIds}
+                                    onChange={setSelectedLocationIds}
+                                    placeholder="All Outlets (Stores)"
+                                />
+                            </div>
 
-                    {/* Warehouses Multi-Select */}
-                    <div className="w-48 sm:w-56">
-                        <MultiSelect
-                            options={warehouseOptions}
-                            selected={selectedWarehouseIds}
-                            onChange={setSelectedWarehouseIds}
-                            placeholder="All Warehouses"
-                        />
-                    </div>
+                            {/* Warehouses Multi-Select */}
+                            <div className="w-48 sm:w-56">
+                                <MultiSelect
+                                    options={warehouseOptions}
+                                    selected={selectedWarehouseIds}
+                                    onChange={setSelectedWarehouseIds}
+                                    placeholder="All Warehouses"
+                                />
+                            </div>
+                        </>
+                    )}
 
                     {/* Date Range Picker */}
                     <DateRangePicker value={dateRange} onChange={setDateRange} />

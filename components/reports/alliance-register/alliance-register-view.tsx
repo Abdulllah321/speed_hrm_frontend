@@ -17,11 +17,14 @@ import { toast } from "sonner";
 import { DateRange } from "@/components/ui/date-range-picker";
 import { startOfMonth, endOfMonth } from "date-fns";
 
+import { useAuth } from "@/components/providers/auth-provider";
+
 interface AllianceRegisterViewProps {
   initialReportData?: AllianceRegisterRecord[] | null;
   locations?: any[];
   cashiers?: any[];
   userId?: string;
+  isPosLevel?: boolean;
 }
 
 export function AllianceRegisterView({
@@ -29,12 +32,24 @@ export function AllianceRegisterView({
   locations = [],
   cashiers = [],
   userId = "system",
+  isPosLevel = false,
 }: AllianceRegisterViewProps = {}) {
+  const { user } = useAuth();
+  const posLocationId = user?.terminal?.location?.id || user?.locationId || (user as any)?.location?.id;
+  const posLocationName = user?.terminal?.location?.name || (user as any)?.location?.name || "Current Store";
+
   const [records, setRecords] = useState<AllianceRegisterRecord[]>(
     initialReportData || []
   );
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>();
+
+  // Enforce POS terminal location when on POS level
+  useEffect(() => {
+    if (isPosLevel && posLocationId) {
+      setSelectedLocationIds([posLocationId]);
+    }
+  }, [isPosLevel, posLocationId]);
   const [dateRange, setDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -150,6 +165,8 @@ export function AllianceRegisterView({
 
       {/* Filter bar */}
       <AllianceRegisterFilters
+        isPosLevel={isPosLevel}
+        posLocationName={posLocationName}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
         locations={locations}
