@@ -1,5 +1,6 @@
 import {
   StockActivityBrandNode,
+  StockActivityLocationNode,
   StockActivityFlatRecord,
   StockActivityReportData,
   StockActivityTotals,
@@ -7,6 +8,7 @@ import {
 
 export type {
   StockActivityBrandNode,
+  StockActivityLocationNode,
   StockActivityFlatRecord,
   StockActivityReportData,
   StockActivityTotals,
@@ -23,7 +25,7 @@ export interface GroupingLevels {
 
 export interface StockActivityTableRow {
   id: string;
-  type: "brand" | "division" | "gender" | "category" | "article" | "variant";
+  type: "location" | "brand" | "division" | "gender" | "category" | "article" | "variant";
   label?: string;
   sku?: string;
   size?: string;

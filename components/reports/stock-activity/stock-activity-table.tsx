@@ -363,6 +363,7 @@ export function StockActivityTable({
                   const item = rows[virtualRow.index];
                   if (!item) return null;
 
+                  const isLocation = item.type === "location";
                   const isBrand = item.type === "brand";
                   const isDivision = item.type === "division";
                   const isGender = item.type === "gender";
@@ -396,6 +397,7 @@ export function StockActivityTable({
                       className={cn(
                         "border-b border-slate-100 dark:border-slate-800/60 transition-colors text-xs select-none",
                         item.hasChildren && "cursor-pointer",
+                        isLocation && "bg-slate-200/80 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-extrabold border-l-4 border-emerald-600 hover:bg-slate-200/90",
                         isBrand && "bg-slate-100/90 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 font-bold border-l-2 border-slate-400 dark:border-slate-500 hover:bg-slate-200/80 dark:hover:bg-slate-750",
                         (isDivision || isGender || isCategory) && "bg-slate-50/80 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200 font-semibold hover:bg-slate-100/60 dark:hover:bg-slate-800/40",
                         isArticle && "bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-medium hover:bg-slate-50 dark:hover:bg-slate-900/40",

@@ -1,9 +1,10 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   StockActivityReportData,
   StockActivityTotals,
   GroupingLevels,
   StockActivityTableRow,
+  StockActivityBrandNode,
 } from "./types";
 
 const createEmptyTotals = (): StockActivityTotals => ({
@@ -43,6 +44,7 @@ const addTotals = (target: StockActivityTotals, source: StockActivityTotals) => 
 };
 
 export function useStockActivityData(reportData: StockActivityReportData | null) {
+  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
   const [searchQuery, setSearchQuery] = useState("");
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
     brand: true,
@@ -63,6 +65,12 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
 
   // Interactive collapsed nodes state
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (reportData?.reportType) {
+      setReportType(reportData.reportType);
+    }
+  }, [reportData?.reportType]);
 
   const toggleNode = useCallback((nodeId: string) => {
     setCollapsedNodes((prev) => {
@@ -97,25 +105,6 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
         if (item.size) sizes.add(item.size);
         if (item.color) colors.add(item.color);
       }
-    } else if (reportData?.brands) {
-      for (const b of reportData.brands) {
-        if (b.brandName) brands.add(b.brandName);
-        for (const d of b.divisions) {
-          if (d.divisionName) divisions.add(d.divisionName);
-          for (const g of d.genders) {
-            if (g.genderName) genders.add(g.genderName);
-            for (const c of g.categories) {
-              if (c.categoryName) categories.add(c.categoryName);
-              for (const p of c.products) {
-                for (const s of p.sizes) {
-                  if (s.size) sizes.add(s.size);
-                  if (s.color) colors.add(s.color);
-                }
-              }
-            }
-          }
-        }
-      }
     }
 
     return {
@@ -129,250 +118,236 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
     };
   }, [reportData]);
 
-  // Filtered tree data based on search & attribute selections
-  const filteredBrands = useMemo(() => {
-    if (!reportData || !reportData.brands) return [];
-    let list = reportData.brands;
+  // Helper filter function for brand tree
+  const filterBrandTree = useCallback(
+    (brandList: StockActivityBrandNode[]) => {
+      const q = searchQuery.toLowerCase().trim();
 
-    const q = searchQuery.toLowerCase().trim();
+      return brandList
+        .map((brand) => {
+          if (filterBrands.size > 0 && !filterBrands.has(brand.brandName)) {
+            return null;
+          }
 
-    return list
-      .map((brand) => {
-        if (filterBrands.size > 0 && !filterBrands.has(brand.brandName)) {
-          return null;
-        }
+          const filteredDivisions = brand.divisions
+            .map((div) => {
+              if (filterDivisions.size > 0 && !filterDivisions.has(div.divisionName)) {
+                return null;
+              }
 
-        const filteredDivisions = brand.divisions
-          .map((div) => {
-            if (filterDivisions.size > 0 && !filterDivisions.has(div.divisionName)) {
-              return null;
-            }
+              const filteredGenders = div.genders
+                .map((gender) => {
+                  if (filterGenders.size > 0 && !filterGenders.has(gender.genderName)) {
+                    return null;
+                  }
 
-            const filteredGenders = div.genders
-              .map((gender) => {
-                if (filterGenders.size > 0 && !filterGenders.has(gender.genderName)) {
-                  return null;
-                }
-
-                const filteredCategories = gender.categories
-                  .map((cat) => {
-                    if (filterCategories.size > 0 && !filterCategories.has(cat.categoryName)) {
-                      return null;
-                    }
-
-                    const filteredProducts = cat.products.filter((prod) => {
-                      const filteredSizes = prod.sizes.filter((s) => {
-                        if (filterSizes.size > 0 && !filterSizes.has(s.size)) return false;
-                        if (filterColors.size > 0 && !filterColors.has(s.color)) return false;
-                        return true;
-                      });
-
-                      if (filterSizes.size > 0 || filterColors.size > 0) {
-                        if (filteredSizes.length === 0) return false;
+                  const filteredCategories = gender.categories
+                    .map((cat) => {
+                      if (filterCategories.size > 0 && !filterCategories.has(cat.categoryName)) {
+                        return null;
                       }
 
-                      if (!q) return true;
+                      const filteredProducts = cat.products.filter((prod) => {
+                        const filteredSizes = prod.sizes.filter((s) => {
+                          if (filterSizes.size > 0 && !filterSizes.has(s.size)) return false;
+                          if (filterColors.size > 0 && !filterColors.has(s.color)) return false;
+                          return true;
+                        });
 
-                      const matchesProd =
-                        prod.sku.toLowerCase().includes(q) ||
-                        prod.description.toLowerCase().includes(q) ||
-                        prod.productLabel.toLowerCase().includes(q);
-                      const matchesSizeOrColor = prod.sizes.some(
-                        (s) =>
-                          s.size.toLowerCase().includes(q) ||
-                          (s.color && s.color.toLowerCase().includes(q)),
-                      );
-                      return matchesProd || matchesSizeOrColor;
-                    });
+                        if (filterSizes.size > 0 || filterColors.size > 0) {
+                          if (filteredSizes.length === 0) return false;
+                        }
 
-                    if (filteredProducts.length > 0) {
-                      return { ...cat, products: filteredProducts };
-                    }
-                    return null;
-                  })
-                  .filter(Boolean) as any[];
+                        if (!q) return true;
 
-                if (filteredCategories.length > 0) {
-                  return { ...gender, categories: filteredCategories };
-                }
-                return null;
-              })
-              .filter(Boolean) as any[];
+                        const matchesProd =
+                          prod.sku.toLowerCase().includes(q) ||
+                          prod.description.toLowerCase().includes(q) ||
+                          prod.productLabel.toLowerCase().includes(q);
+                        const matchesSizeOrColor = prod.sizes.some(
+                          (s) =>
+                            s.size.toLowerCase().includes(q) ||
+                            (s.color && s.color.toLowerCase().includes(q)),
+                        );
+                        return matchesProd || matchesSizeOrColor;
+                      });
 
-            if (filteredGenders.length > 0) {
-              return { ...div, genders: filteredGenders };
-            }
-            return null;
-          })
-          .filter(Boolean) as any[];
+                      if (filteredProducts.length > 0) {
+                        return { ...cat, products: filteredProducts };
+                      }
+                      return null;
+                    })
+                    .filter(Boolean) as any[];
 
-        if (filteredDivisions.length > 0) {
-          return { ...brand, divisions: filteredDivisions };
-        }
-        return null;
-      })
-      .filter(Boolean) as typeof reportData.brands;
-  }, [
-    reportData,
-    searchQuery,
-    filterBrands,
-    filterDivisions,
-    filterCategories,
-    filterGenders,
-    filterSilhouettes,
-    filterSizes,
-    filterColors,
-  ]);
+                  if (filteredCategories.length > 0) {
+                    return { ...gender, categories: filteredCategories };
+                  }
+                  return null;
+                })
+                .filter(Boolean) as any[];
+
+              if (filteredGenders.length > 0) {
+                return { ...div, genders: filteredGenders };
+              }
+              return null;
+            })
+            .filter(Boolean) as any[];
+
+          if (filteredDivisions.length > 0) {
+            return { ...brand, divisions: filteredDivisions };
+          }
+          return null;
+        })
+        .filter(Boolean) as StockActivityBrandNode[];
+    },
+    [
+      searchQuery,
+      filterBrands,
+      filterDivisions,
+      filterCategories,
+      filterGenders,
+      filterSilhouettes,
+      filterSizes,
+      filterColors,
+    ],
+  );
 
   // Grand Totals Calculation
   const grandTotals = useMemo<StockActivityTotals>(() => {
-    const totals = createEmptyTotals();
-    if (!filteredBrands) return totals;
+    if (!reportData) return createEmptyTotals();
+    return reportData.grandTotals || createEmptyTotals();
+  }, [reportData]);
 
-    for (const brand of filteredBrands) {
-      addTotals(totals, brand.totals);
-    }
-    return totals;
-  }, [filteredBrands]);
-
-  // Collapse All Nodes function
+  // Collapse All Nodes
   const collapseAll = useCallback(() => {
     const allNodeIds = new Set<string>();
-    if (filteredBrands) {
-      for (const brand of filteredBrands) {
-        allNodeIds.add(`brand-${brand.brandId}`);
-        for (const div of brand.divisions) {
-          allNodeIds.add(`div-${brand.brandId}-${div.divisionId}`);
-          for (const gender of div.genders) {
-            allNodeIds.add(`gender-${brand.brandId}-${div.divisionId}-${gender.genderId}`);
-            for (const cat of gender.categories) {
-              allNodeIds.add(`cat-${brand.brandId}-${div.divisionId}-${gender.genderId}-${cat.categoryId}`);
-              for (const prod of cat.products) {
-                allNodeIds.add(`prod-${brand.brandId}-${cat.categoryId}-${prod.sku}`);
-              }
-            }
-          }
-        }
+    if (reportData?.locations) {
+      for (const loc of reportData.locations) {
+        allNodeIds.add(`loc-${loc.locationKey}`);
       }
     }
     setCollapsedNodes(allNodeIds);
-  }, [filteredBrands]);
+  }, [reportData]);
 
   // Flatten hierarchy into table rows respecting collapse state & grouping levels
   const flatRows = useMemo<StockActivityTableRow[]>(() => {
     const rows: StockActivityTableRow[] = [];
-    if (!filteredBrands) return rows;
+    if (!reportData) return rows;
 
-    for (const brand of filteredBrands) {
-      const brandId = `brand-${brand.brandId}`;
-      const isBrandCollapsed = collapsedNodes.has(brandId);
-      const hasDivisions = brand.divisions.length > 0;
+    const flattenBrands = (brandList: StockActivityBrandNode[], depthOffset: number, prefix: string) => {
+      const filtered = filterBrandTree(brandList);
 
-      if (groupingLevels.brand) {
-        rows.push({
-          type: "brand",
-          id: brandId,
-          nodeId: brandId,
-          label: brand.brandName.toUpperCase(),
-          totals: brand.totals,
-          depth: 0,
-          hasChildren: hasDivisions,
-          isExpanded: !isBrandCollapsed,
-        });
-      }
+      for (const brand of filtered) {
+        const brandId = `${prefix}-brand-${brand.brandId}`;
+        const isBrandCollapsed = collapsedNodes.has(brandId);
+        const hasDivisions = brand.divisions.length > 0;
 
-      if (!isBrandCollapsed) {
-        for (const div of brand.divisions) {
-          const divId = `div-${brand.brandId}-${div.divisionId}`;
-          const isDivCollapsed = collapsedNodes.has(divId);
-          const hasGenders = div.genders.length > 0;
+        if (groupingLevels.brand) {
+          rows.push({
+            type: "brand",
+            id: brandId,
+            nodeId: brandId,
+            label: brand.brandName.toUpperCase(),
+            totals: brand.totals,
+            depth: depthOffset,
+            hasChildren: hasDivisions,
+            isExpanded: !isBrandCollapsed,
+          });
+        }
 
-          if (groupingLevels.division) {
-            rows.push({
-              type: "division",
-              id: divId,
-              nodeId: divId,
-              label: div.divisionName.toUpperCase(),
-              totals: div.totals,
-              depth: 1,
-              hasChildren: hasGenders,
-              isExpanded: !isDivCollapsed,
-            });
-          }
+        if (!isBrandCollapsed) {
+          for (const div of brand.divisions) {
+            const divId = `${prefix}-div-${brand.brandId}-${div.divisionId}`;
+            const isDivCollapsed = collapsedNodes.has(divId);
+            const hasGenders = div.genders.length > 0;
 
-          if (!isDivCollapsed) {
-            for (const gender of div.genders) {
-              const genderId = `gender-${brand.brandId}-${div.divisionId}-${gender.genderId}`;
-              const isGenderCollapsed = collapsedNodes.has(genderId);
-              const hasCategories = gender.categories.length > 0;
+            if (groupingLevels.division) {
+              rows.push({
+                type: "division",
+                id: divId,
+                nodeId: divId,
+                label: div.divisionName.toUpperCase(),
+                totals: div.totals,
+                depth: depthOffset + 1,
+                hasChildren: hasGenders,
+                isExpanded: !isDivCollapsed,
+              });
+            }
 
-              if (groupingLevels.gender) {
-                rows.push({
-                  type: "gender",
-                  id: genderId,
-                  nodeId: genderId,
-                  label: gender.genderName.toUpperCase(),
-                  totals: gender.totals,
-                  depth: 2,
-                  hasChildren: hasCategories,
-                  isExpanded: !isGenderCollapsed,
-                });
-              }
+            if (!isDivCollapsed) {
+              for (const gender of div.genders) {
+                const genderId = `${prefix}-gender-${brand.brandId}-${div.divisionId}-${gender.genderId}`;
+                const isGenderCollapsed = collapsedNodes.has(genderId);
+                const hasCategories = gender.categories.length > 0;
 
-              if (!isGenderCollapsed) {
-                for (const cat of gender.categories) {
-                  const catId = `cat-${brand.brandId}-${div.divisionId}-${gender.genderId}-${cat.categoryId}`;
-                  const isCatCollapsed = collapsedNodes.has(catId);
-                  const hasProducts = cat.products.length > 0;
+                if (groupingLevels.gender) {
+                  rows.push({
+                    type: "gender",
+                    id: genderId,
+                    nodeId: genderId,
+                    label: gender.genderName.toUpperCase(),
+                    totals: gender.totals,
+                    depth: depthOffset + 2,
+                    hasChildren: hasCategories,
+                    isExpanded: !isGenderCollapsed,
+                  });
+                }
 
-                  if (groupingLevels.category) {
-                    rows.push({
-                      type: "category",
-                      id: catId,
-                      nodeId: catId,
-                      label: cat.categoryName.toUpperCase(),
-                      totals: cat.totals,
-                      depth: 3,
-                      hasChildren: hasProducts,
-                      isExpanded: !isCatCollapsed,
-                    });
-                  }
+                if (!isGenderCollapsed) {
+                  for (const cat of gender.categories) {
+                    const catId = `${prefix}-cat-${brand.brandId}-${div.divisionId}-${gender.genderId}-${cat.categoryId}`;
+                    const isCatCollapsed = collapsedNodes.has(catId);
+                    const hasProducts = cat.products.length > 0;
 
-                  if (!isCatCollapsed) {
-                    for (const prod of cat.products) {
-                      const prodId = `prod-${brand.brandId}-${cat.categoryId}-${prod.sku}`;
-                      const isProdCollapsed = collapsedNodes.has(prodId);
-                      const hasSizes = prod.sizes.length > 0;
+                    if (groupingLevels.category) {
+                      rows.push({
+                        type: "category",
+                        id: catId,
+                        nodeId: catId,
+                        label: cat.categoryName.toUpperCase(),
+                        totals: cat.totals,
+                        depth: depthOffset + 3,
+                        hasChildren: hasProducts,
+                        isExpanded: !isCatCollapsed,
+                      });
+                    }
 
-                      if (groupingLevels.article) {
-                        rows.push({
-                          type: "article",
-                          id: prodId,
-                          nodeId: prodId,
-                          sku: prod.sku,
-                          label: prod.description || prod.sku,
-                          totals: prod.totals,
-                          depth: 4,
-                          hasChildren: hasSizes,
-                          isExpanded: !isProdCollapsed,
-                        });
-                      }
+                    if (!isCatCollapsed) {
+                      for (const prod of cat.products) {
+                        const prodId = `${prefix}-prod-${brand.brandId}-${cat.categoryId}-${prod.sku}`;
+                        const isProdCollapsed = collapsedNodes.has(prodId);
+                        const hasSizes = prod.sizes.length > 0;
 
-                      if (!isProdCollapsed && groupingLevels.variant) {
-                        for (const item of prod.sizes) {
+                        if (groupingLevels.article) {
                           rows.push({
-                            type: "variant",
-                            id: `item-${item.id}`,
-                            nodeId: `item-${item.id}`,
+                            type: "article",
+                            id: prodId,
+                            nodeId: prodId,
                             sku: prod.sku,
-                            barCode: item.barCode,
-                            size: item.size,
-                            color: item.color,
-                            totals: item.totals,
-                            depth: 5,
-                            hasChildren: false,
-                            isExpanded: false,
+                            label: prod.description || prod.sku,
+                            totals: prod.totals,
+                            depth: depthOffset + 4,
+                            hasChildren: hasSizes,
+                            isExpanded: !isProdCollapsed,
                           });
+                        }
+
+                        if (!isProdCollapsed && groupingLevels.variant) {
+                          for (const item of prod.sizes) {
+                            rows.push({
+                              type: "variant",
+                              id: `${prefix}-item-${item.id}`,
+                              nodeId: `${prefix}-item-${item.id}`,
+                              sku: prod.sku,
+                              barCode: item.barCode,
+                              size: item.size,
+                              color: item.color,
+                              totals: item.totals,
+                              depth: depthOffset + 5,
+                              hasChildren: false,
+                              isExpanded: false,
+                            });
+                          }
                         }
                       }
                     }
@@ -383,10 +358,36 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
           }
         }
       }
+    };
+
+    if (reportData.reportType === "separate" && reportData.locations && reportData.locations.length > 0) {
+      for (const loc of reportData.locations) {
+        const locId = `loc-${loc.locationKey}`;
+        const isLocCollapsed = collapsedNodes.has(locId);
+        const hasBrands = loc.brands.length > 0;
+
+        rows.push({
+          type: "location",
+          id: locId,
+          nodeId: locId,
+          label: loc.locationName.toUpperCase(),
+          locationName: loc.locationName,
+          totals: loc.totals,
+          depth: 0,
+          hasChildren: hasBrands,
+          isExpanded: !isLocCollapsed,
+        });
+
+        if (!isLocCollapsed && hasBrands) {
+          flattenBrands(loc.brands, 1, loc.locationKey);
+        }
+      }
+    } else if (reportData.brands) {
+      flattenBrands(reportData.brands, 0, "merged");
     }
 
     return rows;
-  }, [filteredBrands, groupingLevels, collapsedNodes]);
+  }, [reportData, groupingLevels, collapsedNodes, filterBrandTree]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => {
@@ -397,7 +398,14 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
     });
   };
 
+  const filteredBrands = useMemo(() => {
+    if (!reportData?.brands) return [];
+    return filterBrandTree(reportData.brands);
+  }, [reportData?.brands, filterBrandTree]);
+
   return {
+    reportType,
+    setReportType,
     searchQuery,
     setSearchQuery,
     groupingLevels,

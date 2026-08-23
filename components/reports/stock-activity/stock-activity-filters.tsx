@@ -139,6 +139,8 @@ function FilterDropdown({
 }
 
 interface StockActivityFiltersProps {
+  reportType: "merged" | "separate";
+  onReportTypeChange: (type: "merged" | "separate") => void;
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
   locations: Location[];
@@ -193,6 +195,8 @@ interface StockActivityFiltersProps {
 }
 
 export function StockActivityFilters({
+  reportType,
+  onReportTypeChange,
   dateRange,
   onDateRangeChange,
   locations,
@@ -316,8 +320,36 @@ export function StockActivityFilters({
       {/* Top Toolbar Row */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Merged vs Separate Mode Selector */}
+          <div className="flex items-center p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => onReportTypeChange("merged")}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-all text-xs font-bold",
+                reportType === "merged"
+                  ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-foreground",
+              )}
+            >
+              Merged (All)
+            </button>
+            <button
+              type="button"
+              onClick={() => onReportTypeChange("separate")}
+              className={cn(
+                "px-3 py-1 rounded-lg transition-all text-xs font-bold",
+                reportType === "separate"
+                  ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-foreground",
+              )}
+            >
+              Separate (By Location)
+            </button>
+          </div>
+
           {/* Outlets Multi-Select */}
-          <div className="w-48 sm:w-56">
+          <div className="w-44 sm:w-52">
             <MultiSelect
               options={locationOptions}
               value={selectedLocationIds}
@@ -328,7 +360,7 @@ export function StockActivityFilters({
           </div>
 
           {/* Warehouses Multi-Select */}
-          <div className="w-48 sm:w-56">
+          <div className="w-44 sm:w-52">
             <MultiSelect
               options={warehouseOptions}
               value={selectedWarehouseIds}

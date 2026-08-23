@@ -33,7 +33,9 @@ export async function generateStockActivityExcel(opts: {
   const fileName = `stock-activity-report-${dateStr}-${exportType}.xlsx`;
 
   if (exportType === "flat") {
+    const hasLocations = flatItems.some((i) => !!i.locationName);
     const headers = [
+      ...(hasLocations ? ["Location / Outlet"] : []),
       "Brand",
       "Division",
       "Category",
@@ -68,6 +70,7 @@ export async function generateStockActivityExcel(opts: {
       const item = flatItems[i];
       const t = item.totals;
       dataRows.push([
+        ...(hasLocations ? [item.locationName || "N/A"] : []),
         item.brand,
         item.division,
         item.category,

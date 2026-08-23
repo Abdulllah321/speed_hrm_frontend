@@ -65,7 +65,18 @@ export interface StockActivityBrandNode {
   totals: StockActivityTotals;
 }
 
+export interface StockActivityLocationNode {
+  locationKey: string;
+  locationId?: string;
+  warehouseId?: string;
+  locationName: string;
+  locationType: 'OUTLET' | 'WAREHOUSE';
+  brands: StockActivityBrandNode[];
+  totals: StockActivityTotals;
+}
+
 export interface StockActivityFlatRecord {
+  locationName?: string;
   brand: string;
   division: string;
   category: string;
@@ -80,6 +91,8 @@ export interface StockActivityFlatRecord {
 }
 
 export interface StockActivityReportData {
+  reportType: 'merged' | 'separate';
+  locations?: StockActivityLocationNode[];
   brands: StockActivityBrandNode[];
   flatItems: StockActivityFlatRecord[];
   grandTotals: StockActivityTotals;
@@ -92,6 +105,7 @@ export async function queueStockActivityPreview(opts: {
   warehouseId?: string;
   startDate?: string;
   endDate?: string;
+  reportType?: 'merged' | 'separate';
   search?: string;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
   try {

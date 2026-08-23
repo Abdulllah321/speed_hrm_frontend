@@ -28,6 +28,7 @@ export function StockActivityView() {
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>([]);
 
+  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
   const [dateRange, setDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -104,6 +105,7 @@ export function StockActivityView() {
           warehouseId: warehouseParam,
           startDate: dateRange.from?.toISOString(),
           endDate: dateRange.to?.toISOString(),
+          reportType,
         });
 
         if (res && res.status && res.data?.jobId) {
@@ -117,12 +119,12 @@ export function StockActivityView() {
         setIsQueueingJob(false);
       }
     });
-  }, [locationParam, warehouseParam, dateRange]);
+  }, [locationParam, warehouseParam, dateRange, reportType]);
 
-  // Trigger initial report queue on mount or location/date change
+  // Trigger initial report queue on mount or location/date/mode change
   useEffect(() => {
     handleFetchReport();
-  }, [locationParam, warehouseParam, dateRange]);
+  }, [locationParam, warehouseParam, dateRange, reportType]);
 
   // Fetch gzipped preview result when SSE completes
   useEffect(() => {
@@ -253,6 +255,8 @@ export function StockActivityView() {
 
       {/* Filter Bar, SSE Queue Progress & Attribute Popover Dropdowns */}
       <StockActivityFilters
+        reportType={reportType}
+        onReportTypeChange={setReportType}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
         locations={locations}
