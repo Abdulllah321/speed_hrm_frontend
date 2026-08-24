@@ -411,7 +411,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Speed (Private) Limited</h1>
             <p className="text-lg font-bold text-gray-800">Stock Transfer Note</p>
             <p className="text-xl font-extrabold uppercase border-b-2 border-black inline-block px-8 mt-1 tracking-wider">
-              {transfer.brand?.name || transfer.items?.[0]?.item?.brand?.name || 'GENERAL'}
+              {transfer.brand?.name || transfer.stockRequisition?.brand?.name || transfer.items?.[0]?.item?.brand?.name || transfer.items?.[0]?.brand?.name || 'GENERAL'}
             </p>
           </div>
         </div>

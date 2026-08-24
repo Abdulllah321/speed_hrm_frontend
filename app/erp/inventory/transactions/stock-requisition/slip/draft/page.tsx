@@ -247,12 +247,9 @@ export default function StockRequisitionDraftSlipPage() {
 
           <div className="text-center flex-1 pr-14">
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Speed (Private) Limited</h1>
-            <p className="text-lg font-bold text-gray-800">Stock Requisition Note</p>
-            {requisition.brand?.name && (
-              <p className="text-xl font-extrabold uppercase border-b-2 border-black inline-block px-8 mt-1 tracking-wider">
-                {requisition.brand.name}
-              </p>
-            )}
+            <p className="text-xl font-extrabold uppercase border-b-2 border-black inline-block px-8 mt-1 tracking-wider">
+              {requisition.brand?.name || requisition.items?.[0]?.item?.brand?.name || requisition.items?.[0]?.brand?.name || 'GENERAL'}
+            </p>
           </div>
         </div>
 
@@ -261,7 +258,7 @@ export default function StockRequisitionDraftSlipPage() {
           <div className="space-y-1.5">
             <div className="flex">
               <span className="font-semibold w-32 text-gray-600">Financial Year :</span>
-              <span className="font-bold text-gray-800">{requisition.financialYear || '25-26'}</span>
+              <span className="font-bold text-gray-800">{requisition.financialYear || '26-27'}</span>
             </div>
             <div className="flex">
               <span className="font-semibold w-32 text-gray-600">Requester :</span>
