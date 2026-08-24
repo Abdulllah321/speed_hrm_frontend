@@ -312,6 +312,8 @@ function StockTransferContent() {
                     maxQuantity: activeRequisitionId ? requisitionItemsMap[itemData.id] : undefined,
                     notes: '',
                     availableStock: itemData.availableStock,
+                    physicalQuantity: itemData.physicalQuantity,
+                    reservedQuantity: itemData.reservedQuantity,
                 }]);
                 if (soundEnabled) playScanSuccessBeep();
                 toast.success(`Added ${itemData.sku} to transfer list.`, {
@@ -409,11 +411,13 @@ function StockTransferContent() {
                 let availableStock = 0;
                 let physicalStock = 0;
                 let reservedStock = 0;
-                if (sku && warehouseId) {
+                if (warehouseId) {
                     try {
-                        const res = await inventoryApi.search(sku, warehouseId);
+                        const res = await inventoryApi.search(item.itemId || item.item?.barCode || sku, warehouseId);
                         if (res.status && res.data && res.data.length > 0) {
-                            const matched = res.data.find((inv: any) => inv.id === item.itemId || inv.sku === sku) || res.data[0];
+                            const matched = res.data.find((inv: any) => inv.id === item.itemId) || 
+                                            (item.item?.barCode ? res.data.find((inv: any) => inv.barCode === item.item.barCode) : null) || 
+                                            res.data[0];
                             if (matched) {
                                 const unreservedStock = typeof matched.totalQuantity === 'number' ? matched.totalQuantity : 0;
                                 physicalStock = typeof matched.physicalQuantity === 'number' ? matched.physicalQuantity : unreservedStock;
@@ -652,16 +656,22 @@ function StockTransferContent() {
                 toast.warning(`Quantity exceeds available stock (${effectiveLimit})`);
             }
 
+            const effectiveStock = activeRequisitionId 
+                ? (typeof itemData.physicalQuantity === 'number' ? itemData.physicalQuantity : itemData.availableStock)
+                : itemData.availableStock;
+
             setSelectedItems(prev => [...prev, {
                 id: itemData.id,
                 sku: itemData.sku,
                 description: itemData.description,
-                color: itemData.color?.name,
-                size: itemData.size?.name,
+                color: itemData.color?.name || itemData.color,
+                size: itemData.size?.name || itemData.size,
                 quantity: bulkQty,
                 maxQuantity: activeRequisitionId ? requisitionItemsMap[itemData.id] : undefined,
                 notes: '',
-                availableStock: itemData.availableStock
+                availableStock: effectiveStock,
+                physicalQuantity: typeof itemData.physicalQuantity === 'number' ? itemData.physicalQuantity : itemData.availableStock,
+                reservedQuantity: typeof itemData.reservedQuantity === 'number' ? itemData.reservedQuantity : 0,
             }]);
         }
     };
@@ -706,13 +716,12 @@ function StockTransferContent() {
             return;
         }
 
-        const hasInsufficientStock = selectedItems.some(item => {
-            const maxAllowed = activeRequisitionId ? (item.physicalQuantity || item.availableStock) : item.availableStock;
-            return item.quantity > maxAllowed;
-        });
-        if (hasInsufficientStock) {
-            toast.error('One or more items have insufficient stock in warehouse for this transfer');
-            return;
+        if (!activeRequisitionId) {
+            const hasInsufficientStock = selectedItems.some(item => item.quantity > item.availableStock);
+            if (hasInsufficientStock) {
+                toast.error('One or more items have insufficient stock in warehouse for this transfer');
+                return;
+            }
         }
 
         setSubmitting(true);
