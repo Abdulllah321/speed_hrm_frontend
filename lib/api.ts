@@ -1725,11 +1725,13 @@ export const stockRequisitionApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  uploadExcel: (formData: FormData) =>
-    fetchApi<{ status: boolean; data: any[] }>('/stock-requisition/upload', {
+  uploadExcel: (formData: FormData, warehouseId?: string) => {
+    const query = warehouseId ? `?warehouseId=${encodeURIComponent(warehouseId)}` : '';
+    return fetchApi<{ status: boolean; data: any[] }>(`/stock-requisition/upload${query}`, {
       method: 'POST',
       body: formData,
-    }),
+    });
+  },
   getReplenishmentCandidates: (filters: {
     locationId: string;
     fromWarehouseId: string;

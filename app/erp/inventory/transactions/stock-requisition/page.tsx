@@ -59,6 +59,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { SrnBulkUploadModal } from '@/components/inventory/srn-bulk-upload-modal';
+import { SrnItemsBulkImportModal } from '@/components/inventory/srn-items-bulk-import-modal';
 
 interface SRNItem {
   itemId: string;
@@ -80,6 +81,7 @@ export default function StockRequisitionPage() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState<boolean>(false);
+  const [bulkImportModalOpen, setBulkImportModalOpen] = useState<boolean>(false);
   const excelInputRef = useRef<HTMLInputElement>(null);
 
   // Dropdown options
@@ -126,6 +128,19 @@ export default function StockRequisitionPage() {
     replenishPartially: number;
     outOfStock: number;
   }>({ totalSoldItems: 0, replenishFully: 0, replenishPartially: 0, outOfStock: 0 });
+
+  // Skipped Items Report Modal State
+  const [skippedModalOpen, setSkippedModalOpen] = useState<boolean>(false);
+  const [skippedReportData, setSkippedReportData] = useState<{
+    validItems: any[];
+    skippedItems: any[];
+    summary: {
+      totalProcessed: number;
+      importedCount: number;
+      skippedCount: number;
+      warehouseName: string;
+    };
+  } | null>(null);
 
   const openReplenishModal = () => {
     if (!selectedWarehouseId) {
@@ -362,51 +377,111 @@ export default function StockRequisitionPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!selectedWarehouseId) {
+      toast.error('Please select a Source Warehouse before uploading Excel / CSV file');
+      e.target.value = '';
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 
     setUploading(true);
-    const toastId = toast.loading('Uploading and parsing Excel / CSV items...');
+    const toastId = toast.loading('Uploading and validating warehouse stock for items...');
     try {
-      const res = await stockRequisitionApi.uploadExcel(formData);
-      if (res.status && Array.isArray(res.data) && res.data.length > 0) {
-        const parsedItems: SRNItem[] = res.data.map((item: any) => ({
-          itemId: item.itemId,
-          sku: item.sku,
-          description: item.description || '',
-          color: item.color || null,
-          size: item.size || null,
-          category: item.category || null,
-          gender: item.gender || null,
-          segment: item.segment || null,
-          unitPrice: Number(item.unitPrice || 0),
-          quantity: Number(item.quantity || 1),
-        }));
-
-        setRequisitionItems((prev) => {
-          const merged = [...prev];
-          parsedItems.forEach((newItem) => {
-            const idx = merged.findIndex((i) => i.itemId === newItem.itemId);
-            if (idx > -1) {
-              merged[idx].quantity += newItem.quantity;
-            } else {
-              merged.push(newItem);
+      const res = await stockRequisitionApi.uploadExcel(formData, selectedWarehouseId);
+      if (res.status && res.data) {
+        const payloadData = res.data;
+        const validList = Array.isArray(payloadData) ? payloadData : (payloadData.validItems || []);
+        const skippedList = Array.isArray(payloadData) ? [] : (payloadData.skippedItems || []);
+        const summary = Array.isArray(payloadData)
+          ? {
+              totalProcessed: validList.length,
+              importedCount: validList.length,
+              skippedCount: 0,
+              warehouseName: warehouses.find((w) => w.id === selectedWarehouseId)?.name || 'Warehouse',
             }
-          });
-          return merged;
-        });
+          : payloadData.summary || {
+              totalProcessed: validList.length + skippedList.length,
+              importedCount: validList.length,
+              skippedCount: skippedList.length,
+              warehouseName: warehouses.find((w) => w.id === selectedWarehouseId)?.name || 'Warehouse',
+            };
 
-        setActiveTab('create');
-        toast.success(`Successfully imported ${parsedItems.length} items! Review list below, then Save as Draft or Confirm & Reserve.`, { id: toastId });
+        if (validList.length > 0) {
+          const parsedItems: SRNItem[] = validList.map((item: any) => ({
+            itemId: item.itemId,
+            sku: item.sku,
+            description: item.description || '',
+            color: item.color || null,
+            size: item.size || null,
+            category: item.category || null,
+            gender: item.gender || null,
+            segment: item.segment || null,
+            unitPrice: Number(item.unitPrice || 0),
+            quantity: Number(item.quantity || 1),
+          }));
+
+          setRequisitionItems((prev) => {
+            const merged = [...prev];
+            parsedItems.forEach((newItem) => {
+              const idx = merged.findIndex((i) => i.itemId === newItem.itemId);
+              if (idx > -1) {
+                merged[idx].quantity += newItem.quantity;
+              } else {
+                merged.push(newItem);
+              }
+            });
+            return merged;
+          });
+
+          setActiveTab('create');
+        }
+
+        if (skippedList.length > 0) {
+          setSkippedReportData({
+            validItems: validList,
+            skippedItems: skippedList,
+            summary,
+          });
+          setSkippedModalOpen(true);
+          toast.warning(
+            `Imported ${validList.length} items with available stock. ${skippedList.length} item(s) were out of stock and skipped. View report on screen.`,
+            { id: toastId, duration: 6000 }
+          );
+        } else {
+          toast.success(
+            `Successfully imported all ${validList.length} items with available stock! Review list below, then Save as Draft or Confirm & Reserve.`,
+            { id: toastId }
+          );
+        }
       } else {
         toast.error('No valid items found in uploaded file', { id: toastId });
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to parse Excel / CSV file', { id: toastId });
+      toast.error(error.message || 'Failed to parse Excel / CSV file', { id: toastId, duration: 6000 });
     } finally {
       setUploading(false);
       e.target.value = ''; // Reset input
     }
+  };
+
+  const downloadSkippedReportCSV = () => {
+    if (!skippedReportData || !skippedReportData.skippedItems || skippedReportData.skippedItems.length === 0) return;
+
+    let csv = 'SKU,Description,Requested Qty,Available Stock,Reason\n';
+    skippedReportData.skippedItems.forEach((item) => {
+      csv += `"${item.sku}","${(item.description || '').replace(/"/g, '""')}",${item.requestedQty || 0},${item.availableStock || 0},"${(item.reason || '').replace(/"/g, '""')}"\n`;
+    });
+
+    const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csv);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `out_of_stock_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Downloaded Out-of-Stock Items Report (CSV)');
   };
 
   const handleDownloadTemplate = () => {
@@ -1140,15 +1215,10 @@ export default function StockRequisitionPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-indigo-600 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold h-9"
-                    onClick={() => excelInputRef.current?.click()}
-                    disabled={uploading}
+                    className="border-indigo-600 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold h-9 shadow-sm"
+                    onClick={() => setBulkImportModalOpen(true)}
                   >
-                    {uploading ? (
-                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin text-indigo-600" />
-                    ) : (
-                      <FileSpreadsheet className="h-4 w-4 mr-1.5 text-indigo-600" />
-                    )}
+                    <FileSpreadsheet className="h-4 w-4 mr-1.5 text-indigo-600" />
                     Import Excel / CSV
                   </Button>
                   <Button
@@ -1216,10 +1286,15 @@ export default function StockRequisitionPage() {
                             <p className="font-bold text-sm text-gray-800">{item.sku}</p>
                             <p className="text-xs text-muted-foreground">{item.description}</p>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                              Stock: {item.totalQuantity}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                              Avail: {item.totalQuantity}
                             </span>
+                            {Number(item.reservedQuantity || 0) > 0 && (
+                              <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                Phys: {item.physicalQuantity ?? item.totalQuantity} · Res: {item.reservedQuantity}
+                              </span>
+                            )}
                             <Plus className="h-4 w-4 text-indigo-600" />
                           </div>
                         </div>
@@ -1720,6 +1795,135 @@ export default function StockRequisitionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Skipped / Out of Stock Items Report Modal */}
+      <Dialog open={skippedModalOpen} onOpenChange={setSkippedModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-6">
+          <DialogHeader className="pb-3 border-b">
+            <div className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-6 w-6" />
+              <DialogTitle className="text-xl font-bold text-gray-900">
+                Bulk Import Summary & Out-of-Stock Report
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-gray-600 mt-1">
+              Valid items with stock have been loaded into your requisition table. Below is the detailed report of items that have zero stock in{' '}
+              <strong className="text-gray-900">{skippedReportData?.summary?.warehouseName || 'the warehouse'}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 my-2">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex flex-col">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Imported to List</span>
+              <span className="text-2xl font-black text-emerald-700">
+                {skippedReportData?.summary?.importedCount || 0}{' '}
+                <span className="text-xs font-semibold text-emerald-600">Items Added</span>
+              </span>
+            </div>
+            <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 flex flex-col">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700">Skipped (0 Stock)</span>
+              <span className="text-2xl font-black text-rose-700">
+                {skippedReportData?.summary?.skippedCount || 0}{' '}
+                <span className="text-xs font-semibold text-rose-600">Items</span>
+              </span>
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex flex-col col-span-2 sm:col-span-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600">Total in File</span>
+              <span className="text-2xl font-black text-gray-800">
+                {skippedReportData?.summary?.totalProcessed || 0}{' '}
+                <span className="text-xs font-semibold text-gray-500">Rows</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Skipped Items Table */}
+          <div className="flex-1 overflow-hidden border rounded-lg mt-2">
+            <ScrollArea className="h-64">
+              <Table>
+                <TableHeader className="bg-gray-50/80 sticky top-0">
+                  <TableRow>
+                    <TableHead className="font-bold text-xs">SKU / BarCode</TableHead>
+                    <TableHead className="font-bold text-xs">Description</TableHead>
+                    <TableHead className="font-bold text-xs text-center">Req Qty</TableHead>
+                    <TableHead className="font-bold text-xs text-center">Warehouse Stock</TableHead>
+                    <TableHead className="font-bold text-xs">Status / Reason</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {skippedReportData?.skippedItems?.map((item, idx) => (
+                    <TableRow key={idx} className="hover:bg-rose-50/20 text-xs">
+                      <TableCell className="font-mono font-bold text-rose-700">{item.sku}</TableCell>
+                      <TableCell className="max-w-[200px] truncate text-gray-700">{item.description || '—'}</TableCell>
+                      <TableCell className="text-center font-bold text-gray-800">{item.requestedQty || 0}</TableCell>
+                      <TableCell className="text-center font-bold text-rose-600">
+                        {item.availableStock || 0}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="border-rose-300 bg-rose-50 text-rose-700 font-semibold text-[11px]">
+                          {item.reason || '0 Stock'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </div>
+
+          <DialogFooter className="mt-4 border-t pt-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <Button
+              variant="outline"
+              className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold gap-2 w-full sm:w-auto"
+              onClick={downloadSkippedReportCSV}
+            >
+              <Download className="h-4 w-4" /> Download Skipped Report (CSV)
+            </Button>
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700 font-bold gap-2 w-full sm:w-auto"
+              onClick={() => setSkippedModalOpen(false)}
+            >
+              <CheckCircle className="h-4 w-4" /> Continue with Imported Items ({skippedReportData?.summary?.importedCount || 0})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Dedicated Bulk Import Modal matching /erp/items/list */}
+      <SrnItemsBulkImportModal
+        open={bulkImportModalOpen}
+        onOpenChange={setBulkImportModalOpen}
+        warehouseId={selectedWarehouseId}
+        warehouseName={warehouses.find((w) => w.id === selectedWarehouseId)?.name || 'LOGISTIC AREA'}
+        onItemsImported={(importedList) => {
+          const parsedItems: SRNItem[] = importedList.map((item: any) => ({
+            itemId: item.itemId,
+            sku: item.sku,
+            description: item.description || '',
+            color: item.color || null,
+            size: item.size || null,
+            category: item.category || null,
+            gender: item.gender || null,
+            segment: item.segment || null,
+            unitPrice: Number(item.unitPrice || 0),
+            quantity: Number(item.quantity || 1),
+          }));
+
+          setRequisitionItems((prev) => {
+            const merged = [...prev];
+            parsedItems.forEach((newItem) => {
+              const idx = merged.findIndex((i) => i.itemId === newItem.itemId);
+              if (idx > -1) {
+                merged[idx].quantity += newItem.quantity;
+              } else {
+                merged.push(newItem);
+              }
+            });
+            return merged;
+          });
+
+          setActiveTab('create');
+        }}
+      />
       </div>
     </PermissionGuard>
   );

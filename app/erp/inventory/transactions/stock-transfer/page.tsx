@@ -236,6 +236,9 @@ function StockTransferContent() {
             }
 
             let availableStock = typeof matchedItem.totalQuantity === 'number' ? matchedItem.totalQuantity : 0;
+            let physicalStock = typeof matchedItem.physicalQuantity === 'number' ? matchedItem.physicalQuantity : availableStock;
+            let reservedStock = typeof matchedItem.reservedQuantity === 'number' ? matchedItem.reservedQuantity : 0;
+            let effectiveStock = activeRequisitionId ? physicalStock : availableStock;
 
             const itemData = {
                 id: matchedItem.id,
@@ -243,7 +246,9 @@ function StockTransferContent() {
                 description: matchedItem.description ?? matchedItem.name ?? '',
                 color: matchedItem.color?.name,
                 size: matchedItem.size?.name,
-                availableStock: availableStock,
+                availableStock: effectiveStock,
+                physicalQuantity: physicalStock,
+                reservedQuantity: reservedStock,
             };
 
             const existingIndex = selectedItems.findIndex(i => i.id === itemData.id);
@@ -402,15 +407,19 @@ function StockTransferContent() {
             const itemPromises = requisition.items.map(async (item: any) => {
                 const sku = item.item?.sku;
                 let availableStock = 0;
+                let physicalStock = 0;
+                let reservedStock = 0;
                 if (sku && warehouseId) {
                     try {
                         const res = await inventoryApi.search(sku, warehouseId);
                         if (res.status && res.data && res.data.length > 0) {
-                            const matched = res.data.find((inv: any) => inv.id === item.itemId || inv.sku === sku);
+                            const matched = res.data.find((inv: any) => inv.id === item.itemId || inv.sku === sku) || res.data[0];
                             if (matched) {
-                                availableStock = typeof matched.totalQuantity === 'number' ? matched.totalQuantity : 0;
-                            } else {
-                                availableStock = typeof res.data[0].totalQuantity === 'number' ? res.data[0].totalQuantity : 0;
+                                const unreservedStock = typeof matched.totalQuantity === 'number' ? matched.totalQuantity : 0;
+                                physicalStock = typeof matched.physicalQuantity === 'number' ? matched.physicalQuantity : unreservedStock;
+                                reservedStock = typeof matched.reservedQuantity === 'number' ? matched.reservedQuantity : 0;
+                                // When fulfilling an active SRN, the stock available to transfer includes its own reservation (i.e. physical stock)
+                                availableStock = physicalStock;
                             }
                         }
                     } catch (e) {
@@ -427,6 +436,8 @@ function StockTransferContent() {
                     maxQuantity: Number(item.quantity),
                     notes: `From Requisition ${requisition.requisitionNo}`,
                     availableStock: availableStock,
+                    physicalQuantity: physicalStock,
+                    reservedQuantity: reservedStock,
                 };
             });
 
@@ -587,12 +598,19 @@ function StockTransferContent() {
             if (res.status && res.data) {
                 const options = res.data.map((item: any) => {
                     let totalQty = typeof item.totalQuantity === 'number' ? item.totalQuantity : 0;
+                    let physicalQty = typeof item.physicalQuantity === 'number' ? item.physicalQuantity : totalQty;
+                    let reservedQty = typeof item.reservedQuantity === 'number' ? item.reservedQuantity : 0;
 
                     return {
                         value: item.id,
                         label: `${item.sku} - ${item.description}`,
                         description: `Available: ${totalQty}`,
-                        item: { ...item, availableStock: totalQty }
+                        item: {
+                            ...item,
+                            availableStock: totalQty,
+                            physicalQuantity: physicalQty,
+                            reservedQuantity: reservedQty,
+                        }
                     };
                 });
 
@@ -629,8 +647,9 @@ function StockTransferContent() {
                 }
             }
 
-            if (bulkQty > itemData.availableStock) {
-                toast.warning(`Quantity exceeds available stock (${itemData.availableStock})`);
+            const effectiveLimit = activeRequisitionId ? (itemData.physicalQuantity || itemData.availableStock) : itemData.availableStock;
+            if (bulkQty > effectiveLimit) {
+                toast.warning(`Quantity exceeds available stock (${effectiveLimit})`);
             }
 
             setSelectedItems(prev => [...prev, {
@@ -687,9 +706,12 @@ function StockTransferContent() {
             return;
         }
 
-        const hasInsufficientStock = selectedItems.some(item => item.quantity > item.availableStock);
+        const hasInsufficientStock = selectedItems.some(item => {
+            const maxAllowed = activeRequisitionId ? (item.physicalQuantity || item.availableStock) : item.availableStock;
+            return item.quantity > maxAllowed;
+        });
         if (hasInsufficientStock) {
-            toast.error('One or more items have insufficient stock for this transfer');
+            toast.error('One or more items have insufficient stock in warehouse for this transfer');
             return;
         }
 
@@ -1623,9 +1645,14 @@ function StockTransferContent() {
                                                                                                 </span>
                                                                                             </div>
                                                                                             <div className="flex items-center gap-3 flex-wrap">
-                                                                                                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                                                                                <span className="text-[11px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
                                                                                                     <WarehouseIcon className="h-3 w-3" />
-                                                                                                    Stock: <span className={cn("font-bold", item.availableStock > 0 ? "text-foreground" : "text-destructive")}>{item.availableStock}</span>
+                                                                                                    <span>Avail: <strong className={cn(item.availableStock > 0 ? "text-foreground" : "text-destructive")}>{item.availableStock}</strong></span>
+                                                                                                    {Number(item.reservedQuantity || 0) > 0 && (
+                                                                                                        <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">
+                                                                                                            Physical: {item.physicalQuantity ?? item.availableStock} · Reserved: {item.reservedQuantity}
+                                                                                                        </span>
+                                                                                                    )}
                                                                                                 </span>
                                                                                                 {item.color?.name && (
                                                                                                     <span className="text-[11px] text-muted-foreground">
