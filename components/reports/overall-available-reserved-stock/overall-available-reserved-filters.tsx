@@ -17,8 +17,9 @@ import {
     ChevronDownIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-// ─── Multi-select Popover ───────────────────────────────────────────────────
+// ─── Filter Dropdown Component ──────────────────────────────────────────────
 function FilterDropdown({
     label,
     options,
@@ -31,70 +32,60 @@ function FilterDropdown({
     onToggle: (val: string) => void;
 }) {
     const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
     const count = selected.size;
 
     return (
-        <div ref={ref} className="relative inline-block text-left">
-            <button
-                type="button"
-                onClick={() => setOpen((o) => !o)}
-                className={cn(
-                    "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all shadow-sm",
-                    count > 0
-                        ? "bg-primary/10 border-primary text-primary"
-                        : "bg-background border-border text-foreground hover:bg-muted"
-                )}
-            >
-                <span>{label}</span>
-                {count > 0 && (
-                    <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-                        {count}
-                    </span>
-                )}
-                <ChevronDownIcon className="h-3 w-3 opacity-60" />
-            </button>
-
-            {open && (
-                <div className="absolute z-50 mt-1.5 w-56 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl p-2 max-h-60 overflow-y-auto animate-in fade-in duration-150">
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1 tracking-wider border-b border-border/50 mb-1">
-                        Filter by {label}
-                    </div>
-                    {options.length === 0 ? (
-                        <div className="text-xs text-muted-foreground p-2 text-center">No options available</div>
-                    ) : (
-                        options.map((opt) => {
-                            const checked = selected.has(opt);
-                            return (
-                                <label
-                                    key={opt}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-muted cursor-pointer transition-colors"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        onChange={() => onToggle(opt)}
-                                        className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
-                                    />
-                                    <span className="truncate">{opt}</span>
-                                </label>
-                            );
-                        })
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    className={cn(
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all shadow-sm cursor-pointer",
+                        count > 0
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "bg-background border-border text-foreground hover:bg-muted"
                     )}
+                >
+                    <span>{label}</span>
+                    {count > 0 && (
+                        <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                            {count}
+                        </span>
+                    )}
+                    <ChevronDownIcon className="h-3 w-3 opacity-60" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent
+                align="start"
+                sideOffset={6}
+                className="w-56 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl p-2 max-h-60 overflow-y-auto z-50"
+            >
+                <div className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1 tracking-wider border-b border-border/50 mb-1">
+                    Filter by {label}
                 </div>
-            )}
-        </div>
+                {options.length === 0 ? (
+                    <div className="text-xs text-muted-foreground p-2 text-center">No options available</div>
+                ) : (
+                    options.map((opt) => {
+                        const checked = selected.has(opt);
+                        return (
+                            <label
+                                key={opt}
+                                className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:bg-muted cursor-pointer transition-colors"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => onToggle(opt)}
+                                    className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                                />
+                                <span className="truncate">{opt}</span>
+                            </label>
+                        );
+                    })
+                )}
+            </PopoverContent>
+        </Popover>
     );
 }
 
