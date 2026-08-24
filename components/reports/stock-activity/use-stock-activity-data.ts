@@ -334,10 +334,15 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
 
                         if (!isProdCollapsed && groupingLevels.variant) {
                           for (const item of prod.sizes) {
+                            const variantLabel = item.color && item.size
+                              ? `${item.color} - ${item.size}`
+                              : item.color || item.size || item.barCode || "Default Variant";
+
                             rows.push({
                               type: "variant",
                               id: `${prefix}-item-${item.id}`,
                               nodeId: `${prefix}-item-${item.id}`,
+                              label: variantLabel,
                               sku: prod.sku,
                               barCode: item.barCode,
                               size: item.size,

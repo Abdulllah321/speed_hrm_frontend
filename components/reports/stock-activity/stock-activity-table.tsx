@@ -427,10 +427,10 @@ export function StockActivityTable({
                           )}
 
                           {isVariant ? (
-                            <div className="flex items-center gap-1.5 font-mono text-[11px]">
-                              <Barcode className="h-3.5 w-3.5 opacity-60 text-emerald-600 dark:text-emerald-400" />
-                              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                {item.barCode || "N/A"}
+                            <div className="flex items-center gap-1.5 text-[11px]">
+                              <Barcode className="h-3.5 w-3.5 opacity-60 text-emerald-600 dark:text-emerald-400 font-mono shrink-0" />
+                              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                {item.label || (item.color && item.size ? `${item.color} - ${item.size}` : item.barCode || "N/A")}
                               </span>
                             </div>
                           ) : (
