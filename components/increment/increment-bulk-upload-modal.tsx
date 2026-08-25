@@ -102,7 +102,7 @@ export function IncrementBulkUploadModal({
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeeGrades, setEmployeeGrades] = useState<EmployeeGrade[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
-  const [latestSalaries, setLatestSalaries] = useState<Record<string, number>>({});
+  const [existingIncrements, setExistingIncrements] = useState<any[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
 
   const [parsedRows, setParsedRows] = useState<ParsedIncrementRow[]>([]);
@@ -134,22 +134,9 @@ export function IncrementBulkUploadModal({
         if (desigRes.status && desigRes.data) {
           setDesignations(desigRes.data.filter((d) => d.status === 'active'));
         }
-
-        // Build latest salary lookup map per employee
-        const salariesMap: Record<string, number> = {};
-        if (incRes.status && incRes.data && incRes.data.length > 0) {
-          const sorted = [...incRes.data].sort(
-            (a, b) =>
-              new Date(b.promotionDate).getTime() -
-              new Date(a.promotionDate).getTime()
-          );
-          sorted.forEach((inc) => {
-            if (!salariesMap[inc.employeeId]) {
-              salariesMap[inc.employeeId] = Number(inc.salary);
-            }
-          });
+        if (incRes.status && incRes.data) {
+          setExistingIncrements(incRes.data);
         }
-        setLatestSalaries(salariesMap);
       } catch (error) {
         console.error('Failed to load increment import metadata:', error);
         toast.error('Failed to load employee directory and promotion metadata.');
@@ -414,6 +401,24 @@ export function IncrementBulkUploadModal({
             'title',
             'jobtitle',
           ]);
+          const prevSalaryKey = findKey(row, [
+            'previoussalary',
+            'previous_salary',
+            'prevsalary',
+            'prev_salary',
+            'currentsalary',
+            'current_salary',
+            'basesalary',
+            'base_salary',
+            'basicsalary',
+            'basic_salary',
+            'oldsalary',
+            'old_salary',
+            'originalsalary',
+            'original_salary',
+            'package',
+            'salarypackage',
+          ]);
           const salaryKey = findKey(row, [
             'salary',
             'revisedsalary',
@@ -452,6 +457,7 @@ export function IncrementBulkUploadModal({
           }
 
           const rawName = nameKey ? String(row[nameKey]).trim() : '';
+          const rawPrevSalary = prevSalaryKey ? String(row[prevSalaryKey]).trim() : '';
           const rawType = typeKey ? String(row[typeKey]).trim() : '';
           const rawMethod = methodKey ? String(row[methodKey]).trim() : '';
           const rawValue = valueKey ? String(row[valueKey]).trim() : '';
@@ -495,15 +501,81 @@ export function IncrementBulkUploadModal({
             return;
           }
 
-          // 2. Resolve Base Salary
-          const baseSalary =
-            latestSalaries[employee.id] !== undefined
-              ? latestSalaries[employee.id]
-              : employee.employeeSalary
-              ? Number(employee.employeeSalary)
-              : 0;
+          // 2. Validate Promotion / Effective Date
+          const parsedDate = parseDateString(rawDate);
+          if (!parsedDate) {
+            validationErrors.push({
+              ...errorPayloadContext,
+              field: 'Effective Date',
+              reason: `Invalid Date "${rawDate}". Expected format YYYY-MM-DD.`,
+            });
+            return;
+          }
 
-          // 3. Resolve Type (Increment vs Decrement)
+          // 3. Validate Current Month (default to YYYY-MM from date)
+          const parsedMonth = parseMonthString(rawMonth, parsedDate);
+          if (!parsedMonth) {
+            validationErrors.push({
+              ...errorPayloadContext,
+              field: 'Month',
+              reason: `Invalid Month value "${rawMonth}". Expected format YYYY-MM.`,
+            });
+            return;
+          }
+
+          // 4. Resolve Base / Previous Salary
+          let baseSalary = employee.employeeSalary
+            ? Number(employee.employeeSalary)
+            : 0;
+
+          if (rawPrevSalary) {
+            const cleanedPrev = parseFloat(rawPrevSalary.replace(/[^\d.-]/g, ''));
+            if (!isNaN(cleanedPrev) && cleanedPrev > 0) {
+              baseSalary = cleanedPrev;
+            }
+          } else if (parsedDate) {
+            // Check if an increment already exists for this exact employee on this exact Effective Date (YYYY-MM-DD)
+            const sameDateInc = existingIncrements.find((i) => {
+              if (i.employeeId !== employee.id || i.status !== 'active') return false;
+              const iDate = i.promotionDate ? format(new Date(i.promotionDate), 'yyyy-MM-dd') : '';
+              return iDate === parsedDate;
+            });
+
+            if (sameDateInc) {
+              // This import is an UPDATE to the existing increment on this Effective Date!
+              // Reverse calculate the true base salary before this date's increment was applied.
+              const oldAmt =
+                sameDateInc.incrementMethod === 'Amount'
+                  ? Number(sameDateInc.incrementAmount || 0)
+                  : (Number(sameDateInc.salary) *
+                      Number(sameDateInc.incrementPercentage || 0)) /
+                    (100 + Number(sameDateInc.incrementPercentage || 0));
+
+              baseSalary =
+                sameDateInc.incrementType === 'Increment'
+                  ? Number(sameDateInc.salary) - oldAmt
+                  : Number(sameDateInc.salary) + oldAmt;
+            } else {
+              // Find latest increment strictly prior to this Effective Date if any
+              const priorIncs = existingIncrements
+                .filter((i) => {
+                  if (i.employeeId !== employee.id || i.status !== 'active') return false;
+                  const iDate = i.promotionDate ? format(new Date(i.promotionDate), 'yyyy-MM-dd') : '';
+                  return iDate < parsedDate;
+                })
+                .sort(
+                  (a, b) =>
+                    new Date(b.promotionDate).getTime() -
+                    new Date(a.promotionDate).getTime()
+                );
+
+              if (priorIncs.length > 0) {
+                baseSalary = Number(priorIncs[0].salary);
+              }
+            }
+          }
+
+          // 5. Resolve Type (Increment vs Decrement)
           let incrementType: 'Increment' | 'Decrement' = 'Increment';
           if (
             rawType.toLowerCase().includes('dec') ||
@@ -512,7 +584,7 @@ export function IncrementBulkUploadModal({
             incrementType = 'Decrement';
           }
 
-          // 4. Resolve Method (Amount vs Percent)
+          // 6. Resolve Method (Amount vs Percent)
           let incrementMethod: 'Amount' | 'Percent' = 'Amount';
           if (
             rawMethod.toLowerCase().includes('percent') ||
@@ -522,7 +594,7 @@ export function IncrementBulkUploadModal({
             incrementMethod = 'Percent';
           }
 
-          // 5. Parse & Validate Increment Value
+          // 7. Parse & Validate Increment Value
           const cleanedValueStr = rawValue.replace(/[^\d.-]/g, '');
           const parsedValue = parseFloat(cleanedValueStr);
 
@@ -568,28 +640,6 @@ export function IncrementBulkUploadModal({
               : hasExplicitSalary
               ? Math.abs(parsedExplicitSalary - baseSalary)
               : 0;
-
-          // 6. Validate Promotion / Effective Date
-          const parsedDate = parseDateString(rawDate);
-          if (!parsedDate) {
-            validationErrors.push({
-              ...errorPayloadContext,
-              field: 'Effective Date',
-              reason: `Invalid Date "${rawDate}". Expected format YYYY-MM-DD.`,
-            });
-            return;
-          }
-
-          // 7. Validate Current Month (default to YYYY-MM from date)
-          const parsedMonth = parseMonthString(rawMonth, parsedDate);
-          if (!parsedMonth) {
-            validationErrors.push({
-              ...errorPayloadContext,
-              field: 'Month',
-              reason: `Invalid Month value "${rawMonth}". Expected format YYYY-MM.`,
-            });
-            return;
-          }
 
           // 8. Validate Grade (Optional, match active grades or fallback to employee's current grade)
           let resolvedGradeId: string | undefined = undefined;
@@ -938,17 +988,17 @@ export function IncrementBulkUploadModal({
     const ws = XLSX.utils.aoa_to_sheet(data);
 
     ws['!cols'] = [
-      { wch: 15 },
-      { wch: 20 },
-      { wch: 14 },
-      { wch: 12 },
-      { wch: 16 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 16 },
-      { wch: 24 },
-      { wch: 16 },
-      { wch: 30 },
+      { wch: 15 }, // Employee ID
+      { wch: 20 }, // Employee Name
+      { wch: 14 }, // Type
+      { wch: 12 }, // Method
+      { wch: 16 }, // Increment Value
+      { wch: 15 }, // Effective Date
+      { wch: 12 }, // Month
+      { wch: 16 }, // New Grade
+      { wch: 24 }, // New Designation
+      { wch: 16 }, // Revised Salary
+      { wch: 30 }, // Notes
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Promotion_Increments');
