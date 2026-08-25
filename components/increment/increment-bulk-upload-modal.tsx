@@ -33,6 +33,7 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getEmployees, type Employee } from '@/lib/actions/employee';
@@ -53,21 +54,20 @@ interface IncrementBulkUploadModalProps {
 
 interface ParsedIncrementRow {
   rowIndex: number;
-  employeeIdCode: string; // The user-provided emp ID (e.g. EMP-001)
-  employeeName: string;   // Matched / user-provided name
-  previousSalary: number; // Employee's latest base salary before increment
+  employeeIdCode: string;
+  employeeName: string;
+  previousSalary: number;
   incrementType: 'Increment' | 'Decrement';
   incrementMethod: 'Amount' | 'Percent';
   incrementValue: number;
   incrementAmount?: number;
   incrementPercentage?: number;
-  salary: number;         // Revised / calculated final salary
-  promotionDate: string;  // YYYY-MM-DD
-  currentMonth: string;   // YYYY-MM
-  gradeName?: string;     // Resolved grade name
-  designationName?: string;// Resolved designation name
+  salary: number;
+  promotionDate: string;
+  currentMonth: string;
+  gradeName?: string;
+  designationName?: string;
   notes: string;
-  // Resolved database UUID references
   resolvedEmployeeId: string;
   resolvedEmployeeGradeId?: string;
   resolvedDesignationId?: string;
@@ -76,6 +76,16 @@ interface ParsedIncrementRow {
 interface ValidationError {
   row: number;
   empId: string;
+  empName?: string;
+  type?: string;
+  method?: string;
+  value?: string;
+  date?: string;
+  month?: string;
+  grade?: string;
+  designation?: string;
+  salary?: string;
+  notes?: string;
   field: string;
   reason: string;
 }
@@ -101,7 +111,7 @@ export function IncrementBulkUploadModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch employees, grades, designations, and previous increments on dialog open
+  // Fetch active employees, grades, designations, and previous increments on open
   useEffect(() => {
     if (!open) return;
 
@@ -128,7 +138,6 @@ export function IncrementBulkUploadModal({
         // Build latest salary lookup map per employee
         const salariesMap: Record<string, number> = {};
         if (incRes.status && incRes.data && incRes.data.length > 0) {
-          // Sort increments by promotionDate desc to find latest
           const sorted = [...incRes.data].sort(
             (a, b) =>
               new Date(b.promotionDate).getTime() -
@@ -175,7 +184,7 @@ export function IncrementBulkUploadModal({
     }
   };
 
-  // Robust Date Parser (supports YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, Excel date serials)
+  // Robust Date Parser
   const parseDateString = (rawVal: any): string | null => {
     if (!rawVal) return null;
 
@@ -208,7 +217,7 @@ export function IncrementBulkUploadModal({
       return `${year}-${month}-${day}`;
     }
 
-    // 4. Excel Date Serial Number (e.g. 45500)
+    // 4. Excel Date Serial Number
     const serial = Number(str);
     if (!isNaN(serial) && serial > 30000 && serial < 60000) {
       try {
@@ -219,7 +228,7 @@ export function IncrementBulkUploadModal({
       } catch {}
     }
 
-    // 5. Try standard Date parsing
+    // 5. Standard Date parse fallback
     try {
       const date = new Date(str);
       if (!isNaN(date.getTime())) {
@@ -233,7 +242,7 @@ export function IncrementBulkUploadModal({
   // Robust Month parser (format YYYY-MM)
   const parseMonthString = (rawVal: any, fallbackDate?: string | null): string | null => {
     if (!rawVal && fallbackDate) {
-      return fallbackDate.substring(0, 7); // Extract YYYY-MM from YYYY-MM-DD
+      return fallbackDate.substring(0, 7);
     }
     if (!rawVal) return null;
 
@@ -426,7 +435,7 @@ export function IncrementBulkUploadModal({
 
           const rawEmpId = empIdKey ? String(row[empIdKey]).trim() : '';
 
-          // Skip header labels, template placeholder descriptions, or blank rows
+          // Skip header labels or blank rows
           if (
             !rawEmpId ||
             [
@@ -455,6 +464,21 @@ export function IncrementBulkUploadModal({
           const rawSalary = salaryKey ? String(row[salaryKey]).trim() : '';
           const rawNotes = notesKey ? String(row[notesKey]).trim() : '';
 
+          const errorPayloadContext = {
+            row: rowNum,
+            empId: rawEmpId,
+            empName: rawName,
+            type: rawType,
+            method: rawMethod,
+            value: rawValue,
+            date: String(rawDate),
+            month: String(rawMonth),
+            grade: rawGrade,
+            designation: rawDesignation,
+            salary: rawSalary,
+            notes: rawNotes,
+          };
+
           // 1. Validate Employee Existence
           const employee = employees.find(
             (e) =>
@@ -464,8 +488,7 @@ export function IncrementBulkUploadModal({
 
           if (!employee) {
             validationErrors.push({
-              row: rowNum,
-              empId: rawEmpId,
+              ...errorPayloadContext,
               field: 'Employee ID',
               reason: `Employee ID "${rawEmpId}" not found in system.`,
             });
@@ -503,7 +526,6 @@ export function IncrementBulkUploadModal({
           const cleanedValueStr = rawValue.replace(/[^\d.-]/g, '');
           const parsedValue = parseFloat(cleanedValueStr);
 
-          // Allow optional value if revised salary is explicitly provided
           let hasExplicitSalary = false;
           let parsedExplicitSalary = 0;
           if (rawSalary) {
@@ -518,8 +540,7 @@ export function IncrementBulkUploadModal({
           if (isNaN(parsedValue) || parsedValue <= 0) {
             if (!hasExplicitSalary) {
               validationErrors.push({
-                row: rowNum,
-                empId: rawEmpId,
+                ...errorPayloadContext,
                 field: 'Increment Value',
                 reason:
                   'Increment/Decrement value is required and must be a number greater than 0.',
@@ -534,26 +555,25 @@ export function IncrementBulkUploadModal({
             parsedValue > 100
           ) {
             validationErrors.push({
-              row: rowNum,
-              empId: rawEmpId,
+              ...errorPayloadContext,
               field: 'Increment Value',
               reason: 'Percentage value cannot exceed 100%.',
             });
             return;
           }
 
-          const resolvedValue = !isNaN(parsedValue) && parsedValue > 0
-            ? parsedValue
-            : hasExplicitSalary
-            ? Math.abs(parsedExplicitSalary - baseSalary)
-            : 0;
+          const resolvedValue =
+            !isNaN(parsedValue) && parsedValue > 0
+              ? parsedValue
+              : hasExplicitSalary
+              ? Math.abs(parsedExplicitSalary - baseSalary)
+              : 0;
 
           // 6. Validate Promotion / Effective Date
           const parsedDate = parseDateString(rawDate);
           if (!parsedDate) {
             validationErrors.push({
-              row: rowNum,
-              empId: rawEmpId,
+              ...errorPayloadContext,
               field: 'Effective Date',
               reason: `Invalid Date "${rawDate}". Expected format YYYY-MM-DD.`,
             });
@@ -564,8 +584,7 @@ export function IncrementBulkUploadModal({
           const parsedMonth = parseMonthString(rawMonth, parsedDate);
           if (!parsedMonth) {
             validationErrors.push({
-              row: rowNum,
-              empId: rawEmpId,
+              ...errorPayloadContext,
               field: 'Month',
               reason: `Invalid Month value "${rawMonth}". Expected format YYYY-MM.`,
             });
@@ -584,8 +603,7 @@ export function IncrementBulkUploadModal({
             );
             if (!matchedGrade) {
               validationErrors.push({
-                row: rowNum,
-                empId: rawEmpId,
+                ...errorPayloadContext,
                 field: 'Employee Grade',
                 reason: `Employee Grade "${rawGrade}" not found or inactive.`,
               });
@@ -594,7 +612,6 @@ export function IncrementBulkUploadModal({
             resolvedGradeId = matchedGrade.id;
             resolvedGradeName = matchedGrade.grade;
           } else {
-            // Keep employee's existing grade if available
             resolvedGradeId =
               (employee as any).employeeGradeId ||
               (typeof employee.employeeGrade === 'string' &&
@@ -622,8 +639,7 @@ export function IncrementBulkUploadModal({
             );
             if (!matchedDesig) {
               validationErrors.push({
-                row: rowNum,
-                empId: rawEmpId,
+                ...errorPayloadContext,
                 field: 'Designation',
                 reason: `Designation "${rawDesignation}" not found or inactive.`,
               });
@@ -632,7 +648,6 @@ export function IncrementBulkUploadModal({
             resolvedDesignationId = matchedDesig.id;
             resolvedDesignationName = matchedDesig.name;
           } else {
-            // Keep employee's existing designation if available
             resolvedDesignationId =
               (employee as any).designationId ||
               (typeof employee.designation === 'string' &&
@@ -658,7 +673,6 @@ export function IncrementBulkUploadModal({
                 ? baseSalary + resolvedValue
                 : Math.max(0, baseSalary - resolvedValue);
           } else {
-            // Percent
             const percentage = resolvedValue / 100;
             computedSalary =
               incrementType === 'Increment'
@@ -725,6 +739,64 @@ export function IncrementBulkUploadModal({
     reader.readAsArrayBuffer(file);
   };
 
+  // Download comprehensive Error Report
+  const downloadErrorReport = () => {
+    if (errors.length === 0) {
+      toast.info('No errors to export.');
+      return;
+    }
+
+    const data = errors.map((err) => ({
+      'Row Number': err.row || '—',
+      'Employee ID': err.empId || '—',
+      'Employee Name': err.empName || '',
+      'Type': err.type || '',
+      'Method': err.method || '',
+      'Increment Value': err.value || '',
+      'Effective Date': err.date || '',
+      'Month': err.month || '',
+      'New Grade': err.grade || '',
+      'New Designation': err.designation || '',
+      'Revised Salary': err.salary || '',
+      'Notes': err.notes || '',
+      'Failed Column': err.field,
+      'Error Reason': err.reason,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    ws['!cols'] = [
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 15 },
+      { wch: 25 },
+      { wch: 18 },
+      { wch: 45 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Failed_Records');
+
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `increment_upload_error_report_${format(
+      new Date(),
+      'yyyy-MM-dd_HHmm'
+    )}.xlsx`;
+    link.click();
+    toast.success('Error report downloaded successfully.');
+  };
+
   const handleConfirmImport = async () => {
     if (parsedRows.length === 0 || phase === 'importing') return;
 
@@ -732,7 +804,6 @@ export function IncrementBulkUploadModal({
     setImportProgress(10);
 
     try {
-      // Prepare payload
       const payloadItems: CreateIncrementData[] = parsedRows.map((r) => ({
         employeeId: r.resolvedEmployeeId,
         employeeGradeId: r.resolvedEmployeeGradeId || undefined,
@@ -747,7 +818,6 @@ export function IncrementBulkUploadModal({
         notes: r.notes || undefined,
       }));
 
-      // Chunk requests into batches of 50 for smooth execution
       const chunkSize = 50;
       let importedCount = 0;
       const errorsList: string[] = [];
@@ -779,17 +849,35 @@ export function IncrementBulkUploadModal({
         setPhase('complete');
         onSuccess?.();
       } else {
-        toast.error(errorsList.join(', '));
-        setPhase('preview');
+        const errorMsg = errorsList.join(', ');
+        toast.error(errorMsg);
+        setErrors([
+          {
+            row: 0,
+            empId: '—',
+            field: 'Server Import',
+            reason: errorMsg,
+          },
+        ]);
+        setPhase('errors');
       }
     } catch (error) {
       console.error('Import execution failed:', error);
-      toast.error('An error occurred during increment bulk import.');
-      setPhase('preview');
+      const msg = error instanceof Error ? error.message : 'An error occurred during increment bulk import.';
+      toast.error(msg);
+      setErrors([
+        {
+          row: 0,
+          empId: '—',
+          field: 'Server Error',
+          reason: msg,
+        },
+      ]);
+      setPhase('errors');
     }
   };
 
-  // Download official Excel template with sample rows and headers
+  // Download official Excel template with sample rows
   const downloadTemplate = () => {
     const data = [
       [
@@ -849,19 +937,18 @@ export function IncrementBulkUploadModal({
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(data);
 
-    // Set column widths for optimal reading
     ws['!cols'] = [
-      { wch: 15 }, // Employee ID
-      { wch: 20 }, // Employee Name
-      { wch: 14 }, // Type
-      { wch: 12 }, // Method
-      { wch: 16 }, // Increment Value
-      { wch: 15 }, // Effective Date
-      { wch: 12 }, // Month
-      { wch: 16 }, // New Grade
-      { wch: 24 }, // New Designation
-      { wch: 16 }, // Revised Salary
-      { wch: 30 }, // Notes
+      { wch: 15 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 24 },
+      { wch: 16 },
+      { wch: 30 },
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Promotion_Increments');
@@ -980,14 +1067,24 @@ export function IncrementBulkUploadModal({
 
             {phase === 'errors' && (
               <div className="space-y-4">
-                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive">
-                  <XCircle className="h-5 w-5 shrink-0" />
-                  <div>
-                    <p className="font-bold text-sm">Validation Failed</p>
-                    <p className="text-xs opacity-90">
-                      {errors.length} issue(s) detected. Fix the errors below in your file and upload again.
-                    </p>
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center justify-between gap-3 text-destructive flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <XCircle className="h-5 w-5 shrink-0" />
+                    <div>
+                      <p className="font-bold text-sm">Validation Failed</p>
+                      <p className="text-xs opacity-90">
+                        {errors.length} issue(s) detected. Download the error report or fix the issues below to re-upload.
+                      </p>
+                    </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={downloadErrorReport}
+                    className="border-destructive/30 text-destructive hover:bg-destructive/10 shrink-0 font-bold"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" /> Download Error Report (.xlsx)
+                  </Button>
                 </div>
 
                 <div className="border rounded-xl overflow-hidden bg-card text-left">
@@ -1218,10 +1315,14 @@ export function IncrementBulkUploadModal({
 
           {phase === 'errors' && (
             <div className="flex justify-between w-full items-center">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <AlertCircle className="h-4 w-4 text-destructive" />
-                Please fix errors in your file and try again.
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadErrorReport}
+                className="text-destructive border-destructive/30 hover:bg-destructive/10"
+              >
+                <Download className="h-4 w-4 mr-2" /> Download Error Report (.xlsx)
+              </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={resetStates} type="button">
                   Upload Another File
