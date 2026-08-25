@@ -131,7 +131,7 @@ export function JournalVoucherList({
     if (!("page" in updates)) {
       params.delete("page");
     }
-    router.push(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`);
   };
 
   useEffect(() => {
@@ -391,9 +391,8 @@ export function JournalVoucherList({
                     )}
                   </span>
                   <span className="font-mono font-bold text-gray-800 dark:text-foreground shrink-0 pl-2">
-                    {(detail.debit || detail.credit).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
+                    {Math.round(detail.debit || detail.credit || 0).toLocaleString("en-PK", {
+                      maximumFractionDigits: 0,
                     })}
                   </span>
                 </div>
@@ -826,7 +825,30 @@ export function JournalVoucherList({
               setSearchTerm(searchVal);
               updateUrlParams({ search: searchVal });
             }}
-            searchFields={[{ key: "jvNo", label: "JV Number" }, { key: "description", label: "Description" }]}
+            manualSorting={true}
+            sortingColumns={
+              searchParams.get("sortBy")
+                ? [
+                    {
+                      id: searchParams.get("sortBy")!,
+                      desc: searchParams.get("sortOrder") === "desc",
+                    },
+                  ]
+                : []
+            }
+            onSortingChange={(sorting) => {
+              const firstSort = sorting[0];
+              if (firstSort) {
+                updateUrlParams({
+                  sortBy: firstSort.id,
+                  sortOrder: firstSort.desc ? "desc" : "asc",
+                });
+              } else {
+                updateUrlParams({ sortBy: null, sortOrder: null });
+              }
+            }}
+            searchValue={searchTerm}
+            searchFields={[{ key: "jvNo", label: "Search by JV #, Narration, Ref #, Account..." }]}
             tableId="journal-voucher-list"
             enableRowSelection
             onSelectionChange={setSelectedVoucherIds}

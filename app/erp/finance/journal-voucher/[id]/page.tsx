@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function fmt(n: number) {
-  return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Math.round(n).toLocaleString("en-PK", { maximumFractionDigits: 0 });
 }
 
 function folio(id: string) {

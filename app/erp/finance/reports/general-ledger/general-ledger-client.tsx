@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Autocomplete } from "@/components/ui/autocomplete";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import {
   getGeneralLedger,
@@ -43,16 +44,15 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 const fmt = (n: number) => {
-  if (n < 0) {
-    const absVal = Math.abs(n).toLocaleString("en-PK", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+  const rounded = Math.round(n);
+  if (rounded < 0) {
+    const absVal = Math.abs(rounded).toLocaleString("en-PK", {
+      maximumFractionDigits: 0,
     });
     return `(${absVal})`;
   }
-  return n.toLocaleString("en-PK", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+  return rounded.toLocaleString("en-PK", {
+    maximumFractionDigits: 0,
   });
 };
 
@@ -115,7 +115,9 @@ export function GeneralLedgerClient({
   accounts: ChartOfAccount[];
 }) {
   const [accountId, setAccountId] = React.useState("");
-  const [tagAccountId, setTagAccountId] = React.useState("");
+  const [selectedSubAccountIds, setSelectedSubAccountIds] = React.useState<
+    string[]
+  >([]);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
     new Date(new Date().getFullYear(), 0, 1),
   );
@@ -145,14 +147,49 @@ export function GeneralLedgerClient({
     return findInTree(accounts, accountId);
   }, [accountId, accounts]);
 
-  const subAccounts = selectedAccountInTree?.children ?? [];
+  const subAccounts = React.useMemo(() => {
+    const leafs: ChartOfAccount[] = [];
+    const collectLeafs = (items: ChartOfAccount[]) => {
+      for (const item of items) {
+        if (item.children && item.children.length > 0) {
+          collectLeafs(item.children);
+        } else {
+          leafs.push(item);
+        }
+      }
+    };
+    if (selectedAccountInTree) {
+      if (selectedAccountInTree.children && selectedAccountInTree.children.length > 0) {
+        collectLeafs(selectedAccountInTree.children);
+      } else {
+        leafs.push(selectedAccountInTree);
+      }
+    } else {
+      collectLeafs(accounts);
+    }
+    return leafs;
+  }, [selectedAccountInTree, accounts]);
+
+  const subAccountOptions = React.useMemo(() => {
+    return subAccounts.map((child) => ({
+      value: child.id,
+      label: `${child.code} - ${child.name}`,
+    }));
+  }, [subAccounts]);
+
+  // Target account ID (single or comma-separated sub-account IDs)
+  const targetAccountId = React.useMemo(() => {
+    if (selectedSubAccountIds.length > 0) {
+      return selectedSubAccountIds.join(",");
+    }
+    return accountId;
+  }, [selectedSubAccountIds, accountId]);
 
   // Pagination states
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(50);
 
   const load = (targetPage = page, targetLimit = limit) => {
-    const targetAccountId = tagAccountId || accountId;
     if (!targetAccountId) return;
     startTransition(async () => {
       const res = await getGeneralLedger(targetAccountId, {
@@ -266,7 +303,6 @@ export function GeneralLedgerClient({
 
   // Dispatch Background Excel queue export
   const handleQueueExport = () => {
-    const targetAccountId = tagAccountId || accountId;
     if (!targetAccountId) return;
     setIsExporting(true);
 
@@ -377,7 +413,7 @@ export function GeneralLedgerClient({
                   value={accountId}
                   onValueChange={(val) => {
                     setAccountId(val);
-                    setTagAccountId(""); // Reset sub-account when main account changes
+                    setSelectedSubAccountIds([]); // Reset sub-account selection when main account changes
                   }}
                   placeholder="Select Account..."
                   allowGroups={true}
@@ -389,23 +425,16 @@ export function GeneralLedgerClient({
               {subAccounts.length > 0 && (
                 <div className="space-y-2 md:col-span-3">
                   <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Tag className="h-3 w-3 text-primary/70" /> Sub-account /
-                    Tag
+                    <Tag className="h-3 w-3 text-primary/70" /> Sub-accounts ({subAccounts.length})
                   </Label>
-                  <Autocomplete
-                    options={[
-                      { value: "all", label: "All Sub-accounts" },
-                      ...subAccounts.map((child) => ({
-                        value: child.id,
-                        label: `${child.code} - ${child.name}`,
-                      })),
-                    ]}
-                    value={tagAccountId || "all"}
-                    onValueChange={(value) =>
-                      setTagAccountId(value === "all" ? "" : value)
-                    }
-                    placeholder="Select Sub-account..."
-                    searchPlaceholder="Search sub-account..."
+                  <MultiSelect
+                    options={subAccountOptions}
+                    value={selectedSubAccountIds}
+                    onValueChange={setSelectedSubAccountIds}
+                    placeholder="All Sub-accounts"
+                    searchPlaceholder="Search sub-accounts..."
+                    maxDisplayedItems={2}
+                    showSelectAll
                     className="h-10 text-sm shadow-sm"
                   />
                 </div>
@@ -926,6 +955,11 @@ export function GeneralLedgerClient({
                 padding: 10px !important;
                 box-sizing: border-box !important;
               }
+              #general-ledger-print-section tfoot {
+                display: table-row-group !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
             }
           `,
             }}
@@ -972,20 +1006,20 @@ export function GeneralLedgerClient({
           <table className="w-full text-[9px] mb-2 border-collapse table-fixed">
             <thead>
               <tr className="border-y border-black font-bold text-left">
-                <th className="py-1 pr-1 w-[8%] text-[9px]">Date</th>
-                <th className="py-1 pr-1 w-[11%] text-[9px]">VOH No.</th>
-                <th className="py-1 pr-1 w-[10%] text-[9px]">VOH TYPE</th>
-                <th className="py-1 pr-1 w-[10%] text-[9px]">Cheque No.</th>
-                <th className="py-1 pr-1 w-[9%] text-[9px]">Ref. 1</th>
-                <th className="py-1 pr-1 w-[9%] text-[9px]">Ref. 2</th>
-                <th className="py-1 pr-1 w-[19%] text-[9px]">Narration</th>
-                <th className="py-1 pr-1 text-right w-[8%] text-[9px]">
+                <th className="py-1 pr-1 w-[7%] text-[8.5px]">Date</th>
+                <th className="py-1 pr-1 w-[10%] text-[8.5px]">VOH No.</th>
+                <th className="py-1 pr-1 w-[6%] text-[8.5px]">VOH TYPE</th>
+                <th className="py-1 pr-1 w-[6%] text-[8.5px]">Cheque No.</th>
+                <th className="py-1 pr-1 w-[8%] text-[8.5px]">Ref. 1</th>
+                <th className="py-1 pr-1 w-[6%] text-[8.5px]">Ref. 2</th>
+                <th className="py-1 pr-1 w-[33%] text-[8.5px]">Narration</th>
+                <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
                   Debit
                 </th>
-                <th className="py-1 pr-1 text-right w-[8%] text-[9px]">
+                <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
                   Credit
                 </th>
-                <th className="py-1 text-right w-[9%] text-[9px]">Balance</th>
+                <th className="py-1 text-right w-[8%] text-[8.5px]">Balance</th>
               </tr>
             </thead>
             <tbody>
@@ -1021,37 +1055,49 @@ export function GeneralLedgerClient({
                   <td className="py-1 pr-1 font-mono text-[8px] whitespace-nowrap">
                     {format(new Date(row.transactionDate), "dd/MM/yyyy")}
                   </td>
-                  <td className="py-1 pr-1 font-mono font-semibold text-[8px]">
+                  <td className="py-1 pr-1 font-mono font-semibold text-[8px] whitespace-nowrap">
                     {row.sourceRef}
                   </td>
-                  <td className="py-1 pr-1 text-[8px]">
+                  <td
+                    className="py-1 pr-1 text-[8px] whitespace-nowrap truncate max-w-0"
+                    title={SOURCE_LABELS[row.sourceType] ?? row.sourceType}
+                  >
                     {SOURCE_LABELS[row.sourceType] ?? row.sourceType}
                   </td>
-                  <td className="py-1 pr-1 text-[8px] font-mono">
+                  <td
+                    className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
+                    title={row.chequeNo || undefined}
+                  >
                     {row.chequeNo || "—"}
                   </td>
-                  <td className="py-1 pr-1 text-[8px] font-mono">
+                  <td
+                    className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
+                    title={row.refBillNo || undefined}
+                  >
                     {row.refBillNo || "—"}
                   </td>
-                  <td className="py-1 pr-1 text-[8px] font-mono">
+                  <td
+                    className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
+                    title={row.refBillNo2 || undefined}
+                  >
                     {row.refBillNo2 || "—"}
                   </td>
-                  <td className="py-1 pr-1 text-[8px] leading-tight break-words">
+                  <td className="py-1 pr-1 text-[8.5px] leading-tight break-words">
                     <div>{row.narration || row.description || "—"}</div>
                   </td>
-                  <td className="py-1 pr-1 text-right font-mono text-[8px]">
+                  <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
                     {row.debit > 0 ? fmt(row.debit) : ""}
                   </td>
-                  <td className="py-1 pr-1 text-right font-mono text-[8px]">
+                  <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
                     {row.credit > 0 ? fmt(row.credit) : ""}
                   </td>
-                  <td className="py-1 text-right font-mono font-semibold text-[8px]">
+                  <td className="py-1 text-right font-mono font-semibold text-[8px] whitespace-nowrap">
                     {fmt(row.runningBalance)}
                   </td>
                 </tr>
               ))}
             </tbody>
-            <tfoot>
+            <tfoot className="print:table-row-group">
               <tr>
                 <td
                   colSpan={7}

@@ -170,10 +170,10 @@ export async function queueTrialBalanceExport(params?: {
 
 export async function getGeneralLedger(
   accountId: string,
-  params?: { from?: string; to?: string; page?: number; limit?: number; sourceType?: string },
+  params?: { from?: string; to?: string; page?: number; limit?: number; sourceType?: string; sortBy?: string; sortOrder?: string },
 ): Promise<{ status: boolean; data?: GeneralLedgerResult; message?: string }> {
   try {
-    const { from, to, page, limit, sourceType } = params ?? {};
+    const { from, to, page, limit, sourceType, sortBy, sortOrder } = params ?? {};
     const res = await authFetch(
       `/finance/reports/general-ledger/${accountId}${buildQuery({
         from,
@@ -181,6 +181,8 @@ export async function getGeneralLedger(
         page: page?.toString(),
         limit: limit?.toString(),
         sourceType,
+        sortBy,
+        sortOrder,
       })}`,
       {},
     );

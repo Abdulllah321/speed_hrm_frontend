@@ -116,7 +116,7 @@ export function PaymentVoucherList({
         if (!("page" in updates)) {
             params.delete("page");
         }
-        router.push(`${pathname}?${params.toString()}`);
+        router.replace(`${pathname}?${params.toString()}`);
     };
 
     useEffect(() => {
@@ -341,7 +341,7 @@ export function PaymentVoucherList({
                                             {d.accountCode ? `${d.accountCode} ` : ""}{d.accountName}
                                         </span>
                                         <span className="font-bold tabular-nums shrink-0">
-                                            {Number(d.debit).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                                            {Math.round(Number(d.debit) || 0).toLocaleString("en-PK", { maximumFractionDigits: 0 })}
                                         </span>
                                     </div>
                                     {(d.tagAccountCode || d.tagAccountName) && (
@@ -367,7 +367,7 @@ export function PaymentVoucherList({
                                                 (Cr: {d.accountCode ? `${d.accountCode} ` : ""}{d.accountName})
                                             </span>
                                             <span className="tabular-nums shrink-0">
-                                                {Number(d.credit).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                                                {Math.round(Number(d.credit) || 0).toLocaleString("en-PK", { maximumFractionDigits: 0 })}
                                             </span>
                                         </div>
                                         {(d.tagAccountCode || d.tagAccountName) && (
@@ -388,7 +388,7 @@ export function PaymentVoucherList({
                                             (Cr: {row.original.creditAccountName})
                                         </span>
                                         <span className="tabular-nums shrink-0">
-                                            {Number(row.original.creditAmount).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                                            {Math.round(Number(row.original.creditAmount) || 0).toLocaleString("en-PK", { maximumFractionDigits: 0 })}
                                         </span>
                                     </div>
                                 )
@@ -787,7 +787,30 @@ export function PaymentVoucherList({
                                 setSearchTerm(searchVal);
                                 updateUrlParams({ search: searchVal });
                             }}
-                            searchFields={[{ key: "pvNo", label: "PV Number" }, { key: "description", label: "Description" }]}
+                            manualSorting={true}
+                            sortingColumns={
+                                searchParams.get("sortBy")
+                                    ? [
+                                          {
+                                              id: searchParams.get("sortBy")!,
+                                              desc: searchParams.get("sortOrder") === "desc",
+                                          },
+                                      ]
+                                    : []
+                            }
+                            onSortingChange={(sorting) => {
+                                const firstSort = sorting[0];
+                                if (firstSort) {
+                                    updateUrlParams({
+                                        sortBy: firstSort.id,
+                                        sortOrder: firstSort.desc ? "desc" : "asc",
+                                    });
+                                } else {
+                                    updateUrlParams({ sortBy: null, sortOrder: null });
+                                }
+                            }}
+                            searchValue={searchTerm}
+                            searchFields={[{ key: "pvNo", label: "Search by PV #, Narration, Cheque #, Ref #, Supplier..." }]}
                             tableId="payment-voucher-list"
                             enableRowSelection
                             onSelectionChange={setSelectedVoucherIds}

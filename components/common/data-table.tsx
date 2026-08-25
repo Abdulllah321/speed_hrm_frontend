@@ -176,6 +176,8 @@ type DataTableProps<TData extends DataTableRow> = {
   manualFiltering?: boolean;
   /** Called when search text changes (for server-side searching) */
   onSearchChange?: (search: string) => void;
+  /** Optional controlled search input value */
+  searchValue?: string;
   /** Show loading skeleton */
   isLoading?: boolean;
   /** Optional function to add custom class names per row */
@@ -223,6 +225,7 @@ export default function DataTable<TData extends DataTableRow>({
   onSortingChange: onSortingChangeProp,
   manualFiltering = false,
   onSearchChange,
+  searchValue,
   isLoading = false,
   rowClassName,
   filterSlot,
@@ -261,7 +264,13 @@ export default function DataTable<TData extends DataTableRow>({
     newItemId || null,
   );
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchValue ?? "");
+
+  useEffect(() => {
+    if (searchValue !== undefined && searchValue !== search && !searchDebounceRef.current) {
+      setSearch(searchValue);
+    }
+  }, [searchValue]);
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(
     {},
   );
@@ -586,11 +595,11 @@ export default function DataTable<TData extends DataTableRow>({
   const handleSearchChange = (value: string) => {
     setSearch(value);
     if (onSearchChange) {
-      // Debounce server-side search by 400ms
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
       searchDebounceRef.current = setTimeout(() => {
+        searchDebounceRef.current = null;
         onSearchChange(value);
-      }, 400);
+      }, 350);
     }
   };
 

@@ -50,6 +50,8 @@ export interface JournalVoucherFilters {
     search?: string;
     page?: number;
     limit?: number;
+    sortBy?: string;
+    sortOrder?: string;
 }
 
 export async function getJournalVouchers(filters?: JournalVoucherFilters) {
@@ -62,6 +64,8 @@ export async function getJournalVouchers(filters?: JournalVoucherFilters) {
         if (filters?.search?.trim()) queryParams.append("search", filters.search.trim());
         if (filters?.page) queryParams.append("page", String(filters.page));
         if (filters?.limit) queryParams.append("limit", String(filters.limit));
+        if (filters?.sortBy) queryParams.append("sortBy", filters.sortBy);
+        if (filters?.sortOrder) queryParams.append("sortOrder", filters.sortOrder);
 
         const response = await authFetch(`/finance/journal-voucher?${queryParams.toString()}`, {
             cache: 'no-store',
