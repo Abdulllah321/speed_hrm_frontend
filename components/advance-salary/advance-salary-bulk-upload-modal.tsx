@@ -133,25 +133,57 @@ export function AdvanceSalaryBulkUploadModal({
 
   // Helper date parser (YYYY-MM-DD)
   const parseDateString = (rawVal: any): string | null => {
-    if (!rawVal) return null;
+    if (!rawVal && rawVal !== 0) return null;
     if (rawVal instanceof Date) {
-      return format(rawVal, 'yyyy-MM-dd');
+      return isNaN(rawVal.getTime()) ? null : format(rawVal, 'yyyy-MM-dd');
     }
 
     const str = String(rawVal).trim();
     if (!str) return null;
 
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-    if (/^\d{4}\/\d{2}\/\d{2}$/.test(str)) return str.replace(/\//g, '-');
+    // YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
+    const ymdMatch = str.match(/^(\d{4})[\/\-_\.](\d{1,2})[\/\-_\.](\d{1,2})$/);
+    if (ymdMatch) {
+      const year = ymdMatch[1];
+      const month = ymdMatch[2].padStart(2, '0');
+      const day = ymdMatch[3].padStart(2, '0');
+      const mNum = parseInt(month, 10);
+      const dNum = parseInt(day, 10);
+      if (mNum >= 1 && mNum <= 12 && dNum >= 1 && dNum <= 31) {
+        return `${year}-${month}-${day}`;
+      }
+    }
 
-    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(str)) {
-      const parts = str.split(/[\/\-]/);
-      const day = parts[0].padStart(2, '0');
-      const month = parts[1].padStart(2, '0');
-      const year = parts[2];
+    // MM/DD/YYYY or DD/MM/YYYY or M/D/YYYY or D/M/YYYY
+    const dmyMatch = str.match(/^(\d{1,2})[\/\-_\.](\d{1,2})[\/\-_\.](\d{4})$/);
+    if (dmyMatch) {
+      const p1 = parseInt(dmyMatch[1], 10);
+      const p2 = parseInt(dmyMatch[2], 10);
+      const year = dmyMatch[3];
+
+      let month = '';
+      let day = '';
+
+      if (p1 > 12 && p2 <= 12) {
+        // p1 is Day, p2 is Month (DD/MM/YYYY)
+        day = String(p1).padStart(2, '0');
+        month = String(p2).padStart(2, '0');
+      } else if (p2 > 12 && p1 <= 12) {
+        // p2 is Day, p1 is Month (MM/DD/YYYY)
+        month = String(p1).padStart(2, '0');
+        day = String(p2).padStart(2, '0');
+      } else if (p1 <= 12 && p2 <= 31) {
+        // Default to M/D/YYYY
+        month = String(p1).padStart(2, '0');
+        day = String(p2).padStart(2, '0');
+      } else {
+        return null;
+      }
+
       return `${year}-${month}-${day}`;
     }
 
+    // Excel serial number
     const serial = Number(str);
     if (!isNaN(serial) && serial > 30000 && serial < 60000) {
       try {
@@ -162,27 +194,83 @@ export function AdvanceSalaryBulkUploadModal({
       } catch {}
     }
 
+    // Fallback standard date parse
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+      return format(parsed, 'yyyy-MM-dd');
+    }
+
     return null;
   };
 
   // Helper month parser (YYYY-MM)
   const parseMonthString = (rawVal: any): string | null => {
-    if (!rawVal) return null;
+    if (!rawVal && rawVal !== 0) return null;
     if (rawVal instanceof Date) {
-      return format(rawVal, 'yyyy-MM');
+      return isNaN(rawVal.getTime()) ? null : format(rawVal, 'yyyy-MM');
     }
 
     const str = String(rawVal).trim();
     if (!str) return null;
 
-    if (/^\d{4}-\d{2}$/.test(str)) return str;
-    if (/^\d{4}\/\d{2}$/.test(str)) return str.replace('/', '-');
-
-    if (/^\d{1,2}[\/\-]\d{4}$/.test(str)) {
-      const [mm, yyyy] = str.split(/[\/\-]/);
-      return `${yyyy}-${mm.padStart(2, '0')}`;
+    // YYYY-MM, YYYY/MM, YYYY MM, YYYY_MM, YYYY.MM
+    const yyyyMmMatch = str.match(/^(\d{4})[\s\/\-_\.](\d{1,2})$/);
+    if (yyyyMmMatch) {
+      const year = yyyyMmMatch[1];
+      const month = yyyyMmMatch[2].padStart(2, '0');
+      const mNum = parseInt(month, 10);
+      if (mNum >= 1 && mNum <= 12) {
+        return `${year}-${month}`;
+      }
     }
 
+    // MM-YYYY, MM/YYYY, MM YYYY, MM_YYYY, MM.YYYY
+    const mmYyyyMatch = str.match(/^(\d{1,2})[\s\/\-_\.](\d{4})$/);
+    if (mmYyyyMatch) {
+      const month = mmYyyyMatch[1].padStart(2, '0');
+      const year = mmYyyyMatch[2];
+      const mNum = parseInt(month, 10);
+      if (mNum >= 1 && mNum <= 12) {
+        return `${year}-${month}`;
+      }
+    }
+
+    // YYYYMM (e.g. 202608)
+    if (/^\d{6}$/.test(str)) {
+      const year = str.substring(0, 4);
+      const month = str.substring(4, 6);
+      const mNum = parseInt(month, 10);
+      if (mNum >= 1 && mNum <= 12) {
+        return `${year}-${month}`;
+      }
+    }
+
+    // Month Name & Year (e.g. "August 2026", "Aug 2026", "2026 August", "Aug-2026")
+    const monthNames: Record<string, string> = {
+      jan: '01', january: '01',
+      feb: '02', february: '02',
+      mar: '03', march: '03',
+      apr: '04', april: '04',
+      may: '05',
+      jun: '06', june: '06',
+      jul: '07', july: '07',
+      aug: '08', august: '08',
+      sep: '09', sept: '09', september: '09',
+      oct: '10', october: '10',
+      nov: '11', november: '11',
+      dec: '12', december: '12',
+    };
+
+    const textMatch = str.match(/([a-zA-Z]+)[\s\/\-_\.]*(\d{4})|(\d{4})[\s\/\-_\.]*([a-zA-Z]+)/);
+    if (textMatch) {
+      const namePart = (textMatch[1] || textMatch[4] || '').toLowerCase();
+      const yearPart = textMatch[2] || textMatch[3];
+      if (monthNames[namePart] && yearPart) {
+        return `${yearPart}-${monthNames[namePart]}`;
+      }
+    }
+
+    // Excel serial number
     const serial = Number(str);
     if (!isNaN(serial) && serial > 30000 && serial < 60000) {
       try {
@@ -219,15 +307,25 @@ export function AdvanceSalaryBulkUploadModal({
         const findKey = (rowObj: any, matchers: string[]) => {
           const keys = Object.keys(rowObj);
           return keys.find((k) => {
-            const normalized = k.toLowerCase().replace(/[\s_\-]/g, '');
-            return matchers.includes(normalized);
+            const rawNormalized = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const noParens = k.toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '');
+            return matchers.some((m) => {
+              const normM = m.toLowerCase().replace(/[^a-z0-9]/g, '');
+              return rawNormalized === normM || noParens === normM || rawNormalized.includes(normM);
+            });
           });
         };
 
         const empCodeMap = new Map<string, EmployeeDropdownOption>();
         employees.forEach((emp) => {
-          if (emp.employeeId) empCodeMap.set(emp.employeeId.toLowerCase().trim(), emp);
-          if (emp.id) empCodeMap.set(emp.id.toLowerCase().trim(), emp);
+          if (emp.employeeId) {
+            empCodeMap.set(emp.employeeId.toLowerCase().trim(), emp);
+            empCodeMap.set(emp.employeeId.toLowerCase().replace(/[^a-z0-9]/g, ''), emp);
+          }
+          if (emp.id) {
+            empCodeMap.set(emp.id.toLowerCase().trim(), emp);
+            empCodeMap.set(emp.id.toLowerCase().replace(/[^a-z0-9]/g, ''), emp);
+          }
         });
 
         const validationErrors: ValidationError[] = [];
@@ -236,12 +334,12 @@ export function AdvanceSalaryBulkUploadModal({
         jsonRows.forEach((row, idx) => {
           const rowNum = idx + 2;
 
-          const empIdKey = findKey(row, ['empid', 'employeeid', 'employee_id', 'code', 'emp_id', 'identity']);
-          const nameKey = findKey(row, ['name', 'employeename', 'employee_name']);
-          const amountKey = findKey(row, ['amount', 'advancesalaryamount', 'advance_amount', 'value']);
-          const neededOnKey = findKey(row, ['neededon', 'needed_on', 'neededondate', 'date', 'neededdate']);
-          const monthKey = findKey(row, ['deductionmonth', 'deductionmonthyear', 'deduction_month', 'month', 'period']);
-          const disbKey = findKey(row, ['disbursementtype', 'disbursement_type', 'disbursement', 'disbursedvia']);
+          const empIdKey = findKey(row, ['empid', 'employeeid', 'employee_id', 'code', 'emp_id', 'identity', 'employeecode']);
+          const nameKey = findKey(row, ['name', 'employeename', 'employee_name', 'empname']);
+          const amountKey = findKey(row, ['amount', 'advancesalaryamount', 'advance_amount', 'value', 'advanceamount']);
+          const neededOnKey = findKey(row, ['neededon', 'needed_on', 'neededondate', 'date', 'neededdate', 'needed_date']);
+          const monthKey = findKey(row, ['deductionmonth', 'deductionmonthyear', 'deduction_month', 'month', 'period', 'deductionmonthyyyymm']);
+          const disbKey = findKey(row, ['disbursementtype', 'disbursement_type', 'disbursement', 'disbursedvia', 'paymentmode']);
           const reasonKey = findKey(row, ['reason', 'remarks', 'note', 'notes', 'description']);
 
           const rawEmpId = empIdKey ? String(row[empIdKey]).trim() : '';
@@ -261,7 +359,8 @@ export function AdvanceSalaryBulkUploadModal({
           const rawReason = reasonKey ? String(row[reasonKey]).trim() : '';
 
           // 1. Employee lookup
-          const empMatch = empCodeMap.get(rawEmpId.toLowerCase());
+          const cleanEmpId = rawEmpId.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const empMatch = empCodeMap.get(rawEmpId.toLowerCase()) || empCodeMap.get(cleanEmpId);
           if (!empMatch) {
             validationErrors.push({
               row: rowNum,
@@ -272,8 +371,9 @@ export function AdvanceSalaryBulkUploadModal({
             });
           }
 
-          // 2. Amount validation
-          const amountNum = parseFloat(rawAmount);
+          // 2. Amount validation (strip commas)
+          const cleanAmount = String(rawAmount).replace(/,/g, '').trim();
+          const amountNum = parseFloat(cleanAmount);
           if (isNaN(amountNum) || amountNum <= 0) {
             validationErrors.push({
               row: rowNum,
@@ -292,7 +392,7 @@ export function AdvanceSalaryBulkUploadModal({
               empId: rawEmpId,
               field: 'Needed On Date',
               reason: `Invalid date "${rawNeededOn}". Expected format: YYYY-MM-DD.`,
-              value: String(rawNeededOn),
+              value: String(rawNeededOn || 'Empty'),
             });
           }
 
@@ -304,7 +404,7 @@ export function AdvanceSalaryBulkUploadModal({
               empId: rawEmpId,
               field: 'Deduction Month',
               reason: `Invalid deduction month "${rawMonth}". Expected format: YYYY-MM.`,
-              value: String(rawMonth),
+              value: String(rawMonth || 'Empty'),
             });
           }
 
@@ -638,7 +738,7 @@ export function AdvanceSalaryBulkUploadModal({
                                 <TableCell className="text-xs text-destructive font-semibold">{err.reason}</TableCell>
                                 <TableCell className="text-right">
                                   <Badge variant="outline" className="text-[10px] font-mono font-bold bg-background">
-                                    {err.value || err.empId}
+                                    {err.value || '—'}
                                   </Badge>
                                 </TableCell>
                               </TableRow>
