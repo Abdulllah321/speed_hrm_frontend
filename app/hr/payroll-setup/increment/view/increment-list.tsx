@@ -1,19 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import DataTable from "@/components/common/data-table";
 import { columns, type IncrementRow } from "./columns";
 import { Button } from "@/components/ui/button";
-import { Printer, Download } from "lucide-react";
+import { Printer, Download, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
+import { IncrementBulkUploadModal } from "@/components/increment/increment-bulk-upload-modal";
 
 interface IncrementListProps {
   initialData?: IncrementRow[];
 }
 
 export function IncrementList({ initialData = [] }: IncrementListProps) {
+  const router = useRouter();
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission("hr.increment.create");
+  const [uploadDialog, setUploadDialog] = useState(false);
   const data: IncrementRow[] = initialData;
 
   const handlePrint = () => {
@@ -69,7 +76,7 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
             Promotion & Demotion List
@@ -78,13 +85,21 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
             View employee increment & decrement records
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/hr/payroll-setup/increment/create">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Promotion
-            </Button>
-          </Link>
+        <div className="flex gap-2 flex-wrap">
+          {canCreate && (
+            <>
+              <Link href="/hr/payroll-setup/increment/create">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Promotion
+                </Button>
+              </Link>
+              <Button variant="secondary" onClick={() => setUploadDialog(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import Excel
+              </Button>
+            </>
+          )}
           <Button variant="secondary" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Print
@@ -108,7 +123,16 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
           tableId="increment-list"
         />
       </div>
+
+      <IncrementBulkUploadModal
+        open={uploadDialog}
+        onOpenChange={setUploadDialog}
+        onSuccess={() => {
+          router.refresh();
+        }}
+      />
     </div>
   );
 }
+
 
