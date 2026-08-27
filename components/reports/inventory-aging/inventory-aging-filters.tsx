@@ -32,6 +32,8 @@ interface InventoryAgingFiltersProps {
   posLocationName?: string;
   reportType: "merged" | "separate";
   onReportTypeChange: (type: "merged" | "separate") => void;
+  agingHorizon?: string;
+  onAgingHorizonChange?: (preset: string) => void;
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
   locations: LocationHeader[];
@@ -72,6 +74,8 @@ export function InventoryAgingFilters({
   posLocationName = "Current Store",
   reportType,
   onReportTypeChange,
+  agingHorizon = "9m",
+  onAgingHorizonChange,
   dateRange,
   onDateRangeChange,
   locations,
@@ -133,7 +137,7 @@ export function InventoryAgingFilters({
                 Inventory Aging Metric Equation ({isPosLevel ? "POS Level - Retail Valuation" : "ERP Level - Cost Valuation"})
               </p>
               <p className="text-[11px] font-mono text-slate-600 dark:text-slate-300 mt-0.5">
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">Stock Age</span> = As-of Date - Inbound Receipt Date &bull; <span className="font-bold text-rose-600 dark:text-rose-400">Aged Brackets</span>: 0–6M, 6–9M, 9–12M, 12–15M, 15–18M, &gt;18M
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">Stock Age</span> = As-of Date - Inbound Receipt Date &bull; <span className="font-bold text-rose-600 dark:text-rose-400">Aging Criteria Horizon</span>: Select 6M, 9M, 12M, 15M, 18M lookback windows
               </p>
             </div>
           </div>
@@ -208,6 +212,23 @@ export function InventoryAgingFilters({
             </>
           )}
 
+          {/* Aging Criteria Horizon Selector */}
+          <div className="w-40 sm:w-48">
+            <Select value={agingHorizon} onValueChange={onAgingHorizonChange}>
+              <SelectTrigger className="h-9 rounded-xl text-xs bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-900 text-indigo-950 dark:text-indigo-200 font-bold">
+                <SelectValue placeholder="Aging Criteria Horizon" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="6m">Criteria: 6 Months Horizon</SelectItem>
+                <SelectItem value="9m">Criteria: 9 Months Horizon</SelectItem>
+                <SelectItem value="12m">Criteria: 12 Months (1 Year)</SelectItem>
+                <SelectItem value="15m">Criteria: 15 Months Horizon</SelectItem>
+                <SelectItem value="18m">Criteria: 18 Months (1.5 Yrs)</SelectItem>
+                <SelectItem value="custom">Custom Date Range</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Age Bucket Filter */}
           <div className="w-36 sm:w-44">
             <Select value={selectedAgeBucket} onValueChange={onAgeBucketChange}>
@@ -231,7 +252,10 @@ export function InventoryAgingFilters({
             initialDateFrom={dateRange.from}
             initialDateTo={dateRange.to}
             onUpdate={({ range }: { range: DateRange }) => {
-              if (range) onDateRangeChange(range);
+              if (range) {
+                onDateRangeChange(range);
+                onAgingHorizonChange?.("custom");
+              }
             }}
           />
         </div>

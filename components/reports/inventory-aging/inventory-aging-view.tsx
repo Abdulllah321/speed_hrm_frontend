@@ -97,6 +97,30 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
     return [...locNames, ...whNames].join(", ");
   }, [selectedLocationIds, selectedWarehouseIds, locations, warehouses]);
 
+  const [agingHorizon, setAgingHorizon] = useState<string>("9m");
+
+  const handleAgingHorizonChange = useCallback((preset: string) => {
+    setAgingHorizon(preset);
+    if (preset === "custom") return;
+
+    const now = new Date();
+    let months = 0;
+    if (preset === "6m") months = 6;
+    else if (preset === "9m") months = 9;
+    else if (preset === "12m") months = 12;
+    else if (preset === "15m") months = 15;
+    else if (preset === "18m") months = 18;
+
+    if (months > 0) {
+      const fromDate = new Date(now);
+      fromDate.setMonth(fromDate.getMonth() - months);
+      setDateRange({
+        from: fromDate,
+        to: now,
+      });
+    }
+  }, []);
+
   // Queue calculation preview job
   const handleFetchReport = useCallback(() => {
     setIsQueueingJob(true);
@@ -107,6 +131,7 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         const res = await queueInventoryAgingPreview({
           locationId: selectedLocationIds.join(","),
           warehouseId: selectedWarehouseIds.join(","),
+          startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
           endDate: dateRange.to ? dateRange.to.toISOString() : undefined,
           reportType,
         });
@@ -122,7 +147,7 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         setIsQueueingJob(false);
       }
     });
-  }, [selectedLocationIds, selectedWarehouseIds, dateRange.to, reportType]);
+  }, [selectedLocationIds, selectedWarehouseIds, dateRange.from, dateRange.to, reportType]);
 
   // Auto trigger report fetch on filter change
   useEffect(() => {
@@ -246,6 +271,8 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         posLocationName={posLocationName}
         reportType={reportType}
         onReportTypeChange={setReportType}
+        agingHorizon={agingHorizon}
+        onAgingHorizonChange={handleAgingHorizonChange}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
         locations={locations}
