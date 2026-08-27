@@ -1,4 +1,5 @@
 import { getStockTransfers } from "@/lib/actions/stock-transfer";
+import { getWarehouses } from "@/lib/actions/warehouse";
 import { StockTransferHistoryList } from "./transfer-history-list";
 import { ListError } from "@/components/dashboard/list-error";
 import { PermissionGuard } from "@/components/auth/permission-guard";
@@ -8,9 +9,37 @@ import { ArrowLeft, History } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function StockTransferHistoryPage() {
+export default async function StockTransferHistoryPage({
+    searchParams,
+}: {
+    searchParams: Promise<{
+        warehouseId?: string;
+        status?: string;
+        transferType?: string;
+        dispatchType?: string;
+        search?: string;
+        dateFrom?: string;
+        dateTo?: string;
+        page?: string;
+        limit?: string;
+        sortBy?: string;
+        sortOrder?: string;
+    }>;
+}) {
     try {
-        const result = await getStockTransfers();
+        const rawFilters = await searchParams;
+        const page = rawFilters.page ? parseInt(rawFilters.page, 10) : 1;
+        const limit = rawFilters.limit ? parseInt(rawFilters.limit, 10) : 100; // Fetch initial 100 records details
+        const filters = {
+            ...rawFilters,
+            page,
+            limit,
+        };
+
+        const [result, warehouses] = await Promise.all([
+            getStockTransfers(filters),
+            getWarehouses(),
+        ]);
 
         if (!result.status) {
             return (
@@ -38,8 +67,11 @@ export default async function StockTransferHistoryPage() {
                 <div className="flex-1 space-y-6 p-8 pt-6">
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <h2 className="text-3xl font-bold tracking-tight">Stock Transfer History</h2>
-                            <p className="text-muted-foreground">Monitor all warehouse to shop transfer requests and their current fulfillment status.</p>
+                            <div className="flex items-center gap-2">
+                                <History className="h-7 w-7 text-primary" />
+                                <h2 className="text-3xl font-bold tracking-tight">Stock Transfer History</h2>
+                            </div>
+                            <p className="text-muted-foreground">Monitor all warehouse to shop transfer requests, tracking status, and fulfillment details.</p>
                         </div>
                         <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
                             <Link href="/erp/inventory/transactions/stock-transfer" transitionTypes={["nav-back"]}>
@@ -48,7 +80,12 @@ export default async function StockTransferHistoryPage() {
                         </Button>
                     </div>
 
-                    <StockTransferHistoryList initialEntries={data} />
+                    <StockTransferHistoryList 
+                        initialEntries={data} 
+                        initialMeta={result.meta}
+                        warehouses={warehouses}
+                        initialFilters={filters}
+                    />
                 </div>
             </PermissionGuard>
         );

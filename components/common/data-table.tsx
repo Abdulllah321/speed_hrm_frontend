@@ -271,6 +271,19 @@ export default function DataTable<TData extends DataTableRow>({
       setSearch(searchValue);
     }
   }, [searchValue]);
+
+  useEffect(() => {
+    if (manualSorting && sortingColumns) {
+      setSorting(sortingColumns);
+    }
+  }, [manualSorting, sortingColumns]);
+
+  useEffect(() => {
+    if (initialPageSize && pagination.pageSize !== initialPageSize) {
+      setPagination((prev) => ({ ...prev, pageSize: initialPageSize }));
+    }
+  }, [initialPageSize]);
+
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(
     {},
   );

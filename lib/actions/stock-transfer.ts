@@ -12,6 +12,8 @@ export async function getStockTransfers(filters?: {
     dateTo?: string;
     page?: number;
     limit?: number;
+    sortBy?: string;
+    sortOrder?: string;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -24,6 +26,8 @@ export async function getStockTransfers(filters?: {
         if (filters?.dateTo) queryParams.append("dateTo", filters.dateTo);
         if (filters?.page) queryParams.append("page", String(filters.page));
         if (filters?.limit) queryParams.append("limit", String(filters.limit));
+        if (filters?.sortBy) queryParams.append("sortBy", filters.sortBy);
+        if (filters?.sortOrder) queryParams.append("sortOrder", filters.sortOrder);
 
         const queryString = queryParams.toString();
         const url = `/transfer-request${queryString ? `?${queryString}` : ""}`;

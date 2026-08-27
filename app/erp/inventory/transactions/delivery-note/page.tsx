@@ -27,7 +27,7 @@ export default async function DeliveryNotePage({
     try {
         const rawFilters = await searchParams;
         const page = rawFilters.page ? parseInt(rawFilters.page, 10) : 1;
-        const limit = rawFilters.limit ? parseInt(rawFilters.limit, 10) : 10;
+        const limit = rawFilters.limit ? parseInt(rawFilters.limit, 10) : 100;
         const filters = {
             ...rawFilters,
             page,

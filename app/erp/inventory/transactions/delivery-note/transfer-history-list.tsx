@@ -1,14 +1,6 @@
 "use client";
 
 import React from "react";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,19 +19,17 @@ import {
     Search,
     RefreshCw,
     ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
     FileSpreadsheet,
     FileText,
     Truck,
     User,
     Bike,
-    Save
+    Save,
+    TrendingUp,
+    AlertCircle,
+    CheckCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +60,8 @@ import { getStockTransfers, queueDeliveryNotesExport, checkDeliveryNotesExportSt
 import { updateTransferDispatchDetails } from "@/lib/actions/transfer-request";
 import { Warehouse } from "@/lib/actions/warehouse";
 import { cn } from "@/lib/utils";
+import DataTable, { HighlightText } from "@/components/common/data-table";
+import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 
 interface StockTransferHistoryListProps {
     initialEntries: any[];
@@ -90,6 +82,8 @@ interface StockTransferHistoryListProps {
         dateTo?: string;
         page?: number | string;
         limit?: number | string;
+        sortBy?: string;
+        sortOrder?: string;
     };
 }
 
@@ -121,7 +115,7 @@ export function StockTransferHistoryList({
     }>({
         total: initialMeta?.total ?? initialEntries.length,
         page: initialMeta?.page ?? (initialFilters?.page ? Number(initialFilters.page) : 1),
-        limit: initialMeta?.limit ?? (initialFilters?.limit ? Number(initialFilters.limit) : 10),
+        limit: initialMeta?.limit ?? (initialFilters?.limit ? Number(initialFilters.limit) : 100),
         totalPages: initialMeta?.totalPages ?? 1,
     });
     const [loading, setLoading] = React.useState(false);
@@ -139,6 +133,11 @@ export function StockTransferHistoryList({
     const [warehouseId, setWarehouseId] = React.useState(initialFilters?.warehouseId || "all");
     const [dateFrom, setDateFrom] = React.useState(initialFilters?.dateFrom || "");
     const [dateTo, setDateTo] = React.useState(initialFilters?.dateTo || "");
+    const [sorting, setSorting] = React.useState<SortingState>(
+        initialFilters?.sortBy
+            ? [{ id: initialFilters.sortBy, desc: initialFilters.sortOrder === "desc" }]
+            : []
+    );
 
     // Dispatch Modal State
     const [isDispatchModalOpen, setIsDispatchModalOpen] = React.useState(false);
@@ -199,16 +198,27 @@ export function StockTransferHistoryList({
     const fetchPage = async (targetPage: number, targetLimit: number, extraFilters?: any) => {
         setLoading(true);
         try {
+            const activeSearch = extraFilters?.search !== undefined ? extraFilters.search : search;
+            const activeStatus = extraFilters?.status !== undefined ? extraFilters.status : status;
+            const activeTransferType = extraFilters?.transferType !== undefined ? extraFilters.transferType : transferType;
+            const activeDispatchType = extraFilters?.dispatchType !== undefined ? extraFilters.dispatchType : dispatchTypeFilter;
+            const activeWarehouseId = extraFilters?.warehouseId !== undefined ? extraFilters.warehouseId : warehouseId;
+            const activeDateFrom = extraFilters?.dateFrom !== undefined ? extraFilters.dateFrom : dateFrom;
+            const activeDateTo = extraFilters?.dateTo !== undefined ? extraFilters.dateTo : dateTo;
+            const activeSorting = extraFilters?.sorting !== undefined ? extraFilters.sorting : sorting;
+
             const activeFilters = {
-                search: (extraFilters?.search !== undefined ? extraFilters.search : search).trim() || undefined,
-                status: (extraFilters?.status !== undefined ? extraFilters.status : status) !== "all" ? (extraFilters?.status ?? status) : undefined,
-                transferType: (extraFilters?.transferType !== undefined ? extraFilters.transferType : transferType) !== "all" ? (extraFilters?.transferType ?? transferType) : undefined,
-                dispatchType: (extraFilters?.dispatchType !== undefined ? extraFilters.dispatchType : dispatchTypeFilter) !== "all" ? (extraFilters?.dispatchType ?? dispatchTypeFilter) : undefined,
-                warehouseId: (extraFilters?.warehouseId !== undefined ? extraFilters.warehouseId : warehouseId) !== "all" ? (extraFilters?.warehouseId ?? warehouseId) : undefined,
-                dateFrom: (extraFilters?.dateFrom !== undefined ? extraFilters.dateFrom : dateFrom) || undefined,
-                dateTo: (extraFilters?.dateTo !== undefined ? extraFilters.dateTo : dateTo) || undefined,
+                search: activeSearch.trim() || undefined,
+                status: activeStatus !== "all" ? activeStatus : undefined,
+                transferType: activeTransferType !== "all" ? activeTransferType : undefined,
+                dispatchType: activeDispatchType !== "all" ? activeDispatchType : undefined,
+                warehouseId: activeWarehouseId !== "all" ? activeWarehouseId : undefined,
+                dateFrom: activeDateFrom || undefined,
+                dateTo: activeDateTo || undefined,
                 page: targetPage,
                 limit: targetLimit,
+                sortBy: activeSorting?.[0]?.id,
+                sortOrder: activeSorting?.[0] ? (activeSorting[0].desc ? "desc" : "asc") : undefined,
             };
 
             const res = await getStockTransfers(activeFilters);
@@ -226,6 +236,8 @@ export function StockTransferHistoryList({
                 if (activeFilters.warehouseId) params.set("warehouseId", activeFilters.warehouseId);
                 if (activeFilters.dateFrom) params.set("dateFrom", activeFilters.dateFrom);
                 if (activeFilters.dateTo) params.set("dateTo", activeFilters.dateTo);
+                if (activeFilters.sortBy) params.set("sortBy", activeFilters.sortBy);
+                if (activeFilters.sortOrder) params.set("sortOrder", activeFilters.sortOrder);
                 params.set("page", String(targetPage));
                 params.set("limit", String(targetLimit));
 
@@ -255,7 +267,8 @@ export function StockTransferHistoryList({
         setWarehouseId("all");
         setDateFrom("");
         setDateTo("");
-        await fetchPage(1, 10, {
+        setSorting([]);
+        await fetchPage(1, meta.limit, {
             search: "",
             status: "all",
             transferType: "all",
@@ -263,6 +276,7 @@ export function StockTransferHistoryList({
             warehouseId: "all",
             dateFrom: "",
             dateTo: "",
+            sorting: [],
         });
         toast.success("Filters reset successfully");
     };
@@ -403,7 +417,7 @@ export function StockTransferHistoryList({
                     </Badge>
                     {transfer.trackingNumber && (
                         <span className="text-[11px] font-mono text-muted-foreground font-semibold">
-                            CN: {transfer.trackingNumber}
+                            CN: <HighlightText text={transfer.trackingNumber} />
                         </span>
                     )}
                 </div>
@@ -442,8 +456,202 @@ export function StockTransferHistoryList({
         );
     };
 
+    // Calculate metrics for KPI summary cards
+    const totalCount = meta.total;
+    const completedCount = entries.filter((e) => e.status === "COMPLETED").length;
+    const courierCount = entries.filter((e) => e.dispatchType === "COURIER").length;
+    const totalQtyDelivered = entries.reduce((sum, e) => {
+        return sum + (e.items?.reduce((iSum: number, item: any) => iSum + Number(item.quantity || 0), 0) || 0);
+    }, 0);
+
+    const columns: ColumnDef<any>[] = [
+        {
+            accessorKey: "requestNo",
+            header: "Request No",
+            cell: ({ row }) => {
+                const transfer = row.original;
+                return (
+                    <div className="font-mono font-bold text-sm flex items-center gap-2">
+                        {transfer.transferType === 'OUTLET_TO_WAREHOUSE' && (
+                            <RotateCcw className="h-4 w-4 text-orange-600 shrink-0" title="Outlet Return" />
+                        )}
+                        <HighlightText text={transfer.requestNo || ""} />
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: "createdAt",
+            header: "Date",
+            cell: ({ row }) => (
+                <span className="text-sm font-medium text-muted-foreground">
+                    {format(new Date(row.original.createdAt), "dd MMM yyyy, HH:mm")}
+                </span>
+            ),
+        },
+        {
+            id: "path",
+            header: "Transfer Path",
+            cell: ({ row }) => {
+                const transfer = row.original;
+                return (
+                    <div className="flex flex-col gap-1">
+                        {transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? (
+                            <>
+                                <div className="flex items-center gap-1.5 text-xs font-semibold">
+                                    <Badge variant="outline" className="px-1.5 py-0 h-5 bg-orange-50 text-orange-700 border-orange-200">FROM</Badge>
+                                    <span className="text-muted-foreground">{transfer.fromLocation?.name || 'Outlet'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-xs font-semibold">
+                                    <Badge variant="outline" className="px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">TO</Badge>
+                                    <span className="font-bold">{transfer.fromWarehouse?.name || 'Main Warehouse'}</span>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-1.5 text-xs font-semibold">
+                                    <Badge variant="outline" className="px-1.5 py-0 h-5 bg-background">FROM</Badge>
+                                    <span className="text-muted-foreground">{transfer.fromLocation?.name || transfer.fromWarehouse?.name || '—'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-xs font-semibold">
+                                    <Badge variant="outline" className="px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">TO</Badge>
+                                    <span className="font-bold">{transfer.toLocation?.name || transfer.toWarehouse?.name}</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            id: "dispatch",
+            header: "Courier / Dispatch",
+            cell: ({ row }) => getDispatchBadge(row.original),
+        },
+        {
+            id: "itemDetails",
+            header: "Item Details",
+            cell: ({ row }) => {
+                const items = row.original.items || [];
+                return (
+                    <div className="space-y-1">
+                        {items.slice(0, 3).map((item: any, idx: number) => (
+                            <div key={idx} className="flex flex-col">
+                                <span className="font-bold text-sm leading-tight">{item.item?.description}</span>
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                                    SKU: <HighlightText text={item.item?.sku || ""} />
+                                    {item.item?.color?.name && ` • Color: ${item.item.color.name}`}
+                                    {item.item?.size?.name && ` • Size: ${item.item.size.name}`}
+                                </span>
+                            </div>
+                        ))}
+                        {items.length > 3 && (
+                            <span className="text-[11px] text-primary font-semibold">
+                                + {items.length - 3} more item(s)
+                            </span>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            id: "totalQty",
+            header: "Total Qty",
+            cell: ({ row }) => {
+                const total = (row.original.items || []).reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0);
+                return (
+                    <div className="text-center font-black text-primary text-base">
+                        {total}
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: "status",
+            header: "Status",
+            cell: ({ row }) => getStatusBadge(row.original.status),
+        },
+        {
+            id: "actions",
+            header: () => <div className="text-right">Actions</div>,
+            cell: ({ row }) => {
+                const transfer = row.original;
+                return (
+                    <div className="flex justify-end gap-1.5">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openDispatchModal(transfer)}
+                            className="h-8 border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-900 dark:text-purple-300 dark:hover:bg-purple-950"
+                        >
+                            <Truck className="h-3.5 w-3.5 mr-1" />
+                            Dispatch
+                        </Button>
+                        <Button variant="outline" size="sm" asChild className="h-8">
+                            <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`} target="_blank">
+                                <Printer className="h-3.5 w-3.5 mr-1" />
+                                Print
+                            </Link>
+                        </Button>
+                    </div>
+                );
+            },
+        },
+    ];
+
     return (
         <div className="space-y-6">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Card className="border-2 shadow-xs bg-card">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Delivery Notes</p>
+                            <h3 className="text-2xl font-extrabold tracking-tight mt-1">{totalCount}</h3>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                            <TrendingUp className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-2 shadow-xs bg-card">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Completed Delivery</p>
+                            <h3 className="text-2xl font-extrabold text-emerald-600 tracking-tight mt-1">{completedCount}</h3>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                            <CheckCheck className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-2 shadow-xs bg-card">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Courier Dispatched</p>
+                            <h3 className="text-2xl font-extrabold text-purple-600 tracking-tight mt-1">{courierCount}</h3>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-600">
+                            <Truck className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-2 shadow-xs bg-card">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Qty Delivered (Page)</p>
+                            <h3 className="text-2xl font-extrabold text-indigo-600 tracking-tight mt-1">{totalQtyDelivered}</h3>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-600">
+                            <Package className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
             {/* Filter Bar */}
             <Card className="border-2 shadow-xs">
                 <CardContent className="p-4 space-y-4">
@@ -457,6 +665,9 @@ export function StockTransferHistoryList({
                                     placeholder="TR-... or Leopard CN"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") applyFilters();
+                                    }}
                                     className="pl-9"
                                 />
                             </div>
@@ -607,377 +818,213 @@ export function StockTransferHistoryList({
                 </CardContent>
             </Card>
 
-            {/* Table */}
-            <Card className="overflow-hidden shadow-xs border-2 py-0!">
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow>
-                                <TableHead className="font-bold"><Hash className="h-4 w-4 inline mr-1" /> Request No</TableHead>
-                                <TableHead className="font-bold"><Calendar className="h-4 w-4 inline mr-1" /> Date</TableHead>
-                                <TableHead className="font-bold"><ArrowRightLeft className="h-4 w-4 inline mr-1" /> Transfer Path</TableHead>
-                                <TableHead className="font-bold"><Truck className="h-4 w-4 inline mr-1" /> Courier / Dispatch</TableHead>
-                                <TableHead className="font-bold"><Package className="h-4 w-4 inline mr-1" /> Item Details</TableHead>
-                                <TableHead className="font-bold text-center">Qty</TableHead>
-                                <TableHead className="font-bold">Status</TableHead>
-                                <TableHead className="font-bold text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                                        <TableCell><Skeleton className="h-5 w-36" /></TableCell>
-                                        <TableCell><Skeleton className="h-6 w-28 rounded-full" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                                        <TableCell className="text-center"><Skeleton className="h-4 w-10 mx-auto" /></TableCell>
-                                        <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                                        <TableCell className="text-right"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
-                                    </TableRow>
-                                ))
-                            ) : entries.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                                        No delivery notes found
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                entries.map((transfer) => (
-                                    <TableRow key={transfer.id} className={`hover:bg-muted/50 transition-colors ${transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? 'bg-orange-50/30' : ''}`}>
-                                        <TableCell className="font-mono font-bold text-sm">
-                                            <div className="flex items-center gap-2">
-                                                {transfer.transferType === 'OUTLET_TO_WAREHOUSE' && (
-                                                    <RotateCcw className="h-4 w-4 text-orange-600" />
-                                                )}
-                                                {transfer.requestNo}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-sm">
-                                            {format(new Date(transfer.createdAt), "dd MMM yyyy, HH:mm")}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col gap-1">
-                                                {transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? (
-                                                    <>
-                                                        <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                                            <Badge variant="outline" className="px-1.5 py-0 h-5 bg-orange-50 text-orange-700 border-orange-200">FROM</Badge>
-                                                            <span className="text-muted-foreground">{transfer.fromLocation?.name || 'Outlet'}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                                            <Badge variant="outline" className="px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">TO</Badge>
-                                                            <span className="font-bold">{transfer.fromWarehouse?.name || 'Main Warehouse'}</span>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                                            <Badge variant="outline" className="px-1.5 py-0 h-5 bg-background">FROM</Badge>
-                                                            <span className="text-muted-foreground">{transfer.fromLocation?.name || transfer.fromWarehouse?.name || '—'}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                                            <Badge variant="outline" className="px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">TO</Badge>
-                                                            <span className="font-bold">{transfer.toLocation?.name || transfer.toWarehouse?.name}</span>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {getDispatchBadge(transfer)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {transfer.items.map((item: any, idx: number) => (
-                                                <div key={idx} className="flex flex-col mb-1.5 last:mb-0">
-                                                    <span className="font-bold text-sm leading-tight">{item.item?.description}</span>
-                                                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
-                                                        SKU: {item.item?.sku}
-                                                        {item.item?.color?.name && ` • Color: ${item.item.color.name}`}
-                                                        {item.item?.size?.name && ` • Size: ${item.item.size.name}`}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </TableCell>
-                                        <TableCell className="text-center font-black text-primary">
-                                            {transfer.items.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {getStatusBadge(transfer.status)}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-1.5">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => openDispatchModal(transfer)}
-                                                    className="border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-900 dark:text-purple-300 dark:hover:bg-purple-950"
-                                                >
-                                                    <Truck className="h-3.5 w-3.5 mr-1" />
-                                                    Courier / Dispatch
-                                                </Button>
-                                                <Button variant="outline" size="sm" asChild>
-                                                    <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`} target="_blank">
-                                                        <Printer className="h-4 w-4 mr-1" />
-                                                        Print
-                                                    </Link>
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+            {/* Redesigned DataTable with SSR Pagination & Sorting */}
+            <DataTable
+                tableId="delivery-note-history-table"
+                columns={columns}
+                data={entries}
+                isLoading={loading}
+                manualPagination={true}
+                rowCount={meta.total}
+                pageCount={meta.totalPages}
+                initialPageSize={meta.limit}
+                manualSorting={true}
+                sortingColumns={sorting}
+                onSortingChange={(newSorting) => {
+                    setSorting(newSorting);
+                    fetchPage(1, meta.limit, { sorting: newSorting });
+                }}
+                onPaginationChange={(newPagination: PaginationState) => {
+                    const targetPage = newPagination.pageIndex + 1;
+                    const targetLimit = newPagination.pageSize;
+                    fetchPage(targetPage, targetLimit);
+                }}
+                rowClassName={(row) => row.transferType === 'OUTLET_TO_WAREHOUSE' ? 'bg-orange-50/30 dark:bg-orange-950/20' : ''}
+                canBulkEdit={false}
+                canBulkDelete={false}
+                canRowEdit={false}
+                canRowDelete={false}
+            />
 
-            {/* Pagination Controls */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card border-2 rounded-xl shadow-xs">
-                <div className="text-xs text-muted-foreground font-semibold">
-                    Showing <span className="font-bold text-foreground">{meta.total > 0 ? (meta.page - 1) * meta.limit + 1 : 0}</span> to{" "}
-                    <span className="font-bold text-foreground">{Math.min(meta.page * meta.limit, meta.total)}</span> of{" "}
-                    <span className="font-bold text-foreground">{meta.total}</span> entries
-                </div>
-
-                <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Rows per page:</span>
-                        <Select
-                            value={String(meta.limit)}
-                            onValueChange={(val) => {
-                                const newLimit = parseInt(val, 10);
-                                fetchPage(1, newLimit);
-                            }}
-                        >
-                            <SelectTrigger className="h-8 w-16 text-xs font-bold">
-                                <SelectValue placeholder={String(meta.limit)} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="10">10</SelectItem>
-                                <SelectItem value="25">25</SelectItem>
-                                <SelectItem value="50">50</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            disabled={meta.page <= 1 || loading}
-                            onClick={() => fetchPage(1, meta.limit)}
-                            title="First Page"
-                        >
-                            <ChevronsLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            disabled={meta.page <= 1 || loading}
-                            onClick={() => fetchPage(meta.page - 1, meta.limit)}
-                            title="Previous Page"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-
-                        <div className="text-xs font-bold px-2">
-                            Page {meta.page} of {meta.totalPages || 1}
-                        </div>
-
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            disabled={meta.page >= (meta.totalPages || 1) || loading}
-                            onClick={() => fetchPage(meta.page + 1, meta.limit)}
-                            title="Next Page"
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            disabled={meta.page >= (meta.totalPages || 1) || loading}
-                            onClick={() => fetchPage(meta.totalPages || 1, meta.limit)}
-                            title="Last Page"
-                        >
-                            <ChevronsRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Courier & Dispatch Edit Modal */}
+            {/* Dispatch / Courier Details Modal */}
             <Dialog open={isDispatchModalOpen} onOpenChange={setIsDispatchModalOpen}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-xl">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-purple-700">
-                            <Truck className="h-5 w-5" />
-                            Manage Courier & Dispatch Details
+                        <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+                            <Truck className="h-5 w-5 text-purple-600" />
+                            Courier & Dispatch Information
                         </DialogTitle>
-                        <p className="text-xs text-muted-foreground">
-                            Update shipping, tracking invoice #, or rider info for transfer <span className="font-bold font-mono text-foreground">{selectedTransfer?.requestNo}</span>
-                        </p>
                     </DialogHeader>
 
-                    <div className="space-y-4 py-2">
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground">Dispatch Mode</Label>
-                            <Select
-                                value={dispatchForm.dispatchType}
-                                onValueChange={(val) => setDispatchForm(prev => ({ ...prev, dispatchType: val }))}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Mode" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="COURIER">Courier (Leopard / TCS / M&P)</SelectItem>
-                                    <SelectItem value="RIDER">Rider / Internal Driver</SelectItem>
-                                    <SelectItem value="SELF">Self Handover / Pickup</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {dispatchForm.dispatchType === "COURIER" && (
-                            <>
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Courier Provider</Label>
-                                    <Select
-                                        value={dispatchForm.courierName}
-                                        onValueChange={(val) => setDispatchForm(prev => ({ ...prev, courierName: val }))}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Courier" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {COMMON_COURIERS.map((c) => (
-                                                <SelectItem key={c} value={c}>{c}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                    {selectedTransfer && (
+                        <div className="space-y-4 py-2">
+                            <div className="flex items-center justify-between bg-muted/40 p-3 rounded-lg text-sm border">
+                                <div>
+                                    <span className="text-muted-foreground text-xs uppercase font-bold tracking-wider block">Request No</span>
+                                    <span className="font-mono font-bold text-base">{selectedTransfer.requestNo}</span>
                                 </div>
-
-                                {dispatchForm.courierName === "Other Courier" && (
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Custom Courier Name</Label>
-                                        <Input
-                                            placeholder="Enter courier name"
-                                            value={dispatchForm.customCourierName}
-                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, customCourierName: e.target.value }))}
-                                        />
-                                    </div>
-                                )}
-
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Tracking / Invoice / CN Number</Label>
-                                    <Input
-                                        placeholder="e.g. LPD-98471203"
-                                        value={dispatchForm.trackingNumber}
-                                        onChange={(e) => setDispatchForm(prev => ({ ...prev, trackingNumber: e.target.value }))}
-                                    />
+                                <div className="text-right">
+                                    <span className="text-muted-foreground text-xs uppercase font-bold tracking-wider block">Status</span>
+                                    {getStatusBadge(selectedTransfer.status)}
                                 </div>
+                            </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Dispatch Mode</Label>
+                                <Select
+                                    value={dispatchForm.dispatchType}
+                                    onValueChange={(val) => setDispatchForm(prev => ({ ...prev, dispatchType: val }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Dispatch Mode" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="COURIER">Courier Service (Leopard / TCS / M&P)</SelectItem>
+                                        <SelectItem value="RIDER">Internal Rider / Company Driver</SelectItem>
+                                        <SelectItem value="SELF">Self Handover / Direct Pickup</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {dispatchForm.dispatchType === "COURIER" && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Dispatch Date</Label>
-                                        <Input
-                                            type="date"
-                                            value={dispatchForm.dispatchDate}
-                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, dispatchDate: e.target.value }))}
-                                        />
+                                        <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Courier Service Name</Label>
+                                        <Select
+                                            value={dispatchForm.courierName}
+                                            onValueChange={(val) => setDispatchForm(prev => ({ ...prev, courierName: val }))}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select Courier" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {COMMON_COURIERS.map((c) => (
+                                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Est. Delivery</Label>
+
+                                    {dispatchForm.courierName === "Other Courier" && (
+                                        <div className="space-y-1.5">
+                                            <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Custom Courier Name</Label>
+                                            <Input
+                                                placeholder="Enter courier name"
+                                                value={dispatchForm.customCourierName}
+                                                onChange={(e) => setDispatchForm(prev => ({ ...prev, customCourierName: e.target.value }))}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-1.5 sm:col-span-2">
+                                        <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Tracking Number / Consignment (CN)</Label>
                                         <Input
-                                            type="date"
-                                            value={dispatchForm.estimatedDeliveryDate}
-                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, estimatedDeliveryDate: e.target.value }))}
+                                            placeholder="e.g. 10293847561"
+                                            value={dispatchForm.trackingNumber}
+                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, trackingNumber: e.target.value }))}
                                         />
                                     </div>
                                 </div>
-                            </>
-                        )}
+                            )}
 
-                        {dispatchForm.dispatchType === "RIDER" && (
-                            <>
-                                <div className="grid grid-cols-2 gap-3">
+                            {dispatchForm.dispatchType === "RIDER" && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Rider Name</Label>
+                                        <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Rider / Driver Name</Label>
                                         <Input
-                                            placeholder="e.g. Muhammad Ali"
+                                            placeholder="Rider Name"
                                             value={dispatchForm.riderName}
                                             onChange={(e) => setDispatchForm(prev => ({ ...prev, riderName: e.target.value }))}
                                         />
                                     </div>
+
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Rider Phone</Label>
+                                        <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Rider Phone</Label>
                                         <Input
                                             placeholder="0300-1234567"
                                             value={dispatchForm.riderPhone}
                                             onChange={(e) => setDispatchForm(prev => ({ ...prev, riderPhone: e.target.value }))}
                                         />
                                     </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Vehicle / Bike No</Label>
-                                    <Input
-                                        placeholder="e.g. LEK-1234"
-                                        value={dispatchForm.vehicleNumber}
-                                        onChange={(e) => setDispatchForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
-                                    />
-                                </div>
-                            </>
-                        )}
 
-                        {dispatchForm.dispatchType === "SELF" && (
-                            <>
+                                    <div className="space-y-1.5 sm:col-span-2">
+                                        <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Vehicle / Bike Number</Label>
+                                        <Input
+                                            placeholder="e.g. LEB-1234"
+                                            value={dispatchForm.vehicleNumber}
+                                            onChange={(e) => setDispatchForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {dispatchForm.dispatchType === "SELF" && (
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Receiver Person Name</Label>
+                                    <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Receiver Person Name</Label>
                                     <Input
-                                        placeholder="Handed over to..."
+                                        placeholder="Handover receiver name"
                                         value={dispatchForm.receiverPerson}
                                         onChange={(e) => setDispatchForm(prev => ({ ...prev, receiverPerson: e.target.value }))}
                                     />
                                 </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-bold uppercase text-muted-foreground">Vehicle No (Optional)</Label>
+                                    <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Dispatch Date</Label>
                                     <Input
-                                        placeholder="e.g. LEB-5678"
-                                        value={dispatchForm.vehicleNumber}
-                                        onChange={(e) => setDispatchForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
+                                        type="date"
+                                        value={dispatchForm.dispatchDate}
+                                        onChange={(e) => setDispatchForm(prev => ({ ...prev, dispatchDate: e.target.value }))}
                                     />
                                 </div>
-                            </>
-                        )}
 
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground">Dispatch Notes / Remarks</Label>
-                            <Textarea
-                                placeholder="Any instructions or comments..."
-                                value={dispatchForm.dispatchNotes}
-                                onChange={(e) => setDispatchForm(prev => ({ ...prev, dispatchNotes: e.target.value }))}
-                                rows={2}
-                            />
+                                <div className="space-y-1.5">
+                                    <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Est. Delivery Date</Label>
+                                    <Input
+                                        type="date"
+                                        value={dispatchForm.estimatedDeliveryDate}
+                                        onChange={(e) => setDispatchForm(prev => ({ ...prev, estimatedDeliveryDate: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Shipping / Freight Cost (Rs.)</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={dispatchForm.shippingCost}
+                                    onChange={(e) => setDispatchForm(prev => ({ ...prev, shippingCost: e.target.value }))}
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Dispatch Notes</Label>
+                                <Textarea
+                                    rows={2}
+                                    placeholder="Optional notes..."
+                                    value={dispatchForm.dispatchNotes}
+                                    onChange={(e) => setDispatchForm(prev => ({ ...prev, dispatchNotes: e.target.value }))}
+                                />
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    <DialogFooter className="gap-2">
+                    <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDispatchModalOpen(false)} disabled={savingDispatch}>
                             Cancel
                         </Button>
                         <Button onClick={handleSaveDispatchDetails} disabled={savingDispatch} className="bg-purple-600 hover:bg-purple-700 text-white font-bold">
                             {savingDispatch ? (
                                 <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Saving...
                                 </>
                             ) : (
                                 <>
-                                    <Save className="h-4 w-4 mr-2" /> Save Courier Info
+                                    <Save className="h-4 w-4 mr-2" />
+                                    Save Dispatch Details
                                 </>
                             )}
                         </Button>
