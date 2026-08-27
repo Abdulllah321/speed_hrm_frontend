@@ -1879,14 +1879,15 @@ export const menuData: MenuItem[] = [
     ],
   },
 
-  {
+   {
     title: "Reports",
     icon: TrendingUp,
     environment: "ERP",
     permissions: ["erp.report.view"],
     children: [
       {
-        title: "ERP Reports",
+        title: "Inventory & Stock",
+        icon: Package,
         children: [
           {
             title: "Stock Valuation Report",
@@ -1894,13 +1895,8 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.view"],
           },
           {
-            title: "Available Stock Summary",
+            title: "Available Stock + Reserved Stock",
             href: "/erp/reports/available-stock-summary",
-            permissions: ["erp.report.view"],
-          },
-          {
-            title: "Inventory Aging Report",
-            href: "/erp/reports/inventory-aging",
             permissions: ["erp.report.view"],
           },
           {
@@ -1909,20 +1905,77 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.view"],
           },
           {
-            title: "Claim Register",
-            href: "/erp/reports/claim-register",
+            title: "Inventory Aging Report",
+            href: "/erp/reports/inventory-aging",
             permissions: ["erp.report.view"],
           },
           {
-            title: "Cost of Sales",
-            href: "/erp/reports/cost-of-sales",
+            title: "POS Stock Activity",
+            href: "/erp/reports/pos/stock-activity",
             permissions: ["erp.report.view"],
           },
           {
-            title: "Voucher Register",
-            href: "/erp/reports/voucher-register",
+            title: "POS Available Stock Summary",
+            href: "/erp/reports/pos/available-stock-summary",
             permissions: ["erp.report.view"],
           },
+          {
+            title: "Inventory Aging",
+            href: "/erp/reports/pos/inventory-aging",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Transaction Details",
+            href: "/erp/reports/pos/stock-transaction-detail",
+            permissions: ["erp.report.view"],
+          },
+        ],
+      },
+      {
+        title: "Sales & POS Analytics",
+        icon: ShoppingCart,
+        children: [
+          {
+            title: "Net Sales Summary",
+            href: "/erp/reports/pos/net-sales-summary",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Gross Sales Summary",
+            href: "/erp/reports/pos/gross-sales-summary",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Gross Sales Return",
+            href: "/erp/reports/pos/gross-sales-return",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Sales List Report",
+            href: "/erp/reports/pos/sales-list",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Sales Register",
+            href: "/erp/reports/pos/sales-register",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Sales Reconciliation",
+            href: "/erp/reports/pos/reconciliation",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Alliance Register",
+            href: "/erp/reports/pos/alliance-register",
+            permissions: ["erp.report.view"],
+          },
+        ],
+      },
+      {
+        title: "Procurement & Purchases",
+        icon: FileText,
+        children: [
           {
             title: "PO Register",
             href: "/erp/reports/purchase-order-register",
@@ -1940,69 +1993,35 @@ export const menuData: MenuItem[] = [
           },
         ],
       },
-
       {
-        title: "POS Reports",
+        title: "Finance & Costing",
+        icon: Wallet,
         children: [
           {
-            title: "Stock Activity",
-            href: "/erp/reports/pos/stock-activity",
+            title: "Stock Valuation Report",
+            href: "/erp/reports/stock-valuation",
             permissions: ["erp.report.view"],
           },
           {
-            title: "Available Stock Summary",
-            href: "/erp/reports/pos/available-stock-summary",
+            title: "Cost of Sales",
+            href: "/erp/reports/cost-of-sales",
             permissions: ["erp.report.view"],
           },
           {
-            title: "Inventory Aging Report",
-            href: "/erp/reports/pos/inventory-aging",
+            title: "Voucher Register",
+            href: "/erp/reports/voucher-register",
             permissions: ["erp.report.view"],
           },
           {
-            title: "Stock Transaction Details",
-            href: "/erp/reports/pos/stock-transaction-detail",
-            permissions: ["erp.report.view"],
-          },
-          {
-            title: "Net Sales Summary",
-            href: "/erp/reports/pos/net-sales-summary",
-            permissions: ["erp.report.view"],
-          },
-          {
-            title: "Sales List Report",
-            href: "/erp/reports/pos/sales-list",
-            permissions: ["erp.report.view"],
-          },
-          {
-            title: "Gross Sales Summary",
-            href: "/erp/reports/pos/gross-sales-summary",
-            permissions: ["erp.report.view"],
-          },
-          {
-            title: "Gross Sales Return",
-            href: "/erp/reports/pos/gross-sales-return",
-            permissions: ["erp.report.view"],
-          },
-          {
-            title: "Sales Reconciliation",
-            href: "/erp/reports/pos/reconciliation",
-            permissions: ["erp.report.view"],
-          },
-          {
-            href: "/erp/reports/pos/sales-register",
-            title: "Sales Register",
-            permissions: ["erp.report.view"],
-          },
-          {
-            href: "/erp/reports/pos/alliance-register",
-            title: "Alliance Register",
+            title: "Claim Register",
+            href: "/erp/reports/claim-register",
             permissions: ["erp.report.view"],
           },
         ],
       },
     ],
   },
+
 
   // ── POS: Terminal ────────────────────────────────────────────────────────────
   {
