@@ -3,7 +3,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { StockTotals } from "./types";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { Package, TrendingUp, Truck, Store, Layers, Coins, Calculator } from "lucide-react";
 
 interface HeaderProps {

@@ -11,13 +11,14 @@ import {
 
 interface InventoryAgingHeaderProps {
   totals: InventoryAgingTotals;
+  isPosLevel?: boolean;
 }
 
-export function InventoryAgingHeader({ totals }: InventoryAgingHeaderProps) {
-  const freshValue = totals.totalBucket0to30Value;
-  const regularValue = totals.totalBucket31to60Value + totals.totalBucket61to90Value;
-  const slowValue = totals.totalBucket91to120Value + totals.totalBucket121to180Value;
-  const agedValue = totals.totalBucket181PlusValue;
+export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAgingHeaderProps) {
+  const freshValue = totals.totalBucket0to6mValue;
+  const regularValue = totals.totalBucket6to9mValue + totals.totalBucket9to12mValue;
+  const slowValue = totals.totalBucket12to15mValue + totals.totalBucket15to18mValue;
+  const agedValue = totals.totalBucket18mPlusValue;
 
   const totalValue = totals.totalStockValue || 1;
   const agedRatio = ((agedValue / totalValue) * 100).toFixed(1);
@@ -48,7 +49,7 @@ export function InventoryAgingHeader({ totals }: InventoryAgingHeaderProps) {
       <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-indigo-500/50 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Total Valuation
+            {isPosLevel ? "Retail Stock Valuation" : "Cost Stock Valuation"}
           </span>
           <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
             <Clock className="h-4 w-4" />
@@ -61,11 +62,11 @@ export function InventoryAgingHeader({ totals }: InventoryAgingHeaderProps) {
         </div>
       </div>
 
-      {/* 3. Fresh Stock (0–30 Days) */}
+      {/* 3. Fresh Stock (0–6 Months) */}
       <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-sky-500/50 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-            Fresh (0–30d)
+            Fresh (0–6M)
           </span>
           <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
             <Flame className="h-4 w-4" />
@@ -76,16 +77,16 @@ export function InventoryAgingHeader({ totals }: InventoryAgingHeaderProps) {
             Rs. {freshValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <span className="text-xs font-bold text-sky-600 dark:text-sky-400">
-            {totals.totalBucket0to30Qty.toLocaleString()} pcs
+            {totals.totalBucket0to6mQty.toLocaleString()} pcs
           </span>
         </div>
       </div>
 
-      {/* 4. Regular (31–90 Days) */}
+      {/* 4. Medium Aging (6–12 Months) */}
       <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-amber-500/50 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-            Regular (31–90d)
+            Regular (6–12M)
           </span>
           <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
             <TrendingDown className="h-4 w-4" />
@@ -96,16 +97,16 @@ export function InventoryAgingHeader({ totals }: InventoryAgingHeaderProps) {
             Rs. {regularValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-            {(totals.totalBucket31to60Qty + totals.totalBucket61to90Qty).toLocaleString()} pcs
+            {(totals.totalBucket6to9mQty + totals.totalBucket9to12mQty).toLocaleString()} pcs
           </span>
         </div>
       </div>
 
-      {/* 5. Slow Moving (91–180 Days) */}
+      {/* 5. Slow Moving (12–18 Months) */}
       <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-orange-500/50 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
-            Slow Moving (91–180d)
+            Slow (12–18M)
           </span>
           <div className="p-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
             <AlertTriangle className="h-4 w-4" />
@@ -116,16 +117,16 @@ export function InventoryAgingHeader({ totals }: InventoryAgingHeaderProps) {
             Rs. {slowValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
-            {(totals.totalBucket91to120Qty + totals.totalBucket121to180Qty).toLocaleString()} pcs
+            {(totals.totalBucket12to15mQty + totals.totalBucket15to18mQty).toLocaleString()} pcs
           </span>
         </div>
       </div>
 
-      {/* 6. Aged Stock (181+ Days) */}
+      {/* 6. Aged Stock (>18 Months) */}
       <div className="p-4 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20 shadow-sm relative overflow-hidden group hover:border-rose-500 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
-            Aged Stock (181+d)
+            Aged (&gt;18M)
           </span>
           <div className="p-2 rounded-xl bg-rose-600 text-white">
             <ShieldAlert className="h-4 w-4" />
@@ -136,7 +137,7 @@ export function InventoryAgingHeader({ totals }: InventoryAgingHeaderProps) {
             Rs. {agedValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-            {agedRatio}% ({totals.totalBucket181PlusQty.toLocaleString()} pcs)
+            {agedRatio}% ({totals.totalBucket18mPlusQty.toLocaleString()} pcs)
           </span>
         </div>
       </div>

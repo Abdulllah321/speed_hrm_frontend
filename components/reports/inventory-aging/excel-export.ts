@@ -20,11 +20,28 @@ export async function generateInventoryAgingExcel(params: {
   dateRange: DateRange;
   reportType: "merged" | "separate";
   activeSelectionNames: string;
+  isPosLevel?: boolean;
+  onProgress?: (percent: number, message: string) => void;
 }) {
-  const { items, totals, locations, warehouses, dateRange, reportType, activeSelectionNames } = params;
+  const {
+    items,
+    totals,
+    locations,
+    warehouses,
+    dateRange,
+    reportType,
+    activeSelectionNames,
+    isPosLevel = false,
+    onProgress,
+  } = params;
+
+  onProgress?.(10, "Initializing Excel export generator...");
 
   const dateStr = dateRange.to ? dateRange.to.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
   const fileName = `inventory-aging-report-${dateStr}.xlsx`;
+
+  const priceHeader = isPosLevel ? "Unit Price (Rs.)" : "Unit Cost (Rs.)";
+  const valuationHeader = isPosLevel ? "Retail Valuation (Rs.)" : "Total Cost Valuation (Rs.)";
 
   // Build worksheet rows
   const headers = [
@@ -34,21 +51,21 @@ export async function generateInventoryAgingExcel(params: {
     "Item Description",
     "Brand",
     "Category",
-    "Unit Cost (Rs.)",
+    priceHeader,
     "Total Stock Qty",
-    "Total Valuation (Rs.)",
-    "0-30 Days Qty",
-    "0-30 Days Val (Rs.)",
-    "31-60 Days Qty",
-    "31-60 Days Val (Rs.)",
-    "61-90 Days Qty",
-    "61-90 Days Val (Rs.)",
-    "91-120 Days Qty",
-    "91-120 Days Val (Rs.)",
-    "121-180 Days Qty",
-    "121-180 Days Val (Rs.)",
-    "181+ Days Qty (Aged)",
-    "181+ Days Val (Rs.)",
+    valuationHeader,
+    "0-6 Months Qty",
+    "0-6 Months Val (Rs.)",
+    "6-9 Months Qty",
+    "6-9 Months Val (Rs.)",
+    "9-12 Months Qty",
+    "9-12 Months Val (Rs.)",
+    "12-15 Months Qty",
+    "12-15 Months Val (Rs.)",
+    "15-18 Months Qty",
+    "15-18 Months Val (Rs.)",
+    ">18 Months Qty (Aged)",
+    ">18 Months Val (Rs.)",
     "Avg Age (Days)",
   ];
 
@@ -58,15 +75,20 @@ export async function generateInventoryAgingExcel(params: {
   }
 
   const dataRows: any[][] = [
-    ["INVENTORY AGING REPORT"],
+    [`INVENTORY AGING REPORT ${isPosLevel ? "(POS LEVEL - RETAIL)" : "(ERP LEVEL - COST)"}`],
     [`As of Date: ${dateStr}`],
     [`Scope: ${activeSelectionNames}`],
     [],
     headers,
   ];
 
+  onProgress?.(30, "Writing item rows & aging brackets to spreadsheet...");
+
   let rowIndex = 1;
+  const totalCount = items.length || 1;
+
   for (const item of items) {
+    const priceToDisplay = isPosLevel ? item.unitPrice : item.unitCost;
     const row = [
       rowIndex++,
       item.sku,
@@ -74,21 +96,21 @@ export async function generateInventoryAgingExcel(params: {
       item.name,
       item.brandName,
       item.categoryName,
-      item.unitCost,
+      priceToDisplay,
       item.totalQty,
       item.totalValue,
-      item.bucket0to30Qty,
-      item.bucket0to30Value,
-      item.bucket31to60Qty,
-      item.bucket31to60Value,
-      item.bucket61to90Qty,
-      item.bucket61to90Value,
-      item.bucket91to120Qty,
-      item.bucket91to120Value,
-      item.bucket121to180Qty,
-      item.bucket121to180Value,
-      item.bucket181PlusQty,
-      item.bucket181PlusValue,
+      item.bucket0to6mQty,
+      item.bucket0to6mValue,
+      item.bucket6to9mQty,
+      item.bucket6to9mValue,
+      item.bucket9to12mQty,
+      item.bucket9to12mValue,
+      item.bucket12to15mQty,
+      item.bucket12to15mValue,
+      item.bucket15to18mQty,
+      item.bucket15to18mValue,
+      item.bucket18mPlusQty,
+      item.bucket18mPlusValue,
       item.avgAgeDays,
     ];
 
@@ -99,10 +121,14 @@ export async function generateInventoryAgingExcel(params: {
 
     dataRows.push(row);
 
-    if (rowIndex % 500 === 0) {
+    if (rowIndex % 200 === 0) {
+      const pct = Math.min(85, 30 + Math.round((rowIndex / totalCount) * 55));
+      onProgress?.(pct, `Processing row ${rowIndex} of ${totalCount}...`);
       await yieldToMain();
     }
   }
+
+  onProgress?.(88, "Calculating grand totals summary row...");
 
   // Grand Totals Row
   const grandTotalsRow = [
@@ -115,18 +141,18 @@ export async function generateInventoryAgingExcel(params: {
     "",
     totals.totalStockQty,
     totals.totalStockValue,
-    totals.totalBucket0to30Qty,
-    totals.totalBucket0to30Value,
-    totals.totalBucket31to60Qty,
-    totals.totalBucket31to60Value,
-    totals.totalBucket61to90Qty,
-    totals.totalBucket61to90Value,
-    totals.totalBucket91to120Qty,
-    totals.totalBucket91to120Value,
-    totals.totalBucket121to180Qty,
-    totals.totalBucket121to180Value,
-    totals.totalBucket181PlusQty,
-    totals.totalBucket181PlusValue,
+    totals.totalBucket0to6mQty,
+    totals.totalBucket0to6mValue,
+    totals.totalBucket6to9mQty,
+    totals.totalBucket6to9mValue,
+    totals.totalBucket9to12mQty,
+    totals.totalBucket9to12mValue,
+    totals.totalBucket12to15mQty,
+    totals.totalBucket12to15mValue,
+    totals.totalBucket15to18mQty,
+    totals.totalBucket15to18mValue,
+    totals.totalBucket18mPlusQty,
+    totals.totalBucket18mPlusValue,
     totals.overallAvgAgeDays,
   ];
 
@@ -138,6 +164,8 @@ export async function generateInventoryAgingExcel(params: {
   dataRows.push([]);
   dataRows.push(grandTotalsRow);
 
+  onProgress?.(95, "Compiling Excel workbook file...");
+
   const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory Aging");
@@ -146,6 +174,8 @@ export async function generateInventoryAgingExcel(params: {
   const blob = new Blob([excelBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
+
+  onProgress?.(100, "Excel export generated successfully!");
 
   // Client Download
   const link = document.createElement("a");

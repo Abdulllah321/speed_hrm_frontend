@@ -60,6 +60,8 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
   // Export handlers state
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportProgressPercent, setExportProgressPercent] = useState(0);
+  const [exportProgressMessage, setExportProgressMessage] = useState("");
 
   // SSE Stream Monitoring
   const sseState = useReportSse(previewJobId, "inventory-aging");
@@ -169,12 +171,15 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
     selectedBrandId,
     selectedCategoryId,
     selectedAgeBucket,
+    isPosLevel,
   });
 
   // Export handlers
   const handleExportExcelFlat = async () => {
     if (!reportData) return;
     setIsExportingExcel(true);
+    setExportProgressPercent(5);
+    setExportProgressMessage("Initializing Excel export...");
     try {
       await generateInventoryAgingExcel({
         items: filteredItems,
@@ -184,17 +189,27 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         dateRange,
         reportType,
         activeSelectionNames,
+        isPosLevel,
+        onProgress: (percent, message) => {
+          setExportProgressPercent(percent);
+          setExportProgressMessage(message);
+        },
       });
+      toast.success("Excel report exported successfully");
     } catch (err: any) {
       toast.error("Failed to generate Excel export");
     } finally {
       setIsExportingExcel(false);
+      setExportProgressPercent(0);
+      setExportProgressMessage("");
     }
   };
 
   const handleExportPdf = async () => {
     if (!reportData) return;
     setIsExportingPdf(true);
+    setExportProgressPercent(5);
+    setExportProgressMessage("Preparing PDF print layout...");
     try {
       await generateInventoryAgingPdf({
         items: filteredItems,
@@ -204,18 +219,26 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         dateRange,
         reportType,
         activeSelectionNames,
+        isPosLevel,
+        onProgress: (percent, message) => {
+          setExportProgressPercent(percent);
+          setExportProgressMessage(message);
+        },
       });
+      toast.success("PDF print layout opened successfully");
     } catch (err: any) {
       toast.error("Failed to render PDF print view");
     } finally {
       setIsExportingPdf(false);
+      setExportProgressPercent(0);
+      setExportProgressMessage("");
     }
   };
 
   return (
     <div className="p-6 space-y-6 max-w-[1750px] mx-auto">
       {/* KPI Header Section */}
-      <InventoryAgingHeader totals={grandTotals} />
+      <InventoryAgingHeader totals={grandTotals} isPosLevel={isPosLevel} />
 
       {/* Filter Bar & Progress Banner */}
       <InventoryAgingFilters
@@ -249,6 +272,8 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         onExportPdf={handleExportPdf}
         isExportingExcel={isExportingExcel}
         isExportingPdf={isExportingPdf}
+        exportProgressPercent={exportProgressPercent}
+        exportProgressMessage={exportProgressMessage}
       />
 
       {/* Virtualized Table Container */}
@@ -262,6 +287,7 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         isLoading={isReportLoading}
         progressPercent={sseState.progressPercent || (isQueueingJob ? 5 : 0)}
         progressMessage={sseState.message || (isQueueingJob ? "Submitting calculation job..." : "Loading inventory aging data...")}
+        isPosLevel={isPosLevel}
       />
     </div>
   );

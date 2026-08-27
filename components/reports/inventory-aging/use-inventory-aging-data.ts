@@ -13,7 +13,8 @@ interface UseInventoryAgingDataProps {
   searchQuery: string;
   selectedBrandId?: string;
   selectedCategoryId?: string;
-  selectedAgeBucket?: string; // "all" | "0-30" | "31-60" | "61-90" | "91-120" | "121-180" | "181+"
+  selectedAgeBucket?: string; // "all" | "0-6m" | "6-9m" | "9-12m" | "12-15m" | "15-18m" | "18+m"
+  isPosLevel?: boolean;
 }
 
 export function useInventoryAgingData({
@@ -24,49 +25,67 @@ export function useInventoryAgingData({
   selectedBrandId,
   selectedCategoryId,
   selectedAgeBucket = "all",
+  isPosLevel = false,
 }: UseInventoryAgingDataProps) {
-  // 1. Filtered Items
+  // 1. Filtered & Value-Mapped Items
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return rawItems.filter((item) => {
-      // Search query filter
-      if (query) {
-        const matchesSku = item.sku.toLowerCase().includes(query);
-        const matchesBarcode = item.barCode.toLowerCase().includes(query);
-        const matchesName = item.name.toLowerCase().includes(query);
-        const matchesDesc = (item.description || "").toLowerCase().includes(query);
-        const matchesBrand = (item.brandName || "").toLowerCase().includes(query);
-        const matchesCat = (item.categoryName || "").toLowerCase().includes(query);
+    return rawItems
+      .map((item) => {
+        // Adjust values for POS level (Retail Price) vs ERP level (Cost Price)
+        const price = isPosLevel ? item.unitPrice : item.unitCost;
+        const totalVal = item.totalQty * price;
 
-        if (!matchesSku && !matchesBarcode && !matchesName && !matchesDesc && !matchesBrand && !matchesCat) {
+        return {
+          ...item,
+          totalValue: totalVal,
+          bucket0to6mValue: item.bucket0to6mQty * price,
+          bucket6to9mValue: item.bucket6to9mQty * price,
+          bucket9to12mValue: item.bucket9to12mQty * price,
+          bucket12to15mValue: item.bucket12to15mQty * price,
+          bucket15to18mValue: item.bucket15to18mQty * price,
+          bucket18mPlusValue: item.bucket18mPlusQty * price,
+        };
+      })
+      .filter((item) => {
+        // Search query filter
+        if (query) {
+          const matchesSku = item.sku.toLowerCase().includes(query);
+          const matchesBarcode = item.barCode.toLowerCase().includes(query);
+          const matchesName = item.name.toLowerCase().includes(query);
+          const matchesDesc = (item.description || "").toLowerCase().includes(query);
+          const matchesBrand = (item.brandName || "").toLowerCase().includes(query);
+          const matchesCat = (item.categoryName || "").toLowerCase().includes(query);
+
+          if (!matchesSku && !matchesBarcode && !matchesName && !matchesDesc && !matchesBrand && !matchesCat) {
+            return false;
+          }
+        }
+
+        // Brand filter
+        if (selectedBrandId && selectedBrandId !== "all" && item.brandId !== selectedBrandId) {
           return false;
         }
-      }
 
-      // Brand filter
-      if (selectedBrandId && selectedBrandId !== "all" && item.brandId !== selectedBrandId) {
-        return false;
-      }
+        // Category filter
+        if (selectedCategoryId && selectedCategoryId !== "all" && item.categoryId !== selectedCategoryId) {
+          return false;
+        }
 
-      // Category filter
-      if (selectedCategoryId && selectedCategoryId !== "all" && item.categoryId !== selectedCategoryId) {
-        return false;
-      }
+        // Age Bucket filter (0-6m, 6-9m, 9-12m, 12-15m, 15-18m, 18+m)
+        if (selectedAgeBucket && selectedAgeBucket !== "all") {
+          if (selectedAgeBucket === "0-6m" && item.bucket0to6mQty <= 0) return false;
+          if (selectedAgeBucket === "6-9m" && item.bucket6to9mQty <= 0) return false;
+          if (selectedAgeBucket === "9-12m" && item.bucket9to12mQty <= 0) return false;
+          if (selectedAgeBucket === "12-15m" && item.bucket12to15mQty <= 0) return false;
+          if (selectedAgeBucket === "15-18m" && item.bucket15to18mQty <= 0) return false;
+          if (selectedAgeBucket === "18+m" && item.bucket18mPlusQty <= 0) return false;
+        }
 
-      // Age Bucket filter
-      if (selectedAgeBucket && selectedAgeBucket !== "all") {
-        if (selectedAgeBucket === "0-30" && item.bucket0to30Qty <= 0) return false;
-        if (selectedAgeBucket === "31-60" && item.bucket31to60Qty <= 0) return false;
-        if (selectedAgeBucket === "61-90" && item.bucket61to90Qty <= 0) return false;
-        if (selectedAgeBucket === "91-120" && item.bucket91to120Qty <= 0) return false;
-        if (selectedAgeBucket === "121-180" && item.bucket121to180Qty <= 0) return false;
-        if (selectedAgeBucket === "181+" && item.bucket181PlusQty <= 0) return false;
-      }
-
-      return true;
-    });
-  }, [rawItems, searchQuery, selectedBrandId, selectedCategoryId, selectedAgeBucket]);
+        return true;
+      });
+  }, [rawItems, searchQuery, selectedBrandId, selectedCategoryId, selectedAgeBucket, isPosLevel]);
 
   // 2. Computed Dynamic Grand Totals
   const grandTotals = useMemo<InventoryAgingTotals>(() => {
@@ -74,18 +93,18 @@ export function useInventoryAgingData({
       totalItems: filteredItems.length,
       totalStockQty: 0,
       totalStockValue: 0,
-      totalBucket0to30Qty: 0,
-      totalBucket0to30Value: 0,
-      totalBucket31to60Qty: 0,
-      totalBucket31to60Value: 0,
-      totalBucket61to90Qty: 0,
-      totalBucket61to90Value: 0,
-      totalBucket91to120Qty: 0,
-      totalBucket91to120Value: 0,
-      totalBucket121to180Qty: 0,
-      totalBucket121to180Value: 0,
-      totalBucket181PlusQty: 0,
-      totalBucket181PlusValue: 0,
+      totalBucket0to6mQty: 0,
+      totalBucket0to6mValue: 0,
+      totalBucket6to9mQty: 0,
+      totalBucket6to9mValue: 0,
+      totalBucket9to12mQty: 0,
+      totalBucket9to12mValue: 0,
+      totalBucket12to15mQty: 0,
+      totalBucket12to15mValue: 0,
+      totalBucket15to18mQty: 0,
+      totalBucket15to18mValue: 0,
+      totalBucket18mPlusQty: 0,
+      totalBucket18mPlusValue: 0,
       overallAvgAgeDays: 0,
       locationTotals: {},
       warehouseTotals: {},
@@ -97,18 +116,18 @@ export function useInventoryAgingData({
       totals.totalStockQty += item.totalQty;
       totals.totalStockValue += item.totalValue;
 
-      totals.totalBucket0to30Qty += item.bucket0to30Qty;
-      totals.totalBucket0to30Value += item.bucket0to30Value;
-      totals.totalBucket31to60Qty += item.bucket31to60Qty;
-      totals.totalBucket31to60Value += item.bucket31to60Value;
-      totals.totalBucket61to90Qty += item.bucket61to90Qty;
-      totals.totalBucket61to90Value += item.bucket61to90Value;
-      totals.totalBucket91to120Qty += item.bucket91to120Qty;
-      totals.totalBucket91to120Value += item.bucket91to120Value;
-      totals.totalBucket121to180Qty += item.bucket121to180Qty;
-      totals.totalBucket121to180Value += item.bucket121to180Value;
-      totals.totalBucket181PlusQty += item.bucket181PlusQty;
-      totals.totalBucket181PlusValue += item.bucket181PlusValue;
+      totals.totalBucket0to6mQty += item.bucket0to6mQty;
+      totals.totalBucket0to6mValue += item.bucket0to6mValue;
+      totals.totalBucket6to9mQty += item.bucket6to9mQty;
+      totals.totalBucket6to9mValue += item.bucket6to9mValue;
+      totals.totalBucket9to12mQty += item.bucket9to12mQty;
+      totals.totalBucket9to12mValue += item.bucket9to12mValue;
+      totals.totalBucket12to15mQty += item.bucket12to15mQty;
+      totals.totalBucket12to15mValue += item.bucket12to15mValue;
+      totals.totalBucket15to18mQty += item.bucket15to18mQty;
+      totals.totalBucket15to18mValue += item.bucket15to18mValue;
+      totals.totalBucket18mPlusQty += item.bucket18mPlusQty;
+      totals.totalBucket18mPlusValue += item.bucket18mPlusValue;
 
       totalAgeWeightedSum += item.avgAgeDays * item.totalQty;
 

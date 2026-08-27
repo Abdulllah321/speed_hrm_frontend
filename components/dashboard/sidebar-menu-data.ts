@@ -1948,7 +1948,7 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.view"],
           },
           {
-            title: "Inventory Aging",
+            title: "POS Inventory Aging",
             href: "/erp/reports/pos/inventory-aging",
             permissions: ["erp.report.view"],
           },

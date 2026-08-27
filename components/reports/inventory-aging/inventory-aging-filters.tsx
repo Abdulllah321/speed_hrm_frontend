@@ -58,11 +58,13 @@ interface InventoryAgingFiltersProps {
   isQueueingJob: boolean;
   isFetchingResult: boolean;
 
-  // Export Handlers
+  // Export Handlers & Progress
   onExportExcelFlat: () => void;
   onExportPdf: () => void;
   isExportingExcel: boolean;
   isExportingPdf: boolean;
+  exportProgressPercent?: number;
+  exportProgressMessage?: string;
 }
 
 export function InventoryAgingFilters({
@@ -96,6 +98,8 @@ export function InventoryAgingFilters({
   onExportPdf,
   isExportingExcel,
   isExportingPdf,
+  exportProgressPercent = 0,
+  exportProgressMessage = "",
 }: InventoryAgingFiltersProps) {
   const [showFormulaInfo, setShowFormulaInfo] = useState(true);
 
@@ -126,10 +130,10 @@ export function InventoryAgingFilters({
             </div>
             <div>
               <p className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                ERP Inventory Aging Metric Equation
+                Inventory Aging Metric Equation ({isPosLevel ? "POS Level - Retail Valuation" : "ERP Level - Cost Valuation"})
               </p>
               <p className="text-[11px] font-mono text-slate-600 dark:text-slate-300 mt-0.5">
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">Stock Age</span> = As-of Date - Inbound Receipt Date &bull; <span className="font-bold text-rose-600 dark:text-rose-400">Aged Brackets</span>: 0–30d, 31–60d, 61–90d, 91–120d, 121–180d, 181+d
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">Stock Age</span> = As-of Date - Inbound Receipt Date &bull; <span className="font-bold text-rose-600 dark:text-rose-400">Aged Brackets</span>: 0–6M, 6–9M, 9–12M, 12–15M, 15–18M, &gt;18M
               </p>
             </div>
           </div>
@@ -212,12 +216,12 @@ export function InventoryAgingFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Aging Brackets</SelectItem>
-                <SelectItem value="0-30">0 – 30 Days (Fresh)</SelectItem>
-                <SelectItem value="31-60">31 – 60 Days</SelectItem>
-                <SelectItem value="61-90">61 – 90 Days</SelectItem>
-                <SelectItem value="91-120">91 – 120 Days</SelectItem>
-                <SelectItem value="121-180">121 – 180 Days (Slow)</SelectItem>
-                <SelectItem value="181+">181+ Days (Aged/Stale)</SelectItem>
+                <SelectItem value="0-6m">0 – 6 Months (Fresh)</SelectItem>
+                <SelectItem value="6-9m">6 – 9 Months</SelectItem>
+                <SelectItem value="9-12m">9 – 12 Months</SelectItem>
+                <SelectItem value="12-15m">12 – 15 Months</SelectItem>
+                <SelectItem value="15-18m">15 – 18 Months (Slow)</SelectItem>
+                <SelectItem value="18+m">&gt; 18 Months (Aged/Stale)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -262,7 +266,7 @@ export function InventoryAgingFilters({
             variant="outline"
             size="sm"
             onClick={onExportExcelFlat}
-            disabled={isExportingExcel}
+            disabled={isExportingExcel || isExportingPdf}
             className="h-9 rounded-xl gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-800 text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100/50"
           >
             {isExportingExcel ? (
@@ -278,7 +282,7 @@ export function InventoryAgingFilters({
             variant="outline"
             size="sm"
             onClick={onExportPdf}
-            disabled={isExportingPdf}
+            disabled={isExportingExcel || isExportingPdf}
             className="h-9 rounded-xl gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-800 text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100/50"
           >
             {isExportingPdf ? (
@@ -290,6 +294,27 @@ export function InventoryAgingFilters({
           </Button>
         </div>
       </div>
+
+      {/* Realtime Exporting Progress Bar Banner */}
+      {(isExportingExcel || isExportingPdf || exportProgressPercent > 0) && (
+        <div className="flex flex-col gap-2 p-3.5 rounded-2xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 text-xs shadow-md animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 font-bold">
+              <Loader2 className="h-4 w-4 animate-spin text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{exportProgressMessage || (isExportingExcel ? "Generating Excel spreadsheet..." : "Formatting PDF document...")}</span>
+            </div>
+            <span className="font-black text-emerald-700 dark:text-emerald-300 text-sm">
+              {exportProgressPercent}%
+            </span>
+          </div>
+          <div className="w-full bg-emerald-200 dark:bg-emerald-900 rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-emerald-600 dark:bg-emerald-400 h-2 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${Math.max(5, exportProgressPercent)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* SSE Progress Banner */}
       {previewJobId && sseState.status !== "completed" && (

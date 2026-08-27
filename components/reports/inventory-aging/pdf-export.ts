@@ -15,38 +15,56 @@ export async function generateInventoryAgingPdf(params: {
   dateRange: DateRange;
   reportType: "merged" | "separate";
   activeSelectionNames: string;
+  isPosLevel?: boolean;
+  onProgress?: (percent: number, message: string) => void;
 }) {
-  const { items, totals, dateRange, activeSelectionNames } = params;
+  const { items, totals, dateRange, activeSelectionNames, isPosLevel = false, onProgress } = params;
+  
+  onProgress?.(15, "Preparing PDF print layout...");
+
   const dateStr = dateRange.to ? dateRange.to.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
 
   const printWindow = window.open("", "_blank");
-  if (!printWindow) return;
+  if (!printWindow) {
+    onProgress?.(100, "Pop-up blocked. Could not open print window.");
+    return;
+  }
 
-  const rowsHtml = items.slice(0, 1000).map((item, idx) => `
+  onProgress?.(45, "Formatting items & aging brackets into HTML printable page...");
+
+  const priceHeader = isPosLevel ? "Unit Price" : "Unit Cost";
+  const valHeader = isPosLevel ? "Retail Valuation" : "Cost Valuation";
+
+  const rowsHtml = items.slice(0, 1000).map((item, idx) => {
+    const priceToDisplay = isPosLevel ? item.unitPrice : item.unitCost;
+    return `
     <tr>
       <td style="text-align: center;">${idx + 1}</td>
       <td style="font-family: monospace; font-weight: bold;">${item.sku}</td>
       <td>${item.name}</td>
       <td>${item.brandName || ""}</td>
       <td>${item.categoryName || ""}</td>
-      <td style="text-align: right;">Rs. ${item.unitCost.toLocaleString()}</td>
+      <td style="text-align: right;">Rs. ${priceToDisplay.toLocaleString()}</td>
       <td style="text-align: right; font-weight: bold;">${item.totalQty.toLocaleString()}</td>
       <td style="text-align: right; font-weight: bold; color: #4f46e5;">Rs. ${item.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-      <td style="text-align: right;">${item.bucket0to30Qty}</td>
-      <td style="text-align: right;">${item.bucket31to60Qty}</td>
-      <td style="text-align: right;">${item.bucket61to90Qty}</td>
-      <td style="text-align: right;">${item.bucket91to120Qty}</td>
-      <td style="text-align: right;">${item.bucket121to180Qty}</td>
-      <td style="text-align: right; color: #e11d48; font-weight: bold;">${item.bucket181PlusQty}</td>
+      <td style="text-align: right;">${item.bucket0to6mQty}</td>
+      <td style="text-align: right;">${item.bucket6to9mQty}</td>
+      <td style="text-align: right;">${item.bucket9to12mQty}</td>
+      <td style="text-align: right;">${item.bucket12to15mQty}</td>
+      <td style="text-align: right;">${item.bucket15to18mQty}</td>
+      <td style="text-align: right; color: #e11d48; font-weight: bold;">${item.bucket18mPlusQty}</td>
       <td style="text-align: center; font-weight: bold;">${item.avgAgeDays}d</td>
     </tr>
-  `).join("");
+  `;
+  }).join("");
+
+  onProgress?.(80, "Rendering grand totals summary & document styles...");
 
   const html = `
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Inventory Aging Report - ${dateStr}</title>
+        <title>Inventory Aging Report (${isPosLevel ? "POS" : "ERP"}) - ${dateStr}</title>
         <style>
           body { font-family: system-ui, -apple-system, sans-serif; font-size: 11px; color: #0f172a; margin: 20px; }
           h1 { font-size: 18px; margin: 0 0 5px 0; color: #0f172a; }
@@ -62,7 +80,7 @@ export async function generateInventoryAgingPdf(params: {
         </style>
       </head>
       <body>
-        <h1>INVENTORY AGING REPORT</h1>
+        <h1>INVENTORY AGING REPORT ${isPosLevel ? "(POS LEVEL - RETAIL)" : "(ERP LEVEL - COST)"}</h1>
         <p><strong>As of Date:</strong> ${dateStr} | <strong>Scope:</strong> ${activeSelectionNames}</p>
         
         <div class="summary-cards">
@@ -71,16 +89,16 @@ export async function generateInventoryAgingPdf(params: {
             <div class="card-value">${totals.totalStockQty.toLocaleString()} pcs</div>
           </div>
           <div class="card">
-            <div class="card-title">Total Valuation</div>
+            <div class="card-title">${valHeader}</div>
             <div class="card-value">Rs. ${totals.totalStockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
           </div>
           <div class="card">
-            <div class="card-title">Fresh (0-30d)</div>
-            <div class="card-value">${totals.totalBucket0to30Qty.toLocaleString()} pcs</div>
+            <div class="card-title">Fresh (0-6M)</div>
+            <div class="card-value">${totals.totalBucket0to6mQty.toLocaleString()} pcs</div>
           </div>
           <div class="card">
-            <div class="card-title">Aged Stock (181+d)</div>
-            <div class="card-value" style="color: #e11d48;">${totals.totalBucket181PlusQty.toLocaleString()} pcs</div>
+            <div class="card-title">Aged Stock (&gt;18M)</div>
+            <div class="card-value" style="color: #e11d48;">${totals.totalBucket18mPlusQty.toLocaleString()} pcs</div>
           </div>
           <div class="card">
             <div class="card-title">Overall Avg Age</div>
@@ -96,15 +114,15 @@ export async function generateInventoryAgingPdf(params: {
               <th>Item Description</th>
               <th>Brand</th>
               <th>Category</th>
-              <th style="text-align: right;">Unit Cost</th>
+              <th style="text-align: right;">${priceHeader}</th>
               <th style="text-align: right;">Total Qty</th>
-              <th style="text-align: right;">Valuation</th>
-              <th style="text-align: right;">0-30d</th>
-              <th style="text-align: right;">31-60d</th>
-              <th style="text-align: right;">61-90d</th>
-              <th style="text-align: right;">91-120d</th>
-              <th style="text-align: right;">121-180d</th>
-              <th style="text-align: right;">181+d</th>
+              <th style="text-align: right;">${valHeader}</th>
+              <th style="text-align: right;">0-6M</th>
+              <th style="text-align: right;">6-9M</th>
+              <th style="text-align: right;">9-12M</th>
+              <th style="text-align: right;">12-15M</th>
+              <th style="text-align: right;">15-18M</th>
+              <th style="text-align: right;">&gt;18M</th>
               <th style="text-align: center;">Avg Age</th>
             </tr>
           </thead>
@@ -116,12 +134,12 @@ export async function generateInventoryAgingPdf(params: {
               <td colspan="6">GRAND TOTAL (${totals.totalItems} SKUs)</td>
               <td style="text-align: right;">${totals.totalStockQty.toLocaleString()}</td>
               <td style="text-align: right;">Rs. ${totals.totalStockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-              <td style="text-align: right;">${totals.totalBucket0to30Qty.toLocaleString()}</td>
-              <td style="text-align: right;">${totals.totalBucket31to60Qty.toLocaleString()}</td>
-              <td style="text-align: right;">${totals.totalBucket61to90Qty.toLocaleString()}</td>
-              <td style="text-align: right;">${totals.totalBucket91to120Qty.toLocaleString()}</td>
-              <td style="text-align: right;">${totals.totalBucket121to180Qty.toLocaleString()}</td>
-              <td style="text-align: right; color: #fb7185;">${totals.totalBucket181PlusQty.toLocaleString()}</td>
+              <td style="text-align: right;">${totals.totalBucket0to6mQty.toLocaleString()}</td>
+              <td style="text-align: right;">${totals.totalBucket6to9mQty.toLocaleString()}</td>
+              <td style="text-align: right;">${totals.totalBucket9to12mQty.toLocaleString()}</td>
+              <td style="text-align: right;">${totals.totalBucket12to15mQty.toLocaleString()}</td>
+              <td style="text-align: right;">${totals.totalBucket15to18mQty.toLocaleString()}</td>
+              <td style="text-align: right; color: #fb7185;">${totals.totalBucket18mPlusQty.toLocaleString()}</td>
               <td style="text-align: center;">${totals.overallAvgAgeDays}d</td>
             </tr>
           </tfoot>
@@ -133,9 +151,13 @@ export async function generateInventoryAgingPdf(params: {
     </html>
   `;
 
+  onProgress?.(95, "Opening PDF print dialog...");
+
   printWindow.document.open();
   printWindow.document.write(html);
   printWindow.document.close();
+
+  onProgress?.(100, "PDF document rendered successfully!");
 
   // Background S3 Sync
   try {

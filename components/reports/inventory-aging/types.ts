@@ -29,19 +29,19 @@ export interface InventoryAgingRecord {
   totalQty: number;
   totalValue: number;
 
-  // Aging Brackets
-  bucket0to30Qty: number;
-  bucket0to30Value: number;
-  bucket31to60Qty: number;
-  bucket31to60Value: number;
-  bucket61to90Qty: number;
-  bucket61to90Value: number;
-  bucket91to120Qty: number;
-  bucket91to120Value: number;
-  bucket121to180Qty: number;
-  bucket121to180Value: number;
-  bucket181PlusQty: number;
-  bucket181PlusValue: number;
+  // Aging Brackets (Months: 0-6M, 6-9M, 9-12M, 12-15M, 15-18M, >18M)
+  bucket0to6mQty: number;
+  bucket0to6mValue: number;
+  bucket6to9mQty: number;
+  bucket6to9mValue: number;
+  bucket9to12mQty: number;
+  bucket9to12mValue: number;
+  bucket12to15mQty: number;
+  bucket12to15mValue: number;
+  bucket15to18mQty: number;
+  bucket15to18mValue: number;
+  bucket18mPlusQty: number;
+  bucket18mPlusValue: number;
 
   avgAgeDays: number;
 
@@ -53,18 +53,18 @@ export interface InventoryAgingTotals {
   totalItems: number;
   totalStockQty: number;
   totalStockValue: number;
-  totalBucket0to30Qty: number;
-  totalBucket0to30Value: number;
-  totalBucket31to60Qty: number;
-  totalBucket31to60Value: number;
-  totalBucket61to90Qty: number;
-  totalBucket61to90Value: number;
-  totalBucket91to120Qty: number;
-  totalBucket91to120Value: number;
-  totalBucket121to180Qty: number;
-  totalBucket121to180Value: number;
-  totalBucket181PlusQty: number;
-  totalBucket181PlusValue: number;
+  totalBucket0to6mQty: number;
+  totalBucket0to6mValue: number;
+  totalBucket6to9mQty: number;
+  totalBucket6to9mValue: number;
+  totalBucket9to12mQty: number;
+  totalBucket9to12mValue: number;
+  totalBucket12to15mQty: number;
+  totalBucket12to15mValue: number;
+  totalBucket15to18mQty: number;
+  totalBucket15to18mValue: number;
+  totalBucket18mPlusQty: number;
+  totalBucket18mPlusValue: number;
   overallAvgAgeDays: number;
   locationTotals: Record<string, number>;
   warehouseTotals: Record<string, number>;
