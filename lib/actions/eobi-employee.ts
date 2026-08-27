@@ -17,12 +17,55 @@ export interface EOBIEmployee {
     availableBalance: number;
     lastContributionMonth: string;
     totalMonths: number;
+    selectedMonthEmployeeContribution?: number;
+    selectedMonthEmployerContribution?: number;
+    selectedMonthTotalContribution?: number;
+    hasContributionInSelectedMonth?: boolean;
 }
 
-// Get all EOBI employees with their balances
-export async function getEOBIEmployees(): Promise<{ status: boolean; data?: EOBIEmployee[]; message?: string }> {
+export interface EOBIRegionStat {
+    count: number;
+    employeeContribution: number;
+    employerContribution: number;
+    totalContribution: number;
+    totalBalance: number;
+    selectedMonthTotal: number;
+    employeeMonthlyRate: number;
+    employerMonthlyRate: number;
+}
+
+export interface EOBIAvailableMonth {
+    month: string;
+    year: string;
+    monthYear: string;
+}
+
+export interface EOBIEmployeesResponse {
+    status: boolean;
+    data?: EOBIEmployee[];
+    availableMonths?: EOBIAvailableMonth[];
+    regionBreakdown?: Record<string, EOBIRegionStat>;
+    message?: string;
+}
+
+export interface EOBIFilters {
+    month?: string;
+    year?: string;
+    region?: string;
+    departmentId?: string;
+}
+
+// Get all EOBI employees with their balances and optional month/region filters
+export async function getEOBIEmployees(filters?: EOBIFilters): Promise<EOBIEmployeesResponse> {
     try {
-        const response = await authFetch(`/eobi/employees`, {
+        const queryParams = new URLSearchParams();
+        if (filters?.month) queryParams.append('month', filters.month);
+        if (filters?.year) queryParams.append('year', filters.year);
+        if (filters?.region && filters.region !== 'all') queryParams.append('region', filters.region);
+        if (filters?.departmentId && filters.departmentId !== 'all') queryParams.append('departmentId', filters.departmentId);
+
+        const url = `/eobi/employees${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+        const response = await authFetch(url, {
             method: 'GET',
         });
 

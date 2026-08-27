@@ -1,5 +1,6 @@
 'use server';
-import { getEOBIEmployees, EOBIEmployee } from './eobi-employee';
+
+import { getEOBIEmployees, EOBIEmployee, EOBIFilters, EOBIAvailableMonth, EOBIRegionStat } from './eobi-employee';
 import { getEOBIWithdrawals, EOBIWithdrawal } from './eobi-withdrawal';
 
 export interface EOBIReportItem extends EOBIEmployee {
@@ -7,12 +8,23 @@ export interface EOBIReportItem extends EOBIEmployee {
     closingBalance: number;
 }
 
-export async function getEOBIReportData(): Promise<{ status: boolean; data?: EOBIReportItem[]; message?: string }> {
+export interface EOBIReportResponse {
+    status: boolean;
+    data?: EOBIReportItem[];
+    availableMonths?: EOBIAvailableMonth[];
+    regionBreakdown?: Record<string, EOBIRegionStat>;
+    message?: string;
+}
+
+export async function getEOBIReportData(filters?: EOBIFilters): Promise<EOBIReportResponse> {
     try {
         // Fetch runs in parallel
         const [employeesRes, withdrawalsRes] = await Promise.all([
-            getEOBIEmployees(),
-            getEOBIWithdrawals()
+            getEOBIEmployees(filters),
+            getEOBIWithdrawals({
+                month: filters?.month,
+                year: filters?.year,
+            })
         ]);
 
         if (!employeesRes.status || !employeesRes.data) {
@@ -47,7 +59,12 @@ export async function getEOBIReportData(): Promise<{ status: boolean; data?: EOB
             };
         });
 
-        return { status: true, data: reportData };
+        return {
+            status: true,
+            data: reportData,
+            availableMonths: employeesRes.availableMonths || [],
+            regionBreakdown: employeesRes.regionBreakdown || {},
+        };
     } catch (error) {
         console.error('Error fetching EOBI report data:', error);
         return {

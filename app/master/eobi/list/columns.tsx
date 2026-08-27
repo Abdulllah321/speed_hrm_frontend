@@ -73,6 +73,7 @@ function RowActions({ row }: { row: Row<EOBIRow> }) {
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState(e.region || "Punjab");
 
   const canEdit = hasPermission("master.eobi.update");
   const canDelete = hasPermission("master.eobi.delete");
@@ -83,17 +84,36 @@ function RowActions({ row }: { row: Row<EOBIRow> }) {
 
   const handleEditSubmit = async (formData: FormData) => {
     startTransition(async () => {
+      // Ensure region, name, and yearMonth are set
+      formData.set("region", selectedRegion);
+      if (!formData.get("name")) {
+        formData.set("name", e.name || `EOBI (${selectedRegion})`);
+      }
+      if (!formData.get("yearMonth")) {
+        formData.set("yearMonth", e.yearMonth || "Continuous");
+      }
+
       const result = await updateEOBI(e.id, formData);
-      if (result.status) { toast.success(result.message); setEditDialog(false); router.refresh(); }
-      else toast.error(result.message);
+      if (result.status) { 
+        toast.success(result.message || "EOBI updated successfully"); 
+        setEditDialog(false); 
+        router.refresh(); 
+      } else {
+        toast.error(result.message || "Failed to update EOBI");
+      }
     });
   };
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
       const result = await deleteEOBI(e.id);
-      if (result.status) { toast.success(result.message); setDeleteDialog(false); router.refresh(); }
-      else toast.error(result.message);
+      if (result.status) { 
+        toast.success(result.message || "EOBI deleted successfully"); 
+        setDeleteDialog(false); 
+        router.refresh(); 
+      } else {
+        toast.error(result.message || "Failed to delete EOBI");
+      }
     });
   };
 
@@ -106,21 +126,33 @@ function RowActions({ row }: { row: Row<EOBIRow> }) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {canEdit && <DropdownMenuItem onClick={() => setEditDialog(true)}><Pencil className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>}
+          {canEdit && <DropdownMenuItem onClick={() => { setSelectedRegion(e.region || "Punjab"); setEditDialog(true); }}><Pencil className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>}
           {canDelete && <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>
 
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Edit EOBI</DialogTitle><DialogDescription>Update the EOBI details</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Edit EOBI</DialogTitle>
+            <DialogDescription>Update the EOBI details</DialogDescription>
+          </DialogHeader>
           <form action={handleEditSubmit}>
+            <input type="hidden" name="name" value={e.name || `EOBI (${selectedRegion})`} />
+            <input type="hidden" name="yearMonth" value={e.yearMonth || "Continuous"} />
+            <input type="hidden" name="region" value={selectedRegion} />
             <div className="space-y-4 py-4">
-              <div className="space-y-2"><Label>Employer Contribution</Label><Input name="employerContribution" type="number" defaultValue={e.employerContribution} disabled={isPending} required /></div>
-              <div className="space-y-2"><Label>Employee Contribution</Label><Input name="employeeContribution" type="number" defaultValue={e.employeeContribution} disabled={isPending} required /></div>
+              <div className="space-y-2">
+                <Label>Employer Contribution</Label>
+                <Input name="employerContribution" type="number" defaultValue={e.employerContribution} disabled={isPending} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Employee Contribution</Label>
+                <Input name="employeeContribution" type="number" defaultValue={e.employeeContribution} disabled={isPending} required />
+              </div>
               <div className="space-y-2">
                 <Label>Region</Label>
-                <Select name="region" defaultValue={e.region || "Punjab"} disabled={isPending}>
+                <Select value={selectedRegion} onValueChange={setSelectedRegion} disabled={isPending}>
                   <SelectTrigger><SelectValue placeholder="Select Region" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Punjab">Punjab</SelectItem>

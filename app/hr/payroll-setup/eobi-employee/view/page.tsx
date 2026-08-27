@@ -8,8 +8,16 @@ export default async function ViewEOBIEmployeePage() {
     try {
         const result = await getEOBIEmployees();
         const initialData = result.status && result.data ? result.data : [];
+        const initialAvailableMonths = result.status && result.availableMonths ? result.availableMonths : [];
+        const initialRegionBreakdown = result.status && result.regionBreakdown ? result.regionBreakdown : {};
 
-        return <EOBIEmployeeList initialData={initialData} />;
+        return (
+            <EOBIEmployeeList
+                initialData={initialData}
+                initialAvailableMonths={initialAvailableMonths}
+                initialRegionBreakdown={initialRegionBreakdown}
+            />
+        );
     } catch (error) {
         console.error("Error in ViewEOBIEmployeePage:", error);
         return (
