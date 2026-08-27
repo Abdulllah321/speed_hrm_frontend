@@ -165,8 +165,11 @@ export async function deleteIncrement(id: string): Promise<{ status: boolean; me
   }
 }
 
-// Get latest salary for an employee (from most recent increment or joining salary)
+// Get latest salary for an employee (prioritizing active profile salary)
 export async function getLatestEmployeeSalary(employeeId: string, joiningOrBaseSalary: number): Promise<number> {
+  if (joiningOrBaseSalary !== undefined && joiningOrBaseSalary !== null && Number(joiningOrBaseSalary) > 0) {
+    return Number(joiningOrBaseSalary);
+  }
   try {
     const result = await getIncrements({ employeeId });
     if (result.status && result.data && result.data.length > 0) {
@@ -176,11 +179,9 @@ export async function getLatestEmployeeSalary(employeeId: string, joiningOrBaseS
       );
       return sortedIncrements[0].salary;
     }
-    // If no increments found, return the joining/base salary
-    return joiningOrBaseSalary;
+    return joiningOrBaseSalary || 0;
   } catch (error) {
     console.error('Error fetching latest salary:', error);
-    // Fallback to joining salary on error
-    return joiningOrBaseSalary;
+    return joiningOrBaseSalary || 0;
   }
 }
