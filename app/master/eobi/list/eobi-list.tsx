@@ -58,9 +58,11 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
   const handleBulkEdit = (items: EOBIRow[]) => {
     setEditRows(items.map((item) => ({
       id: item.id,
+      name: item.name,
       employerContribution: item.employerContribution,
       employeeContribution: item.employeeContribution,
-      yearMonth: item.yearMonth
+      yearMonth: item.yearMonth,
+      region: item.region || "Punjab"
     })));
     setBulkEditOpen(true);
   };

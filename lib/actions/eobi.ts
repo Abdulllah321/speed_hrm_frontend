@@ -74,14 +74,15 @@ export async function createEOBIs(
 }
 
 export async function updateEOBI(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: EOBI }> {
-  const name = formData.get("name") as string;
+  const region = (formData.get("region") as string) || "Punjab";
+  const rawName = formData.get("name") as string;
+  const name = rawName?.trim() || `EOBI (${region})`;
   const eobiId = formData.get("eobiId") as string;
   const eobiCode = formData.get("eobiCode") as string;
   const employerContribution = parseFloat(formData.get("employerContribution") as string);
   const employeeContribution = parseFloat(formData.get("employeeContribution") as string);
-  const yearMonth = formData.get("yearMonth") as string;
-  const region = formData.get("region") as string;
-  if (!name?.trim()) return { status: false, message: "Name is required" };
+  const yearMonth = (formData.get("yearMonth") as string) || "Continuous";
+  
   if (isNaN(employerContribution) || isNaN(employeeContribution)) {
     return { status: false, message: "Employer and Employee contributions are required" };
   }
@@ -138,19 +139,25 @@ export async function deleteEOBIs(ids: string[]): Promise<{ status: boolean; mes
 export async function updateEOBIs(
   items: { 
     id: string; 
-    name: string; 
+    name?: string; 
     eobiId?: string; 
     eobiCode?: string; 
     employerContribution: number; 
     employeeContribution: number; 
-    yearMonth: string;
-    region: string;
+    yearMonth?: string;
+    region?: string;
   }[]): Promise<{ status: boolean; message: string }> {
   if (!items.length) return { status: false, message: "No items to update" };
   try {
+    const payload = items.map((i) => ({
+      ...i,
+      name: i.name || `EOBI (${i.region || 'Punjab'})`,
+      yearMonth: i.yearMonth || "Continuous",
+      region: i.region || "Punjab",
+    }));
     const res = await authFetch(`/eobis/bulk`, {
       method: "PUT",
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ items: payload }),
     });
     const data = res.data;
     if (data.status) revalidatePath("/master/eobi");

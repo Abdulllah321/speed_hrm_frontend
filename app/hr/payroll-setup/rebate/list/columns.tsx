@@ -21,11 +21,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { EllipsisIcon, Eye, FileText, Loader2, Pencil, Trash2 } from "lucide-react";
+import { EllipsisIcon, Eye, FileText, Loader2, Pencil, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { deleteRebate } from "@/lib/actions/rebate";
+import { deleteRebate, updateRebate } from "@/lib/actions/rebate";
 import Link from "next/link";
 
 export type RebateRow = {
@@ -201,6 +201,18 @@ function RowActions({ row }: RowActionsProps) {
   const [isPending, startTransition] = useTransition();
   const [deleteDialog, setDeleteDialog] = useState(false);
 
+  const handleStatusChange = async (newStatus: "approved" | "rejected") => {
+    startTransition(async () => {
+      const result = await updateRebate(record.id, { status: newStatus });
+      if (result.status) {
+        toast.success(result.message || `Rebate marked as ${newStatus}`);
+        router.refresh();
+      } else {
+        toast.error(result.message || `Failed to update status`);
+      }
+    });
+  };
+
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
       const result = await deleteRebate(record.id);
@@ -225,6 +237,24 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {record.status !== "approved" && (
+            <DropdownMenuItem
+              onClick={() => handleStatusChange("approved")}
+              className="text-emerald-600 focus:text-emerald-600 font-medium cursor-pointer"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Approve
+            </DropdownMenuItem>
+          )}
+          {record.status !== "rejected" && (
+            <DropdownMenuItem
+              onClick={() => handleStatusChange("rejected")}
+              className="text-amber-600 focus:text-amber-600 font-medium cursor-pointer"
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Reject
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link href={`/hr/payroll-setup/rebate/view/${record.id}`}>
               <Eye className="h-4 w-4 mr-2" />
@@ -239,7 +269,7 @@ function RowActions({ row }: RowActionsProps) {
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
-            className="text-destructive focus:text-destructive"
+            className="text-destructive focus:text-destructive cursor-pointer"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete

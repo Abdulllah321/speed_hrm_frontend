@@ -27,6 +27,30 @@ export const columns: ColumnDef<EOBIReportItem>[] = [
         ),
     },
     {
+        accessorKey: "eobiRegion",
+        header: "Region",
+        cell: ({ row }) => {
+            const region = row.original.eobiRegion || "Punjab";
+            const colorClass =
+                region.toLowerCase() === "islamabad"
+                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                    : region.toLowerCase() === "sindh"
+                    ? "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300"
+                    : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300";
+
+            return (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
+                    {region}
+                </span>
+            );
+        },
+    },
+    {
+        accessorKey: "designation",
+        header: "Designation",
+        cell: ({ row }) => row.original.designation || "N/A",
+    },
+    {
         accessorKey: "totalEOBIBalance",
         header: "Total EOBI",
         cell: ({ row }) => {
