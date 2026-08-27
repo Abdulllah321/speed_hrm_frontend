@@ -42,6 +42,7 @@ export type RebateRow = {
   year: string;
   monthYear: string;
   rebateType: string;
+  adjustmentType: string;
   rebateNature: string;
   actualInvestment: number | null;
   rebateAmount: number;
@@ -112,9 +113,29 @@ export const columns: ColumnDef<RebateRow>[] = [
   {
     header: "Type",
     accessorKey: "rebateType",
-    size: 120,
+    size: 100,
     enableSorting: true,
     cell: ({ row }) => <HighlightText text={row.original.rebateType} />,
+  },
+  {
+    header: "Method",
+    accessorKey: "adjustmentType",
+    size: 130,
+    enableSorting: true,
+    cell: ({ row }) => {
+      const isSpread = row.original.adjustmentType === "spread_year";
+      return (
+        <span
+          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            isSpread
+              ? "bg-purple-100 text-purple-800"
+              : "bg-blue-100 text-blue-800"
+          }`}
+        >
+          {isSpread ? "Spread (Year)" : "Single Month"}
+        </span>
+      );
+    },
   },
   {
     header: "Nature",

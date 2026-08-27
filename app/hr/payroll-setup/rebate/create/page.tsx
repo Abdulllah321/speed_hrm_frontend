@@ -45,6 +45,7 @@ const rebateFormSchema = z.object({
     .min(1, "Month - Year is required")
     .regex(/^\d{4}-\d{2}$/, "Invalid month-year format (YYYY-MM)"),
   rebateNatureId: z.string().min(1, "Rebate Nature is required"),
+  adjustmentType: z.enum(["single_month", "spread_year"]).default("single_month"),
   rebateAmount: z
     .string()
     .min(1, "Rebate Amount is required")
@@ -81,6 +82,7 @@ export default function CreateRebatePage() {
       employeeId: "",
       monthYear: "",
       rebateNatureId: "",
+      adjustmentType: "single_month",
       rebateAmount: "",
       file: undefined,
       remarks: "",
@@ -244,6 +246,7 @@ export default function CreateRebatePage() {
           rebateNatureId: data.rebateNatureId,
           rebateAmount: parseFloat(data.rebateAmount),
           monthYear: data.monthYear,
+          adjustmentType: data.adjustmentType || "single_month",
           attachment: attachmentUrl,
           remarks: data.remarks || undefined,
         });
@@ -422,22 +425,32 @@ export default function CreateRebatePage() {
                 <FormField
                   control={form.control}
                   name="monthYear"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Month - Year <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <MonthYearPicker
-                          value={field.value}
-                          onChange={field.onChange}
-                          disabled={isPending || form.formState.isSubmitting}
-                          placeholder="Select month and year"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const adjType = form.watch("adjustmentType");
+                    const isSpread = adjType === "spread_year";
+                    return (
+                      <FormItem>
+                        <FormLabel>
+                          {isSpread ? "Effective Start Month" : "Deduction Month"}{" "}
+                          <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <MonthYearPicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            disabled={isPending || form.formState.isSubmitting}
+                            placeholder="Select month and year"
+                          />
+                        </FormControl>
+                        <p className="text-[11px] text-muted-foreground">
+                          {isSpread
+                            ? "Will be divided evenly across remaining months until June"
+                            : "Deducted in full for this specific month only"}
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
 
                 {/* Rebate Nature */}
@@ -522,6 +535,39 @@ export default function CreateRebatePage() {
                           disabled={isPending || form.formState.isSubmitting}
                           {...field}
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Adjustment Method */}
+                <FormField
+                  control={form.control}
+                  name="adjustmentType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Adjustment Method <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value || "single_month"}
+                          onValueChange={field.onChange}
+                          disabled={isPending || form.formState.isSubmitting}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Adjustment Method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="single_month">
+                              Single Month (One-Time Deduction)
+                            </SelectItem>
+                            <SelectItem value="spread_year">
+                              Spread Across Fiscal Year (Divided Monthly)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

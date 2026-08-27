@@ -27,6 +27,7 @@ export interface Rebate {
     category?: string;
   };
   rebateAmount: number | string;
+  adjustmentType?: string; // "single_month" | "spread_year"
   monthYear: string; // YYYY-MM format
   attachment?: string | null;
   status: string; // pending, approved, rejected
@@ -111,6 +112,7 @@ export async function createRebate(data: {
   rebateNatureId: string;
   rebateAmount: number;
   monthYear: string; // YYYY-MM format
+  adjustmentType?: string; // "single_month" | "spread_year"
   attachment?: string; // File path/URL
   remarks?: string;
 }): Promise<{ status: boolean; data?: Rebate; message?: string }> {
@@ -122,6 +124,7 @@ export async function createRebate(data: {
         rebateNatureId: data.rebateNatureId,
         rebateAmount: data.rebateAmount,
         monthYear: data.monthYear,
+        adjustmentType: data.adjustmentType || "single_month",
         attachment: data.attachment,
         remarks: data.remarks,
       }),
@@ -156,6 +159,7 @@ export async function updateRebate(
     rebateNatureId?: string;
     rebateAmount?: number;
     monthYear?: string;
+    adjustmentType?: string;
     attachment?: string | null; // File path/URL
     remarks?: string | null;
     status?: string;
@@ -167,6 +171,7 @@ export async function updateRebate(
     if (data.rebateNatureId) jsonData.rebateNatureId = data.rebateNatureId;
     if (data.rebateAmount !== undefined) jsonData.rebateAmount = data.rebateAmount;
     if (data.monthYear) jsonData.monthYear = data.monthYear;
+    if (data.adjustmentType) jsonData.adjustmentType = data.adjustmentType;
     if (data.remarks !== undefined) jsonData.remarks = data.remarks;
     if (data.status) jsonData.status = data.status;
     if (data.attachment !== undefined) jsonData.attachment = data.attachment;
