@@ -4,5 +4,5 @@ import React from "react";
 import { AvailableStockSummaryView } from "@/components/reports/available-stock-summary/available-stock-summary-view";
 
 export default function ErpAvailableStockSummaryPage() {
-    return <AvailableStockSummaryView title="Available Stock Summary (ERP)" />;
+    return <AvailableStockSummaryView title="Available Stock Summary (ERP)" isPosLevel={false} />;
 }

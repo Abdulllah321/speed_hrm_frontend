@@ -1918,11 +1918,6 @@ export const menuData: MenuItem[] = [
         icon: Package,
         children: [
           {
-            title: "Stock Valuation Report",
-            href: "/erp/reports/stock-valuation",
-            permissions: ["erp.report.view"],
-          },
-          {
             title: "Available Stock + Reserved Stock",
             href: "/erp/reports/available-stock-summary",
             permissions: ["erp.report.view"],
@@ -1930,6 +1925,11 @@ export const menuData: MenuItem[] = [
           {
             title: "Overall Available Stock",
             href: "/erp/reports/overall-available-reserved-stock",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "POS Overall Available Stock",
+            href: "/erp/reports/pos/overall-available-reserved-stock",
             permissions: ["erp.report.view"],
           },
           {
