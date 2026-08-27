@@ -4,17 +4,23 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { StockTotals } from "./types";
 import { formatCurrency } from "@/lib/utils";
-import { Package, TrendingUp, Truck, Store, Layers, Coins } from "lucide-react";
+import { Package, TrendingUp, Truck, Store, Layers, Coins, Calculator } from "lucide-react";
 
 interface HeaderProps {
     grandTotals: StockTotals;
     totalItemsCount: number;
     isLoading: boolean;
+    isPosLevel?: boolean;
 }
 
-export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading }: HeaderProps) {
+export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, isPosLevel = false }: HeaderProps) {
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-4">
+        <div className={cn(
+            "grid gap-3 mb-4",
+            isPosLevel
+                ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-6"
+                : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-7"
+        )}>
             <Card className="bg-card border-border shadow-sm overflow-hidden">
                 <CardContent className="p-3">
                     <div className="flex items-center justify-between">
@@ -98,6 +104,22 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading }
                     </p>
                 </CardContent>
             </Card>
+
+            {!isPosLevel && (
+                <Card className="bg-card border-border shadow-sm overflow-hidden">
+                    <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Costing Value</span>
+                            <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400">
+                                <Calculator className="h-4 w-4" />
+                            </div>
+                        </div>
+                        <p className="text-lg font-bold mt-1 text-teal-600 dark:text-teal-400 truncate">
+                            {isLoading ? "..." : formatCurrency(grandTotals.costingValue)}
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

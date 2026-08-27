@@ -1,17 +1,16 @@
-"use client";
-
 import React from "react";
 import { StockTotals } from "./types";
-import { Layers, Package, Truck, Lock, ShieldCheck, DollarSign } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { Layers, Package, Truck, Lock, ShieldCheck, DollarSign, Calculator } from "lucide-react";
+import { formatCurrency, cn } from "@/lib/utils";
 
 interface HeaderProps {
     grandTotals: StockTotals;
     totalItemsCount: number;
     isLoading: boolean;
+    isPosLevel?: boolean;
 }
 
-export function OverallAvailableReservedHeader({ grandTotals, totalItemsCount, isLoading }: HeaderProps) {
+export function OverallAvailableReservedHeader({ grandTotals, totalItemsCount, isLoading, isPosLevel = false }: HeaderProps) {
     const kpiCards = [
         {
             title: "Total Items Analyzed",
@@ -61,10 +60,23 @@ export function OverallAvailableReservedHeader({ grandTotals, totalItemsCount, i
             color: "text-indigo-600 dark:text-indigo-400",
             bg: "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/50",
         },
+        ...(!isPosLevel ? [{
+            title: "Total Unit Value",
+            value: formatCurrency(grandTotals.costingValue),
+            sub: "Total Cost Valuation",
+            icon: Calculator,
+            color: "text-teal-600 dark:text-teal-400",
+            bg: "bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800/50",
+        }] : []),
     ];
 
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+        <div className={cn(
+            "grid gap-3 mb-4",
+            isPosLevel
+                ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
+                : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-7"
+        )}>
             {kpiCards.map((card, idx) => {
                 const Icon = card.icon;
                 return (

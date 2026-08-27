@@ -285,6 +285,7 @@ export function AvailableStockSummaryView({
                 grandTotals={grandTotals}
                 totalItemsCount={filteredItems.length}
                 isLoading={isFetchingData}
+                isPosLevel={isPosLevel}
             />
 
             {/* Filters Toolbar */}
@@ -337,6 +338,7 @@ export function AvailableStockSummaryView({
                 grandTotals={grandTotals}
                 searchQuery={searchQuery}
                 isLoading={isFetchingData}
+                isPosLevel={isPosLevel}
             />
         </div>
     );

@@ -57,7 +57,7 @@ export async function exportAvailableStockSummaryToExcel({
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
             "Unit Cost (Rs.)",
-            "Costing Value (Rs.)",
+            "Unit Value (Rs.)",
         ]);
 
         if (exportMode === "hierarchy" || exportMode === "both") {
@@ -183,7 +183,7 @@ export async function exportAvailableStockSummaryToExcel({
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
             "Unit Cost (Rs.)",
-            "Costing Value (Rs.)",
+            "Unit Value (Rs.)",
         ]);
 
         if (exportMode === "flat" || exportMode === "both") {

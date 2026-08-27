@@ -59,6 +59,8 @@ export async function exportOverallAvailableReservedStockToPdf({
                     <td style="text-align: right; font-weight: bold;">${item.total.toLocaleString()}</td>
                     <td style="text-align: right;">Rs. ${item.unitPrice ? item.unitPrice.toLocaleString() : "-"}</td>
                     <td style="text-align: right; font-weight: bold;">Rs. ${item.value.toLocaleString()}</td>
+                    <td style="text-align: right;">Rs. ${item.unitCost ? item.unitCost.toLocaleString() : "-"}</td>
+                    <td style="text-align: right; font-weight: bold;">Rs. ${item.costingValue.toLocaleString()}</td>
                     ${locCellsHtml}
                 </tr>
             `;
@@ -131,6 +133,8 @@ export async function exportOverallAvailableReservedStockToPdf({
                             <th style="text-align: right;">Total Bal</th>
                             <th style="text-align: right;">Price</th>
                             <th style="text-align: right;">Value</th>
+                            <th style="text-align: right;">Unit Cost</th>
+                            <th style="text-align: right;">Unit Value</th>
                             ${storeHeadersHtml}
                         </tr>
                     </thead>
@@ -146,6 +150,8 @@ export async function exportOverallAvailableReservedStockToPdf({
                             <td style="text-align: right; color: #38BDF8;">${grandTotals.total.toLocaleString()}</td>
                             <td style="text-align: right;"></td>
                             <td style="text-align: right; color: #818CF8;">Rs. ${grandTotals.value.toLocaleString()}</td>
+                            <td style="text-align: right;"></td>
+                            <td style="text-align: right; color: #2DD4BF;">Rs. ${grandTotals.costingValue.toLocaleString()}</td>
                             ${storeGrandTotalsHtml}
                         </tr>
                     </tfoot>

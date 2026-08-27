@@ -85,6 +85,8 @@ export async function exportAvailableStockSummaryToPdf({
                         <td style="text-align: right; font-weight: bold;">${node.totals.total.toLocaleString()}</td>
                         <td style="text-align: right;">${node.totals.unitPrice ? "Rs. " + node.totals.unitPrice.toLocaleString() : "-"}</td>
                         <td style="text-align: right; font-weight: bold;">Rs. ${node.totals.value.toLocaleString()}</td>
+                        <td style="text-align: right;">${node.totals.unitCost ? "Rs. " + node.totals.unitCost.toLocaleString() : "-"}</td>
+                        <td style="text-align: right; font-weight: bold;">Rs. ${node.totals.costingValue.toLocaleString()}</td>
                     </tr>
                 `;
 
@@ -120,6 +122,8 @@ export async function exportAvailableStockSummaryToPdf({
                         <td style="text-align: right; font-weight: bold;">${item.total.toLocaleString()}</td>
                         <td style="text-align: right;">Rs. ${item.unitPrice.toLocaleString()}</td>
                         <td style="text-align: right; font-weight: bold;">Rs. ${item.value.toLocaleString()}</td>
+                        <td style="text-align: right;">Rs. ${item.unitCost.toLocaleString()}</td>
+                        <td style="text-align: right; font-weight: bold;">Rs. ${item.costingValue.toLocaleString()}</td>
                     </tr>
                 `;
 
@@ -136,31 +140,35 @@ export async function exportAvailableStockSummaryToPdf({
 
         const tableHeaderHtml = exportMode === "hierarchy" ? `
             <tr>
-                <th style="width: 32%;">GPC / Category / Product / Barcode</th>
-                <th style="width: 7%; text-align: center;">Size</th>
-                <th style="width: 12%; text-align: center;">Color</th>
-                <th style="width: 9%; text-align: right;">Available Qty</th>
-                <th style="width: 8%; text-align: right;">In Transit</th>
-                <th style="width: 8%; text-align: right;">Reserved</th>
-                <th style="width: 9%; text-align: right;">Total Balance</th>
-                <th style="width: 7%; text-align: right;">Price</th>
-                <th style="width: 8%; text-align: right;">Value</th>
+                <th style="width: 28%;">GPC / Category / Product / Barcode</th>
+                <th style="width: 6%; text-align: center;">Size</th>
+                <th style="width: 10%; text-align: center;">Color</th>
+                <th style="width: 8%; text-align: right;">Available Qty</th>
+                <th style="width: 7%; text-align: right;">In Transit</th>
+                <th style="width: 7%; text-align: right;">Reserved</th>
+                <th style="width: 8%; text-align: right;">Total Balance</th>
+                <th style="width: 7%; text-align: right;">Selling Price</th>
+                <th style="width: 7%; text-align: right;">Selling Value</th>
+                <th style="width: 6%; text-align: right;">Unit Cost</th>
+                <th style="width: 6%; text-align: right;">Unit Value</th>
             </tr>
         ` : `
             <tr>
-                <th style="width: 14%;">Location</th>
-                <th style="width: 10%; text-align: center;">Barcode</th>
-                <th style="width: 9%; text-align: center;">SKU</th>
-                <th style="width: 20%;">Article Name</th>
-                <th style="width: 10%;">Brand</th>
+                <th style="width: 12%;">Location</th>
+                <th style="width: 9%; text-align: center;">Barcode</th>
+                <th style="width: 8%; text-align: center;">SKU</th>
+                <th style="width: 17%;">Article Name</th>
+                <th style="width: 8%;">Brand</th>
                 <th style="width: 5%; text-align: center;">Size</th>
-                <th style="width: 8%; text-align: center;">Color</th>
-                <th style="width: 6%; text-align: right;">Qty</th>
+                <th style="width: 7%; text-align: center;">Color</th>
+                <th style="width: 5%; text-align: right;">Qty</th>
                 <th style="width: 5%; text-align: right;">Transit</th>
                 <th style="width: 5%; text-align: right;">Reserved</th>
-                <th style="width: 6%; text-align: right;">Total</th>
-                <th style="width: 6%; text-align: right;">Price</th>
-                <th style="width: 8%; text-align: right;">Value</th>
+                <th style="width: 5%; text-align: right;">Total</th>
+                <th style="width: 5%; text-align: right;">Price</th>
+                <th style="width: 7%; text-align: right;">Value</th>
+                <th style="width: 5%; text-align: right;">Unit Cost</th>
+                <th style="width: 7%; text-align: right;">Unit Value</th>
             </tr>
         `;
 
@@ -207,6 +215,8 @@ export async function exportAvailableStockSummaryToPdf({
                             <td style="text-align: right; color: #38BDF8;">${grandTotals.total.toLocaleString()}</td>
                             <td style="text-align: right;"></td>
                             <td style="text-align: right; color: #818CF8;">Rs. ${grandTotals.value.toLocaleString()}</td>
+                            <td style="text-align: right;"></td>
+                            <td style="text-align: right; color: #2DD4BF;">Rs. ${grandTotals.costingValue.toLocaleString()}</td>
                         </tr>
                     </tfoot>
                 </table>

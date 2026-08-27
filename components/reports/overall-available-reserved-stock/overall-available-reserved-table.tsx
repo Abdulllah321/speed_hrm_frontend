@@ -39,6 +39,7 @@ interface TableProps {
     grandTotals: StockTotals;
     searchQuery: string;
     isLoading: boolean;
+    isPosLevel?: boolean;
 }
 
 export function OverallAvailableReservedTable({
@@ -47,6 +48,7 @@ export function OverallAvailableReservedTable({
     grandTotals,
     searchQuery,
     isLoading,
+    isPosLevel = false,
 }: TableProps) {
     const parentRef = useRef<HTMLDivElement>(null);
 
@@ -103,6 +105,12 @@ export function OverallAvailableReservedTable({
                         <div className="w-24 text-right shrink-0">Total Bal</div>
                         <div className="w-28 text-right shrink-0">Price</div>
                         <div className="w-32 text-right shrink-0">Value</div>
+                        {!isPosLevel && (
+                            <>
+                                <div className="w-28 text-right shrink-0">Unit Cost</div>
+                                <div className="w-32 text-right shrink-0">Unit Value</div>
+                            </>
+                        )}
 
                         {/* Dynamic Store / Warehouse Columns Header */}
                         {locationHeaders.map((hdr) => (
@@ -204,6 +212,20 @@ export function OverallAvailableReservedTable({
                                         {formatCurrency(item.value)}
                                     </div>
 
+                                    {!isPosLevel && (
+                                        <>
+                                            {/* Unit Cost */}
+                                            <div className="w-28 text-right shrink-0 text-muted-foreground">
+                                                {item.unitCost ? formatCurrency(item.unitCost) : "-"}
+                                            </div>
+
+                                            {/* Unit Value */}
+                                            <div className="w-32 text-right shrink-0 font-semibold text-teal-600 dark:text-teal-400">
+                                                {formatCurrency(item.costingValue)}
+                                            </div>
+                                        </>
+                                    )}
+
                                     {/* Dynamic Store / Warehouse Quantities */}
                                     {locationHeaders.map((hdr) => {
                                         const qty = hdr.type === "warehouse"
@@ -256,6 +278,14 @@ export function OverallAvailableReservedTable({
                         <div className="w-32 text-right shrink-0 text-indigo-600 dark:text-indigo-400 font-bold">
                             {formatCurrency(grandTotals.value)}
                         </div>
+                        {!isPosLevel && (
+                            <>
+                                <div className="w-28 text-right shrink-0 text-muted-foreground/40">-</div>
+                                <div className="w-32 text-right shrink-0 text-teal-600 dark:text-teal-400 font-bold">
+                                    {formatCurrency(grandTotals.costingValue)}
+                                </div>
+                            </>
+                        )}
 
                         {/* Grand totals for each store/warehouse column */}
                         {locationHeaders.map((hdr) => {

@@ -39,6 +39,7 @@ interface TableProps {
     grandTotals: StockTotals;
     searchQuery: string;
     isLoading: boolean;
+    isPosLevel?: boolean;
 }
 
 interface FlatRowItem {
@@ -49,7 +50,7 @@ interface FlatRowItem {
     isExpanded: boolean;
 }
 
-export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoading }: TableProps) {
+export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoading, isPosLevel = false }: TableProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
 
@@ -125,7 +126,7 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                 ref={parentRef}
                 className="max-h-[680px] overflow-y-auto relative scrollbar-thin scrollbar-thumb-border"
             >
-                <div className="min-w-[1100px]">
+                <div className={isPosLevel ? "min-w-[1100px]" : "min-w-[1400px]"}>
                     {/* Header Row */}
                     <div className="sticky top-0 z-20 border-b border-border bg-muted/95 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider text-muted-foreground shadow-sm flex items-center h-10 px-4">
                         <div className="flex-1 min-w-[340px] pr-3">GPC / Category / Product / Barcode</div>
@@ -137,6 +138,12 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                         <div className="w-28 text-right shrink-0">Total Balance</div>
                         <div className="w-32 text-right shrink-0">Selling Price</div>
                         <div className="w-36 text-right shrink-0">Selling Value</div>
+                        {!isPosLevel && (
+                            <>
+                                <div className="w-32 text-right shrink-0">Unit Cost</div>
+                                <div className="w-36 text-right shrink-0">Unit Value</div>
+                            </>
+                        )}
                     </div>
 
                     {/* Virtualized Body Container */}
@@ -293,6 +300,20 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                                     <div className="w-36 text-right shrink-0 font-semibold text-foreground">
                                         {formatCurrency(node.totals.value)}
                                     </div>
+
+                                    {!isPosLevel && (
+                                        <>
+                                            {/* Column 10: Cost Price */}
+                                            <div className="w-32 text-right shrink-0 text-muted-foreground">
+                                                {node.totals.unitCost ? formatCurrency(node.totals.unitCost) : "-"}
+                                            </div>
+
+                                            {/* Column 11: Costing Value */}
+                                            <div className="w-36 text-right shrink-0 font-semibold text-teal-600 dark:text-teal-400">
+                                                {formatCurrency(node.totals.costingValue)}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             );
                         })}
@@ -301,7 +322,10 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
             </div>
 
             {/* Sticky Grand Totals Footer */}
-            <div className="border-t-2 border-border bg-muted/95 backdrop-blur-md px-4 h-11 text-xs font-bold text-foreground shadow-inner flex items-center min-w-[1100px]">
+            <div className={cn(
+                "border-t-2 border-border bg-muted/95 backdrop-blur-md px-4 h-11 text-xs font-bold text-foreground shadow-inner flex items-center",
+                isPosLevel ? "min-w-[1100px]" : "min-w-[1400px]"
+            )}>
                 <div className="flex-1 min-w-[340px] uppercase tracking-wider text-muted-foreground">GRAND TOTAL</div>
                 <div className="w-20 text-center text-muted-foreground/60">-</div>
                 <div className="w-44 text-center text-muted-foreground/60">-</div>
@@ -321,6 +345,14 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                 <div className="w-36 text-right text-indigo-600 dark:text-indigo-400 font-bold">
                     {formatCurrency(grandTotals.value)}
                 </div>
+                {!isPosLevel && (
+                    <>
+                        <div className="w-32 text-right text-muted-foreground/60">-</div>
+                        <div className="w-36 text-right text-teal-600 dark:text-teal-400 font-bold">
+                            {formatCurrency(grandTotals.costingValue)}
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

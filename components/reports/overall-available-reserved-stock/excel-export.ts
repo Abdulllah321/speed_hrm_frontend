@@ -57,6 +57,8 @@ export async function exportOverallAvailableReservedStockToExcel({
             "Total Balance",
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
+            "Unit Cost (Rs.)",
+            "Unit Value (Rs.)",
             ...locationHeaders.map((h) => h.code),
         ];
         dataRows.push(headerRow);
@@ -93,6 +95,8 @@ export async function exportOverallAvailableReservedStockToExcel({
                 item.total,
                 item.unitPrice,
                 item.value,
+                item.unitCost,
+                item.costingValue,
                 ...locQtys,
             ]);
 
@@ -129,6 +133,8 @@ export async function exportOverallAvailableReservedStockToExcel({
             grandTotals.total,
             "",
             grandTotals.value,
+            "",
+            grandTotals.costingValue,
             ...totalsLocQtys,
         ]);
 
@@ -144,6 +150,7 @@ export async function exportOverallAvailableReservedStockToExcel({
             { wch: 14 }, { wch: 16 }, { wch: 32 }, { wch: 10 },
             { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 12 },
             { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 18 },
+            { wch: 16 }, { wch: 18 },
             ...locationHeaders.map(() => ({ wch: 12 })),
         ];
         worksheet["!cols"] = colWidths;
