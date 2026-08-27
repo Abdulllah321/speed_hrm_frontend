@@ -67,6 +67,7 @@ export function RebateList({ initialData = [] }: RebateListProps) {
         year,
         monthYear: rebate.monthYear ? formatMonthYear(month, year) : "—",
         rebateType: rebateType.charAt(0).toUpperCase() + rebateType.slice(1),
+        adjustmentType: rebate.adjustmentType || "single_month",
         rebateNature: rebate.rebateNature?.name || "—",
         actualInvestment: isFixed ? null : (rebate.rebateAmount ? Number(rebate.rebateAmount) : null),
         rebateAmount: rebate.rebateAmount ? Number(rebate.rebateAmount) : 0,
