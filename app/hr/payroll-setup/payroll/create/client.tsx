@@ -667,6 +667,12 @@ export function GeneratePayrollClient({
                                                                 <span className="font-bold shrink-0">Annual Tax:</span>
                                                                 <span className="text-right">{Math.round(Number(annualTax || 0)).toLocaleString()}</span>
                                                             </div>
+                                                            {Number(row.taxBreakup?.advanceTaxCredit || row.taxBreakup?.totalRebate || 0) > 0 && (
+                                                                <div className="flex justify-between items-center gap-2 text-emerald-600 font-semibold">
+                                                                    <span className="shrink-0">Less Advance Tax:</span>
+                                                                    <span className="text-right">-{Math.round(Number(row.taxBreakup?.advanceTaxCredit || row.taxBreakup?.totalRebate || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            )}
                                                             <div className="flex justify-between items-center gap-2 font-bold border-t pt-1 bg-gray-50">
                                                                 <span className="shrink-0">Monthly Tax:</span>
                                                                 <span className="text-right">

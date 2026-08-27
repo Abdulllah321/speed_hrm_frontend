@@ -536,6 +536,15 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/banks/list" },
     ],
   },
+  {
+    title: "Rebate Nature",
+    environment: "MASTER",
+    module: "HR",
+    permissions: ["master.rebate-nature.read", "master.rebate-nature.create", "hr.rebate-nature.read"],
+    children: [
+      { title: "View", href: "/master/rebate-nature" },
+    ],
+  },
 
   // ── POS ──────────────────────────────────────────────────────────────────────
   {
@@ -1349,6 +1358,9 @@ export const menuData: MenuItem[] = [
       "hr.provident-fund.create",
       "hr.leave-encashment.read",
       "hr.leave-encashment.create",
+      "hr.rebate.read",
+      "hr.rebate.create",
+      "hr.rebate-nature.read",
     ],
     children: [
       {
@@ -1618,6 +1630,22 @@ export const menuData: MenuItem[] = [
             title: "View",
             href: "/hr/payroll-setup/cpr-tax/view",
             permissions: ["hr.payroll.read"],
+          },
+        ],
+      },
+      {
+        title: "Tax Rebate",
+        permissions: ["hr.rebate.read", "hr.rebate.create", "hr.payroll.read", "hr.payroll.create"],
+        children: [
+          {
+            title: "Create",
+            href: "/hr/payroll-setup/rebate/create",
+            permissions: ["hr.rebate.create", "hr.payroll.create"],
+          },
+          {
+            title: "View",
+            href: "/hr/payroll-setup/rebate/list",
+            permissions: ["hr.rebate.read", "hr.payroll.read"],
           },
         ],
       },
