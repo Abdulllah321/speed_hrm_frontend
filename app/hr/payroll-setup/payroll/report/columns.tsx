@@ -221,7 +221,9 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
             return (
                 <div className="text-[10px] space-y-0.5 min-w-[160px]">
                     <div className="flex justify-between items-center gap-2">
-                        <span className="font-bold shrink-0">Taxable:</span>
+                        <span className="font-bold shrink-0">
+                            Taxable{tax?.activeFiscalMonths && tax.activeFiscalMonths < 12 ? ` (${tax.activeFiscalMonths}m)` : ''}:
+                        </span>
                         <span className="text-right">{Math.round(Number(tax?.taxableIncome || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                     </div>
                     {tax?.fixedAmountTax > 0 && (
