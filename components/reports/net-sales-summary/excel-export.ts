@@ -32,9 +32,33 @@ export async function generateNetSalesSummaryExcel(opts: {
   const dateStr = format(new Date(), "yyyy-MM-dd");
   const fileName = `net-sales-summary-report-${dateStr}-${exportType}.xlsx`;
 
+  const getMonthLabel = (dateStr?: string, monthStr?: string): string => {
+    if (monthStr && monthStr.trim()) return monthStr;
+    if (!dateStr || !dateStr.trim()) return "-";
+    try {
+      const parts = dateStr.split("T")[0].split("-");
+      if (parts.length >= 2) {
+        const year = parts[0];
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        if (monthIdx >= 0 && monthIdx < 12) {
+          return `${months[monthIdx]} ${year}`;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return dateStr;
+  };
+
   if (exportType === "flat") {
     const headers = [
       "Outlet / Location",
+      "Month / Year",
+      "Doc Date",
+      "Doc Number",
+      "Salesperson / Cashier",
+      "Tax Group Rate",
       "Brand",
       "Division",
       "Category",
@@ -75,6 +99,11 @@ export async function generateNetSalesSummaryExcel(opts: {
 
       dataRows.push([
         item.locationName || "Main Outlet",
+        getMonthLabel(item.docDate, item.docMonth),
+        item.docDate || "-",
+        item.docNo || "-",
+        item.salesPerson || "-",
+        item.taxRateName || (item.taxRatePercent ? `${item.taxRatePercent}%` : "-"),
         item.brandName || "-",
         item.divisionName || "-",
         item.categoryName || "-",
@@ -115,6 +144,11 @@ export async function generateNetSalesSummaryExcel(opts: {
       "",
       "",
       "",
+      "",
+      "",
+      "",
+      "",
+      "",
       "-",
       grandTotals.totalItemsSold,
       grandTotals.totalItemsReturned,
@@ -129,6 +163,11 @@ export async function generateNetSalesSummaryExcel(opts: {
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
     worksheet["!cols"] = [
+      { wch: 20 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 18 },
+      { wch: 22 },
       { wch: 20 },
       { wch: 18 },
       { wch: 18 },
@@ -149,7 +188,7 @@ export async function generateNetSalesSummaryExcel(opts: {
       { wch: 14 },
       { wch: 16 },
       { wch: 14 },
-      { wch: 20 },
+      { wch: 22 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Flat Net Sales Items");
@@ -244,7 +283,7 @@ export async function generateNetSalesSummaryExcel(opts: {
       { wch: 14 },
       { wch: 16 },
       { wch: 14 },
-      { wch: 20 },
+      { wch: 22 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Hierarchical Net Sales");

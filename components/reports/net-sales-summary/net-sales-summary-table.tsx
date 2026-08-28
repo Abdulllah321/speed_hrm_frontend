@@ -11,6 +11,7 @@ import {
   Layers,
   QrCode,
   Calendar,
+  CalendarDays,
   FileText,
   User,
   Percent,
@@ -165,9 +166,9 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
       {/* Main Container with Horizontal Scroll */}
       <div className="border border-border/80 rounded-2xl overflow-hidden bg-background shadow-md">
         <div ref={parentRef} className="max-h-[660px] overflow-auto relative">
-          <div className="min-w-[1890px] w-full">
+          <div className="min-w-[1980px] w-full">
             {/* Sticky Table Header */}
-            <div className="sticky top-0 z-20 flex items-center bg-slate-950 text-slate-100 text-[11px] font-mono font-bold uppercase tracking-wider h-11 border-b-2 border-slate-800 shadow-md min-w-[1890px] px-3">
+            <div className="sticky top-0 z-20 flex items-center bg-slate-950 text-slate-100 text-[11px] font-mono font-bold uppercase tracking-wider h-11 border-b-2 border-slate-800 shadow-md min-w-[1980px] px-3">
               <div className="w-[360px] min-w-[360px] shrink-0 px-2">Product Hierarchy / Description</div>
               <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-center">SKU / Barcode</div>
               <div className="w-[80px] min-w-[80px] shrink-0 px-2 text-center">Size</div>
@@ -181,7 +182,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
               <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right">Discounts</div>
               <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right">Val Excl Tax</div>
               <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right">Sales Tax</div>
-              <div className="w-[160px] min-w-[160px] shrink-0 px-2 text-right">Val Incl Tax / Net Rev</div>
+              <div className="w-[190px] min-w-[190px] shrink-0 pl-2 pr-4 text-right">Val Incl Tax / Net Rev</div>
             </div>
 
             {/* Virtualized Body */}
@@ -195,7 +196,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
                   height: `${rowVirtualizer.getTotalSize()}px`,
                   position: "relative",
                 }}
-                className="w-full min-w-[1890px]"
+                className="w-full min-w-[1980px]"
               >
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const row = flatVisibleRows[virtualRow.index];
@@ -224,7 +225,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
                         top: 0,
                         left: 0,
                         width: "100%",
-                        minWidth: "1890px",
+                        minWidth: "1980px",
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start}px)`,
                       }}
@@ -258,6 +259,8 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
 
                           {node.level === "location" ? (
                             <Store className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          ) : node.level === "month" ? (
+                            <CalendarDays className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
                           ) : node.level === "date" ? (
                             <Calendar className="h-3.5 w-3.5 text-sky-500 shrink-0" />
                           ) : node.level === "document" ? (
@@ -364,7 +367,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
                       </div>
 
                       {/* Column 14: Value Incl. Sales Tax / Net Revenue */}
-                      <div className="w-[160px] min-w-[160px] shrink-0 px-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <div className="w-[190px] min-w-[190px] shrink-0 pl-2 pr-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(node.totals.valueInclSalesTax)}
                       </div>
                     </div>
@@ -374,7 +377,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
             )}
 
             {/* Sticky Table Footer */}
-            <div className="sticky bottom-0 z-20 flex items-center bg-slate-900 text-slate-100 text-xs font-mono font-bold uppercase h-12 border-t-2 border-slate-700 shadow-xl min-w-[1890px] px-3">
+            <div className="sticky bottom-0 z-20 flex items-center bg-slate-900 text-slate-100 text-xs font-mono font-bold uppercase h-12 border-t-2 border-slate-700 shadow-xl min-w-[1980px] px-3">
               <div className="w-[360px] min-w-[360px] shrink-0 px-2">Grand Total Summary</div>
               <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-center text-slate-500">-</div>
               <div className="w-[80px] min-w-[80px] shrink-0 px-2 text-center text-slate-500">-</div>
@@ -388,7 +391,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
               <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right text-amber-400">{formatCurrency(grandTotals.discountAmount)}</div>
               <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right text-sky-300">{formatCurrency(grandTotals.valueExSalesTax)}</div>
               <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right text-slate-300">{formatCurrency(grandTotals.taxAmount)}</div>
-              <div className="w-[160px] min-w-[160px] shrink-0 px-2 text-right text-emerald-400 font-black text-sm">{formatCurrency(grandTotals.valueInclSalesTax)}</div>
+              <div className="w-[190px] min-w-[190px] shrink-0 pl-2 pr-4 text-right text-emerald-400 font-black text-sm">{formatCurrency(grandTotals.valueInclSalesTax)}</div>
             </div>
           </div>
         </div>

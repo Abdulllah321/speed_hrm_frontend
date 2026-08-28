@@ -50,6 +50,7 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
   const [fbrOnlyFilter, setFbrOnlyFilter] = useState(false);
 
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
+    month: true,
     date: false,
     document: false,
     salesPerson: false,
@@ -75,13 +76,35 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
   const { treeData, grandTotals } = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
 
+    // Helper to format date string like "2026-07-15" into Month "July 2026"
+    const getMonthLabel = (dateStr?: string, monthStr?: string): string => {
+      if (monthStr && monthStr.trim()) return monthStr;
+      if (!dateStr || !dateStr.trim()) return "Month Wise";
+      try {
+        const parts = dateStr.split("T")[0].split("-");
+        if (parts.length >= 2) {
+          const year = parts[0];
+          const monthIdx = parseInt(parts[1], 10) - 1;
+          const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+          if (monthIdx >= 0 && monthIdx < 12) {
+            return `${months[monthIdx]} ${year}`;
+          }
+        }
+      } catch {
+        // fallback
+      }
+      return dateStr;
+    };
+
     // 1. Filter flat items
     const filteredFlatItems = rawItems.filter((item) => {
       if (!q) return true;
+      const monthLbl = getMonthLabel(item.docDate, item.docMonth);
       return (
         item.locationName.toLowerCase().includes(q) ||
         (item.docNo && item.docNo.toLowerCase().includes(q)) ||
         (item.docDate && item.docDate.toLowerCase().includes(q)) ||
+        monthLbl.toLowerCase().includes(q) ||
         (item.salesPerson && item.salesPerson.toLowerCase().includes(q)) ||
         (item.taxRateName && item.taxRateName.toLowerCase().includes(q)) ||
         (item.brandName && item.brandName.toLowerCase().includes(q)) ||
@@ -100,6 +123,7 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
     const levels: string[] = [];
 
     if (isSeparate && groupingLevels.location) levels.push("location");
+    if (groupingLevels.month) levels.push("month");
     if (groupingLevels.date) levels.push("date");
     if (groupingLevels.document) levels.push("document");
     if (groupingLevels.salesPerson) levels.push("salesPerson");
@@ -161,12 +185,14 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
 
         if (levelName === "location") {
           nodeVal = item.locationName || "Main Outlet";
+        } else if (levelName === "month") {
+          nodeVal = getMonthLabel(item.docDate, item.docMonth);
         } else if (levelName === "date") {
           nodeVal = item.docDate || "Date Wise";
         } else if (levelName === "document") {
           nodeVal = item.docNo ? `Doc #${item.docNo}` : "Document Wise";
         } else if (levelName === "salesPerson") {
-          nodeVal = item.salesPerson || "System / Default Cashier";
+          nodeVal = item.salesPerson || "Default Cashier";
         } else if (levelName === "taxRate") {
           if (item.taxRateName) {
             nodeVal = item.taxRateName;

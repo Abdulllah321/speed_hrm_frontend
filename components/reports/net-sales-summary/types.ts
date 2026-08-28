@@ -21,6 +21,7 @@ export interface NetSalesSummaryLineItem {
   id: string;
   docNo?: string;
   docDate?: string;
+  docMonth?: string;
   salesPerson?: string;
   taxRatePercent?: number;
   taxRateName?: string;
@@ -55,6 +56,7 @@ export interface NetSalesSummaryFlatRecord {
   locationName: string;
   docNo?: string;
   docDate?: string;
+  docMonth?: string;
   salesPerson?: string;
   taxRatePercent?: number;
   taxRateName?: string;
@@ -92,6 +94,7 @@ export interface NetSalesSummaryReportData {
 }
 
 export interface GroupingLevels {
+  month?: boolean;
   date?: boolean;
   document?: boolean;
   salesPerson?: boolean;
@@ -107,7 +110,7 @@ export interface GroupingLevels {
 }
 
 export interface NetSalesSummaryTreeNode {
-  level: string; // "location" | "date" | "document" | "salesPerson" | "taxRate" | "brand" | "division" | "category" | "gender" | "silhouette" | "article" | "variant"
+  level: string; // "location" | "month" | "date" | "document" | "salesPerson" | "taxRate" | "brand" | "division" | "category" | "gender" | "silhouette" | "article" | "variant"
   value: string;
   sku?: string;
   articleName?: string;

@@ -251,11 +251,19 @@ export function NetSalesSummaryFilters({
                 )}
                 <div className="flex items-center gap-2">
                   <Checkbox
+                    id="lvl-month-net"
+                    checked={!!groupingLevels.month}
+                    onCheckedChange={(c) => onToggleLevel("month", !!c)}
+                  />
+                  <Label htmlFor="lvl-month-net" className="font-semibold text-emerald-600 dark:text-emerald-400">Month Wise (e.g. July 2026)</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
                     id="lvl-date-net"
                     checked={!!groupingLevels.date}
                     onCheckedChange={(c) => onToggleLevel("date", !!c)}
                   />
-                  <Label htmlFor="lvl-date-net" className="font-semibold text-emerald-600 dark:text-emerald-400">Date Wise</Label>
+                  <Label htmlFor="lvl-date-net" className="font-semibold text-emerald-600 dark:text-emerald-400">Date Wise (Exact Date)</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -413,7 +421,7 @@ export function NetSalesSummaryFilters({
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by SKU, Barcode, Article Name, Brand, Document #, Cashier, or Tax Rate..."
+            placeholder="Search by SKU, Barcode, Article Name, Brand, Document #, Cashier, Month, or Tax Rate..."
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
             className="pl-9 h-9 rounded-xl text-xs bg-background"
