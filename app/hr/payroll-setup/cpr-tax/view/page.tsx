@@ -9,6 +9,7 @@ interface PageProps {
     month?: string;
     year?: string;
     months?: string;
+    employeeIds?: string;
   }>;
 }
 
@@ -19,6 +20,7 @@ export default async function ViewCprTaxPage({ searchParams }: PageProps) {
       month: params.month,
       year: params.year,
       months: params.months,
+      employeeIds: params.employeeIds,
     });
     const initialData = result.status && result.data ? result.data : [];
 

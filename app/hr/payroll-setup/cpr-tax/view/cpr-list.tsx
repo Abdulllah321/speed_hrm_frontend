@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CprTaxRecord, queueCprTaxesExport } from '@/lib/actions/cpr-tax';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
+import { EmployeeMultiSelect } from '@/components/employees/employee-multi-select';
 
 interface CprListProps {
   initialData?: CprTaxRecord[];
@@ -35,34 +36,54 @@ export function CprList({ initialData = [] }: CprListProps) {
     return [];
   });
 
+  // Parse initial Employee selections from URL query params
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>(() => {
+    const empParam = searchParams.get('employeeIds');
+    if (empParam) {
+      return empParam.split(',').filter(Boolean);
+    }
+    return [];
+  });
+
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Transform API records to CprTaxRow format
   const data = useMemo<CprTaxRow[]>(() => {
-    return initialData.map((record, index) => ({
-      id: record.id,
-      sNo: index + 1,
-      employeeId: record.employeeId,
-      employeeCode: record.employee?.employeeId || '—',
-      employeeName: record.employee?.employeeName || '—',
-      name: record.name || '—',
-      cnic: record.cnic || '—',
-      cprNo: record.cprNo || '—',
-      city: record.city || '—',
-      carAmount: record.carAmount !== null ? Number(record.carAmount) : null,
-      ntn: record.ntn || '—',
-      taxableAmountAnnual: record.taxableAmountAnnual !== null ? Number(record.taxableAmountAnnual) : null,
-      taxableAmountGross: record.taxableAmountGross !== null ? Number(record.taxableAmountGross) : null,
-      taxAmountMonthlyTax: record.taxAmountMonthlyTax !== null ? Number(record.taxAmountMonthlyTax) : null,
-      taxAmountAnnual: record.taxAmountAnnual !== null ? Number(record.taxAmountAnnual) : null,
-      taxPeriod: record.taxPeriod || '—',
-      paymentDate: record.paymentDate || null,
-    }));
+    return initialData.map((record, index) => {
+      const carVal = record.carAmount !== null ? Number(record.carAmount) : null;
+      const monthlyCarBenefit = carVal !== null ? (carVal * 0.05) / 12 : null;
+
+      return {
+        id: record.id,
+        sNo: index + 1,
+        employeeId: record.employeeId,
+        employeeCode: record.employee?.employeeId || '—',
+        employeeName: record.employee?.employeeName || '—',
+        name: record.name || '—',
+        cnic: record.cnic || '—',
+        cprNo: record.cprNo || '—',
+        city: record.city || '—',
+        carAmount: carVal,
+        monthlyCarBenefit,
+        ntn: record.ntn || '—',
+        taxableAmountAnnual: record.taxableAmountAnnual !== null ? Number(record.taxableAmountAnnual) : null,
+        taxableAmountGross: record.taxableAmountGross !== null ? Number(record.taxableAmountGross) : null,
+        taxAmountMonthlyTax: record.taxAmountMonthlyTax !== null ? Number(record.taxAmountMonthlyTax) : null,
+        taxAmountAnnual: record.taxAmountAnnual !== null ? Number(record.taxAmountAnnual) : null,
+        taxPeriod: record.taxPeriod || '—',
+        paymentDate: record.paymentDate || null,
+      };
+    });
   }, [initialData]);
 
   const filteredData = useMemo(() => {
     let result = data;
+
+    if (selectedEmployeeIds.length > 0) {
+      const empSet = new Set(selectedEmployeeIds);
+      result = result.filter((row) => row.employeeId && empSet.has(row.employeeId));
+    }
 
     if (searchQuery.trim()) {
       const searchLower = searchQuery.toLowerCase().trim();
@@ -80,21 +101,40 @@ export function CprList({ initialData = [] }: CprListProps) {
     }
 
     return result;
-  }, [data, searchQuery]);
+  }, [data, searchQuery, selectedEmployeeIds]);
 
   const handleMonthYearChange = (val: string | string[]) => {
     const selected = Array.isArray(val) ? val : [val];
     setMonthYears(selected);
     
+    const params = new URLSearchParams(searchParams.toString());
     if (selected.length > 0) {
-      router.push(`/hr/payroll-setup/cpr-tax/view?months=${selected.join(',')}`);
+      params.set('months', selected.join(','));
     } else {
-      router.push('/hr/payroll-setup/cpr-tax/view');
+      params.delete('months');
+      params.delete('month');
+      params.delete('year');
     }
+    const queryString = params.toString();
+    router.push(`/hr/payroll-setup/cpr-tax/view${queryString ? `?${queryString}` : ''}`);
+  };
+
+  const handleEmployeeChange = (empIds: string[]) => {
+    setSelectedEmployeeIds(empIds);
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (empIds.length > 0) {
+      params.set('employeeIds', empIds.join(','));
+    } else {
+      params.delete('employeeIds');
+    }
+    const queryString = params.toString();
+    router.push(`/hr/payroll-setup/cpr-tax/view${queryString ? `?${queryString}` : ''}`);
   };
 
   const handleClearFilter = () => {
     setMonthYears([]);
+    setSelectedEmployeeIds([]);
     router.push('/hr/payroll-setup/cpr-tax/view');
   };
 
@@ -116,6 +156,7 @@ export function CprList({ initialData = [] }: CprListProps) {
       'Taxpayer CNIC',
       'CPR Number',
       'Car Amount',
+      'Car Perk (5%/12)',
       'Taxable Amount Annual',
       'Taxable Amount Gross',
       'Annual Tax Amount',
@@ -141,6 +182,7 @@ export function CprList({ initialData = [] }: CprListProps) {
         row.cnic,
         row.cprNo,
         row.carAmount !== null ? row.carAmount.toString() : '—',
+        row.monthlyCarBenefit !== null ? row.monthlyCarBenefit.toFixed(2) : '—',
         row.taxableAmountAnnual !== null ? row.taxableAmountAnnual.toString() : '—',
         row.taxableAmountGross !== null ? row.taxableAmountGross.toString() : '—',
         row.taxAmountAnnual !== null ? row.taxAmountAnnual.toString() : '—',
@@ -171,6 +213,7 @@ export function CprList({ initialData = [] }: CprListProps) {
       const res = await queueCprTaxesExport({
         search: searchQuery,
         months: monthYears.join(','),
+        employeeIds: selectedEmployeeIds.join(','),
       });
       if (res.status) {
         toast.success(res.message || "Export queued successfully. You'll be notified when it's ready.");
@@ -225,22 +268,34 @@ export function CprList({ initialData = [] }: CprListProps) {
         </div>
       </div>
 
-      {/* Month Year Filter Row */}
+      {/* Filter Row */}
       <div className="flex items-center gap-4 bg-muted/20 p-4 border border-border/50 rounded-xl flex-wrap">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-foreground/80">Month-Year Filter:</span>
+          <span className="text-sm font-semibold text-foreground/80 whitespace-nowrap">Month-Year:</span>
           <MonthYearPicker
             value={monthYears}
             onChange={handleMonthYearChange}
             placeholder="Select Month & Year"
-            className="w-[250px]"
+            className="w-[240px]"
             multiple={true}
           />
         </div>
-        {monthYears.length > 0 && (
+
+        <div className="flex items-center gap-3 min-w-[280px] max-w-[400px] flex-1">
+          <span className="text-sm font-semibold text-foreground/80 whitespace-nowrap">Employees:</span>
+          <EmployeeMultiSelect
+            value={selectedEmployeeIds}
+            onValueChange={handleEmployeeChange}
+            placeholder="All Employees"
+            className="w-full"
+            maxDisplayedItems={2}
+          />
+        </div>
+
+        {(monthYears.length > 0 || selectedEmployeeIds.length > 0) && (
           <Button variant="outline" size="sm" onClick={handleClearFilter} className="gap-2">
             <RotateCcw className="h-3.5 w-3.5" />
-            Clear Filter
+            Clear Filters
           </Button>
         )}
       </div>

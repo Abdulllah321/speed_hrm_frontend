@@ -8,12 +8,14 @@ export interface EmployeeMultiSelectProps {
   onValueChange: (value: string[]) => void;
   departmentId?: string;
   subDepartmentId?: string;
+  locationId?: string | string[];
   disabled?: boolean;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;
   maxDisplayedItems?: number;
   className?: string;
+  showSelectAll?: boolean;
 }
 
 export function EmployeeMultiSelect({
@@ -21,16 +23,19 @@ export function EmployeeMultiSelect({
   onValueChange,
   departmentId,
   subDepartmentId,
+  locationId,
   disabled = false,
   placeholder = "Select employees...",
   searchPlaceholder = "Search by name or employee ID...",
   emptyMessage,
   maxDisplayedItems = 3,
   className,
+  showSelectAll = true,
 }: EmployeeMultiSelectProps) {
   const { isInitialLoading, loading, multiSelectProps } = useEmployeeDropdown({
     departmentId,
     subDepartmentId,
+    locationId,
     selectedIds: value,
   });
 
@@ -53,7 +58,7 @@ export function EmployeeMultiSelect({
       disabled={disabled}
       maxDisplayedItems={maxDisplayedItems}
       className={className}
-      showSelectAll={false}
+      showSelectAll={showSelectAll}
     />
   );
 }

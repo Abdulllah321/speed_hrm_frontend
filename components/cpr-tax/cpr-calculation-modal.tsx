@@ -163,6 +163,10 @@ export function CprCalculationModal({ open, onOpenChange, record }: CprCalculati
                       <span>Annual Car Benefit (5%):</span>
                       <span>+ {formatPKR(carBenefitVal)}</span>
                     </div>
+                    <div className="flex justify-between items-center text-[11px] text-emerald-600 font-medium">
+                      <span>Monthly Car Benefit (5%/12):</span>
+                      <span>{formatPKR(carBenefitVal / 12)} / mo</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>

@@ -32,12 +32,14 @@ export async function getCprTaxes(filters?: {
   month?: string;
   year?: string;
   months?: string;
+  employeeIds?: string;
 }): Promise<{ status: boolean; data?: CprTaxRecord[]; message?: string }> {
   try {
     const query = new URLSearchParams();
     if (filters?.month) query.append('month', filters.month);
     if (filters?.year) query.append('year', filters.year);
     if (filters?.months) query.append('months', filters.months);
+    if (filters?.employeeIds) query.append('employeeIds', filters.employeeIds);
 
     const queryString = query.toString();
     const url = `/cpr-tax${queryString ? `?${queryString}` : ''}`;
@@ -150,6 +152,7 @@ export async function queueCprTaxesExport(filters?: {
   month?: string;
   year?: string;
   months?: string;
+  employeeIds?: string;
 }): Promise<{ status: boolean; message?: string; data?: { jobId: string } }> {
   try {
     const query = new URLSearchParams();
@@ -157,6 +160,7 @@ export async function queueCprTaxesExport(filters?: {
     if (filters?.month) query.append('month', filters.month);
     if (filters?.year) query.append('year', filters.year);
     if (filters?.months) query.append('months', filters.months);
+    if (filters?.employeeIds) query.append('employeeIds', filters.employeeIds);
 
     const queryString = query.toString();
     const url = `/cpr-taxes/export${queryString ? `?${queryString}` : ''}`;
