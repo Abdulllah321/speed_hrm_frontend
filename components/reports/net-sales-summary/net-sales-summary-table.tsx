@@ -109,7 +109,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
   const rowVirtualizer = useVirtualizer({
     count: flatVisibleRows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => 42,
     overscan: 25,
   });
 
@@ -125,7 +125,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5">
       {/* Table Action Controls */}
       <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
         <div>
@@ -150,24 +150,24 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
         </div>
       </div>
 
-      {/* Main Virtualized Container */}
-      <div className="border border-border/60 rounded-2xl overflow-hidden bg-background shadow-sm">
-        <div ref={parentRef} className="max-h-[640px] overflow-auto relative">
-          <div className="min-w-[1320px]">
+      {/* Main Container with Horizontal Scroll */}
+      <div className="border border-border/80 rounded-2xl overflow-hidden bg-background shadow-md">
+        <div ref={parentRef} className="max-h-[660px] overflow-auto relative">
+          <div className="min-w-[1700px] w-full">
             {/* Sticky Table Header */}
-            <div className="sticky top-0 z-10 flex items-center bg-slate-900 dark:bg-slate-950 text-slate-100 text-[11px] font-mono font-semibold uppercase tracking-wider h-11 border-b border-border/80 shadow-md">
-              <div className="flex-1 min-w-[340px] px-4">Product Hierarchy / Description</div>
-              <div className="w-32 px-2 text-center">SKU / Barcode</div>
-              <div className="w-20 px-2 text-center">Size</div>
-              <div className="w-32 px-2 text-center">Color</div>
-              <div className="w-24 px-2 text-right">Sold Qty</div>
-              <div className="w-24 px-2 text-right">Ret Qty</div>
-              <div className="w-24 px-2 text-right">Net Qty</div>
-              <div className="w-32 px-2 text-right">Gross Sales</div>
-              <div className="w-28 px-2 text-right">Returns</div>
-              <div className="w-28 px-2 text-right">Discounts</div>
-              <div className="w-24 px-2 text-right">Taxes</div>
-              <div className="w-36 px-4 text-right">Net Revenue</div>
+            <div className="sticky top-0 z-20 flex items-center bg-slate-950 text-slate-100 text-[11px] font-mono font-bold uppercase tracking-wider h-11 border-b-2 border-slate-800 shadow-md min-w-[1700px] px-3">
+              <div className="w-[380px] min-w-[380px] shrink-0 px-2">Product Hierarchy / Description</div>
+              <div className="w-[150px] min-w-[150px] shrink-0 px-2 text-center">SKU / Barcode</div>
+              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-center">Size</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-center">Color</div>
+              <div className="w-[100px] min-w-[100px] shrink-0 px-2 text-right">Sold Qty</div>
+              <div className="w-[100px] min-w-[100px] shrink-0 px-2 text-right">Ret Qty</div>
+              <div className="w-[100px] min-w-[100px] shrink-0 px-2 text-right">Net Qty</div>
+              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right">Gross Sales</div>
+              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right">Returns</div>
+              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right">Discounts</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right">Taxes</div>
+              <div className="w-[160px] min-w-[160px] shrink-0 px-2 text-right">Net Revenue</div>
             </div>
 
             {/* Virtualized Body */}
@@ -181,12 +181,12 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
                   height: `${rowVirtualizer.getTotalSize()}px`,
                   position: "relative",
                 }}
-                className="w-full"
+                className="w-full min-w-[1700px]"
               >
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const row = flatVisibleRows[virtualRow.index];
                   const { node, depth, hasChildren, isExpanded, id } = row;
-                  const paddingLeft = depth * 20 + 12;
+                  const indentPx = depth * 18;
 
                   let displayLabel = node.value;
                   if (node.sku && node.articleName) {
@@ -207,126 +207,127 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
                         top: 0,
                         left: 0,
                         width: "100%",
+                        minWidth: "1700px",
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start}px)`,
                       }}
                       className={cn(
-                        "border-b border-border/40 text-xs transition-colors hover:bg-muted/50 flex items-center px-4 whitespace-nowrap",
-                        isSubtotalRow
-                          ? "bg-muted/20 font-semibold text-foreground"
-                          : "bg-background text-foreground/90",
-                        depth === 0 && "font-bold bg-muted/40 text-foreground"
+                        "border-b border-border/40 text-xs transition-colors flex items-center px-3 whitespace-nowrap",
+                        depth === 0
+                          ? "bg-slate-100/90 dark:bg-slate-900/90 font-bold border-b-2 border-border/60 text-foreground"
+                          : isSubtotalRow
+                          ? "bg-slate-50/70 dark:bg-slate-900/50 font-semibold text-foreground"
+                          : "bg-background text-foreground/90 hover:bg-slate-100/60 dark:hover:bg-slate-800/40"
                       )}
                     >
                       {/* Column 1: Node Label & Hierarchy Tree */}
-                      <div
-                        style={{ paddingLeft: `${paddingLeft}px` }}
-                        className="flex-1 min-w-[340px] pr-3 flex items-center gap-1.5 truncate"
-                      >
-                        {hasChildren ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleCollapse(id)}
-                            className="p-0.5 rounded hover:bg-muted text-muted-foreground shrink-0 transition-colors"
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="h-3.5 w-3.5" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                        ) : (
-                          <span className="w-4 shrink-0" />
-                        )}
+                      <div className="w-[380px] min-w-[380px] shrink-0 px-2 flex items-center gap-1.5 overflow-hidden">
+                        <div style={{ marginLeft: `${indentPx}px` }} className="flex items-center gap-1.5 shrink-0 overflow-hidden max-w-full">
+                          {hasChildren ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleCollapse(id)}
+                              className="p-0.5 rounded hover:bg-muted text-muted-foreground shrink-0 transition-colors"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          ) : (
+                            <span className="w-4 shrink-0" />
+                          )}
 
-                        {depth === 0 ? (
-                          <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
-                        ) : isVariant ? (
-                          <QrCode className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-                        ) : isArticle ? (
-                          <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        ) : (
-                          <Folder className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                        )}
+                          {depth === 0 ? (
+                            <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
+                          ) : isVariant ? (
+                            <QrCode className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                          ) : isArticle ? (
+                            <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          ) : (
+                            <Folder className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                          )}
 
-                        <span className="truncate max-w-[450px]" title={displayLabel}>
-                          {highlight(displayLabel, searchQuery)}
-                        </span>
+                          <span className="truncate font-medium" title={displayLabel}>
+                            {highlight(displayLabel, searchQuery)}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Column 2: SKU / Barcode */}
-                      <div className="w-32 px-2 text-center shrink-0 flex items-center justify-center font-mono text-[11px]">
+                      <div className="w-[150px] min-w-[150px] shrink-0 px-2 text-center flex items-center justify-center font-mono text-[11px]">
                         {node.barCode || node.sku ? (
-                          <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-muted/80 text-foreground/90 border border-border/40">
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-muted/80 text-foreground font-semibold border border-border/50 shadow-2xs">
                             {highlight(node.barCode || node.sku || "", searchQuery)}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground/40">-</span>
+                          <span className="text-muted-foreground/30">-</span>
                         )}
                       </div>
 
                       {/* Column 3: Size Badge */}
-                      <div className="w-20 px-2 text-center shrink-0 flex items-center justify-center">
+                      <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-center flex items-center justify-center">
                         {node.size ? (
-                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-muted text-[11px] font-bold text-foreground border border-border/50">
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-muted text-[11px] font-bold text-foreground border border-border/60">
                             {node.size}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground/40">-</span>
+                          <span className="text-muted-foreground/30">-</span>
                         )}
                       </div>
 
                       {/* Column 4: Color Pill Badge */}
-                      <div className="w-32 px-2 text-center shrink-0 flex items-center justify-center">
+                      <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-center flex items-center justify-center">
                         {node.color ? (
                           <span
                             title={node.color}
-                            className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-secondary/80 text-[11px] font-medium text-secondary-foreground border border-border/60 truncate whitespace-nowrap max-w-[120px]"
+                            className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-secondary/90 text-[11px] font-medium text-secondary-foreground border border-border/60 truncate whitespace-nowrap max-w-[120px]"
                           >
                             {highlight(node.color, searchQuery)}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground/40">-</span>
+                          <span className="text-muted-foreground/30">-</span>
                         )}
                       </div>
 
                       {/* Column 5: Sold Qty */}
-                      <div className="w-24 px-2 text-right shrink-0 font-mono font-medium text-slate-900 dark:text-slate-100">
+                      <div className="w-[100px] min-w-[100px] shrink-0 px-2 text-right font-mono font-medium text-slate-900 dark:text-slate-100">
                         {node.totals.totalItemsSold.toLocaleString()}
                       </div>
 
                       {/* Column 6: Ret Qty */}
-                      <div className="w-24 px-2 text-right shrink-0 font-mono font-medium text-rose-600 dark:text-rose-400">
+                      <div className="w-[100px] min-w-[100px] shrink-0 px-2 text-right font-mono font-medium text-rose-600 dark:text-rose-400">
                         {node.totals.totalItemsReturned.toLocaleString()}
                       </div>
 
                       {/* Column 7: Net Qty */}
-                      <div className="w-24 px-2 text-right shrink-0 font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <div className="w-[100px] min-w-[100px] shrink-0 px-2 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
                         {node.totals.netItems.toLocaleString()}
                       </div>
 
                       {/* Column 8: Gross Sales */}
-                      <div className="w-32 px-2 text-right shrink-0 font-mono text-slate-700 dark:text-slate-300">
+                      <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right font-mono text-slate-700 dark:text-slate-300">
                         {formatCurrency(node.totals.grossSalesAmount)}
                       </div>
 
                       {/* Column 9: Returns */}
-                      <div className="w-28 px-2 text-right shrink-0 font-mono font-semibold text-rose-600 dark:text-rose-400">
+                      <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right font-mono font-semibold text-rose-600 dark:text-rose-400">
                         {formatCurrency(node.totals.returnAmount)}
                       </div>
 
                       {/* Column 10: Discounts */}
-                      <div className="w-28 px-2 text-right shrink-0 font-mono font-semibold text-amber-600 dark:text-amber-400">
+                      <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right font-mono font-semibold text-amber-600 dark:text-amber-400">
                         {formatCurrency(node.totals.discountAmount)}
                       </div>
 
                       {/* Column 11: Taxes */}
-                      <div className="w-24 px-2 text-right shrink-0 font-mono text-slate-600 dark:text-slate-400">
+                      <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right font-mono text-slate-600 dark:text-slate-400">
                         {formatCurrency(node.totals.taxAmount)}
                       </div>
 
                       {/* Column 12: Net Revenue */}
-                      <div className="w-36 px-4 text-right shrink-0 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <div className="w-[160px] min-w-[160px] shrink-0 px-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(node.totals.netSalesAmount)}
                       </div>
                     </div>
@@ -336,19 +337,19 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
             )}
 
             {/* Sticky Table Footer */}
-            <div className="sticky bottom-0 z-10 flex items-center bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase text-[11px] font-mono font-bold h-11 border-t-2 border-slate-300 dark:border-slate-700 shadow-md">
-              <div className="flex-1 min-w-[340px] px-4">Grand Total Summary</div>
-              <div className="w-32 px-2 text-center">-</div>
-              <div className="w-20 px-2 text-center">-</div>
-              <div className="w-32 px-2 text-center">-</div>
-              <div className="w-24 px-2 text-right">{grandTotals.totalItemsSold.toLocaleString()}</div>
-              <div className="w-24 px-2 text-right text-rose-600 dark:text-rose-400">{grandTotals.totalItemsReturned.toLocaleString()}</div>
-              <div className="w-24 px-2 text-right font-black">{grandTotals.netItems.toLocaleString()}</div>
-              <div className="w-32 px-2 text-right">{formatCurrency(grandTotals.grossSalesAmount)}</div>
-              <div className="w-28 px-2 text-right text-rose-600 dark:text-rose-400">{formatCurrency(grandTotals.returnAmount)}</div>
-              <div className="w-28 px-2 text-right text-amber-600 dark:text-amber-400">{formatCurrency(grandTotals.discountAmount)}</div>
-              <div className="w-24 px-2 text-right">{formatCurrency(grandTotals.taxAmount)}</div>
-              <div className="w-36 px-4 text-right text-emerald-600 dark:text-emerald-400 font-black">{formatCurrency(grandTotals.netSalesAmount)}</div>
+            <div className="sticky bottom-0 z-20 flex items-center bg-slate-900 text-slate-100 text-xs font-mono font-bold uppercase h-12 border-t-2 border-slate-700 shadow-xl min-w-[1700px] px-3">
+              <div className="w-[380px] min-w-[380px] shrink-0 px-2">Grand Total Summary</div>
+              <div className="w-[150px] min-w-[150px] shrink-0 px-2 text-center text-slate-500">-</div>
+              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-center text-slate-500">-</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-center text-slate-500">-</div>
+              <div className="w-[100px] min-w-[100px] shrink-0 px-2 text-right">{grandTotals.totalItemsSold.toLocaleString()}</div>
+              <div className="w-[100px] min-w-[100px] shrink-0 px-2 text-right text-rose-400">{grandTotals.totalItemsReturned.toLocaleString()}</div>
+              <div className="w-[100px] min-w-[100px] shrink-0 px-2 text-right font-black text-amber-300">{grandTotals.netItems.toLocaleString()}</div>
+              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right">{formatCurrency(grandTotals.grossSalesAmount)}</div>
+              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right text-rose-400">{formatCurrency(grandTotals.returnAmount)}</div>
+              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right text-amber-400">{formatCurrency(grandTotals.discountAmount)}</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right text-slate-300">{formatCurrency(grandTotals.taxAmount)}</div>
+              <div className="w-[160px] min-w-[160px] shrink-0 px-2 text-right text-emerald-400 font-black text-sm">{formatCurrency(grandTotals.netSalesAmount)}</div>
             </div>
           </div>
         </div>
