@@ -50,6 +50,7 @@ export interface CprTaxRow {
   cprNo: string;
   city: string;
   carAmount: number | null;
+  monthlyCarBenefit: number | null;
   ntn: string;
   taxableAmountAnnual: number | null;
   taxableAmountGross: number | null;
@@ -155,6 +156,21 @@ export const columns: ColumnDef<CprTaxRow>[] = [
       </div>
     ),
     size: 120,
+    enableSorting: true,
+  },
+  {
+    accessorKey: 'monthlyCarBenefit',
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
+        Car Perk (5%/12)
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm font-semibold text-right text-foreground">
+        {formatPKR(row.getValue('monthlyCarBenefit'))}
+      </div>
+    ),
+    size: 130,
     enableSorting: true,
   },
   {
