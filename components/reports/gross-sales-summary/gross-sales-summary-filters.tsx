@@ -229,12 +229,12 @@ export function GrossSalesSummaryFilters({
                 className="h-9 rounded-xl gap-1.5 text-xs font-semibold border-slate-200 dark:border-slate-800"
               >
                 <Layers className="h-3.5 w-3.5 text-slate-500" />
-                Levels
+                Levels & Grouping
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-64 p-3.5 space-y-3 rounded-2xl shadow-xl">
+            <PopoverContent side="bottom" align="end" className="w-72 p-4 space-y-3 rounded-2xl shadow-xl">
               <div className="flex items-center justify-between border-b pb-2">
-                <span className="text-xs font-bold">Display Group Levels</span>
+                <span className="text-xs font-bold">Display Grouping Hierarchy</span>
                 <Button variant="ghost" size="sm" onClick={() => setShowLevelPanel(false)} className="h-6 w-6 p-0">
                   <X className="h-3.5 w-3.5" />
                 </Button>
@@ -247,64 +247,106 @@ export function GrossSalesSummaryFilters({
                       checked={!!groupingLevels.location}
                       onCheckedChange={(c) => onToggleLevel("location", !!c)}
                     />
-                    <Label htmlFor="lvl-loc-sum">Store Location</Label>
+                    <Label htmlFor="lvl-loc-sum" className="font-semibold">Store Location</Label>
                   </div>
                 )}
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-brand-sum"
-                    checked={groupingLevels.brand}
-                    onCheckedChange={(c) => onToggleLevel("brand", !!c)}
+                    id="lvl-month-sum"
+                    checked={!!groupingLevels.month}
+                    onCheckedChange={(c) => onToggleLevel("month", !!c)}
                   />
-                  <Label htmlFor="lvl-brand-sum">Brand</Label>
+                  <Label htmlFor="lvl-month-sum" className="font-semibold text-emerald-600 dark:text-emerald-400">Month Wise (e.g. July 2026)</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-div-sum"
-                    checked={groupingLevels.division}
-                    onCheckedChange={(c) => onToggleLevel("division", !!c)}
+                    id="lvl-date-sum"
+                    checked={!!groupingLevels.date}
+                    onCheckedChange={(c) => onToggleLevel("date", !!c)}
                   />
-                  <Label htmlFor="lvl-div-sum">Division</Label>
+                  <Label htmlFor="lvl-date-sum" className="font-semibold text-emerald-600 dark:text-emerald-400">Date Wise (Exact Date)</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-cat-sum"
-                    checked={groupingLevels.category}
-                    onCheckedChange={(c) => onToggleLevel("category", !!c)}
+                    id="lvl-doc-sum"
+                    checked={!!groupingLevels.document}
+                    onCheckedChange={(c) => onToggleLevel("document", !!c)}
                   />
-                  <Label htmlFor="lvl-cat-sum">Category</Label>
+                  <Label htmlFor="lvl-doc-sum" className="font-semibold text-emerald-600 dark:text-emerald-400">Document / CashMemo Wise</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-gen-sum"
-                    checked={groupingLevels.gender}
-                    onCheckedChange={(c) => onToggleLevel("gender", !!c)}
+                    id="lvl-sp-sum"
+                    checked={!!groupingLevels.salesPerson}
+                    onCheckedChange={(c) => onToggleLevel("salesPerson", !!c)}
                   />
-                  <Label htmlFor="lvl-gen-sum">Gender</Label>
+                  <Label htmlFor="lvl-sp-sum" className="font-semibold text-indigo-600 dark:text-indigo-400">Sales Person / Cashier Wise</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-sil-sum"
-                    checked={groupingLevels.silhouette}
-                    onCheckedChange={(c) => onToggleLevel("silhouette", !!c)}
+                    id="lvl-tax-sum"
+                    checked={!!groupingLevels.taxRate}
+                    onCheckedChange={(c) => onToggleLevel("taxRate", !!c)}
                   />
-                  <Label htmlFor="lvl-sil-sum">Silhouette</Label>
+                  <Label htmlFor="lvl-tax-sum" className="font-semibold text-amber-600 dark:text-amber-400">Sales Tax Rate Wise (18%, 25%)</Label>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="lvl-art-sum"
-                    checked={groupingLevels.article}
-                    onCheckedChange={(c) => onToggleLevel("article", !!c)}
-                  />
-                  <Label htmlFor="lvl-art-sum">Article (SKU)</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="lvl-var-sum"
-                    checked={groupingLevels.variant}
-                    onCheckedChange={(c) => onToggleLevel("variant", !!c)}
-                  />
-                  <Label htmlFor="lvl-var-sum">Variant (Size / Color)</Label>
+                <div className="border-t pt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-brand-sum"
+                      checked={groupingLevels.brand}
+                      onCheckedChange={(c) => onToggleLevel("brand", !!c)}
+                    />
+                    <Label htmlFor="lvl-brand-sum">Brand</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-div-sum"
+                      checked={groupingLevels.division}
+                      onCheckedChange={(c) => onToggleLevel("division", !!c)}
+                    />
+                    <Label htmlFor="lvl-div-sum">Division</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-cat-sum"
+                      checked={groupingLevels.category}
+                      onCheckedChange={(c) => onToggleLevel("category", !!c)}
+                    />
+                    <Label htmlFor="lvl-cat-sum">Category</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-gen-sum"
+                      checked={groupingLevels.gender}
+                      onCheckedChange={(c) => onToggleLevel("gender", !!c)}
+                    />
+                    <Label htmlFor="lvl-gen-sum">Gender</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-sil-sum"
+                      checked={groupingLevels.silhouette}
+                      onCheckedChange={(c) => onToggleLevel("silhouette", !!c)}
+                    />
+                    <Label htmlFor="lvl-sil-sum">Silhouette</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-art-sum"
+                      checked={groupingLevels.article}
+                      onCheckedChange={(c) => onToggleLevel("article", !!c)}
+                    />
+                    <Label htmlFor="lvl-art-sum">Article (SKU)</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-var-sum"
+                      checked={groupingLevels.variant}
+                      onCheckedChange={(c) => onToggleLevel("variant", !!c)}
+                    />
+                    <Label htmlFor="lvl-var-sum">Variant (Size / Color)</Label>
+                  </div>
                 </div>
               </div>
             </PopoverContent>

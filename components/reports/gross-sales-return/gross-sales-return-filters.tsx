@@ -252,40 +252,42 @@ export function GrossSalesReturnFilters({
                 className="h-9 rounded-xl gap-1.5 text-xs font-semibold border-slate-200 dark:border-slate-800"
               >
                 <Layers className="h-3.5 w-3.5 text-slate-500" />
-                Levels
+                Levels & Grouping
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-64 p-3.5 space-y-3 rounded-2xl shadow-xl">
+            <PopoverContent side="bottom" align="end" className="w-72 p-4 space-y-3 rounded-2xl shadow-xl">
               <div className="flex items-center justify-between border-b pb-2">
-                <span className="text-xs font-bold">Display Group Levels</span>
+                <span className="text-xs font-bold">Display Grouping Hierarchy</span>
                 <Button variant="ghost" size="sm" onClick={() => setShowLevelPanel(false)} className="h-6 w-6 p-0">
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <div className="space-y-2.5 text-xs">
+                {reportType === "separate" && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-loc-ret"
+                      checked={!!groupingLevels.location}
+                      onCheckedChange={(c) => onToggleLevel("location", !!c)}
+                    />
+                    <Label htmlFor="lvl-loc-ret" className="font-semibold">Store Location</Label>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-loc"
-                    checked={groupingLevels.location}
-                    onCheckedChange={(c) => onToggleLevel("location", !!c)}
-                  />
-                  <Label htmlFor="lvl-loc">Store Location</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="lvl-ret"
-                    checked={groupingLevels.returnNote}
+                    id="lvl-ret-no"
+                    checked={!!groupingLevels.returnNote}
                     onCheckedChange={(c) => onToggleLevel("returnNote", !!c)}
                   />
-                  <Label htmlFor="lvl-ret">Sales Return Note Number</Label>
+                  <Label htmlFor="lvl-ret-no" className="font-semibold text-rose-600 dark:text-rose-400">Return Voucher / Note Wise</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-item"
-                    checked={groupingLevels.item}
+                    id="lvl-item-ret"
+                    checked={!!groupingLevels.item}
                     onCheckedChange={(c) => onToggleLevel("item", !!c)}
                   />
-                  <Label htmlFor="lvl-item">Returned Items (Category / Brand / SKU)</Label>
+                  <Label htmlFor="lvl-item-ret" className="font-semibold text-emerald-600 dark:text-emerald-400">Returned Item Line Wise</Label>
                 </div>
               </div>
             </PopoverContent>
