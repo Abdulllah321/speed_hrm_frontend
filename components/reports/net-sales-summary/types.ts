@@ -1,17 +1,29 @@
 export interface NetSalesSummaryTotals {
   orderCount: number;
+  unitPrice?: number;
   totalItemsSold: number;
   totalItemsReturned: number;
   netItems: number;
+  retailSalesValue: number;
+  wostAmount: number;
+  discountAmount: number;
+  valueExSalesTax: number;
+  taxAmount: number;
+  valueInclSalesTax: number;
+
+  // Legacy field aliases
   grossSalesAmount: number;
   returnAmount: number;
-  discountAmount: number;
-  taxAmount: number;
   netSalesAmount: number;
 }
 
 export interface NetSalesSummaryLineItem {
   id: string;
+  docNo?: string;
+  docDate?: string;
+  salesPerson?: string;
+  taxRatePercent?: number;
+  taxRateName?: string;
   sku: string;
   barCode: string;
   description: string;
@@ -22,18 +34,30 @@ export interface NetSalesSummaryLineItem {
   silhouetteName?: string;
   sizeName: string;
   colorName: string;
+  unitPrice: number;
   soldQty: number;
   returnQty: number;
   netQty: number;
+  retailSalesValue: number;
+  wostAmount: number;
+  discountAmount: number;
+  valueExSalesTax: number;
+  taxAmount: number;
+  valueInclSalesTax: number;
+
+  // Legacy field aliases
   grossAmount: number;
   returnAmount: number;
-  discountAmount: number;
-  taxAmount: number;
   netAmount: number;
 }
 
 export interface NetSalesSummaryFlatRecord {
   locationName: string;
+  docNo?: string;
+  docDate?: string;
+  salesPerson?: string;
+  taxRatePercent?: number;
+  taxRateName?: string;
   categoryName: string;
   brandName: string;
   divisionName?: string;
@@ -44,13 +68,18 @@ export interface NetSalesSummaryFlatRecord {
   description: string;
   sizeName: string;
   colorName: string;
+  unitPrice?: number;
   soldQty: number;
   returnQty: number;
   netQty: number;
+  retailSalesValue?: number;
+  wostAmount?: number;
   grossAmount: number;
   returnAmount: number;
   discountAmount: number;
+  valueExSalesTax?: number;
   taxAmount: number;
+  valueInclSalesTax?: number;
   netAmount: number;
 }
 
@@ -63,6 +92,10 @@ export interface NetSalesSummaryReportData {
 }
 
 export interface GroupingLevels {
+  date?: boolean;
+  document?: boolean;
+  salesPerson?: boolean;
+  taxRate?: boolean;
   brand: boolean;
   division: boolean;
   category: boolean;
@@ -74,7 +107,7 @@ export interface GroupingLevels {
 }
 
 export interface NetSalesSummaryTreeNode {
-  level: string; // "location" | "brand" | "division" | "category" | "gender" | "silhouette" | "article" | "variant"
+  level: string; // "location" | "date" | "document" | "salesPerson" | "taxRate" | "brand" | "division" | "category" | "gender" | "silhouette" | "article" | "variant"
   value: string;
   sku?: string;
   articleName?: string;
@@ -82,6 +115,7 @@ export interface NetSalesSummaryTreeNode {
   size?: string;
   barCode?: string;
   brandName?: string;
+  unitPrice?: number;
   totals: NetSalesSummaryTotals;
   children: NetSalesSummaryTreeNode[];
 }

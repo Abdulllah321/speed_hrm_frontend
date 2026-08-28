@@ -9,13 +9,18 @@ import {
 function createEmptyTotals(): NetSalesSummaryTotals {
   return {
     orderCount: 0,
+    unitPrice: 0,
     totalItemsSold: 0,
     totalItemsReturned: 0,
     netItems: 0,
+    retailSalesValue: 0,
+    wostAmount: 0,
+    discountAmount: 0,
+    valueExSalesTax: 0,
+    taxAmount: 0,
+    valueInclSalesTax: 0,
     grossSalesAmount: 0,
     returnAmount: 0,
-    discountAmount: 0,
-    taxAmount: 0,
     netSalesAmount: 0,
   };
 }
@@ -25,10 +30,16 @@ function addTotals(target: NetSalesSummaryTotals, source: NetSalesSummaryTotals)
   target.totalItemsSold += source.totalItemsSold;
   target.totalItemsReturned += source.totalItemsReturned;
   target.netItems += source.netItems;
+  target.retailSalesValue += source.retailSalesValue;
+  target.wostAmount += source.wostAmount;
+  target.discountAmount += source.discountAmount;
+  target.valueExSalesTax += source.valueExSalesTax;
+  target.taxAmount += source.taxAmount;
+  target.valueInclSalesTax += source.valueInclSalesTax;
+
+  // Legacy field aliases
   target.grossSalesAmount += source.grossSalesAmount;
   target.returnAmount += source.returnAmount;
-  target.discountAmount += source.discountAmount;
-  target.taxAmount += source.taxAmount;
   target.netSalesAmount += source.netSalesAmount;
 }
 
@@ -39,6 +50,10 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
   const [fbrOnlyFilter, setFbrOnlyFilter] = useState(false);
 
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
+    date: false,
+    document: false,
+    salesPerson: false,
+    taxRate: false,
     brand: true,
     division: true,
     category: true,
@@ -65,6 +80,10 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
       if (!q) return true;
       return (
         item.locationName.toLowerCase().includes(q) ||
+        (item.docNo && item.docNo.toLowerCase().includes(q)) ||
+        (item.docDate && item.docDate.toLowerCase().includes(q)) ||
+        (item.salesPerson && item.salesPerson.toLowerCase().includes(q)) ||
+        (item.taxRateName && item.taxRateName.toLowerCase().includes(q)) ||
         (item.brandName && item.brandName.toLowerCase().includes(q)) ||
         (item.divisionName && item.divisionName.toLowerCase().includes(q)) ||
         (item.categoryName && item.categoryName.toLowerCase().includes(q)) ||
@@ -81,6 +100,10 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
     const levels: string[] = [];
 
     if (isSeparate && groupingLevels.location) levels.push("location");
+    if (groupingLevels.date) levels.push("date");
+    if (groupingLevels.document) levels.push("document");
+    if (groupingLevels.salesPerson) levels.push("salesPerson");
+    if (groupingLevels.taxRate) levels.push("taxRate");
     if (groupingLevels.brand) levels.push("brand");
     if (groupingLevels.division) levels.push("division");
     if (groupingLevels.category) levels.push("category");
@@ -96,16 +119,37 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
     const root: NetSalesSummaryTreeNode[] = [];
 
     for (const item of filteredFlatItems) {
+      const soldQty = item.soldQty || 0;
+      const returnQty = item.returnQty || 0;
+      const netQty = item.netQty !== undefined ? item.netQty : (soldQty - returnQty);
+
+      let unitPrice = item.unitPrice || 0;
+      if (unitPrice === 0 && soldQty > 0 && item.grossAmount > 0) {
+        unitPrice = item.grossAmount / soldQty;
+      }
+
+      const retailSalesValue = item.retailSalesValue !== undefined ? item.retailSalesValue : (unitPrice * netQty);
+      const wostAmount = item.wostAmount !== undefined ? item.wostAmount : (item.grossAmount - item.returnAmount);
+      const discountAmount = item.discountAmount || 0;
+      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : (wostAmount - discountAmount);
+      const taxAmount = item.taxAmount || 0;
+      const valueInclSalesTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : (item.netAmount || (valueExSalesTax + taxAmount));
+
       const itemTotals: NetSalesSummaryTotals = {
         orderCount: 1,
-        totalItemsSold: item.soldQty,
-        totalItemsReturned: item.returnQty,
-        netItems: item.netQty,
+        unitPrice,
+        totalItemsSold: soldQty,
+        totalItemsReturned: returnQty,
+        netItems: netQty,
+        retailSalesValue,
+        wostAmount,
+        discountAmount,
+        valueExSalesTax,
+        taxAmount,
+        valueInclSalesTax,
         grossSalesAmount: item.grossAmount,
         returnAmount: item.returnAmount,
-        discountAmount: item.discountAmount,
-        taxAmount: item.taxAmount,
-        netSalesAmount: item.netAmount,
+        netSalesAmount: valueInclSalesTax,
       };
 
       let currentLevelNodes = root;
@@ -117,6 +161,21 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
 
         if (levelName === "location") {
           nodeVal = item.locationName || "Main Outlet";
+        } else if (levelName === "date") {
+          nodeVal = item.docDate || "Date Wise";
+        } else if (levelName === "document") {
+          nodeVal = item.docNo ? `Doc #${item.docNo}` : "Document Wise";
+        } else if (levelName === "salesPerson") {
+          nodeVal = item.salesPerson || "System / Default Cashier";
+        } else if (levelName === "taxRate") {
+          if (item.taxRateName) {
+            nodeVal = item.taxRateName;
+          } else if (item.taxRatePercent !== undefined) {
+            nodeVal = `${item.taxRatePercent}% Sales Tax Group`;
+          } else {
+            const calculatedPct = valueExSalesTax > 0 ? Math.round((taxAmount / valueExSalesTax) * 100) : 0;
+            nodeVal = calculatedPct > 0 ? `${calculatedPct}% Sales Tax Group` : "0% Tax Exempt Group";
+          }
         } else if (levelName === "brand") {
           nodeVal = item.brandName || "Default Brand";
         } else if (levelName === "division") {
@@ -132,6 +191,7 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
           extraFields.sku = item.sku;
           extraFields.articleName = item.description || "Article";
           extraFields.barCode = item.barCode;
+          extraFields.unitPrice = unitPrice;
         } else if (levelName === "variant") {
           nodeVal = item.barCode
             ? `[${item.barCode}] ${item.colorName || "Default"}-${item.sizeName || "Default"}`
@@ -140,6 +200,7 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
           extraFields.size = item.sizeName || "Default";
           extraFields.barCode = item.barCode;
           extraFields.sku = item.sku;
+          extraFields.unitPrice = unitPrice;
         }
 
         let existingNode = currentLevelNodes.find(
@@ -155,6 +216,10 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
             children: [],
           };
           currentLevelNodes.push(existingNode);
+        }
+
+        if (unitPrice > 0) {
+          existingNode.totals.unitPrice = unitPrice;
         }
 
         addTotals(existingNode.totals, itemTotals);

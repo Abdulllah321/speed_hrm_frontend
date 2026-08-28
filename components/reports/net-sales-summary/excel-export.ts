@@ -45,14 +45,16 @@ export async function generateNetSalesSummaryExcel(opts: {
       "Description",
       "Size",
       "Color",
+      "Unit Price",
       "Sold Qty",
       "Return Qty",
       "Net Qty",
-      "Gross Sales",
-      "Return Amount",
+      "Retail Sales Value",
+      "WOST Amount",
       "Discount Amount",
-      "Taxes",
-      "Net Sales Revenue",
+      "Value Excl. Sales Tax",
+      "Sales Tax Amount",
+      "Value Incl. Sales Tax / Net Revenue",
     ];
 
     const dataRows: any[][] = [headers];
@@ -60,6 +62,17 @@ export async function generateNetSalesSummaryExcel(opts: {
     const totalCount = flatItems.length;
     for (let i = 0; i < totalCount; i++) {
       const item = flatItems[i];
+      const soldQty = item.soldQty || 0;
+      const returnQty = item.returnQty || 0;
+      const netQty = item.netQty !== undefined ? item.netQty : (soldQty - returnQty);
+      const unitPrice = item.unitPrice || (soldQty > 0 ? item.grossAmount / soldQty : 0);
+      const retailSalesVal = item.retailSalesValue !== undefined ? item.retailSalesValue : (unitPrice * netQty);
+      const wostAmount = item.wostAmount !== undefined ? item.wostAmount : (item.grossAmount - item.returnAmount);
+      const discountAmount = item.discountAmount || 0;
+      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : (wostAmount - discountAmount);
+      const taxAmount = item.taxAmount || 0;
+      const valueInclSalesTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : (item.netAmount || (valueExSalesTax + taxAmount));
+
       dataRows.push([
         item.locationName || "Main Outlet",
         item.brandName || "-",
@@ -72,14 +85,16 @@ export async function generateNetSalesSummaryExcel(opts: {
         item.description || "-",
         item.sizeName || "-",
         item.colorName || "-",
-        item.soldQty,
-        item.returnQty,
-        item.netQty,
-        item.grossAmount,
-        item.returnAmount,
-        item.discountAmount,
-        item.taxAmount,
-        item.netAmount,
+        unitPrice,
+        soldQty,
+        returnQty,
+        netQty,
+        retailSalesVal,
+        wostAmount,
+        discountAmount,
+        valueExSalesTax,
+        taxAmount,
+        valueInclSalesTax,
       ]);
 
       if (i % 300 === 0) {
@@ -100,14 +115,16 @@ export async function generateNetSalesSummaryExcel(opts: {
       "",
       "",
       "",
+      "-",
       grandTotals.totalItemsSold,
       grandTotals.totalItemsReturned,
       grandTotals.netItems,
-      grandTotals.grossSalesAmount,
-      grandTotals.returnAmount,
+      grandTotals.retailSalesValue,
+      grandTotals.wostAmount,
       grandTotals.discountAmount,
+      grandTotals.valueExSalesTax,
       grandTotals.taxAmount,
-      grandTotals.netSalesAmount,
+      grandTotals.valueInclSalesTax,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
@@ -123,14 +140,16 @@ export async function generateNetSalesSummaryExcel(opts: {
       { wch: 28 },
       { wch: 10 },
       { wch: 12 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
       { wch: 12 },
-      { wch: 18 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 20 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Flat Net Sales Items");
@@ -141,14 +160,16 @@ export async function generateNetSalesSummaryExcel(opts: {
       "SKU / Barcode",
       "Size",
       "Color",
+      "Unit Price",
       "Sold Qty",
       "Return Qty",
       "Net Qty",
-      "Gross Sales",
-      "Return Amount",
+      "Retail Sales Value",
+      "WOST Amount",
       "Discount Amount",
-      "Taxes",
-      "Net Sales Revenue",
+      "Value Excl. Sales Tax",
+      "Sales Tax Amount",
+      "Value Incl. Sales Tax / Net Revenue",
     ];
 
     const dataRows: any[][] = [headers];
@@ -163,19 +184,24 @@ export async function generateNetSalesSummaryExcel(opts: {
           displayLabel = `${indent}[${node.barCode}] ${node.color || "Default"}-${node.size || "Default"}`;
         }
 
+        const unitPrice = node.totals.unitPrice || node.unitPrice || 0;
+        const retailSalesVal = node.totals.retailSalesValue !== undefined ? node.totals.retailSalesValue : (unitPrice * node.totals.netItems);
+
         dataRows.push([
           displayLabel,
           node.barCode || node.sku || "-",
           node.size || "-",
           node.color || "-",
+          unitPrice > 0 ? unitPrice : "-",
           node.totals.totalItemsSold,
           node.totals.totalItemsReturned,
           node.totals.netItems,
-          node.totals.grossSalesAmount,
-          node.totals.returnAmount,
+          retailSalesVal,
+          node.totals.wostAmount,
           node.totals.discountAmount,
+          node.totals.valueExSalesTax,
           node.totals.taxAmount,
-          node.totals.netSalesAmount,
+          node.totals.valueInclSalesTax,
         ]);
 
         if (node.children && node.children.length > 0) {
@@ -191,14 +217,16 @@ export async function generateNetSalesSummaryExcel(opts: {
       "-",
       "-",
       "-",
+      "-",
       grandTotals.totalItemsSold,
       grandTotals.totalItemsReturned,
       grandTotals.netItems,
-      grandTotals.grossSalesAmount,
-      grandTotals.returnAmount,
+      grandTotals.retailSalesValue,
+      grandTotals.wostAmount,
       grandTotals.discountAmount,
+      grandTotals.valueExSalesTax,
       grandTotals.taxAmount,
-      grandTotals.netSalesAmount,
+      grandTotals.valueInclSalesTax,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
@@ -207,14 +235,16 @@ export async function generateNetSalesSummaryExcel(opts: {
       { wch: 18 },
       { wch: 10 },
       { wch: 16 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
       { wch: 12 },
-      { wch: 18 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 20 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Hierarchical Net Sales");
