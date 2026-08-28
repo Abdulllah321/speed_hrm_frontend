@@ -810,6 +810,23 @@ export async function getNetSalesSummaryResult(
     }
 }
 
+export async function registerClientNetSalesSummaryExport(opts: {
+    fileName: string;
+    fileBase64: string;
+    mimeType?: string;
+}): Promise<{ status: boolean; data?: { historyId: string; downloadUrl: string }; message?: string }> {
+    try {
+        const res = await authFetch("/pos-sales/reports/net-sales-summary/export/register-client-export", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(opts),
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error registering net sales summary export file" };
+    }
+}
+
 
 
 

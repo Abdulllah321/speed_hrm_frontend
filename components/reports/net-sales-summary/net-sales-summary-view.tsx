@@ -14,6 +14,7 @@ import { useReportSse } from "@/hooks/use-report-sse";
 import {
   queueNetSalesSummaryPreview,
   getNetSalesSummaryResult,
+  registerClientNetSalesSummaryExport,
 } from "@/lib/actions/pos-sales";
 import { toast } from "sonner";
 import { DateRange } from "@/components/ui/date-range-picker";
@@ -151,18 +152,33 @@ export function NetSalesSummaryView({
         locationNames: activeSelectionNames,
       });
 
-      const blob = new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      // Register export in ExportHistory & S3 via backend endpoint per Workspace Export Guidelines
+      const base64 = Buffer.from(excelBuffer).toString("base64");
+      const regRes = await registerClientNetSalesSummaryExport({
+        fileName,
+        fileBase64: base64,
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Excel summary report generated successfully");
+
+      const downloadUrl = regRes.data?.downloadUrl;
+      if (regRes.status && downloadUrl) {
+        window.open(downloadUrl, "_blank");
+        toast.success("Excel summary report generated and registered in Export History");
+      } else {
+        // Fallback browser blob download
+        const blob = new Blob([excelBuffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("Excel summary report generated successfully");
+      }
     } catch (err: any) {
       toast.error("Failed to generate Excel export");
     } finally {
