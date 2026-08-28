@@ -152,12 +152,16 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
         unitPrice = item.grossAmount / soldQty;
       }
 
+      const taxPct = item.taxRatePercent || 18;
+      const taxDivisor = 1 + taxPct / 100;
+      const defaultWost = Math.round((unitPrice / taxDivisor) * netQty * 100) / 100;
+
       const retailSalesValue = item.retailSalesValue !== undefined ? item.retailSalesValue : (unitPrice * netQty);
-      const wostAmount = item.wostAmount !== undefined ? item.wostAmount : (item.grossAmount - item.returnAmount);
+      const wostAmount = item.wostAmount !== undefined ? item.wostAmount : defaultWost;
       const discountAmount = item.discountAmount || 0;
-      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : (wostAmount - discountAmount);
+      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((wostAmount - discountAmount) * 100) / 100;
       const taxAmount = item.taxAmount || 0;
-      const valueInclSalesTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : (item.netAmount || (valueExSalesTax + taxAmount));
+      const valueInclSalesTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : Math.round((valueExSalesTax + taxAmount) * 100) / 100;
 
       const itemTotals: NetSalesSummaryTotals = {
         orderCount: 1,

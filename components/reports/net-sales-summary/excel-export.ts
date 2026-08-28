@@ -90,12 +90,16 @@ export async function generateNetSalesSummaryExcel(opts: {
       const returnQty = item.returnQty || 0;
       const netQty = item.netQty !== undefined ? item.netQty : (soldQty - returnQty);
       const unitPrice = item.unitPrice || (soldQty > 0 ? item.grossAmount / soldQty : 0);
+      const taxPct = item.taxRatePercent || 18;
+      const taxDivisor = 1 + taxPct / 100;
+      const defaultWost = Math.round((unitPrice / taxDivisor) * netQty * 100) / 100;
+
       const retailSalesVal = item.retailSalesValue !== undefined ? item.retailSalesValue : (unitPrice * netQty);
-      const wostAmount = item.wostAmount !== undefined ? item.wostAmount : (item.grossAmount - item.returnAmount);
+      const wostAmount = item.wostAmount !== undefined ? item.wostAmount : defaultWost;
       const discountAmount = item.discountAmount || 0;
-      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : (wostAmount - discountAmount);
+      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((wostAmount - discountAmount) * 100) / 100;
       const taxAmount = item.taxAmount || 0;
-      const valueInclSalesTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : (item.netAmount || (valueExSalesTax + taxAmount));
+      const valueInclSalesTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : Math.round((valueExSalesTax + taxAmount) * 100) / 100;
 
       dataRows.push([
         item.locationName || "Main Outlet",
