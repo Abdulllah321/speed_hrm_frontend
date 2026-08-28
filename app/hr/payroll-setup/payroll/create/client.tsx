@@ -648,7 +648,9 @@ export function GeneratePayrollClient({
                                                     <TableCell>
                                                         <div className="text-[10px] space-y-0.5 min-w-[160px]">
                                                             <div className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">Taxable:</span>
+                                                                <span className="font-bold shrink-0">
+                                                                    Taxable{row.taxBreakup?.activeFiscalMonths && row.taxBreakup.activeFiscalMonths < 12 ? ` (${row.taxBreakup.activeFiscalMonths}m)` : ''}:
+                                                                </span>
                                                                 <span className="text-right">{Math.round(Number(row.taxBreakup?.taxableIncome || 0)).toLocaleString()}</span>
                                                             </div>
                                                             {row.taxBreakup?.fixedAmountTax > 0 && (
