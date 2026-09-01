@@ -81,25 +81,30 @@ interface FilterSheetProps {
 }
 
 function FilterSheet({
-    open, onOpenChange, brands, categories, silhouettes, genders,
-    pendingBrandIds, pendingCategoryIds, pendingSilhouetteIds, pendingGenderIds,
+    open, onOpenChange, brands = [], categories = [], silhouettes = [], genders = [],
+    pendingBrandIds = [], pendingCategoryIds = [], pendingSilhouetteIds = [], pendingGenderIds = [],
     setPendingBrandIds, setPendingCategoryIds, setPendingSilhouetteIds, setPendingGenderIds,
     onApply, onClear,
 }: FilterSheetProps) {
     const [filterSearch, setFilterSearch] = useState("");
-    const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+    const [collapsed, setCollapsed] = useState<Record<string, bo            olean>>({});
     const toggle = (k: string) => setCollapsed((p) => ({ ...p, [k]: !p[k] }));
 
+    const safeBrandIds = Array.isArray(pendingBrandIds) ? pendingBrandIds : [];
+    const safeCategoryIds = Array.isArray(pendingCategoryIds) ? pendingCategoryIds : [];
+    const safeSilhouetteIds = Array.isArray(pendingSilhouetteIds) ? pendingSilhouetteIds : [];
+    const safeGenderIds = Array.isArray(pendingGenderIds) ? pendingGenderIds : [];
+
     const sections = [
-        { key: "brand", label: "Brand", items: brands, ids: pendingBrandIds, setIds: setPendingBrandIds },
-        { key: "category", label: "Category", items: categories, ids: pendingCategoryIds, setIds: setPendingCategoryIds },
-        { key: "silhouette", label: "Silhouette", items: silhouettes, ids: pendingSilhouetteIds, setIds: setPendingSilhouetteIds },
-        { key: "gender", label: "Gender", items: genders, ids: pendingGenderIds, setIds: setPendingGenderIds },
+        { key: "brand", label: "Brand", items: Array.isArray(brands) ? brands : [], ids: safeBrandIds, setIds: setPendingBrandIds },
+        { key: "category", label: "Category", items: Array.isArray(categories) ? categories : [], ids: safeCategoryIds, setIds: setPendingCategoryIds },
+        { key: "silhouette", label: "Silhouette", items: Array.isArray(silhouettes) ? silhouettes : [], ids: safeSilhouetteIds, setIds: setPendingSilhouetteIds },
+        { key: "gender", label: "Gender", items: Array.isArray(genders) ? genders : [], ids: safeGenderIds, setIds: setPendingGenderIds },
     ] as const;
 
     const totalPending =
-        pendingBrandIds.length + pendingCategoryIds.length +
-        pendingSilhouetteIds.length + pendingGenderIds.length;
+        safeBrandIds.length + safeCategoryIds.length +
+        safeSilhouetteIds.length + safeGenderIds.length;
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -138,11 +143,12 @@ function FilterSheet({
                         {sections.map(({ key, label, items, ids, setIds }) => {
                             const filtered = filterSearch
                                 ? items.filter((i: any) =>
-                                    i.name.toLowerCase().includes(filterSearch.toLowerCase())
+                                    i && i.name && typeof i.name === "string" && i.name.toLowerCase().includes(filterSearch.toLowerCase())
                                 )
                                 : items;
-                            if (filtered.length === 0) return null;
+                            if (!filtered || filtered.length === 0) return null;
                             const isCollapsed = collapsed[key];
+                            const safeIds = Array.isArray(ids) ? ids : [];
                             return (
                                 <div key={key} className="rounded-md border border-border overflow-hidden">
                                     <button
@@ -152,9 +158,9 @@ function FilterSheet({
                                     >
                                         <div className="flex items-center gap-2">
                                             <span>{label}</span>
-                                            {ids.length > 0 && (
+                                            {safeIds.length > 0 && (
                                                 <Badge variant="secondary" className="h-4 text-[10px] px-1">
-                                                    {ids.length}
+                                                    {safeIds.length}
                                                 </Badge>
                                             )}
                                         </div>
@@ -169,27 +175,32 @@ function FilterSheet({
                                         <div className="p-3">
                                             <ScrollArea className="h-40">
                                                 <div className="flex flex-wrap gap-1.5 pr-3">
-                                                    {filtered.map((item: any) => (
-                                                        <button
-                                                            key={item.id}
-                                                            type="button"
-                                                            onClick={() =>
-                                                                (setIds as any)((prev: string[]) =>
-                                                                    prev.includes(item.id)
-                                                                        ? prev.filter((x: string) => x !== item.id)
-                                                                        : [...prev, item.id],
-                                                                )
-                                                            }
-                                                            className={cn(
-                                                                "px-2.5 py-1 rounded-full text-xs border transition-all",
-                                                                ids.includes(item.id)
-                                                                    ? "bg-primary text-primary-foreground border-primary font-semibold"
-                                                                    : "bg-background border-border hover:border-primary/60 hover:bg-primary/5",
-                                                            )}
-                                                        >
-                                                            {item.name}
-                                                        </button>
-                                                    ))}
+                                                    {filtered.map((item: any) => {
+                                                        if (!item || !item.id) return null;
+                                                        const isSelected = safeIds.includes(item.id);
+                                                        return (
+                                                            <button
+                                                                key={item.id}
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    (setIds as any)((prev: string[]) => {
+                                                                        const safePrev = Array.isArray(prev) ? prev : [];
+                                                                        return safePrev.includes(item.id)
+                                                                            ? safePrev.filter((x: string) => x !== item.id)
+                                                                            : [...safePrev, item.id];
+                                                                    })
+                                                                }
+                                                                className={cn(
+                                                                    "px-2.5 py-1 rounded-full text-xs border transition-all",
+                                                                    isSelected
+                                                                        ? "bg-primary text-primary-foreground border-primary font-semibold"
+                                                                        : "bg-background border-border hover:border-primary/60 hover:bg-primary/5",
+                                                                )}
+                                                            >
+                                                                {item.name || item.id}
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
                                             </ScrollArea>
                                         </div>
@@ -204,10 +215,10 @@ function FilterSheet({
                         className="flex-1"
                         onClick={() =>
                             onApply({
-                                brandIds: pendingBrandIds,
-                                categoryIds: pendingCategoryIds,
-                                silhouetteIds: pendingSilhouetteIds,
-                                genderIds: pendingGenderIds,
+                                brandIds: safeBrandIds,
+                                categoryIds: safeCategoryIds,
+                                silhouetteIds: safeSilhouetteIds,
+                                genderIds: safeGenderIds,
                             })
                         }
                     >
@@ -426,8 +437,11 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     });
 
     const activeFilterCount =
-        appliedFilters.brandIds.length + appliedFilters.categoryIds.length +
-        appliedFilters.silhouetteIds.length + appliedFilters.genderIds.length;
+        (appliedFilters?.brandIds?.length || 0) +
+        (appliedFilters?.categoryIds?.length || 0) +
+        (appliedFilters?.silhouetteIds?.length || 0) +
+        (appliedFilters?.genderIds?.length || 0);
+
     // Persist and recover active uploadId
     useEffect(() => {
         const stored = localStorage.getItem("active_item_upload_id");
@@ -444,10 +458,10 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
             silhouetteApi.getAll(),
             genderApi.getAll(),
         ]).then(([b, c, s, g]) => {
-            if (b.status === "fulfilled" && b.value.status) setBrands(b.value.data);
-            if (c.status === "fulfilled" && c.value.status) setCategories(c.value.data);
-            if (s.status === "fulfilled" && s.value.status) setSilhouettes(s.value.data);
-            if (g.status === "fulfilled" && g.value.status) setGenders(g.value.data);
+            if (b.status === "fulfilled" && b.value?.status && Array.isArray(b.value.data)) setBrands(b.value.data);
+            if (c.status === "fulfilled" && c.value?.status && Array.isArray(c.value.data)) setCategories(c.value.data);
+            if (s.status === "fulfilled" && s.value?.status && Array.isArray(s.value.data)) setSilhouettes(s.value.data);
+            if (g.status === "fulfilled" && g.value?.status && Array.isArray(g.value.data)) setGenders(g.value.data);
         });
     }, []);
 
