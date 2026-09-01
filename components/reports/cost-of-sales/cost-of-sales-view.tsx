@@ -25,10 +25,16 @@ export function CostOfSalesView() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
+  const getDefaultFiscalDateRange = (): DateRange => {
+    const now = new Date();
+    const year = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear();
+    return {
+      from: new Date(year, 6, 1),
+      to: now,
+    };
+  };
+
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultFiscalDateRange);
 
   const [reportData, setReportData] = useState<CostOfSalesReportData | null>(null);
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);

@@ -54,10 +54,16 @@ export function GrossSalesSummaryView({
       setSelectedLocationIds([posLocationId]);
     }
   }, [isPosLevel, posLocationId]);
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(new Date().setDate(new Date().getDate() - 30)),
-    to: new Date(),
-  });
+  const getDefaultFiscalDateRange = (): DateRange => {
+    const now = new Date();
+    const year = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear();
+    return {
+      from: new Date(year, 6, 1),
+      to: now,
+    };
+  };
+
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultFiscalDateRange);
 
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);
   const [isQueueingJob, setIsQueueingJob] = useState(false);

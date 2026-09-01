@@ -42,10 +42,16 @@ export function GrossSalesReturnView({ isPosLevel = false }: GrossSalesReturnVie
   }, [isPosLevel, posLocationId]);
 
   const [reportType, setReportType] = useState<"merged" | "separate">("merged");
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
+  const getDefaultFiscalDateRange = (): DateRange => {
+    const now = new Date();
+    const year = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear();
+    return {
+      from: new Date(year, 6, 1),
+      to: now,
+    };
+  };
+
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultFiscalDateRange);
 
   const [reportData, setReportData] = useState<GrossSalesReturnReportData | null>(null);
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);
