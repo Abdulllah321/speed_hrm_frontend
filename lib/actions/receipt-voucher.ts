@@ -115,8 +115,8 @@ export async function getReceiptVouchers(filters?: ReceiptVoucherFilters) {
     }
 }
 
-export async function getRsrvVouchers() {
-    return getReceiptVouchers("rs_rv");
+export async function getRsrvVouchers(filters?: ReceiptVoucherFilters) {
+    return getReceiptVouchers({ ...filters, type: "rs_rv" });
 }
 
 export async function createReceiptVoucher(data: any) {
