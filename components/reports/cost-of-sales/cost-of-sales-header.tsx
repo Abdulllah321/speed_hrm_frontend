@@ -12,7 +12,7 @@ export function CostOfSalesHeader({ totals }: CostOfSalesHeaderProps) {
   const formatVal = (val: number) => (val === 0 ? "-" : val.toLocaleString());
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 no-print">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 no-print">
       <Card className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden">
         <CardContent className="p-4 flex items-center justify-between">
           <div>
@@ -33,7 +33,7 @@ export function CostOfSalesHeader({ totals }: CostOfSalesHeaderProps) {
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
-              Sold Quantity
+              Net Sold Qty
             </p>
             <h3 className="text-xl font-bold mt-1 text-slate-900 dark:text-slate-100 font-mono">
               {formatVal(totals.quantity)}
@@ -65,7 +65,7 @@ export function CostOfSalesHeader({ totals }: CostOfSalesHeaderProps) {
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
-              Total Revenue
+              Net Revenue
             </p>
             <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400 font-mono">
               {formatCurrency(totals.totalRevenue)}
@@ -73,38 +73,6 @@ export function CostOfSalesHeader({ totals }: CostOfSalesHeaderProps) {
           </div>
           <div className="rounded-xl p-2.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400">
             <DollarSign className="h-4 w-4" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
-              Gross Profit
-            </p>
-            <h3 className="text-xl font-bold mt-1 text-teal-600 dark:text-teal-400 font-mono">
-              {formatCurrency(totals.grossProfit)}
-            </h3>
-          </div>
-          <div className="rounded-xl p-2.5 bg-teal-50 dark:bg-teal-950/30 text-teal-600 dark:text-teal-400">
-            <TrendingUp className="h-4 w-4" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
-              Profit Margin
-            </p>
-            <h3 className="text-xl font-bold mt-1 text-sky-600 dark:text-sky-400 font-mono">
-              {totals.profitMargin}%
-            </h3>
-          </div>
-          <div className="rounded-xl p-2.5 bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400">
-            <Percent className="h-4 w-4" />
           </div>
         </CardContent>
       </Card>

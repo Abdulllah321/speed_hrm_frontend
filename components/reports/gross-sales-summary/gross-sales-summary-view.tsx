@@ -18,6 +18,8 @@ import {
 import { toast } from "sonner";
 import { DateRange } from "@/components/ui/date-range-picker";
 
+import { getLocations } from "@/lib/actions/location";
+import { getUsers } from "@/lib/actions/users";
 import { useAuth } from "@/components/providers/auth-provider";
 
 interface GrossSalesSummaryViewProps {
@@ -30,14 +32,46 @@ interface GrossSalesSummaryViewProps {
 
 export function GrossSalesSummaryView({
   initialReportData = null,
-  locations = [],
-  cashiers = [],
+  locations: propLocations = [],
+  cashiers: propCashiers = [],
   userId = "system",
   isPosLevel = false,
 }: GrossSalesSummaryViewProps = {}) {
   const { user } = useAuth();
   const posLocationId = user?.terminal?.location?.id || user?.locationId || (user as any)?.location?.id;
   const posLocationName = user?.terminal?.location?.name || (user as any)?.location?.name || "Current Store";
+
+  const [locations, setLocations] = useState<any[]>(propLocations);
+  const [cashiers, setCashiers] = useState<any[]>(propCashiers);
+
+  useEffect(() => {
+    if (propLocations && propLocations.length > 0) {
+      setLocations(propLocations);
+    }
+  }, [propLocations]);
+
+  useEffect(() => {
+    if (propCashiers && propCashiers.length > 0) {
+      setCashiers(propCashiers);
+    }
+  }, [propCashiers]);
+
+  useEffect(() => {
+    async function loadOptions() {
+      try {
+        if (locations.length === 0 || cashiers.length === 0) {
+          const [locRes, cashierRes] = await Promise.all([getLocations(), getUsers()]);
+          const locData = Array.isArray(locRes) ? locRes : (locRes as any)?.data || [];
+          const userList = Array.isArray(cashierRes) ? cashierRes : (cashierRes as any)?.data || [];
+          if (locations.length === 0) setLocations(locData);
+          if (cashiers.length === 0) setCashiers(userList);
+        }
+      } catch (err) {
+        console.error("Failed to load filter options", err);
+      }
+    }
+    loadOptions();
+  }, []);
 
   const [reportData, setReportData] = useState<GrossSalesSummaryReportData | null>(
     initialReportData
