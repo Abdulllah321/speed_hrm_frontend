@@ -87,7 +87,7 @@ function FilterSheet({
     onApply, onClear,
 }: FilterSheetProps) {
     const [filterSearch, setFilterSearch] = useState("");
-    const [collapsed, setCollapsed] = useState<Record<string, bo            olean>>({});
+    const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
     const toggle = (k: string) => setCollapsed((p) => ({ ...p, [k]: !p[k] }));
 
     const safeBrandIds = Array.isArray(pendingBrandIds) ? pendingBrandIds : [];
