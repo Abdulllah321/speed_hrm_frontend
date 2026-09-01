@@ -53,6 +53,7 @@ export async function generateGrossSalesReturnExcel(opts: {
       "Color",
       "Quantity",
       "Unit Price",
+      "WOST Return",
       "Discount Reversal",
       "SubTotal",
       "Gross Return",
@@ -64,6 +65,7 @@ export async function generateGrossSalesReturnExcel(opts: {
     const totalCount = flatItems.length;
     for (let i = 0; i < totalCount; i++) {
       const item = flatItems[i];
+      const wost = item.wostAmount || Math.round((item.unitPrice * item.quantity / 1.18) * 100) / 100;
       dataRows.push([
         item.locationName,
         item.returnNumber,
@@ -84,6 +86,7 @@ export async function generateGrossSalesReturnExcel(opts: {
         item.colorName,
         item.quantity,
         item.unitPrice,
+        wost,
         item.discountAmount,
         item.subTotal,
         item.returnGrossAmount,
@@ -116,6 +119,7 @@ export async function generateGrossSalesReturnExcel(opts: {
       "",
       grandTotals.totalItems,
       "",
+      grandTotals.wostAmount,
       grandTotals.discountAmount,
       grandTotals.netAmount,
       grandTotals.grossAmount,
@@ -147,6 +151,7 @@ export async function generateGrossSalesReturnExcel(opts: {
       { wch: 14 },
       { wch: 14 },
       { wch: 14 },
+      { wch: 14 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Returned Line Items");
@@ -161,6 +166,7 @@ export async function generateGrossSalesReturnExcel(opts: {
       "FBR Inv #",
       "Items Count",
       "Gross Return",
+      "WOST Return",
       "Discount Reversal",
       "Taxes",
       "Net Refund",
@@ -182,6 +188,7 @@ export async function generateGrossSalesReturnExcel(opts: {
         ret.fbrInvoiceNumber,
         t.totalItems,
         t.grossAmount,
+        t.wostAmount,
         t.discountAmount,
         t.taxAmount,
         t.netAmount,
@@ -203,6 +210,7 @@ export async function generateGrossSalesReturnExcel(opts: {
       "",
       grandTotals.totalItems,
       grandTotals.grossAmount,
+      grandTotals.wostAmount,
       grandTotals.discountAmount,
       grandTotals.taxAmount,
       grandTotals.netAmount,
@@ -218,6 +226,7 @@ export async function generateGrossSalesReturnExcel(opts: {
       { wch: 14 },
       { wch: 18 },
       { wch: 12 },
+      { wch: 14 },
       { wch: 14 },
       { wch: 14 },
       { wch: 12 },

@@ -11,6 +11,7 @@ function createEmptyTotals(): GrossSalesSummaryTotals {
     orderCount: 0,
     totalItems: 0,
     grossAmount: 0,
+    wostAmount: 0,
     discountAmount: 0,
     netAmount: 0,
     taxAmount: 0,
@@ -21,6 +22,7 @@ function addTotals(target: GrossSalesSummaryTotals, source: GrossSalesSummaryTot
   target.orderCount += source.orderCount;
   target.totalItems += source.totalItems;
   target.grossAmount += source.grossAmount;
+  target.wostAmount += source.wostAmount;
   target.discountAmount += source.discountAmount;
   target.netAmount += source.netAmount;
   target.taxAmount += source.taxAmount;
@@ -41,6 +43,11 @@ export function useGrossSalesSummaryData(reportData: GrossSalesSummaryReportData
     article: true,
     variant: true,
     location: true,
+    month: false,
+    date: false,
+    document: false,
+    salesPerson: false,
+    taxRate: false,
   });
 
   useEffect(() => {
@@ -92,10 +99,14 @@ export function useGrossSalesSummaryData(reportData: GrossSalesSummaryReportData
     for (const item of filteredFlatItems) {
       if (item.quantity <= 0) continue;
 
+      const grossAmt = item.quantity * item.unitPrice;
+      const wostAmt = item.wostAmount || Math.round((grossAmt / 1.18) * 100) / 100;
+
       const itemTotals: GrossSalesSummaryTotals = {
         orderCount: 1,
         totalItems: item.quantity,
-        grossAmount: item.quantity * item.unitPrice,
+        grossAmount: grossAmt,
+        wostAmount: wostAmt,
         discountAmount: item.discountAmount,
         netAmount: item.subTotal,
         taxAmount: item.taxAmount,

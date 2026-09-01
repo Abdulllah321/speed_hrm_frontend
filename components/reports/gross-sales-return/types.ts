@@ -2,6 +2,7 @@ export interface GrossSalesReturnTotals {
   returnCount: number;
   totalItems: number;
   grossAmount: number;
+  wostAmount: number;
   discountAmount: number;
   netAmount: number;
   taxAmount: number;
@@ -26,6 +27,7 @@ export interface GrossSalesReturnLineItem {
   colorName: string;
   quantity: number;
   unitPrice: number;
+  wostAmount: number;
   discountAmount: number;
   taxAmount: number;
   subTotal: number;
@@ -77,10 +79,12 @@ export interface GrossSalesReturnFlatRecord {
   colorName: string;
   quantity: number;
   unitPrice: number;
+  wostAmount: number;
   discountAmount: number;
   taxAmount: number;
   subTotal: number;
   returnGrossAmount: number;
+  returnWostAmount?: number;
   returnDiscountAmount: number;
   returnNetAmount: number;
   returnTaxAmount: number;

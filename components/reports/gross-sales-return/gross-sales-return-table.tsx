@@ -75,7 +75,7 @@ export function GrossSalesReturnTable({
       {/* Clean Minimalist Matrix Table Container */}
       <div className="border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs bg-white dark:bg-slate-900 overflow-hidden no-print">
         <div ref={parentRef} className="overflow-auto max-h-[700px] relative">
-          <table className="w-full text-left border-collapse min-w-[2100px] text-xs">
+          <table className="w-full text-left border-collapse min-w-[2210px] text-xs">
             {/* Clean Light-Themed Header */}
             <thead className="sticky top-0 z-20 bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 uppercase text-[10px] font-mono tracking-wider border-b border-slate-200 dark:border-slate-700 shadow-2xs backdrop-blur-xs">
               <tr>
@@ -123,6 +123,23 @@ export function GrossSalesReturnTable({
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs text-[11px] font-medium bg-slate-900 text-slate-100">
                         Gross product value of returned stock.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </th>
+
+                {/* WOST Return */}
+                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span>WOST Return</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="text-slate-400 hover:text-slate-600">
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-[11px] font-medium bg-slate-900 text-slate-100">
+                        Without Sales Tax value of returned stock.
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -185,13 +202,13 @@ export function GrossSalesReturnTable({
             <tbody>
               {paddingTop > 0 && (
                 <tr>
-                  <td colSpan={18} style={{ height: `${paddingTop}px` }} />
+                  <td colSpan={19} style={{ height: `${paddingTop}px` }} />
                 </tr>
               )}
 
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={18} className="p-14 text-center text-muted-foreground font-medium text-xs">
+                  <td colSpan={19} className="p-14 text-center text-muted-foreground font-medium text-xs">
                     No sales return records found matching the selected store, cashier, or date range filters.
                   </td>
                 </tr>
@@ -338,6 +355,11 @@ export function GrossSalesReturnTable({
                         {formatVal(t.grossAmount)}
                       </td>
 
+                      {/* WOST Return */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                        {formatVal(t.wostAmount)}
+                      </td>
+
                       {/* Disc Reversal */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
                         {formatVal(t.discountAmount)}
@@ -359,7 +381,7 @@ export function GrossSalesReturnTable({
 
               {paddingBottom > 0 && (
                 <tr>
-                  <td colSpan={18} style={{ height: `${paddingBottom}px` }} />
+                  <td colSpan={19} style={{ height: `${paddingBottom}px` }} />
                 </tr>
               )}
             </tbody>
@@ -375,6 +397,9 @@ export function GrossSalesReturnTable({
                 </td>
                 <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
                   {formatVal(grandTotals.grossAmount)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                  {formatVal(grandTotals.wostAmount)}
                 </td>
                 <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
                   {formatVal(grandTotals.discountAmount)}

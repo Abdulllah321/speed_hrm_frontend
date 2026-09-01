@@ -48,6 +48,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "Quantity",
       "Unit Price",
       "Gross Sales",
+      "WOST Sales",
       "Discount Amount",
       "Taxes",
       "SubTotal Revenue",
@@ -58,6 +59,8 @@ export async function generateGrossSalesSummaryExcel(opts: {
     const totalCount = flatItems.length;
     for (let i = 0; i < totalCount; i++) {
       const item = flatItems[i];
+      const gross = item.quantity * item.unitPrice;
+      const wost = item.wostAmount || Math.round((gross / 1.18) * 100) / 100;
       dataRows.push([
         item.locationName || "Main Outlet",
         item.brandName || "-",
@@ -72,7 +75,8 @@ export async function generateGrossSalesSummaryExcel(opts: {
         item.colorName || "-",
         item.quantity,
         item.unitPrice,
-        item.quantity * item.unitPrice,
+        gross,
+        wost,
         item.discountAmount,
         item.taxAmount,
         item.subTotal,
@@ -99,6 +103,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
       grandTotals.totalItems,
       "",
       grandTotals.grossAmount,
+      grandTotals.wostAmount,
       grandTotals.discountAmount,
       grandTotals.taxAmount,
       grandTotals.netAmount,
@@ -121,6 +126,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
       { wch: 12 },
       { wch: 14 },
       { wch: 14 },
+      { wch: 14 },
       { wch: 12 },
       { wch: 18 },
     ];
@@ -135,6 +141,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "Color",
       "Sold Qty",
       "Gross Sales",
+      "WOST Sales",
       "Discount Amount",
       "Taxes",
       "SubTotal Revenue",
@@ -159,6 +166,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
           node.color || "-",
           node.totals.totalItems,
           node.totals.grossAmount,
+          node.totals.wostAmount,
           node.totals.discountAmount,
           node.totals.taxAmount,
           node.totals.netAmount,
@@ -179,6 +187,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "-",
       grandTotals.totalItems,
       grandTotals.grossAmount,
+      grandTotals.wostAmount,
       grandTotals.discountAmount,
       grandTotals.taxAmount,
       grandTotals.netAmount,
@@ -191,6 +200,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
       { wch: 10 },
       { wch: 16 },
       { wch: 10 },
+      { wch: 14 },
       { wch: 14 },
       { wch: 14 },
       { wch: 12 },

@@ -2,6 +2,7 @@ export interface GrossSalesSummaryTotals {
   orderCount: number;
   totalItems: number;
   grossAmount: number;
+  wostAmount: number;
   discountAmount: number;
   netAmount: number;
   taxAmount: number;
@@ -21,6 +22,7 @@ export interface GrossSalesSummaryLineItem {
   colorName: string;
   quantity: number;
   unitPrice: number;
+  wostAmount: number;
   discountAmount: number;
   taxAmount: number;
   subTotal: number;
@@ -40,6 +42,7 @@ export interface GrossSalesSummaryFlatRecord {
   colorName: string;
   quantity: number;
   unitPrice: number;
+  wostAmount: number;
   discountAmount: number;
   taxAmount: number;
   subTotal: number;
@@ -62,6 +65,11 @@ export interface GroupingLevels {
   article: boolean;
   variant: boolean;
   location?: boolean;
+  month?: boolean;
+  date?: boolean;
+  document?: boolean;
+  salesPerson?: boolean;
+  taxRate?: boolean;
 }
 
 export interface GrossSalesSummaryTreeNode {

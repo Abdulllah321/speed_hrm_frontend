@@ -153,7 +153,7 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
       {/* Main Virtualized Container */}
       <div className="border border-border/60 rounded-2xl overflow-hidden bg-background shadow-sm">
         <div ref={parentRef} className="max-h-[640px] overflow-auto relative">
-          <div className="min-w-[1180px]">
+          <div className="min-w-[1330px]">
             {/* Sticky Table Header */}
             <div className="sticky top-0 z-10 flex items-center bg-slate-900 dark:bg-slate-950 text-slate-100 text-[11px] font-mono font-semibold uppercase tracking-wider h-11 border-b border-border/80 shadow-md">
               <div className="flex-1 min-w-[340px] px-4">Product Hierarchy / Description</div>
@@ -162,6 +162,7 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
               <div className="w-32 px-2 text-center">Color</div>
               <div className="w-28 px-2 text-right">Sold Qty</div>
               <div className="w-36 px-2 text-right">Gross Sales</div>
+              <div className="w-36 px-2 text-right">WOST Sales</div>
               <div className="w-32 px-2 text-right">Discounts</div>
               <div className="w-28 px-2 text-right">Taxes</div>
               <div className="w-36 px-4 text-right">SubTotal Revenue</div>
@@ -297,6 +298,11 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
                         {formatCurrency(node.totals.grossAmount)}
                       </div>
 
+                      {/* Column 6b: WOST Sales */}
+                      <div className="w-36 px-2 text-right shrink-0 font-mono text-slate-700 dark:text-slate-300">
+                        {formatCurrency(node.totals.wostAmount ?? (node.totals.grossAmount ? node.totals.grossAmount / 1.18 : 0))}
+                      </div>
+
                       {/* Column 7: Discounts */}
                       <div className="w-32 px-2 text-right shrink-0 font-mono font-semibold text-amber-600 dark:text-amber-400">
                         {formatCurrency(node.totals.discountAmount)}
@@ -325,6 +331,7 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
               <div className="w-32 px-2 text-center">-</div>
               <div className="w-28 px-2 text-right font-black">{grandTotals.totalItems.toLocaleString()}</div>
               <div className="w-36 px-2 text-right">{formatCurrency(grandTotals.grossAmount)}</div>
+              <div className="w-36 px-2 text-right">{formatCurrency(grandTotals.wostAmount)}</div>
               <div className="w-32 px-2 text-right text-amber-600 dark:text-amber-400">{formatCurrency(grandTotals.discountAmount)}</div>
               <div className="w-28 px-2 text-right">{formatCurrency(grandTotals.taxAmount)}</div>
               <div className="w-36 px-4 text-right text-emerald-600 dark:text-emerald-400 font-black">{formatCurrency(grandTotals.netAmount)}</div>
