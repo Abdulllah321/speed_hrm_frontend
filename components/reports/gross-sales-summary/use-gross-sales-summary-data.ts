@@ -90,6 +90,8 @@ export function useGrossSalesSummaryData(reportData: GrossSalesSummaryReportData
     const root: GrossSalesSummaryTreeNode[] = [];
 
     for (const item of filteredFlatItems) {
+      if (item.quantity <= 0) continue;
+
       const itemTotals: GrossSalesSummaryTotals = {
         orderCount: 1,
         totalItems: item.quantity,
