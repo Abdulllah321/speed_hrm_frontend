@@ -194,10 +194,12 @@ type DataTableProps<TData extends DataTableRow> = {
   virtualized?: boolean;
 };
 
+const DEFAULT_SORTING: SortingState = [];
+
 export default function DataTable<TData extends DataTableRow>({
   columns,
   data: initialData,
-  sortingColumns = [],
+  sortingColumns = DEFAULT_SORTING,
   toggleAction,
   actionText = "Add",
   title,
@@ -273,8 +275,13 @@ export default function DataTable<TData extends DataTableRow>({
   }, [searchValue]);
 
   useEffect(() => {
-    if (manualSorting && sortingColumns) {
-      setSorting(sortingColumns);
+    if (manualSorting && sortingColumns && sortingColumns.length > 0) {
+      setSorting((prev) => {
+        if (prev === sortingColumns) return prev;
+        const isSame = prev.length === sortingColumns.length && prev.every((s, i) => s.id === sortingColumns[i]?.id && s.desc === sortingColumns[i]?.desc);
+        if (isSame) return prev;
+        return sortingColumns;
+      });
     }
   }, [manualSorting, sortingColumns]);
 

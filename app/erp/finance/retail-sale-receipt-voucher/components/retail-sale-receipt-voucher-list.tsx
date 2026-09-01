@@ -37,6 +37,7 @@ export function RetailSaleReceiptVoucherList({
     const [isExporting, setIsExporting] = useState(false);
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [searchQuery, setSearchQuery] = useState<string>("");
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -123,6 +124,7 @@ export function RetailSaleReceiptVoucherList({
 
     // Filter data
     const filteredData = useMemo(() => {
+        const q = searchQuery.toLowerCase().trim();
         return vouchers.filter(v => {
             const st = (v.status || "draft").toLowerCase();
             if (statusTab === "pending_check" && st !== "pending_check" && st !== "pending") return false;
@@ -138,9 +140,25 @@ export function RetailSaleReceiptVoucherList({
                 const vDate = new Date(v.rvDate);
                 if (vDate > toDate) return false;
             }
+
+            if (q) {
+                const matchRvNo = v.rvNo?.toLowerCase().includes(q);
+                const matchFolio = v.folio?.toLowerCase().includes(q);
+                const matchDesc = v.description?.toLowerCase().includes(q);
+                const matchRemarks = v.remarks?.toLowerCase().includes(q);
+                const matchOutlet = v.details?.some(d =>
+                    d.tagAccountName?.toLowerCase().includes(q) ||
+                    d.tagAccountCode?.toLowerCase().includes(q) ||
+                    d.narration?.toLowerCase().includes(q)
+                );
+                if (!matchRvNo && !matchFolio && !matchDesc && !matchRemarks && !matchOutlet) {
+                    return false;
+                }
+            }
+
             return true;
         });
-    }, [vouchers, statusTab, fromDate, toDate]);
+    }, [vouchers, statusTab, fromDate, toDate, searchQuery]);
 
     // Status tab counts
     const counts = useMemo(() => {
@@ -243,6 +261,21 @@ export function RetailSaleReceiptVoucherList({
                             {code && <span className="font-bold text-gray-800 mr-1">[{code}]</span>}
                             <span className="font-medium text-gray-700">{name || "Outlet"}</span>
                         </div>
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: "description",
+            header: "Description / Remarks",
+            cell: ({ row }) => {
+                const desc = row.original.description || row.original.remarks;
+                if (!desc) {
+                    return <span className="text-gray-400 text-xs">—</span>;
+                }
+                return (
+                    <div className="text-xs text-gray-700 max-w-[240px] truncate font-medium" title={desc}>
+                        {desc}
                     </div>
                 );
             },
@@ -495,9 +528,9 @@ export function RetailSaleReceiptVoucherList({
                         <div className="flex items-center gap-2">
                             <span className="font-semibold text-gray-600">Date Range:</span>
                             <DateRangePicker
-                                from={fromDate}
-                                to={toDate}
-                                onSelect={(range) => {
+                                from={fromDate as any}
+                                to={toDate as any}
+                                onSelect={(range:any) => {
                                     setFromDate(range?.from);
                                     setToDate(range?.to);
                                 }}
@@ -522,8 +555,12 @@ export function RetailSaleReceiptVoucherList({
                     <DataTable
                         columns={columns}
                         data={filteredData}
-                        searchKey="rvNo"
-                        placeholder="Search RSRV number or outlet..."
+                        searchFields={[
+                            { key: "rvNo", label: "RSRV No" },
+                            { key: "description", label: "Description / Remarks" },
+                            { key: "outlet", label: "Outlet" },
+                        ]}
+                        onSearchChange={(searchVal) => setSearchQuery(searchVal)}
                     />
                 </CardContent>
             </Card>

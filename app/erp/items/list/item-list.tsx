@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -592,7 +592,10 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
 
     // ── Reset to page 1 on search/sort/filter change ──────────────────────
     useEffect(() => {
-        setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+        setPagination((prev) => {
+            if (prev.pageIndex === 0) return prev;
+            return { ...prev, pageIndex: 0 };
+        });
     }, [search, sortColumn, sortDir, appliedFilters]);
 
     // ── Delete handler ─────────────────────────────────────────────────────
@@ -716,7 +719,10 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         </>
     );
 
-    const columns = useItemColumns(handleDelete, canUpdate, canDelete);
+    const columns = useMemo(
+        () => useItemColumns(handleDelete, canUpdate, canDelete),
+        [handleDelete, canUpdate, canDelete]
+    );
 
     return (
         <Card className="w-full">
