@@ -238,7 +238,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
       <div className="space-y-2">
         <Label>Date of Birth</Label>
         <Controller name="dateOfBirth" control={control} render={({ field }) => (
-          <DatePicker value={field.value as string | undefined} onChange={field.onChange} disabled={isPending} />
+          <DatePicker fromYear={1930} toYear={new Date().getFullYear()} value={field.value as string | undefined} onChange={field.onChange} disabled={isPending} />
         )} />
         {errors?.dateOfBirth && <p className="text-xs text-red-500">{errors.dateOfBirth.message}</p>}
       </div>
