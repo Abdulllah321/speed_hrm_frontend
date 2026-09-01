@@ -26,8 +26,6 @@ export function generateCostOfSalesPdfHtml(opts: {
         <td style="text-align: right;">${formatPrice(brand.totals.avgUnitCost)}</td>
         <td style="text-align: right; color: #d97706;">${formatPrice(brand.totals.totalCost)}</td>
         <td style="text-align: right; color: #059669;">${formatPrice(brand.totals.totalRevenue)}</td>
-        <td style="text-align: right; color: #0d9488;">${formatPrice(brand.totals.grossProfit)}</td>
-        <td style="text-align: right;">${brand.totals.profitMargin}%</td>
       </tr>
     `;
 
@@ -39,8 +37,6 @@ export function generateCostOfSalesPdfHtml(opts: {
           <td style="text-align: right;">${formatPrice(div.totals.avgUnitCost)}</td>
           <td style="text-align: right; color: #d97706;">${formatPrice(div.totals.totalCost)}</td>
           <td style="text-align: right; color: #059669;">${formatPrice(div.totals.totalRevenue)}</td>
-          <td style="text-align: right; color: #0d9488;">${formatPrice(div.totals.grossProfit)}</td>
-          <td style="text-align: right;">${div.totals.profitMargin}%</td>
         </tr>
       `;
 
@@ -53,8 +49,6 @@ export function generateCostOfSalesPdfHtml(opts: {
               <td style="text-align: right;">${formatPrice(cat.totals.avgUnitCost)}</td>
               <td style="text-align: right; color: #d97706;">${formatPrice(cat.totals.totalCost)}</td>
               <td style="text-align: right; color: #059669;">${formatPrice(cat.totals.totalRevenue)}</td>
-              <td style="text-align: right; color: #0d9488;">${formatPrice(cat.totals.grossProfit)}</td>
-              <td style="text-align: right;">${cat.totals.profitMargin}%</td>
             </tr>
           `;
 
@@ -70,8 +64,6 @@ export function generateCostOfSalesPdfHtml(opts: {
                 <td style="text-align: right;">${formatPrice(prod.totals.avgUnitCost)}</td>
                 <td style="text-align: right; font-weight: bold; color: #d97706;">${formatPrice(prod.totals.totalCost)}</td>
                 <td style="text-align: right; font-weight: bold; color: #059669;">${formatPrice(prod.totals.totalRevenue)}</td>
-                <td style="text-align: right; font-weight: bold; color: #0d9488;">${formatPrice(prod.totals.grossProfit)}</td>
-                <td style="text-align: right; font-weight: bold;">${prod.totals.profitMargin}%</td>
               </tr>
             `;
 
@@ -87,8 +79,6 @@ export function generateCostOfSalesPdfHtml(opts: {
                   <td style="text-align: right;">${formatPrice(item.costPrice)}</td>
                   <td style="text-align: right; color: #b45309;">${formatPrice(item.totalCost)}</td>
                   <td style="text-align: right; color: #047857;">${formatPrice(item.totalRevenue)}</td>
-                  <td style="text-align: right; color: #0f766e;">${formatPrice(item.grossProfit)}</td>
-                  <td style="text-align: right;">${item.profitMargin}%</td>
                 </tr>
               `;
             }
@@ -130,17 +120,15 @@ export function generateCostOfSalesPdfHtml(opts: {
       <table>
         <thead>
           <tr>
-            <th style="width: 26%;">Hierarchy / Item Description</th>
-            <th style="width: 10%;">SKU</th>
-            <th style="width: 11%;">Barcode</th>
-            <th style="width: 6%; text-align: center;">Size</th>
-            <th style="width: 8%; text-align: center;">Color</th>
-            <th style="width: 7%; text-align: right;">Sold Qty</th>
-            <th style="width: 8%; text-align: right;">Unit Cost</th>
-            <th style="width: 9%; text-align: right;">COGS (Cost)</th>
-            <th style="width: 9%; text-align: right;">Revenue</th>
-            <th style="width: 8%; text-align: right;">Gross Profit</th>
-            <th style="width: 4%; text-align: right;">Margin %</th>
+            <th style="width: 32%;">Hierarchy / Item Description</th>
+            <th style="width: 12%;">SKU</th>
+            <th style="width: 12%;">Barcode</th>
+            <th style="width: 7%; text-align: center;">Size</th>
+            <th style="width: 9%; text-align: center;">Color</th>
+            <th style="width: 8%; text-align: right;">Net Sold Qty</th>
+            <th style="width: 9%; text-align: right;">Unit Cost</th>
+            <th style="width: 11%; text-align: right;">COGS (Cost)</th>
+            <th style="width: 10%; text-align: right;">Net Revenue</th>
           </tr>
         </thead>
         <tbody>
@@ -153,8 +141,6 @@ export function generateCostOfSalesPdfHtml(opts: {
             <td style="text-align: right;">${formatPrice(grandTotals.avgUnitCost)}</td>
             <td style="text-align: right; color: #fbbf24;">${formatPrice(grandTotals.totalCost)}</td>
             <td style="text-align: right; color: #4ade80;">${formatPrice(grandTotals.totalRevenue)}</td>
-            <td style="text-align: right; color: #2dd4bf;">${formatPrice(grandTotals.grossProfit)}</td>
-            <td style="text-align: right; color: #38bdf8;">${grandTotals.profitMargin}%</td>
           </tr>
         </tfoot>
       </table>

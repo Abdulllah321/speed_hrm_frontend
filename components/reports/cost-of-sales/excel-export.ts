@@ -45,13 +45,11 @@ export async function generateCostOfSalesExcel(opts: {
       "Size",
       "Barcode",
       "Outlet / Store",
-      "Sold Qty",
+      "Net Sold Qty",
       "Unit Cost (Rs.)",
       "Total Cost (COGS)",
       "Unit Price (Rs.)",
-      "Total Revenue",
-      "Gross Profit",
-      "Margin %",
+      "Net Revenue",
     ];
 
     const dataRows: any[][] = [headers];
@@ -76,8 +74,6 @@ export async function generateCostOfSalesExcel(opts: {
         item.totalCost,
         item.unitPrice,
         item.totalRevenue,
-        item.grossProfit,
-        `${item.profitMargin}%`,
       ]);
 
       if (i % 500 === 0) {
@@ -103,8 +99,6 @@ export async function generateCostOfSalesExcel(opts: {
       grandTotals.totalCost,
       "",
       grandTotals.totalRevenue,
-      grandTotals.grossProfit,
-      `${grandTotals.profitMargin}%`,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
@@ -112,7 +106,7 @@ export async function generateCostOfSalesExcel(opts: {
       { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 14 },
       { wch: 14 }, { wch: 28 }, { wch: 14 }, { wch: 8 }, { wch: 16 },
       { wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 14 },
-      { wch: 16 }, { wch: 14 }, { wch: 12 },
+      { wch: 16 },
     ];
     XLSX.utils.book_append_sheet(workbook, worksheet, "Flat Data");
   } else {
@@ -122,12 +116,10 @@ export async function generateCostOfSalesExcel(opts: {
       "Barcode",
       "Size",
       "Color",
-      "Sold Qty",
+      "Net Sold Qty",
       "Unit Cost (Rs.)",
       "Total Cost (COGS)",
-      "Total Revenue",
-      "Gross Profit",
-      "Margin %",
+      "Net Revenue",
     ];
 
     const dataRows: any[][] = [headers];
@@ -143,8 +135,6 @@ export async function generateCostOfSalesExcel(opts: {
         brand.totals.avgUnitCost,
         brand.totals.totalCost,
         brand.totals.totalRevenue,
-        brand.totals.grossProfit,
-        `${brand.totals.profitMargin}%`,
       ]);
 
       for (const div of brand.divisions) {
@@ -158,8 +148,6 @@ export async function generateCostOfSalesExcel(opts: {
           div.totals.avgUnitCost,
           div.totals.totalCost,
           div.totals.totalRevenue,
-          div.totals.grossProfit,
-          `${div.totals.profitMargin}%`,
         ]);
 
         for (const gender of div.genders) {
@@ -174,8 +162,6 @@ export async function generateCostOfSalesExcel(opts: {
               cat.totals.avgUnitCost,
               cat.totals.totalCost,
               cat.totals.totalRevenue,
-              cat.totals.grossProfit,
-              `${cat.totals.profitMargin}%`,
             ]);
 
             for (const prod of cat.products) {
@@ -189,8 +175,6 @@ export async function generateCostOfSalesExcel(opts: {
                 prod.totals.avgUnitCost,
                 prod.totals.totalCost,
                 prod.totals.totalRevenue,
-                prod.totals.grossProfit,
-                `${prod.totals.profitMargin}%`,
               ]);
 
               for (const item of prod.sizes) {
@@ -204,8 +188,6 @@ export async function generateCostOfSalesExcel(opts: {
                   item.costPrice,
                   item.totalCost,
                   item.totalRevenue,
-                  item.grossProfit,
-                  `${item.profitMargin}%`,
                 ]);
               }
             }
@@ -224,15 +206,12 @@ export async function generateCostOfSalesExcel(opts: {
       grandTotals.avgUnitCost,
       grandTotals.totalCost,
       grandTotals.totalRevenue,
-      grandTotals.grossProfit,
-      `${grandTotals.profitMargin}%`,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
     worksheet["!cols"] = [
       { wch: 38 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 12 },
       { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
-      { wch: 14 }, { wch: 12 },
     ];
     XLSX.utils.book_append_sheet(workbook, worksheet, "Hierarchical View");
   }

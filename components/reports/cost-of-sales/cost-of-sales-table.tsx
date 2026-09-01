@@ -76,7 +76,7 @@ export function CostOfSalesTable({
 
       <div className="border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-background overflow-hidden no-print">
         <div ref={parentRef} className="overflow-auto max-h-[700px] relative">
-          <table className="w-full text-left border-collapse min-w-[1350px] text-xs">
+          <table className="w-full text-left border-collapse min-w-[1100px] text-xs">
             {/* Synchronized Minimal Dark Header */}
             <thead className="sticky top-0 z-20 bg-slate-950 text-slate-200 uppercase text-[10px] font-mono tracking-wider border-b border-slate-800 shadow-xs">
               <tr>
@@ -85,13 +85,11 @@ export function CostOfSalesTable({
                 <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-800">Barcode</th>
                 <th className="py-3 px-3 w-[75px] shrink-0 border-r border-slate-800 text-center">Size</th>
                 <th className="py-3 px-3 w-[95px] shrink-0 border-r border-slate-800 text-center">Color</th>
-                <th className="py-3 px-3 w-[90px] shrink-0 border-r border-slate-800 text-right">Sold Qty</th>
+                <th className="py-3 px-3 w-[90px] shrink-0 border-r border-slate-800 text-right">Net Sold Qty</th>
                 <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-800 text-right">Unit Cost</th>
                 <th className="py-3 px-3 w-[135px] shrink-0 border-r border-slate-800 text-right">COGS (Total Cost)</th>
                 <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-800 text-right">Unit Price</th>
-                <th className="py-3 px-3 w-[135px] shrink-0 border-r border-slate-800 text-right">Revenue</th>
-                <th className="py-3 px-3 w-[125px] shrink-0 border-r border-slate-800 text-right">Gross Profit</th>
-                <th className="py-3 px-3.5 w-[90px] shrink-0 text-right">Margin %</th>
+                <th className="py-3 px-3.5 w-[135px] shrink-0 text-right">Net Revenue</th>
               </tr>
             </thead>
 
@@ -99,13 +97,13 @@ export function CostOfSalesTable({
             <tbody>
               {paddingTop > 0 && (
                 <tr>
-                  <td colSpan={12} style={{ height: `${paddingTop}px` }} />
+                  <td colSpan={10} style={{ height: `${paddingTop}px` }} />
                 </tr>
               )}
 
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="p-14 text-center text-muted-foreground font-medium text-xs">
+                  <td colSpan={10} className="p-14 text-center text-muted-foreground font-medium text-xs">
                     No sold items or sales data found for the selected period and location filter.
                   </td>
                 </tr>
@@ -126,8 +124,6 @@ export function CostOfSalesTable({
                   const totCost = isVariant ? item.totalCost : item.totals?.totalCost;
                   const price = isVariant ? item.unitPrice : undefined;
                   const rev = isVariant ? item.totalRevenue : item.totals?.totalRevenue;
-                  const profit = isVariant ? item.grossProfit : item.totals?.grossProfit;
-                  const margin = isVariant ? item.profitMargin : item.totals?.profitMargin;
 
                   const depthIndentClass =
                     item.depth === 1
@@ -237,18 +233,8 @@ export function CostOfSalesTable({
                       </td>
 
                       {/* Total Revenue */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                         {formatPrice(rev)}
-                      </td>
-
-                      {/* Gross Profit */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono font-bold text-teal-600 dark:text-teal-400">
-                        {formatPrice(profit)}
-                      </td>
-
-                      {/* Profit Margin % */}
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400">
-                        {margin !== undefined && margin !== 0 ? `${margin}%` : "-"}
                       </td>
                     </tr>
                   );
@@ -257,7 +243,7 @@ export function CostOfSalesTable({
 
               {paddingBottom > 0 && (
                 <tr>
-                  <td colSpan={12} style={{ height: `${paddingBottom}px` }} />
+                  <td colSpan={10} style={{ height: `${paddingBottom}px` }} />
                 </tr>
               )}
             </tbody>
@@ -278,14 +264,8 @@ export function CostOfSalesTable({
                   {formatPrice(grandTotals.totalCost)}
                 </td>
                 <td className="py-3 px-3 border-r border-slate-800 text-right font-mono">-</td>
-                <td className="py-3 px-3 border-r border-slate-800 text-right font-mono text-emerald-400">
+                <td className="py-3 px-3.5 text-right font-mono text-emerald-400">
                   {formatPrice(grandTotals.totalRevenue)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-800 text-right font-mono text-teal-400">
-                  {formatPrice(grandTotals.grossProfit)}
-                </td>
-                <td className="py-3 px-3.5 text-right font-mono text-sky-400">
-                  {grandTotals.profitMargin}%
                 </td>
               </tr>
             </tfoot>
