@@ -58,7 +58,7 @@ export interface GeneralLedgerRow {
   refBillNo2?: string | null;
 }
 
-export interface GeneralLedgerResult {
+export interface SingleAccountLedger {
   account: { id: string; code: string; name: string; type: string; balance: number };
   openingBalance: number;
   rows: GeneralLedgerRow[];
@@ -69,23 +69,55 @@ export interface GeneralLedgerResult {
   pagination: { total: number; page: number; limit: number; totalPages: number };
 }
 
+export interface GeneralLedgerResult {
+  account: { id: string; code: string; name: string; type: string; balance: number };
+  openingBalance: number;
+  rows: GeneralLedgerRow[];
+  closingBalance: number;
+  rangeTotalDebit: number;
+  rangeTotalCredit: number;
+  rangeClosingBalance: number;
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+  ledgers?: SingleAccountLedger[];
+}
+
 export interface IncomeStatementAccount {
   id: string;
   code: string;
   name: string;
   type: string;
+  isGroup?: boolean;
+  isTagAccount?: boolean;
+  parentId?: string | null;
+  level?: number;
   amount: number;
+  compareAmount?: number;
+  variance?: number;
+  percentageChange?: number;
   parent?: { id: string; code: string; name: string } | null;
 }
 
 export interface IncomeStatementResult {
   income: IncomeStatementAccount[];
   totalIncome: number;
+  compareTotalIncome?: number;
   expense: IncomeStatementAccount[];
   totalExpense: number;
+  compareTotalExpense?: number;
+  totalCogs?: number;
+  compareTotalCogs?: number;
+  grossProfit?: number;
+  compareGrossProfit?: number;
   netProfit: number;
+  compareNetProfit?: number;
+  varianceNetProfit?: number;
+  percentageNetProfit?: number;
   from?: string;
   to?: string;
+  compareFrom?: string;
+  compareTo?: string;
+  includeTagAccounts?: boolean;
+  showZeroBalances?: boolean;
 }
 
 export interface BalanceSheetAccount {
@@ -192,9 +224,31 @@ export async function getGeneralLedger(
   }
 }
 
-export async function getIncomeStatement(from?: string, to?: string): Promise<{ status: boolean; data?: IncomeStatementResult; message?: string }> {
+export async function getIncomeStatement(
+  params?: {
+    from?: string;
+    to?: string;
+    compareFrom?: string;
+    compareTo?: string;
+    includeTagAccounts?: boolean;
+    showZeroBalances?: boolean;
+  } | string,
+  toParam?: string
+): Promise<{ status: boolean; data?: IncomeStatementResult; message?: string }> {
   try {
-    const res = await authFetch(`/finance/reports/income-statement${buildQuery({ from, to })}`, {});
+    const opts = typeof params === "string" ? { from: params, to: toParam } : params;
+    const { from, to, compareFrom, compareTo, includeTagAccounts, showZeroBalances } = opts ?? {};
+    const res = await authFetch(
+      `/finance/reports/income-statement${buildQuery({
+        from,
+        to,
+        compareFrom,
+        compareTo,
+        includeTagAccounts: includeTagAccounts !== undefined ? String(includeTagAccounts) : undefined,
+        showZeroBalances: showZeroBalances ? "true" : undefined,
+      })}`,
+      {}
+    );
     return res.data;
   } catch (e: any) {
     return { status: false, message: e.message };

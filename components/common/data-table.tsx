@@ -458,16 +458,33 @@ export default function DataTable<TData extends DataTableRow>({
     rowCount,
     pageCount,
     globalFilterFn: (row) => {
+      const getRowValue = (key: string): unknown => {
+        const cell = row.getAllCells().find((c) => c.column.id === key);
+        if (cell) {
+          try {
+            return cell.getValue();
+          } catch {}
+        }
+        const obj = row.original as any;
+        if (!obj) return undefined;
+        if (key in obj) return obj[key];
+        if (key.includes(".")) {
+          const parts = key.split(".");
+          let curr = obj;
+          for (const part of parts) {
+            if (curr == null) return undefined;
+            curr = curr[part];
+          }
+          return curr;
+        }
+        return obj[key];
+      };
+
       // Check search filter (OR across searchFields)
       if (search && searchFields?.length) {
         const searchLower = search.toLowerCase();
         const matchesSearch = searchFields.some((field) => {
-          let value: unknown;
-          try {
-            value = row.getValue(field.key);
-          } catch {
-            value = (row.original as Record<string, unknown>)?.[field.key];
-          }
+          const value = getRowValue(field.key);
           return String(value ?? "")
             .toLowerCase()
             .includes(searchLower);
@@ -478,18 +495,7 @@ export default function DataTable<TData extends DataTableRow>({
       // Check active filters (AND across all filters)
       for (const [key, value] of Object.entries(activeFilters)) {
         if (value && value !== "all") {
-          let rowValue: any;
-          try {
-            rowValue = row.getValue(key);
-          } catch {
-            const originalData = row.original as any;
-            rowValue = originalData?.[key];
-          }
-
-          if (rowValue === undefined || rowValue === null) {
-            const originalData = row.original as any;
-            rowValue = originalData?.[key];
-          }
+          const rowValue = getRowValue(key);
 
           const rowValueStr = rowValue != null ? String(rowValue).trim() : "";
           const filterValueStr = String(value).trim();

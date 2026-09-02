@@ -311,11 +311,6 @@ export function ReceiptVoucherList({
             cell: ({ row }) => format(new Date(row.original.rvDate), "dd-MM-yyyy")
         },
         {
-            accessorKey: "refBillNo",
-            header: "Ref / Bill No.",
-            cell: ({ row }) => row.original.refBillNo || "-"
-        },
-        {
             accessorKey: "description",
             header: "Description",
             cell: ({ row }) => <div className="truncate max-w-[150px]">{row.original.description}</div>
