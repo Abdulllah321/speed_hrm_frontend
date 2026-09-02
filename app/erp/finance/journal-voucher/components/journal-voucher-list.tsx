@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,8 +30,8 @@ import {
   updateJournalVoucher,
   markJournalVoucherAsPrinted,
   unapproveJournalVoucher,
+  queueJournalVouchersExport,
 } from "@/lib/actions/journal-voucher";
-import { queueJournalVouchersExport } from "@/lib/actions/journal-voucher";
 import { JournalVoucherPrint } from "./journal-voucher-print";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -93,6 +93,7 @@ export function JournalVoucherList({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const [fromDate, setFromDate] = useState<Date | undefined>(
     searchParams.get("fromDate") ? new Date(searchParams.get("fromDate")!) : initialFilters?.fromDate ? new Date(initialFilters.fromDate) : undefined
@@ -131,7 +132,9 @@ export function JournalVoucherList({
     if (!("page" in updates)) {
       params.delete("page");
     }
-    router.replace(`${pathname}?${params.toString()}`);
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
   };
 
   useEffect(() => {
@@ -231,17 +234,6 @@ export function JournalVoucherList({
       } catch {}
     }
   };
-
-  // Use initial data directly as it comes from the server
-  useEffect(() => {
-    setTimeout(() => {
-      setVouchers(
-        initialData.sort(
-          (a, b) => new Date(b.jvDate).getTime() - new Date(a.jvDate).getTime(),
-        ),
-      );
-    }, 0);
-  }, [initialData]);
 
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
@@ -811,6 +803,13 @@ export function JournalVoucherList({
           <DataTable
             columns={columns}
             data={vouchers}
+            isLoading={isPending}
+            searchFields={[
+              { key: "jvNo", label: "Voucher No" },
+              { key: "description", label: "Description" },
+              { key: "remarks", label: "Remarks / Narration" },
+            ]}
+            searchValue={searchTerm}
             manualPagination={true}
             rowCount={pagination?.total ?? vouchers.length}
             pageCount={pagination?.totalPages ?? 1}

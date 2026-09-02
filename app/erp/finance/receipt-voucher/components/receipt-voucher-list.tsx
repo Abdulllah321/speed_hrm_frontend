@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -77,6 +77,7 @@ export function ReceiptVoucherList({
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const [isPending, startTransition] = useTransition();
 
     const [type, setType] = useState<"bank" | "cash">(
         (searchParams.get("type") as "bank" | "cash") || (initialFilters?.type as "bank" | "cash") || "bank"
@@ -116,7 +117,9 @@ export function ReceiptVoucherList({
         if (!("page" in updates)) {
             params.delete("page");
         }
-        router.replace(`${pathname}?${params.toString()}`);
+        startTransition(() => {
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        });
     };
 
     useEffect(() => {
@@ -229,13 +232,6 @@ export function ReceiptVoucherList({
                 : latest;
         });
     }, [vouchers]);
-
-    // Use initial data directly as it comes from the server
-    useEffect(() => {
-        setTimeout(() => {
-            setVouchers(initialData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-        }, 0);
-    }, [initialData]);
 
     const handleUpdateStatus = async (id: string, newStatus: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected") => {
         if (updatingStatusId) return;
@@ -783,6 +779,13 @@ export function ReceiptVoucherList({
                         <DataTable
                             columns={columns}
                             data={vouchers}
+                            isLoading={isPending}
+                            searchFields={[
+                                { key: "rvNo", label: "Voucher No" },
+                                { key: "description", label: "Description" },
+                                { key: "remarks", label: "Remarks / Narration" },
+                            ]}
+                            searchValue={searchTerm}
                             manualPagination={true}
                             rowCount={pagination?.total ?? vouchers.length}
                             pageCount={pagination?.totalPages ?? 1}

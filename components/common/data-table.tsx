@@ -269,7 +269,12 @@ export default function DataTable<TData extends DataTableRow>({
   const [search, setSearch] = useState(searchValue ?? "");
 
   useEffect(() => {
-    if (searchValue !== undefined && searchValue !== search && !searchDebounceRef.current) {
+    if (
+      searchValue !== undefined &&
+      searchValue !== search &&
+      !searchDebounceRef.current &&
+      document.activeElement !== inputRef.current
+    ) {
       setSearch(searchValue);
     }
   }, [searchValue]);
@@ -639,7 +644,7 @@ export default function DataTable<TData extends DataTableRow>({
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-wrap">
-            {searchFields?.length && (
+            {(searchFields?.length || manualFiltering || !!onSearchChange) && (
               <div className="relative md:w-auto w-full">
                 <Input
                   id={`${id}-input`}
@@ -648,9 +653,11 @@ export default function DataTable<TData extends DataTableRow>({
                   className="peer min-w-60 ps-9"
                   value={search}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder={`Search by ${searchFields
-                    .map((f) => f.label)
-                    .join(", ")}`}
+                  placeholder={
+                    searchFields?.length
+                      ? `Search by ${searchFields.map((f) => f.label).join(", ")}`
+                      : "Search by description, remarks, voucher no..."
+                  }
                   type="text"
                 />
 
