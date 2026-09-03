@@ -645,6 +645,7 @@ export default function PurchaseOrderDetail({
               <TableHeader>
                 <TableRow>
                   <TableHead>SKU</TableHead>
+                  <TableHead>Barcode</TableHead>
                   <TableHead>Brand</TableHead>
                   <TableHead>Size</TableHead>
                   <TableHead>Color</TableHead>
@@ -662,6 +663,9 @@ export default function PurchaseOrderDetail({
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">
                           {item.item?.sku || "-"}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {item.item?.barCode || "-"}
                         </TableCell>
                         <TableCell>{item.item?.brand?.name || "-"}</TableCell>
                         <TableCell>{item.item?.size?.name || "-"}</TableCell>
@@ -685,7 +689,7 @@ export default function PurchaseOrderDetail({
                     ))}
                     <TableRow className="border-t-2 font-semibold bg-muted/30">
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="text-right text-sm text-muted-foreground"
                       >
                         Total Ordered Quantity:
@@ -704,7 +708,7 @@ export default function PurchaseOrderDetail({
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={10}
                       className="text-center text-muted-foreground py-8"
                     >
                       No items found for this purchase order
@@ -811,25 +815,28 @@ export default function PurchaseOrderDetail({
               <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
                 <thead>
                   <tr className="border-y-2 border-black">
-                    <th className="py-2 pr-2 text-left font-bold w-[14%]">
+                    <th className="py-2 pr-2 text-left font-bold w-[13%]">
                       SKU
                     </th>
-                    <th className="py-2 pr-2 text-left font-bold w-[28%]">
+                    <th className="py-2 pr-2 text-left font-bold w-[14%]">
+                      Barcode
+                    </th>
+                    <th className="py-2 pr-2 text-left font-bold w-[23%]">
                       Description
                     </th>
-                    <th className="py-2 pr-2 text-left font-bold w-[10%]">
+                    <th className="py-2 pr-2 text-left font-bold w-[8%]">
                       Size
                     </th>
                     <th className="py-2 pr-2 text-left font-bold w-[12%]">
                       Color
                     </th>
-                    <th className="py-2 pr-2 text-right font-bold w-[10%]">
+                    <th className="py-2 pr-2 text-right font-bold w-[9%]">
                       Qty
                     </th>
-                    <th className="py-2 pr-2 text-right font-bold w-[13%]">
+                    <th className="py-2 pr-2 text-right font-bold w-[11%]">
                       Unit Price
                     </th>
-                    <th className="py-2 text-right font-bold w-[13%]">Total</th>
+                    <th className="py-2 text-right font-bold w-[10%]">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -842,6 +849,9 @@ export default function PurchaseOrderDetail({
                         >
                           <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
                             {item.item?.sku || "-"}
+                          </td>
+                          <td className="py-2 pr-2 font-mono text-[11px] overflow-hidden text-ellipsis text-gray-700">
+                            {item.item?.barCode || "-"}
                           </td>
                           <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
                             {item.description || "-"}
@@ -865,7 +875,7 @@ export default function PurchaseOrderDetail({
                       ))}
                       <tr className="border-t-2 border-black">
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="py-2 pr-2 text-right font-bold text-xs sm:text-[13px]"
                         >
                           Total Ordered Qty:
@@ -878,13 +888,13 @@ export default function PurchaseOrderDetail({
                             )
                             .toFixed(2)}
                         </td>
-                        <td colSpan={2} />
+                        <td colSpan={3} />
                       </tr>
                     </>
                   ) : (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={8}
                         className="py-4 text-center text-muted-foreground border-b border-gray-300"
                       >
                         No items found for this purchase order
