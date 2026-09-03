@@ -11,6 +11,18 @@ function createEmptyTotals(): AllianceRegisterTotals {
     netSale: 0,
     cash: 0,
     card: 0,
+    cashSale: 0,
+    cashReturn: 0,
+    cardSale: 0,
+    creditSale: 0,
+    giftVoucherAmount: 0,
+    creditVoucherAmount: 0,
+    exchangeVoucherAmount: 0,
+    claimVoucherAmount: 0,
+    giftVoucherCorporate: 0,
+    creditVoucherIssuedAmount: 0,
+    rewardVoucherAmount: 0,
+    onCreditAmount: 0,
     giftVoucherAmt: 0,
     creditAmt: 0,
     claimAmt: 0,
@@ -52,6 +64,18 @@ export function useAllianceRegisterData(records: AllianceRegisterRecord[]) {
       totals.netSale += Number(row.netSale || 0);
       totals.cash += Number(row.cash || 0);
       totals.card += Number(row.card || 0);
+      totals.cashSale += Number(row.cashSale || 0);
+      totals.cashReturn += Number(row.cashReturn || 0);
+      totals.cardSale += Number(row.cardSale || 0);
+      totals.creditSale += Number(row.creditSale || 0);
+      totals.giftVoucherAmount += Number(row.giftVoucherAmount || 0);
+      totals.creditVoucherAmount += Number(row.creditVoucherAmount || 0);
+      totals.exchangeVoucherAmount += Number(row.exchangeVoucherAmount || 0);
+      totals.claimVoucherAmount += Number(row.claimVoucherAmount || 0);
+      totals.giftVoucherCorporate += Number(row.giftVoucherCorporate || 0);
+      totals.creditVoucherIssuedAmount += Number(row.creditVoucherIssuedAmount || 0);
+      totals.rewardVoucherAmount += Number(row.rewardVoucherAmount || 0);
+      totals.onCreditAmount += Number(row.onCreditAmount || 0);
       totals.giftVoucherAmt += Number(row.giftVoucherAmt || 0);
       totals.creditAmt += Number(row.creditAmt || 0);
       totals.claimAmt += Number(row.claimAmt || 0);

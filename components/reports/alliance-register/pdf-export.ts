@@ -29,16 +29,27 @@ export async function generateAllianceRegisterPdf(opts: {
       <td style="font-family: monospace; font-weight: bold;">${row.invoiceNo}</td>
       <td>${row.date}</td>
       <td>${row.time}</td>
-      <td style="text-align: right; font-family: monospace;">$${row.retailPrice.toFixed(2)}</td>
-      <td style="text-align: right; font-family: monospace;">$${row.retailWost.toFixed(2)}</td>
-      <td style="text-align: right; font-family: monospace; color: #e11d48; font-weight: bold;">$${row.discount.toFixed(2)}</td>
-      <td style="text-align: right; font-family: monospace;">$${row.sTax.toFixed(2)}</td>
-      <td style="text-align: right; font-family: monospace; font-weight: bold; color: #059669;">$${row.netSale.toFixed(2)}</td>
-      <td style="text-align: right; font-family: monospace;">$${row.cash.toFixed(2)}</td>
-      <td style="text-align: right; font-family: monospace;">$${row.card.toFixed(2)}</td>
-      <td style="font-family: monospace;">${row.prefixCardNo || "-"}</td>
+      <td style="text-align: right; font-family: monospace;">${row.retailPrice.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.retailWost.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace; color: #e11d48; font-weight: bold;">${row.discount.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.sTax.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace; font-weight: bold; color: #059669;">${row.netSale.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace; font-weight: bold;">${row.cashSale.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace; color: #e11d48;">${row.cashReturn.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.cardSale.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.creditSale.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.giftVoucherAmount.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.creditVoucherAmount.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.exchangeVoucherAmount.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.claimVoucherAmount.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.giftVoucherCorporate.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace; color: #e11d48;">${row.creditVoucherIssuedAmount.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.rewardVoucherAmount.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">${row.onCreditAmount.toFixed(2)}</td>
+      <td style="font-family: monospace;">${row.binNo || row.prefixCardNo || "-"}</td>
+      <td style="font-family: monospace;">${row.cardNo || row.cardLast4 || "-"}</td>
+      <td style="font-weight: 500;">${row.cardName || "-"}</td>
       <td style="font-family: monospace;">${row.authId || "-"}</td>
-      <td style="font-family: monospace;">${row.cardNo ? `****${row.cardNo}` : "-"}</td>
       <td style="font-weight: 600; color: #312e81;">${row.allianceOption || "-"}</td>
       <td style="color: #64748b;">${row.remarks || "-"}</td>
     </tr>
@@ -60,11 +71,11 @@ export async function generateAllianceRegisterPdf(opts: {
           .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; }
           .kpi-label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; }
           .kpi-val { font-size: 15px; font-weight: 800; color: #0f172a; margin-top: 2px; font-family: monospace; }
-          table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10px; }
-          th { background: #1e1b4b; color: #ffffff; text-align: left; padding: 8px 10px; font-weight: 700; text-transform: uppercase; font-size: 9px; font-family: monospace; }
-          td { border-bottom: 1px solid #e2e8f0; padding: 6px 10px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 9px; }
+          th { background: #1e1b4b; color: #ffffff; text-align: left; padding: 6px 8px; font-weight: 700; text-transform: uppercase; font-size: 8px; font-family: monospace; }
+          td { border-bottom: 1px solid #e2e8f0; padding: 5px 8px; }
           tr:nth-child(even) { background-color: #f8fafc; }
-          tfoot tr td { background: #312e81; color: #ffffff; font-weight: 800; font-size: 10px; border-top: 2px solid #1e1b4b; }
+          tfoot tr td { background: #312e81; color: #ffffff; font-weight: 800; font-size: 9px; border-top: 2px solid #1e1b4b; }
           @media print {
             body { padding: 0; }
             .no-print { display: none; }
@@ -90,15 +101,15 @@ export async function generateAllianceRegisterPdf(opts: {
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Retail Value</div>
-            <div class="kpi-val">$${grandTotals.retailPrice.toFixed(2)}</div>
+            <div class="kpi-val">Rs. ${grandTotals.retailPrice.toFixed(2)}</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Discount Availed</div>
-            <div class="kpi-val" style="color: #e11d48;">$${grandTotals.discount.toFixed(2)}</div>
+            <div class="kpi-val" style="color: #e11d48;">Rs. ${grandTotals.discount.toFixed(2)}</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Net Sales Revenue</div>
-            <div class="kpi-val" style="color: #059669;">$${grandTotals.netSale.toFixed(2)}</div>
+            <div class="kpi-val" style="color: #059669;">Rs. ${grandTotals.netSale.toFixed(2)}</div>
           </div>
         </div>
 
@@ -113,11 +124,22 @@ export async function generateAllianceRegisterPdf(opts: {
               <th style="text-align: right;">Discount</th>
               <th style="text-align: right;">S. Tax</th>
               <th style="text-align: right;">Net Sale</th>
-              <th style="text-align: right;">Cash</th>
-              <th style="text-align: right;">Card</th>
-              <th>BIN / Prefix</th>
+              <th style="text-align: right;">Cash Sale</th>
+              <th style="text-align: right;">Cash Return</th>
+              <th style="text-align: right;">Card Sale</th>
+              <th style="text-align: right;">Credit Sale</th>
+              <th style="text-align: right;">Gift Voucher</th>
+              <th style="text-align: right;">Credit Voucher</th>
+              <th style="text-align: right;">Exchange Voucher</th>
+              <th style="text-align: right;">Claim Voucher</th>
+              <th style="text-align: right;">Corp Voucher</th>
+              <th style="text-align: right;">Credit Issued</th>
+              <th style="text-align: right;">Reward Voucher</th>
+              <th style="text-align: right;">On Credit</th>
+              <th>BIN No.</th>
+              <th>4 Digit Card No.</th>
+              <th>Card Name</th>
               <th>Auth ID</th>
-              <th>Card No</th>
               <th>Alliance Option</th>
               <th>Remarks</th>
             </tr>
@@ -128,14 +150,29 @@ export async function generateAllianceRegisterPdf(opts: {
           <tfoot>
             <tr>
               <td colspan="3">GRAND TOTAL SUMMARY (${records.length.toLocaleString()} TRANSACTIONS)</td>
-              <td style="text-align: right;">$${grandTotals.retailPrice.toFixed(2)}</td>
-              <td style="text-align: right;">$${grandTotals.retailWost.toFixed(2)}</td>
-              <td style="text-align: right; color: #fda4af;">$${grandTotals.discount.toFixed(2)}</td>
-              <td style="text-align: right;">$${grandTotals.sTax.toFixed(2)}</td>
-              <td style="text-align: right; color: #6ee7b7;">$${grandTotals.netSale.toFixed(2)}</td>
-              <td style="text-align: right;">$${grandTotals.cash.toFixed(2)}</td>
-              <td style="text-align: right;">$${grandTotals.card.toFixed(2)}</td>
-              <td colspan="5">-</td>
+              <td style="text-align: right;">${grandTotals.retailPrice.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.retailWost.toFixed(2)}</td>
+              <td style="text-align: right; color: #fda4af;">${grandTotals.discount.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.sTax.toFixed(2)}</td>
+              <td style="text-align: right; color: #6ee7b7;">${grandTotals.netSale.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.cashSale.toFixed(2)}</td>
+              <td style="text-align: right; color: #fda4af;">${grandTotals.cashReturn.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.cardSale.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.creditSale.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.giftVoucherAmount.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.creditVoucherAmount.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.exchangeVoucherAmount.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.claimVoucherAmount.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.giftVoucherCorporate.toFixed(2)}</td>
+              <td style="text-align: right; color: #fda4af;">${grandTotals.creditVoucherIssuedAmount.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.rewardVoucherAmount.toFixed(2)}</td>
+              <td style="text-align: right;">${grandTotals.onCreditAmount.toFixed(2)}</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
             </tr>
           </tfoot>
         </table>

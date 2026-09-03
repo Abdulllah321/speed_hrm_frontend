@@ -142,3 +142,27 @@ export async function updatePurchaseOrder(id: string, data: {
         throw error;
     }
 }
+
+export async function queuePurchaseOrderExport(params?: {
+    poId?: string;
+    status?: string;
+    vendorId?: string;
+    brandId?: string;
+    orderType?: string;
+    goodsType?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+}) {
+    try {
+        const response = await authFetch("/purchase-order/export", {
+            method: "POST",
+            body: JSON.stringify(params || {}),
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Queue PO export error:", error);
+        throw error;
+    }
+}
+

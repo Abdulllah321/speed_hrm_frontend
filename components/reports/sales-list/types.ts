@@ -10,6 +10,19 @@ export interface SalesListTotals {
   cardAmount: number;
   walletAmount: number;
   creditAmount: number;
+  // 12 requested breakdown fields
+  cashSale: number;
+  cashReturn: number;
+  cardSale: number;
+  creditSale: number;
+  giftVoucherAmount: number;
+  creditVoucherAmount: number;
+  exchangeVoucherAmount: number;
+  claimVoucherAmount: number;
+  giftVoucherCorporate: number;
+  creditVoucherIssuedAmount: number;
+  rewardVoucherAmount: number;
+  onCreditAmount: number;
 }
 
 export interface SalesListLineItem {
@@ -34,6 +47,7 @@ export interface SalesListInvoiceNode {
   customerPhone: string;
   cashierName: string;
   paymentMethod: string;
+  merchant?: string;
   fbrInvoiceNumber: string;
   fbrStatus: string;
   totals: SalesListTotals;
@@ -56,6 +70,7 @@ export interface SalesListFlatRecord {
   customerName: string;
   customerPhone: string;
   paymentMethod: string;
+  merchant?: string;
   fbrInvoiceNumber: string;
   fbrStatus: string;
   sku: string;
@@ -71,6 +86,18 @@ export interface SalesListFlatRecord {
   orderDiscountAmount: number;
   orderNetAmount: number;
   orderTaxAmount: number;
+  cashSale: number;
+  cashReturn: number;
+  cardSale: number;
+  creditSale: number;
+  giftVoucherAmount: number;
+  creditVoucherAmount: number;
+  exchangeVoucherAmount: number;
+  claimVoucherAmount: number;
+  giftVoucherCorporate: number;
+  creditVoucherIssuedAmount: number;
+  rewardVoucherAmount: number;
+  onCreditAmount: number;
 }
 
 export interface SalesListReportData {
@@ -99,6 +126,7 @@ export interface SalesListTableRow {
   customerPhone?: string;
   cashierName?: string;
   paymentMethod?: string;
+  merchant?: string;
   fbrInvoiceNumber?: string;
   fbrStatus?: string;
   sku?: string;

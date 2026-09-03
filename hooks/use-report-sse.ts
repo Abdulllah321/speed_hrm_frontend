@@ -49,7 +49,8 @@ export function useReportSse(
       waitingCount: 0,
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    const rawApi = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "http://api.localtest.me:5000/api";
+    const baseUrl = rawApi.replace(/\/api$/, "");
     const endpoint =
       reportType === "valuation"
         ? `/api/stock-ledger/valuation-report/stream/${jobId}`
