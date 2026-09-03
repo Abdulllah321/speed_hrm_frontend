@@ -399,6 +399,19 @@ export default function SalesActivityPage() {
                                             <Badge variant="outline" className={cn("font-bold text-xs uppercase px-2 py-0.5", cfg.color)}>
                                                 {cfg.label}
                                             </Badge>
+                                            {act.refundMode && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className={cn(
+                                                        "text-[10px] font-bold uppercase px-1.5 py-0.5",
+                                                        act.refundMode === "VOUCHER"
+                                                            ? "bg-blue-500/10 text-blue-600 border border-blue-500/30"
+                                                            : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
+                                                    )}
+                                                >
+                                                    {act.refundMode === "VOUCHER" ? "Via Voucher" : "Cash Refund"}
+                                                </Badge>
+                                            )}
                                             <span className="font-mono text-sm font-bold text-foreground">
                                                 #{act.number}
                                             </span>
@@ -413,11 +426,21 @@ export default function SalesActivityPage() {
                                         <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
                                             <User className="h-3 w-3" /> Customer Details
                                         </div>
-                                        <div className="text-sm font-semibold truncate">
-                                            {act.customer?.name || "Walk-in Customer"}
+                                        <div className="text-sm font-semibold truncate flex items-center gap-1.5">
+                                            <span>{act.customer?.name || "Walk-in Customer"}</span>
+                                            {act.isCustomerChanged && (
+                                                <span className="text-[9px] px-1 py-0 rounded font-medium border border-amber-500/40 text-amber-600 bg-amber-500/10">
+                                                    Recipient
+                                                </span>
+                                            )}
                                         </div>
                                         {act.customer?.contactNo && (
                                             <div className="text-xs font-mono text-muted-foreground">{act.customer.contactNo}</div>
+                                        )}
+                                        {act.isCustomerChanged && act.originalCustomer?.name && (
+                                            <div className="text-[10px] text-muted-foreground/80 italic truncate">
+                                                Original Buyer: {act.originalCustomer.name}
+                                            </div>
                                         )}
                                     </div>
 
@@ -513,7 +536,12 @@ export default function SalesActivityPage() {
                                                                 )}
                                                             </td>
                                                             <td className="p-2 text-right font-mono text-muted-foreground">
-                                                                Rs. {formatCurrency(it.price)}
+                                                                <div>Rs. {formatCurrency(it.price)}</div>
+                                                                {it.priceAdjusted && (
+                                                                    <div className="text-[9px] text-amber-600 font-sans">
+                                                                        (Adjusted from {formatCurrency(it.originalPaidPerUnit)})
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="p-2 text-right font-mono font-semibold">
                                                                 Rs. {formatCurrency(act.type === "claim" ? (it.approvedAmount ?? it.lineTotal) : it.lineTotal)}

@@ -44,7 +44,7 @@ export interface PurchaseReturnRegisterVariantRow {
   valExclTax: number;
   salesTax: number;
   valInclTax: number;
-  advTax: number;
+  advTax?: number;
   lineTotal: number;
 }
 
@@ -56,7 +56,7 @@ export interface PurchaseReturnRegisterArticleGroup {
   totalValExclTax: number;
   totalSalesTax: number;
   totalValInclTax: number;
-  totalAdvTax: number;
+  totalAdvTax?: number;
   totalLineTotal: number;
 }
 
@@ -67,7 +67,7 @@ export interface PurchaseReturnRegisterSilhouetteGroup {
   totalValExclTax: number;
   totalSalesTax: number;
   totalValInclTax: number;
-  totalAdvTax: number;
+  totalAdvTax?: number;
   totalLineTotal: number;
 }
 
@@ -78,7 +78,7 @@ export interface PurchaseReturnRegisterGenderGroup {
   totalValExclTax: number;
   totalSalesTax: number;
   totalValInclTax: number;
-  totalAdvTax: number;
+  totalAdvTax?: number;
   totalLineTotal: number;
 }
 
@@ -90,7 +90,7 @@ export interface PurchaseReturnRegisterCategoryGroup {
   totalValExclTax: number;
   totalSalesTax: number;
   totalValInclTax: number;
-  totalAdvTax: number;
+  totalAdvTax?: number;
   totalLineTotal: number;
 }
 
@@ -101,7 +101,7 @@ export interface PurchaseReturnRegisterDivisionGroup {
   totalValExclTax: number;
   totalSalesTax: number;
   totalValInclTax: number;
-  totalAdvTax: number;
+  totalAdvTax?: number;
   totalLineTotal: number;
 }
 
@@ -122,7 +122,7 @@ export interface PurchaseReturnRegisterDocumentGroup {
   totalValExclTax: number;
   totalSalesTax: number;
   totalValInclTax: number;
-  totalAdvTax: number;
+  totalAdvTax?: number;
   totalLineTotal: number;
 }
 
@@ -133,7 +133,7 @@ export interface PurchaseReturnRegisterReportResult {
     valExclTax: number;
     salesTax: number;
     valInclTax: number;
-    advTax: number;
+    advTax?: number;
     lineTotal: number;
     totalDocuments: number;
   };
@@ -438,7 +438,6 @@ export default function PurchaseReturnRegisterPage() {
               valExclTax: div.totalValExclTax,
               salesTax: div.totalSalesTax,
               valInclTax: div.totalValInclTax,
-              advTax: div.totalAdvTax,
               lineTotal: div.totalLineTotal,
             },
           });
@@ -456,7 +455,6 @@ export default function PurchaseReturnRegisterPage() {
                 valExclTax: cat.totalValExclTax,
                 salesTax: cat.totalSalesTax,
                 valInclTax: cat.totalValInclTax,
-                advTax: cat.totalAdvTax,
                 lineTotal: cat.totalLineTotal,
               },
             });
@@ -473,7 +471,6 @@ export default function PurchaseReturnRegisterPage() {
                   valExclTax: gen.totalValExclTax,
                   salesTax: gen.totalSalesTax,
                   valInclTax: gen.totalValInclTax,
-                  advTax: gen.totalAdvTax,
                   lineTotal: gen.totalLineTotal,
                 },
               });
@@ -490,7 +487,6 @@ export default function PurchaseReturnRegisterPage() {
                     valExclTax: sil.totalValExclTax,
                     salesTax: sil.totalSalesTax,
                     valInclTax: sil.totalValInclTax,
-                    advTax: sil.totalAdvTax,
                     lineTotal: sil.totalLineTotal,
                   },
                 });
@@ -508,7 +504,6 @@ export default function PurchaseReturnRegisterPage() {
                       valExclTax: art.totalValExclTax,
                       salesTax: art.totalSalesTax,
                       valInclTax: art.totalValInclTax,
-                      advTax: art.totalAdvTax,
                       lineTotal: art.totalLineTotal,
                     },
                   });
@@ -528,7 +523,6 @@ export default function PurchaseReturnRegisterPage() {
                         valExclTax: v.valExclTax,
                         salesTax: v.salesTax,
                         valInclTax: v.valInclTax,
-                        advTax: v.advTax,
                         lineTotal: v.lineTotal,
                       },
                     });
@@ -549,7 +543,6 @@ export default function PurchaseReturnRegisterPage() {
           valExclTax: doc.totalValExclTax,
           salesTax: doc.totalSalesTax,
           valInclTax: doc.totalValInclTax,
-          advTax: doc.totalAdvTax,
           lineTotal: doc.totalLineTotal,
         },
       });
@@ -697,9 +690,9 @@ export default function PurchaseReturnRegisterPage() {
           <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sales & Adv Tax</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sales Tax</p>
                 <h3 className="text-lg font-extrabold text-purple-600 dark:text-purple-400 mt-1">
-                  {formatPriceVal((reportData?.grandTotals?.salesTax || 0) + (reportData?.grandTotals?.advTax || 0))}
+                  {formatPriceVal(reportData?.grandTotals?.salesTax || 0)}
                 </h3>
               </div>
               <div className="h-10 w-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 dark:text-purple-400">
@@ -983,11 +976,10 @@ export default function PurchaseReturnRegisterPage() {
                     <col style={{ width: "9%" }} />
                     <col style={{ width: "6%" }} />
                     <col style={{ width: "8%" }} />
+                    <col style={{ width: "10%" }} />
                     <col style={{ width: "9%" }} />
-                    <col style={{ width: "8%" }} />
-                    <col style={{ width: "9%" }} />
-                    <col style={{ width: "5%" }} />
-                    <col style={{ width: "8%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "10%" }} />
                   </colgroup>
                   <thead className="sticky top-0 z-20 bg-slate-900 text-slate-100 border-b border-slate-800 text-left font-bold shadow-xs text-[11px]">
                     <tr>
@@ -1000,14 +992,13 @@ export default function PurchaseReturnRegisterPage() {
                       <th className="py-2.5 px-2 text-right">Val Excl Tax</th>
                       <th className="py-2.5 px-2 text-right">Sales Tax</th>
                       <th className="py-2.5 px-2 text-right">Val Incl Tax</th>
-                      <th className="py-2.5 px-2 text-right">Adv Tax</th>
                       <th className="py-2.5 px-2 text-right">Line Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paddingTop > 0 && (
                       <tr>
-                        <td colSpan={11} style={{ height: `${paddingTop}px` }} />
+                        <td colSpan={10} style={{ height: `${paddingTop}px` }} />
                       </tr>
                     )}
                     {virtualItems.map((virtualRow) => {
@@ -1023,7 +1014,7 @@ export default function PurchaseReturnRegisterPage() {
                             data-index={virtualRow.index}
                             className="bg-slate-900 text-slate-100 font-bold border-b border-slate-800 border-t-2 border-t-slate-700"
                           >
-                            <td colSpan={11} className="p-3">
+                            <td colSpan={10} className="p-3">
                               <div className="flex flex-wrap items-center justify-between gap-4 text-xs">
                                 <div className="flex flex-wrap items-center gap-6">
                                   <div>
@@ -1079,7 +1070,6 @@ export default function PurchaseReturnRegisterPage() {
                             <td className="p-2 text-right font-bold text-blue-300">{formatVal(row.totals.valExclTax)}</td>
                             <td className="p-2 text-right font-bold text-blue-300">{formatVal(row.totals.salesTax)}</td>
                             <td className="p-2 text-right font-bold text-blue-300">{formatVal(row.totals.valInclTax)}</td>
-                            <td className="p-2 text-right font-bold text-blue-300">{formatVal(row.totals.advTax)}</td>
                             <td className="p-2 text-right text-emerald-400 font-extrabold">{formatVal(row.totals.lineTotal)}</td>
                           </tr>
                         );
@@ -1101,7 +1091,6 @@ export default function PurchaseReturnRegisterPage() {
                             <td className="p-2 text-right font-bold text-emerald-300">{formatVal(row.totals.valExclTax)}</td>
                             <td className="p-2 text-right font-bold text-emerald-300">{formatVal(row.totals.salesTax)}</td>
                             <td className="p-2 text-right font-bold text-emerald-300">{formatVal(row.totals.valInclTax)}</td>
-                            <td className="p-2 text-right font-bold text-emerald-300">{formatVal(row.totals.advTax)}</td>
                             <td className="p-2 text-right font-bold text-emerald-400">{formatVal(row.totals.lineTotal)}</td>
                           </tr>
                         );
@@ -1123,7 +1112,6 @@ export default function PurchaseReturnRegisterPage() {
                             <td className="p-2 text-right font-semibold text-rose-200">{formatVal(row.totals.valExclTax)}</td>
                             <td className="p-2 text-right font-semibold text-rose-200">{formatVal(row.totals.salesTax)}</td>
                             <td className="p-2 text-right font-semibold text-rose-200">{formatVal(row.totals.valInclTax)}</td>
-                            <td className="p-2 text-right font-semibold text-rose-200">{formatVal(row.totals.advTax)}</td>
                             <td className="p-2 text-right font-semibold text-rose-200">{formatVal(row.totals.lineTotal)}</td>
                           </tr>
                         );
@@ -1145,7 +1133,6 @@ export default function PurchaseReturnRegisterPage() {
                             <td className="p-2 text-right font-semibold text-amber-200">{formatVal(row.totals.valExclTax)}</td>
                             <td className="p-2 text-right font-semibold text-amber-200">{formatVal(row.totals.salesTax)}</td>
                             <td className="p-2 text-right font-semibold text-amber-200">{formatVal(row.totals.valInclTax)}</td>
-                            <td className="p-2 text-right font-semibold text-amber-200">{formatVal(row.totals.advTax)}</td>
                             <td className="p-2 text-right font-semibold text-amber-200">{formatVal(row.totals.lineTotal)}</td>
                           </tr>
                         );
@@ -1167,7 +1154,6 @@ export default function PurchaseReturnRegisterPage() {
                             <td className="p-2 text-right font-bold">{formatVal(row.totals.valExclTax)}</td>
                             <td className="p-2 text-right font-bold text-purple-600 dark:text-purple-400">{formatVal(row.totals.salesTax)}</td>
                             <td className="p-2 text-right font-bold">{formatVal(row.totals.valInclTax)}</td>
-                            <td className="p-2 text-right font-bold text-purple-600 dark:text-purple-400">{formatVal(row.totals.advTax)}</td>
                             <td className="p-2 text-right font-extrabold text-emerald-600 dark:text-emerald-400">{formatVal(row.totals.lineTotal)}</td>
                           </tr>
                         );
@@ -1192,7 +1178,6 @@ export default function PurchaseReturnRegisterPage() {
                             <td className="p-2 text-right font-semibold text-foreground">{formatVal(row.totals.valExclTax)}</td>
                             <td className="p-2 text-right font-semibold text-purple-600 dark:text-purple-400">{formatVal(row.totals.salesTax)}</td>
                             <td className="p-2 text-right font-semibold text-foreground">{formatVal(row.totals.valInclTax)}</td>
-                            <td className="p-2 text-right font-semibold text-purple-600 dark:text-purple-400">{formatVal(row.totals.advTax)}</td>
                             <td className="p-2 text-right font-bold text-emerald-600 dark:text-emerald-400">{formatVal(row.totals.lineTotal)}</td>
                           </tr>
                         );
@@ -1222,9 +1207,6 @@ export default function PurchaseReturnRegisterPage() {
                             <td className="p-2.5 text-right text-slate-200 text-xs font-bold">
                               {formatVal(row.totals.valInclTax)}
                             </td>
-                            <td className="p-2.5 text-right text-purple-300 text-xs font-bold">
-                              {formatVal(row.totals.advTax)}
-                            </td>
                             <td className="p-2.5 text-right text-emerald-400 text-sm font-black">
                               {formatVal(row.totals.lineTotal)}
                             </td>
@@ -1236,7 +1218,7 @@ export default function PurchaseReturnRegisterPage() {
                     })}
                     {paddingBottom > 0 && (
                       <tr>
-                        <td colSpan={11} style={{ height: `${paddingBottom}px` }} />
+                        <td colSpan={10} style={{ height: `${paddingBottom}px` }} />
                       </tr>
                     )}
                   </tbody>

@@ -583,12 +583,12 @@ export default function ReturnsPage() {
       if (pendingMode !== "return" && pendingMode !== "exchange") {
         setNewLines([]);
       }
-      if (pendingMode === "claim" && loadedOrders.length > 0) {
+      if (loadedOrders.length > 0) {
         const o = loadedOrders[0];
         if (o.customer && !selectedCustomer) {
           setSelectedCustomer(o.customer);
           setClaimCustomerName(o.customer.name || "");
-          setClaimCustomerPhone(o.customer.contactNo || o.customer.phone || "");
+          setClaimCustomerPhone(o.customer.contactNo || (o.customer as any).phone || "");
         }
       }
     }
@@ -900,6 +900,7 @@ export default function ReturnsPage() {
                 })),
                 reason: notes || undefined,
                 returnLocationId: activeLocationId,
+                customerId: selectedCustomer?.id || undefined,
               },
             });
           } else {
@@ -923,6 +924,7 @@ export default function ReturnsPage() {
                     })),
                     reason: notes || undefined,
                     returnLocationId: activeLocationId,
+                    customerId: selectedCustomer?.id || undefined,
                   },
                 },
               );
@@ -1026,6 +1028,7 @@ export default function ReturnsPage() {
                 reason: notes || undefined,
                 managerUserId,
                 returnLocationId: activeLocationId,
+                customerId: selectedCustomer?.id || undefined,
               },
             });
           } else {
@@ -1994,158 +1997,178 @@ export default function ReturnsPage() {
                             </div>
                           )}
                       </div>
-                      {mode === "claim" ? (
-                        <div className="space-y-3 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 shadow-sm">
-                          <div className="flex items-center justify-between pb-2 border-b border-amber-200 dark:border-amber-800">
-                            <div className="flex items-center gap-2">
-                              <UserRound className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                              <span className="font-bold text-xs uppercase tracking-wider text-amber-900 dark:text-amber-200">
-                                Claim Customer Info <span className="text-destructive">*</span>
-                              </span>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              type="button"
-                              onClick={() => setShowAddCustomer(true)}
-                              className="h-7 text-[11px] gap-1 bg-card hover:bg-amber-100 dark:hover:bg-amber-900/50 border-amber-300 dark:border-amber-700 font-semibold"
-                            >
-                              <Plus className="h-3 w-3" /> Add Customer
-                            </Button>
+                      {/* Customer Info Card / Selection (For Return, Refund, Claim) */}
+                      <div className="space-y-3 rounded-xl border border-border/80 bg-muted/20 p-3.5 shadow-sm">
+                        <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                          <div className="flex items-center gap-2">
+                            <UserRound className="h-4 w-4 text-primary" />
+                            <span className="font-bold text-xs uppercase tracking-wider text-foreground">
+                              {mode === "claim"
+                                ? "Claim Customer Info"
+                                : "Return Recipient Customer"}
+                              {mode === "claim" && <span className="text-destructive">*</span>}
+                            </span>
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            onClick={() => setShowAddCustomer(true)}
+                            className="h-7 text-[11px] gap-1 bg-card hover:bg-muted font-semibold"
+                          >
+                            <Plus className="h-3 w-3" /> Add Customer
+                          </Button>
+                        </div>
 
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
-                              <span>Search Customer <span className="text-destructive">*</span></span>
-                              <span className="text-[10px] text-muted-foreground font-normal">F6 / Search</span>
-                            </Label>
-                            <div className="flex gap-1.5 relative">
-                              <div className="flex-1 relative">
-                                <Input
-                                  id="claim-customer-search-input"
-                                  ref={customerSearchRef}
-                                  placeholder="Search name, phone or code..."
-                                  value={customerSearch}
-                                  onChange={(e) => {
-                                    setCustomerSearch(e.target.value);
-                                    setShowCustomerDropdown(true);
-                                  }}
-                                  onFocus={() => setShowCustomerDropdown(true)}
-                                  onBlur={() => {
-                                    setTimeout(() => setShowCustomerDropdown(false), 200);
-                                  }}
-                                  onKeyDown={handleCustomerKeyDown}
-                                  className={cn(
-                                    "w-full bg-card h-9 text-xs",
-                                    claimErrors.customerName && !selectedCustomer && "border-destructive focus-visible:ring-destructive"
-                                  )}
-                                />
-                                {showCustomerDropdown && (
-                                  <div className="absolute left-0 right-0 top-10 bg-popover border border-border shadow-lg rounded-md overflow-hidden z-[500] max-h-56 overflow-y-auto">
-                                    <ul className="flex flex-col divide-y divide-border/50">
-                                      {isLoadingCustomers ? (
-                                        <div className="p-3 text-center text-xs text-muted-foreground flex items-center justify-center">
-                                          <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Loading customers...
-                                        </div>
-                                      ) : customers.length === 0 ? (
-                                        <div className="p-3 text-center text-xs text-muted-foreground italic">
-                                          No matching customers found
-                                        </div>
-                                      ) : (
-                                        customers.map((c, idx) => (
-                                          <li
-                                            key={c.id}
-                                            className={cn(
-                                              "px-3 py-2 hover:bg-muted cursor-pointer flex flex-col transition-colors text-left text-xs",
-                                              idx === activeCustomerIndex && "bg-primary/10 border-l-4 border-l-primary",
-                                            )}
-                                            onMouseDown={() => handleSelectCustomer(c)}
-                                          >
-                                            <span className="font-bold text-foreground">{c.name}</span>
-                                            {c.contactNo && (
-                                              <span className="text-[10px] text-muted-foreground font-mono">
-                                                {c.contactNo}
-                                              </span>
-                                            )}
-                                          </li>
-                                        ))
-                                      )}
-                                    </ul>
-                                  </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                            <span>Search Customer {mode === "claim" && <span className="text-destructive">*</span>}</span>
+                            <span className="text-[10px] text-muted-foreground font-normal">F6 / Search</span>
+                          </Label>
+                          <div className="flex gap-1.5 relative">
+                            <div className="flex-1 relative">
+                              <Input
+                                id="claim-customer-search-input"
+                                ref={customerSearchRef}
+                                placeholder="Search name, phone or code..."
+                                value={customerSearch}
+                                onChange={(e) => {
+                                  setCustomerSearch(e.target.value);
+                                  setShowCustomerDropdown(true);
+                                }}
+                                onFocus={() => setShowCustomerDropdown(true)}
+                                onBlur={() => {
+                                  setTimeout(() => setShowCustomerDropdown(false), 200);
+                                }}
+                                onKeyDown={handleCustomerKeyDown}
+                                className={cn(
+                                  "w-full bg-card h-9 text-xs",
+                                  claimErrors.customerName && !selectedCustomer && "border-destructive focus-visible:ring-destructive"
                                 )}
-                              </div>
+                              />
+                              {showCustomerDropdown && (
+                                <div className="absolute left-0 right-0 top-10 bg-popover border border-border shadow-lg rounded-md overflow-hidden z-[500] max-h-56 overflow-y-auto">
+                                  <ul className="flex flex-col divide-y divide-border/50">
+                                    {isLoadingCustomers ? (
+                                      <div className="p-3 text-center text-xs text-muted-foreground flex items-center justify-center">
+                                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Loading customers...
+                                      </div>
+                                    ) : customers.length === 0 ? (
+                                      <div className="p-3 text-center text-xs text-muted-foreground italic">
+                                        No matching customers found
+                                      </div>
+                                    ) : (
+                                      customers.map((c, idx) => (
+                                        <li
+                                          key={c.id}
+                                          className={cn(
+                                            "px-3 py-2 hover:bg-muted cursor-pointer flex flex-col transition-colors text-left text-xs",
+                                            idx === activeCustomerIndex && "bg-primary/10 border-l-4 border-l-primary",
+                                          )}
+                                          onMouseDown={() => handleSelectCustomer(c)}
+                                        >
+                                          <span className="font-bold text-foreground">{c.name}</span>
+                                          {c.contactNo && (
+                                            <span className="text-[10px] text-muted-foreground font-mono">
+                                              {c.contactNo}
+                                            </span>
+                                          )}
+                                        </li>
+                                      ))
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
                             </div>
                           </div>
+                        </div>
 
-                          {/* Selected Customer Card or Direct Input */}
-                          {selectedCustomer ? (
-                            <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 animate-in fade-in">
-                              <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                              <div className="flex-1 min-w-0">
+                        {/* Selected Customer Card or Direct Input */}
+                        {selectedCustomer ? (
+                          <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 animate-in fade-in">
+                            <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
                                 <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 leading-none">
                                   {selectedCustomer.name}
                                 </p>
-                                {selectedCustomer.contactNo && (
-                                  <p className="text-[10px] text-muted-foreground mt-1 truncate font-mono">
-                                    {selectedCustomer.contactNo}
+                                {loadedOrders[0]?.customer?.id &&
+                                  selectedCustomer.id !== loadedOrders[0].customer.id && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded font-medium border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10">
+                                      Changed from Buyer
+                                    </span>
+                                  )}
+                              </div>
+                              {selectedCustomer.contactNo && (
+                                <p className="text-[10px] text-muted-foreground mt-1 truncate font-mono">
+                                  {selectedCustomer.contactNo}
+                                </p>
+                              )}
+                              {loadedOrders[0]?.customer?.name &&
+                                selectedCustomer.id !== loadedOrders[0].customer.id && (
+                                  <p className="text-[10px] text-muted-foreground/80 mt-0.5 italic">
+                                    Original buyer: {loadedOrders[0].customer.name}
                                   </p>
                                 )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={handleClearCustomer}
-                                className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                                title="Clear customer selection"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
                             </div>
-                          ) : (
-                            <div className="grid grid-cols-2 gap-2 pt-1">
-                              {/* Customer Name */}
-                              <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
-                                  <span>Customer Name <span className="text-destructive">*</span></span>
-                                </Label>
-                                <Input
-                                  placeholder="Customer name..."
-                                  value={claimCustomerName}
-                                  onChange={(e) => {
-                                    setClaimCustomerName(e.target.value);
-                                    if (e.target.value.trim()) {
-                                      setClaimErrors((prev) => ({ ...prev, customerName: false }));
-                                    }
-                                  }}
-                                  className={cn(
-                                    "h-8 text-xs bg-card",
-                                    claimErrors.customerName && "border-destructive focus-visible:ring-destructive"
-                                  )}
-                                />
-                              </div>
-
-                              {/* Contact Number */}
-                              <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
-                                  <span>Contact Number <span className="text-destructive">*</span></span>
-                                </Label>
-                                <Input
-                                  placeholder="0300-1234567..."
-                                  value={claimCustomerPhone}
-                                  onChange={(e) => {
-                                    setClaimCustomerPhone(e.target.value);
-                                    if (e.target.value.trim()) {
-                                      setClaimErrors((prev) => ({ ...prev, customerPhone: false }));
-                                    }
-                                  }}
-                                  className={cn(
-                                    "h-8 text-xs bg-card font-mono",
-                                    claimErrors.customerPhone && "border-destructive focus-visible:ring-destructive"
-                                  )}
-                                />
-                              </div>
+                            <button
+                              type="button"
+                              onClick={handleClearCustomer}
+                              className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                              title="Clear customer selection"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            {/* Customer Name */}
+                            <div className="space-y-1">
+                              <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                                <span>Customer Name {mode === "claim" && <span className="text-destructive">*</span>}</span>
+                              </Label>
+                              <Input
+                                placeholder="Customer name..."
+                                value={claimCustomerName}
+                                onChange={(e) => {
+                                  setClaimCustomerName(e.target.value);
+                                  if (e.target.value.trim()) {
+                                    setClaimErrors((prev) => ({ ...prev, customerName: false }));
+                                  }
+                                }}
+                                className={cn(
+                                  "h-8 text-xs bg-card",
+                                  claimErrors.customerName && "border-destructive focus-visible:ring-destructive"
+                                )}
+                              />
                             </div>
-                          )}
 
+                            {/* Contact Number */}
+                            <div className="space-y-1">
+                              <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                                <span>Contact Number {mode === "claim" && <span className="text-destructive">*</span>}</span>
+                              </Label>
+                              <Input
+                                placeholder="0300-1234567..."
+                                value={claimCustomerPhone}
+                                onChange={(e) => {
+                                  setClaimCustomerPhone(e.target.value);
+                                  if (e.target.value.trim()) {
+                                    setClaimErrors((prev) => ({ ...prev, customerPhone: false }));
+                                  }
+                                }}
+                                className={cn(
+                                  "h-8 text-xs bg-card font-mono",
+                                  claimErrors.customerPhone && "border-destructive focus-visible:ring-destructive"
+                                )}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {mode === "claim" ? (
+                        <div className="space-y-3 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 shadow-sm">
                           {/* Claim Reason Category */}
                           <div className="space-y-1">
                             <Label className="text-xs font-semibold text-foreground">
