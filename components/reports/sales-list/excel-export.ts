@@ -54,6 +54,18 @@ export async function generateSalesListExcel(opts: {
       "SubTotal",
       "Order Gross",
       "Order Net",
+      "CashSale",
+      "CashRetrun",
+      "CardSale",
+      "CreditSale",
+      "GiftVoucherAmount",
+      "CreditVoucherAmount",
+      "ExchangeVoucherAmount",
+      "ClaimVoucherAmount",
+      "GiftVoucherAmount_Corporate",
+      "CreditVoucherIssuedAmount",
+      "RewardVoucherAmount",
+      "OnCreditAmount",
     ];
 
     const dataRows: any[][] = [headers];
@@ -82,6 +94,18 @@ export async function generateSalesListExcel(opts: {
         item.subTotal,
         item.orderGrossAmount,
         item.orderNetAmount,
+        item.cashSale,
+        item.cashReturn,
+        item.cardSale,
+        item.creditSale,
+        item.giftVoucherAmount,
+        item.creditVoucherAmount,
+        item.exchangeVoucherAmount,
+        item.claimVoucherAmount,
+        item.giftVoucherCorporate,
+        item.creditVoucherIssuedAmount,
+        item.rewardVoucherAmount,
+        item.onCreditAmount,
       ]);
 
       if (i % 500 === 0) {
@@ -112,6 +136,18 @@ export async function generateSalesListExcel(opts: {
       grandTotals.netAmount,
       grandTotals.grossAmount,
       grandTotals.netAmount,
+      grandTotals.cashSale,
+      grandTotals.cashReturn,
+      grandTotals.cardSale,
+      grandTotals.creditSale,
+      grandTotals.giftVoucherAmount,
+      grandTotals.creditVoucherAmount,
+      grandTotals.exchangeVoucherAmount,
+      grandTotals.claimVoucherAmount,
+      grandTotals.giftVoucherCorporate,
+      grandTotals.creditVoucherIssuedAmount,
+      grandTotals.rewardVoucherAmount,
+      grandTotals.onCreditAmount,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
@@ -138,6 +174,18 @@ export async function generateSalesListExcel(opts: {
       { wch: 14 },
       { wch: 14 },
       { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 14 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Line Items");
@@ -155,6 +203,18 @@ export async function generateSalesListExcel(opts: {
       "Discount",
       "Tax Amount",
       "Net Sales Amount",
+      "CashSale",
+      "CashRetrun",
+      "CardSale",
+      "CreditSale",
+      "GiftVoucherAmount",
+      "CreditVoucherAmount",
+      "ExchangeVoucherAmount",
+      "ClaimVoucherAmount",
+      "GiftVoucherAmount_Corporate",
+      "CreditVoucherIssuedAmount",
+      "RewardVoucherAmount",
+      "OnCreditAmount",
     ];
 
     const dataRows: any[][] = [headers];
@@ -175,6 +235,18 @@ export async function generateSalesListExcel(opts: {
         t.discountAmount,
         t.taxAmount,
         t.netAmount,
+        t.cashSale,
+        t.cashReturn,
+        t.cardSale,
+        t.creditSale,
+        t.giftVoucherAmount,
+        t.creditVoucherAmount,
+        t.exchangeVoucherAmount,
+        t.claimVoucherAmount,
+        t.giftVoucherCorporate,
+        t.creditVoucherIssuedAmount,
+        t.rewardVoucherAmount,
+        t.onCreditAmount,
       ]);
 
       if (i % 300 === 0) {
@@ -195,6 +267,18 @@ export async function generateSalesListExcel(opts: {
       grandTotals.discountAmount,
       grandTotals.taxAmount,
       grandTotals.netAmount,
+      grandTotals.cashSale,
+      grandTotals.cashReturn,
+      grandTotals.cardSale,
+      grandTotals.creditSale,
+      grandTotals.giftVoucherAmount,
+      grandTotals.creditVoucherAmount,
+      grandTotals.exchangeVoucherAmount,
+      grandTotals.claimVoucherAmount,
+      grandTotals.giftVoucherCorporate,
+      grandTotals.creditVoucherIssuedAmount,
+      grandTotals.rewardVoucherAmount,
+      grandTotals.onCreditAmount,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
@@ -210,6 +294,18 @@ export async function generateSalesListExcel(opts: {
       { wch: 14 },
       { wch: 12 },
       { wch: 16 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 14 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Invoices Matrix");

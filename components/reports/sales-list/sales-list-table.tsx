@@ -75,24 +75,24 @@ export function SalesListTable({
       {/* Clean Minimalist Matrix Table Container */}
       <div className="border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs bg-white dark:bg-slate-900 overflow-hidden no-print">
         <div ref={parentRef} className="overflow-auto max-h-[700px] relative">
-          <table className="w-full text-left border-collapse min-w-[1950px] text-xs">
+          <table className="w-full text-left border-collapse min-w-[3200px] text-xs">
             {/* Clean Light-Themed Header */}
             <thead className="sticky top-0 z-20 bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 uppercase text-[10px] font-mono tracking-wider border-b border-slate-200 dark:border-slate-700 shadow-2xs backdrop-blur-xs">
               <tr>
-                <th className="py-3 px-3.5 w-[300px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                <th className="py-3 px-3.5 w-[280px] shrink-0 border-r border-slate-200 dark:border-slate-700">
                   Location / Invoice # / Item Description
                 </th>
                 <th className="py-3 px-3 w-[120px] shrink-0 border-r border-slate-200 dark:border-slate-700">Date & Time</th>
-                <th className="py-3 px-3 w-[150px] shrink-0 border-r border-slate-200 dark:border-slate-700">Customer</th>
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700">Cashier</th>
-                <th className="py-3 px-3 w-[100px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">Payment Mode</th>
-                <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-200 dark:border-slate-700">FBR Inv #</th>
+                <th className="py-3 px-3 w-[140px] shrink-0 border-r border-slate-200 dark:border-slate-700">Customer</th>
+                <th className="py-3 px-3 w-[100px] shrink-0 border-r border-slate-200 dark:border-slate-700">Cashier</th>
+                <th className="py-3 px-3 w-[95px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">Payment Mode</th>
+                <th className="py-3 px-3 w-[120px] shrink-0 border-r border-slate-200 dark:border-slate-700">FBR Inv #</th>
                 <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700">SKU / Barcode</th>
-                <th className="py-3 px-3 w-[70px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">Size</th>
-                <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">Color</th>
+                <th className="py-3 px-3 w-[65px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">Size</th>
+                <th className="py-3 px-3 w-[75px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">Color</th>
 
                 {/* Qty */}
-                <th className="py-3 px-3 w-[80px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                <th className="py-3 px-3 w-[70px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <span>Qty</span>
                     <Tooltip>
@@ -109,7 +109,7 @@ export function SalesListTable({
                 </th>
 
                 {/* Gross Amount */}
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                <th className="py-3 px-3 w-[105px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <span>Gross Amt</span>
                     <Tooltip>
@@ -126,7 +126,7 @@ export function SalesListTable({
                 </th>
 
                 {/* Discount */}
-                <th className="py-3 px-3 w-[100px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-amber-600 dark:text-amber-400">
+                <th className="py-3 px-3 w-[95px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-amber-600 dark:text-amber-400">
                   <div className="flex items-center justify-end gap-1">
                     <span>Discount</span>
                     <Tooltip>
@@ -143,7 +143,7 @@ export function SalesListTable({
                 </th>
 
                 {/* Taxes */}
-                <th className="py-3 px-3 w-[100px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-slate-600 dark:text-slate-400">
+                <th className="py-3 px-3 w-[95px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-slate-600 dark:text-slate-400">
                   <div className="flex items-center justify-end gap-1">
                     <span>Taxes</span>
                     <Tooltip>
@@ -160,7 +160,7 @@ export function SalesListTable({
                 </th>
 
                 {/* Net Sales Amount */}
-                <th className="py-3 px-3.5 w-[130px] shrink-0 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-emerald-600 dark:text-emerald-400">
                   <div className="flex items-center justify-end gap-1">
                     <span>Net Sales</span>
                     <Tooltip>
@@ -175,6 +175,66 @@ export function SalesListTable({
                     </Tooltip>
                   </div>
                 </th>
+
+                {/* 1. CashSale */}
+                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-teal-700 dark:text-teal-400">
+                  CashSale
+                </th>
+
+                {/* 2. CashRetrun */}
+                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                  CashRetrun
+                </th>
+
+                {/* 3. CardSale */}
+                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400">
+                  CardSale
+                </th>
+
+                {/* 4. CreditSale */}
+                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-sky-700 dark:text-sky-400">
+                  CreditSale
+                </th>
+
+                {/* 5. GiftVoucherAmount */}
+                <th className="py-3 px-3 w-[125px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-violet-700 dark:text-violet-400">
+                  GiftVoucherAmount
+                </th>
+
+                {/* 6. CreditVoucherAmount */}
+                <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-blue-700 dark:text-blue-400">
+                  CreditVoucherAmount
+                </th>
+
+                {/* 7. ExchangeVoucherAmount */}
+                <th className="py-3 px-3 w-[145px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-orange-700 dark:text-orange-400">
+                  ExchangeVoucherAmount
+                </th>
+
+                {/* 8. ClaimVoucherAmount */}
+                <th className="py-3 px-3 w-[135px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-amber-700 dark:text-amber-400">
+                  ClaimVoucherAmount
+                </th>
+
+                {/* 9. GiftVoucherAmount_Corporate */}
+                <th className="py-3 px-3 w-[170px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-purple-700 dark:text-purple-400">
+                  GiftVoucherAmount_Corporate
+                </th>
+
+                {/* 10. CreditVoucherIssuedAmount */}
+                <th className="py-3 px-3 w-[160px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-red-700 dark:text-red-400">
+                  CreditVoucherIssuedAmount
+                </th>
+
+                {/* 11. RewardVoucherAmount */}
+                <th className="py-3 px-3 w-[140px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                  RewardVoucherAmount
+                </th>
+
+                {/* 12. OnCreditAmount */}
+                <th className="py-3 px-3.5 w-[120px] shrink-0 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
+                  OnCreditAmount
+                </th>
               </tr>
             </thead>
 
@@ -182,13 +242,13 @@ export function SalesListTable({
             <tbody>
               {paddingTop > 0 && (
                 <tr>
-                  <td colSpan={15} style={{ height: `${paddingTop}px` }} />
+                  <td colSpan={26} style={{ height: `${paddingTop}px` }} />
                 </tr>
               )}
 
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="p-14 text-center text-muted-foreground font-medium text-xs">
+                  <td colSpan={26} className="p-14 text-center text-muted-foreground font-medium text-xs">
                     No sales invoices found matching the selected store, cashier, or date range filters.
                   </td>
                 </tr>
@@ -331,8 +391,68 @@ export function SalesListTable({
                       </td>
 
                       {/* Net Sales */}
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                         {formatVal(t.netAmount)}
+                      </td>
+
+                      {/* 1. CashSale */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-teal-700 dark:text-teal-400">
+                        {formatVal(t.cashSale)}
+                      </td>
+
+                      {/* 2. CashRetrun */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                        {formatVal(t.cashReturn)}
+                      </td>
+
+                      {/* 3. CardSale */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400">
+                        {formatVal(t.cardSale)}
+                      </td>
+
+                      {/* 4. CreditSale */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-sky-700 dark:text-sky-400">
+                        {formatVal(t.creditSale)}
+                      </td>
+
+                      {/* 5. GiftVoucherAmount */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                        {formatVal(t.giftVoucherAmount)}
+                      </td>
+
+                      {/* 6. CreditVoucherAmount */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                        {formatVal(t.creditVoucherAmount)}
+                      </td>
+
+                      {/* 7. ExchangeVoucherAmount */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                        {formatVal(t.exchangeVoucherAmount)}
+                      </td>
+
+                      {/* 8. ClaimVoucherAmount */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                        {formatVal(t.claimVoucherAmount)}
+                      </td>
+
+                      {/* 9. GiftVoucherAmount_Corporate */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                        {formatVal(t.giftVoucherCorporate)}
+                      </td>
+
+                      {/* 10. CreditVoucherIssuedAmount */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-rose-700 dark:text-rose-400 font-bold">
+                        {formatVal(t.creditVoucherIssuedAmount)}
+                      </td>
+
+                      {/* 11. RewardVoucherAmount */}
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                        {formatVal(t.rewardVoucherAmount)}
+                      </td>
+
+                      {/* 12. OnCreditAmount */}
+                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
+                        {formatVal(t.onCreditAmount)}
                       </td>
                     </tr>
                   );
@@ -341,7 +461,7 @@ export function SalesListTable({
 
               {paddingBottom > 0 && (
                 <tr>
-                  <td colSpan={15} style={{ height: `${paddingBottom}px` }} />
+                  <td colSpan={26} style={{ height: `${paddingBottom}px` }} />
                 </tr>
               )}
             </tbody>
@@ -364,8 +484,56 @@ export function SalesListTable({
                 <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-600 dark:text-slate-400">
                   {formatVal(grandTotals.taxAmount)}
                 </td>
-                <td className="py-3 px-3.5 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600 dark:text-emerald-400">
                   {formatVal(grandTotals.netAmount)}
+                </td>
+                {/* 1. CashSale */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-teal-700 dark:text-teal-400">
+                  {formatVal(grandTotals.cashSale)}
+                </td>
+                {/* 2. CashRetrun */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600 dark:text-rose-400">
+                  {formatVal(grandTotals.cashReturn)}
+                </td>
+                {/* 3. CardSale */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-indigo-700 dark:text-indigo-400">
+                  {formatVal(grandTotals.cardSale)}
+                </td>
+                {/* 4. CreditSale */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-sky-700 dark:text-sky-400">
+                  {formatVal(grandTotals.creditSale)}
+                </td>
+                {/* 5. GiftVoucherAmount */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                  {formatVal(grandTotals.giftVoucherAmount)}
+                </td>
+                {/* 6. CreditVoucherAmount */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                  {formatVal(grandTotals.creditVoucherAmount)}
+                </td>
+                {/* 7. ExchangeVoucherAmount */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                  {formatVal(grandTotals.exchangeVoucherAmount)}
+                </td>
+                {/* 8. ClaimVoucherAmount */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                  {formatVal(grandTotals.claimVoucherAmount)}
+                </td>
+                {/* 9. GiftVoucherAmount_Corporate */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                  {formatVal(grandTotals.giftVoucherCorporate)}
+                </td>
+                {/* 10. CreditVoucherIssuedAmount */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-700 dark:text-rose-400">
+                  {formatVal(grandTotals.creditVoucherIssuedAmount)}
+                </td>
+                {/* 11. RewardVoucherAmount */}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                  {formatVal(grandTotals.rewardVoucherAmount)}
+                </td>
+                {/* 12. OnCreditAmount */}
+                <td className="py-3 px-3.5 text-right font-mono text-slate-800 dark:text-slate-200">
+                  {formatVal(grandTotals.onCreditAmount)}
                 </td>
               </tr>
             </tfoot>

@@ -10,6 +10,19 @@ export interface SalesListTotals {
   cardAmount: number;
   walletAmount: number;
   creditAmount: number;
+  // 12 requested breakdown fields
+  cashSale: number;
+  cashReturn: number;
+  cardSale: number;
+  creditSale: number;
+  giftVoucherAmount: number;
+  creditVoucherAmount: number;
+  exchangeVoucherAmount: number;
+  claimVoucherAmount: number;
+  giftVoucherCorporate: number;
+  creditVoucherIssuedAmount: number;
+  rewardVoucherAmount: number;
+  onCreditAmount: number;
 }
 
 export interface SalesListLineItem {
@@ -71,6 +84,18 @@ export interface SalesListFlatRecord {
   orderDiscountAmount: number;
   orderNetAmount: number;
   orderTaxAmount: number;
+  cashSale: number;
+  cashReturn: number;
+  cardSale: number;
+  creditSale: number;
+  giftVoucherAmount: number;
+  creditVoucherAmount: number;
+  exchangeVoucherAmount: number;
+  claimVoucherAmount: number;
+  giftVoucherCorporate: number;
+  creditVoucherIssuedAmount: number;
+  rewardVoucherAmount: number;
+  onCreditAmount: number;
 }
 
 export interface SalesListReportData {
