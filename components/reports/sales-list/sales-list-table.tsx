@@ -176,64 +176,64 @@ export function SalesListTable({
                   </div>
                 </th>
 
-                {/* 1. CashSale */}
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-teal-700 dark:text-teal-400">
-                  CashSale
+                {/* 1. Cash Sale */}
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">
+                  Cash Sale
                 </th>
 
-                {/* 2. CashRetrun */}
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
-                  CashRetrun
+                {/* 2. Cash Return */}
+                <th className="py-3 px-3 w-[120px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                  Cash Return
                 </th>
 
-                {/* 3. CardSale */}
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400">
-                  CardSale
+                {/* 3. Card Sale */}
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400 whitespace-nowrap">
+                  Card Sale
                 </th>
 
-                {/* 4. CreditSale */}
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-sky-700 dark:text-sky-400">
-                  CreditSale
+                {/* 4. Credit Sale */}
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-sky-700 dark:text-sky-400 whitespace-nowrap">
+                  Credit Sale
                 </th>
 
-                {/* 5. GiftVoucherAmount */}
-                <th className="py-3 px-3 w-[125px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-violet-700 dark:text-violet-400">
-                  GiftVoucherAmount
+                {/* 5. Gift Voucher Amount */}
+                <th className="py-3 px-3 w-[135px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-violet-700 dark:text-violet-400 whitespace-nowrap">
+                  Gift Voucher
                 </th>
 
-                {/* 6. CreditVoucherAmount */}
-                <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-blue-700 dark:text-blue-400">
-                  CreditVoucherAmount
+                {/* 6. Credit Voucher Amount */}
+                <th className="py-3 px-3 w-[140px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-blue-700 dark:text-blue-400 whitespace-nowrap">
+                  Credit Voucher
                 </th>
 
-                {/* 7. ExchangeVoucherAmount */}
-                <th className="py-3 px-3 w-[145px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-orange-700 dark:text-orange-400">
-                  ExchangeVoucherAmount
+                {/* 7. Exchange Voucher Amount */}
+                <th className="py-3 px-3 w-[155px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-orange-700 dark:text-orange-400 whitespace-nowrap">
+                  Exchange Voucher
                 </th>
 
-                {/* 8. ClaimVoucherAmount */}
-                <th className="py-3 px-3 w-[135px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-amber-700 dark:text-amber-400">
-                  ClaimVoucherAmount
+                {/* 8. Claim Voucher Amount */}
+                <th className="py-3 px-3 w-[140px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                  Claim Voucher
                 </th>
 
-                {/* 9. GiftVoucherAmount_Corporate */}
-                <th className="py-3 px-3 w-[170px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-purple-700 dark:text-purple-400">
-                  GiftVoucherAmount_Corporate
+                {/* 9. Gift Voucher Amount Corporate */}
+                <th className="py-3 px-3 w-[170px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-purple-700 dark:text-purple-400 whitespace-nowrap">
+                  Corporate Voucher
                 </th>
 
-                {/* 10. CreditVoucherIssuedAmount */}
-                <th className="py-3 px-3 w-[160px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-red-700 dark:text-red-400">
-                  CreditVoucherIssuedAmount
+                {/* 10. Credit Voucher Issued Amount */}
+                <th className="py-3 px-3 w-[165px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-red-700 dark:text-red-400 whitespace-nowrap">
+                  Credit Issued
                 </th>
 
-                {/* 11. RewardVoucherAmount */}
-                <th className="py-3 px-3 w-[140px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                  RewardVoucherAmount
+                {/* 11. Reward Voucher Amount */}
+                <th className="py-3 px-3 w-[150px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                  Reward Voucher
                 </th>
 
-                {/* 12. OnCreditAmount */}
-                <th className="py-3 px-3.5 w-[120px] shrink-0 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
-                  OnCreditAmount
+                {/* 12. On Credit Amount */}
+                <th className="py-3 px-3.5 w-[130px] shrink-0 text-right font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  On Credit
                 </th>
               </tr>
             </thead>

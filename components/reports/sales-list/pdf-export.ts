@@ -128,18 +128,18 @@ export async function generateSalesListPdf(opts: {
               <th style="text-align: right;">Discount</th>
               <th style="text-align: right;">Taxes</th>
               <th style="text-align: right;">Net Sales</th>
-              <th style="text-align: right;">CashSale</th>
-              <th style="text-align: right;">CashRetrun</th>
-              <th style="text-align: right;">CardSale</th>
-              <th style="text-align: right;">CreditSale</th>
-              <th style="text-align: right;">GiftVoucher</th>
-              <th style="text-align: right;">CreditVoucher</th>
-              <th style="text-align: right;">ExchangeVoucher</th>
-              <th style="text-align: right;">ClaimVoucher</th>
-              <th style="text-align: right;">CorporateGift</th>
-              <th style="text-align: right;">CreditIssued</th>
-              <th style="text-align: right;">RewardVoucher</th>
-              <th style="text-align: right;">OnCredit</th>
+              <th style="text-align: right;">Cash Sale</th>
+              <th style="text-align: right;">Cash Return</th>
+              <th style="text-align: right;">Card Sale</th>
+              <th style="text-align: right;">Credit Sale</th>
+              <th style="text-align: right;">Gift Voucher</th>
+              <th style="text-align: right;">Credit Voucher</th>
+              <th style="text-align: right;">Exchange Voucher</th>
+              <th style="text-align: right;">Claim Voucher</th>
+              <th style="text-align: right;">Corporate Gift</th>
+              <th style="text-align: right;">Credit Issued</th>
+              <th style="text-align: right;">Reward Voucher</th>
+              <th style="text-align: right;">On Credit</th>
             </tr>
           </thead>
           <tbody>
