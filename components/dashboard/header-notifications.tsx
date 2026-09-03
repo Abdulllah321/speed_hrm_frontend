@@ -571,6 +571,27 @@ export function HeaderNotifications() {
       return;
     }
 
+    // purchase-order-export.ready
+    if (n.actionType === "purchase-order-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        const filename = payload?.fileName || `purchase-order-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/purchase-order/export/${jobId}/download`,
+            filename,
+          );
+        }
+      } catch (e) {
+        console.error("Purchase Order export download failed:", e);
+      }
+      return;
+    }
+
     const route = getActionRoute(n);
     if (route) router.push(route);
   }, [handleMarkRead, getActionRoute, router]);
