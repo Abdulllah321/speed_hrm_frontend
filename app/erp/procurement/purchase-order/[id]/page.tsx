@@ -113,10 +113,12 @@ export function numberToWords(amount: number): string {
   return `Rs. ${inWords(amount)}.`;
 }
 
-function fmt(n: number) {
-  return n.toLocaleString("en-PK", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+function fmt(n: number | string | null | undefined, maxDecimals = 2) {
+  const num = typeof n === "string" ? parseFloat(n) : Number(n || 0);
+  if (isNaN(num)) return "0";
+  return num.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDecimals,
   });
 }
 
@@ -613,37 +615,37 @@ export default function PurchaseOrderDetail({
               <div className="flex justify-between">
                 <span>Total Quantity</span>
                 <span className="font-semibold text-blue-600 dark:text-blue-400">
-                  {order.items
-                    ? order.items
-                        .reduce(
+                  {fmt(
+                    order.items
+                      ? order.items.reduce(
                           (sum, item) => sum + parseFloat(item.quantity || "0"),
                           0,
                         )
-                        .toFixed(2)
-                    : "0.00"}
+                      : 0,
+                  )}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Subtotal</span>
                 <span className="font-medium">
-                  {parseFloat(order.subtotal || "0").toFixed(2)}
+                  {fmt(order.subtotal)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Tax</span>
                 <span className="font-medium text-red-500">
-                  +{parseFloat(order.taxAmount || "0").toFixed(2)}
+                  +{fmt(order.taxAmount)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Discount</span>
                 <span className="font-medium text-green-600">
-                  -{parseFloat(order.discountAmount || "0").toFixed(2)}
+                  -{fmt(order.discountAmount)}
                 </span>
               </div>
               <div className="flex justify-between border-t pt-2 text-lg font-bold">
                 <span>Total</span>
-                <span>{parseFloat(order.totalAmount || "0").toFixed(2)}</span>
+                <span>{fmt(order.totalAmount)}</span>
               </div>
             </CardContent>
           </Card>
@@ -687,16 +689,16 @@ export default function PurchaseOrderDetail({
                           {item.description || "No description"}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {parseFloat(item.quantity).toFixed(2)}
+                          {fmt(item.quantity)}
                         </TableCell>
                         <TableCell className="text-right font-mono text-blue-600">
-                          {parseFloat(item.receivedQty || "0").toFixed(2)}
+                          {fmt(item.receivedQty || "0")}
                         </TableCell>
                         <TableCell className="text-right">
-                          {parseFloat(item.unitPrice).toFixed(2)}
+                          {fmt(item.unitPrice)}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          {parseFloat(item.lineTotal).toFixed(2)}
+                          {fmt(item.lineTotal)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -708,12 +710,12 @@ export default function PurchaseOrderDetail({
                         Total Ordered Quantity:
                       </TableCell>
                       <TableCell className="text-right font-bold">
-                        {order.items
-                          .reduce(
-                            (sum, item) => sum + parseFloat(item.quantity),
+                        {fmt(
+                          order.items.reduce(
+                            (sum, item) => sum + parseFloat(item.quantity || "0"),
                             0,
-                          )
-                          .toFixed(2)}
+                          ),
+                        )}
                       </TableCell>
                       <TableCell colSpan={3} />
                     </TableRow>
