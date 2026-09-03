@@ -31,6 +31,7 @@ export async function generateSalesListPdf(opts: {
       <td>${inv.customerName} (${inv.customerPhone})</td>
       <td>${inv.cashierName}</td>
       <td style="text-align: center;">${inv.paymentMethod}</td>
+      <td>${inv.merchant || "-"}</td>
       <td>${inv.fbrInvoiceNumber || "-"}</td>
       <td style="text-align: right;">${inv.totals.totalItems}</td>
       <td style="text-align: right;">Rs. ${inv.totals.grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
@@ -122,6 +123,7 @@ export async function generateSalesListPdf(opts: {
               <th>Customer</th>
               <th>Cashier</th>
               <th style="text-align: center;">Payment</th>
+              <th>Merchant</th>
               <th>FBR Inv #</th>
               <th style="text-align: right;">Items</th>
               <th style="text-align: right;">Gross Amt</th>
@@ -147,7 +149,7 @@ export async function generateSalesListPdf(opts: {
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="6">GRAND TOTAL (ALL SELECTED INVOICES)</td>
+              <td colspan="7">GRAND TOTAL (ALL SELECTED INVOICES)</td>
               <td style="text-align: right;">${grandTotals.totalItems.toLocaleString()}</td>
               <td style="text-align: right;">Rs. ${grandTotals.grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               <td style="text-align: right; color: #b45309;">Rs. ${grandTotals.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>

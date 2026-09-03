@@ -47,6 +47,7 @@ export interface SalesListInvoiceNode {
   customerPhone: string;
   cashierName: string;
   paymentMethod: string;
+  merchant?: string;
   fbrInvoiceNumber: string;
   fbrStatus: string;
   totals: SalesListTotals;
@@ -69,6 +70,7 @@ export interface SalesListFlatRecord {
   customerName: string;
   customerPhone: string;
   paymentMethod: string;
+  merchant?: string;
   fbrInvoiceNumber: string;
   fbrStatus: string;
   sku: string;
@@ -124,6 +126,7 @@ export interface SalesListTableRow {
   customerPhone?: string;
   cashierName?: string;
   paymentMethod?: string;
+  merchant?: string;
   fbrInvoiceNumber?: string;
   fbrStatus?: string;
   sku?: string;

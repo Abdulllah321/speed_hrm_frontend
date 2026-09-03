@@ -134,6 +134,7 @@ export function useSalesListData(reportData: SalesListReportData | null) {
             customerPhone: inv.customerPhone,
             cashierName: inv.cashierName,
             paymentMethod: inv.paymentMethod,
+            merchant: inv.merchant,
             fbrInvoiceNumber: inv.fbrInvoiceNumber,
             fbrStatus: inv.fbrStatus,
             totals: inv.totals,
