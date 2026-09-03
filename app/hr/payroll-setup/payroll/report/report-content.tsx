@@ -252,31 +252,16 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
         const allowanceHeads = new Set<string>();
         const deductionHeads = new Set<string>();
 
-        let hasHouseRent = false;
-        let hasUtility = false;
-
         data.forEach(row => {
             (row.salaryBreakup || []).forEach(b => {
                 if (b.name.toLowerCase().includes("basic")) return;
-                if (isHouseRentHead(b.name)) {
-                    hasHouseRent = true;
-                    return;
-                }
-                if (isUtilityHead(b.name)) {
-                    hasUtility = true;
-                    return;
-                }
+                if (isHouseRentHead(b.name)) return;
+                if (isUtilityHead(b.name)) return;
                 allowanceHeads.add(b.name);
             });
             (row.allowanceBreakup || []).forEach(a => {
-                if (isHouseRentHead(a.name)) {
-                    hasHouseRent = true;
-                    return;
-                }
-                if (isUtilityHead(a.name)) {
-                    hasUtility = true;
-                    return;
-                }
+                if (isHouseRentHead(a.name)) return;
+                if (isUtilityHead(a.name)) return;
                 allowanceHeads.add(a.name);
             });
             if (Number(row.overtimeAmount || 0) > 0) allowanceHeads.add("Overtime");
@@ -284,14 +269,8 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
             // Deduplicate: If specific bonus breakup is available, use it; otherwise fall back to generic "Bonus"
             if (row.bonusBreakup && row.bonusBreakup.length > 0) {
                 row.bonusBreakup.forEach(b => {
-                    if (isHouseRentHead(b.name || "Bonus")) {
-                        hasHouseRent = true;
-                        return;
-                    }
-                    if (isUtilityHead(b.name || "Bonus")) {
-                        hasUtility = true;
-                        return;
-                    }
+                    if (isHouseRentHead(b.name || "Bonus")) return;
+                    if (isUtilityHead(b.name || "Bonus")) return;
                     allowanceHeads.add(b.name || "Bonus");
                 });
             } else if (Number(row.bonusAmount || 0) > 0) {
@@ -426,8 +405,8 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
             h4 { text-align: center; font-size: 7.5px; margin: 0 0 4px 0; font-weight: normal; color: #444; }
             .header-info { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 6.5px; color: #555; }
             table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-            th, td { border: 1px solid #444; padding: 4px 2px; text-align: left; vertical-align: middle; font-size: 5.5px; }
-            th { background-color: #1e293b; color: white; font-weight: bold; text-align: center; font-size: 5.5px; text-transform: uppercase; }
+            th, td { border: 1px solid #444; padding: 4px 2px; text-align: left; vertical-align: middle; font-size: 6px; }
+            th { background-color: #1e293b; color: white; font-weight: bold; text-align: center; font-size: 6px; text-transform: uppercase; }
             .text-right { text-align: right; }
             .text-center { text-align: center; }
             .font-bold { font-weight: bold; }
@@ -462,21 +441,18 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
               <tr>
                 <th style="width: 3%">S.No</th>
                 <th style="width: 8%">Month</th>
-                <th style="width: 16%">Employee Name</th>
-                <th style="width: 7%">Basic Salary</th>
-                ${hasHouseRent ? `<th style="width: 7%">House Rent</th>` : ''}
-                ${hasUtility ? `<th style="width: 7%">Utility</th>` : ''}
-                <th style="width: 7%">Total Salary</th>
+                <th style="width: 18%">Employee Name</th>
+                <th style="width: 8%">Total Salary</th>
                 ${sortedAllowanceHeads.map(head => `<th>${head}</th>`).join('')}
-                <th style="width: 7%">Gross Salary</th>
+                <th style="width: 8%">Gross Salary</th>
                 <th style="width: 5%">PF</th>
                 <th style="width: 5%">Tax</th>
                 <th style="width: 5%">Loan</th>
                 <th style="width: 5%">Advance</th>
                 <th style="width: 5%">Attendance</th>
                 ${sortedDeductionHeads.map(head => `<th>${head}</th>`).join('')}
-                <th style="width: 7%">Total Ded.</th>
-                <th style="width: 7%">Net Salary</th>
+                <th style="width: 8%">Total Ded.</th>
+                <th style="width: 8%">Net Salary</th>
               </tr>
             </thead>
             <tbody>
@@ -495,9 +471,6 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
                       <td class="text-center">${i + 1}</td>
                       <td class="no-wrap">${getFormattedRowMonth(row)}</td>
                       <td class="no-wrap"><b>${row.employee?.employeeName || ''}</b></td>
-                      <td class="text-right">${Math.round(basic).toLocaleString()}</td>
-                      ${hasHouseRent ? `<td class="text-right">${houseRent > 0 ? Math.round(houseRent).toLocaleString() : '0'}</td>` : ''}
-                      ${hasUtility ? `<td class="text-right">${utility > 0 ? Math.round(utility).toLocaleString() : '0'}</td>` : ''}
                       <td class="text-right font-bold bg-gray">${Math.round(basic + houseRent + utility).toLocaleString()}</td>
                       ${sortedAllowanceHeads.map(head => {
                           const amt = getAllowanceAmount(row, head);
@@ -520,9 +493,6 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
               }).join('')}
               <tr class="font-bold total-row">
                 <td colspan="3" class="text-right"><b>Grand Total:</b></td>
-                <td class="text-right"><b>${Math.round(columnTotals.basicSalary).toLocaleString()}</b></td>
-                ${hasHouseRent ? `<td class="text-right"><b>${Math.round(columnTotals.houseRent).toLocaleString()}</b></td>` : ''}
-                ${hasUtility ? `<td class="text-right"><b>${Math.round(columnTotals.utility).toLocaleString()}</b></td>` : ''}
                 <td class="text-right"><b>${Math.round(columnTotals.basicSalary + columnTotals.houseRent + columnTotals.utility).toLocaleString()}</b></td>
                 ${sortedAllowanceHeads.map(head => `
                   <td class="text-right"><b>${Math.round(columnTotals[`allow_${head}`]).toLocaleString()}</b></td>

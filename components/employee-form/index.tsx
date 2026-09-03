@@ -160,16 +160,7 @@ const employeeFormSchema = z.object({
       return selectedDate <= new Date();
     }, "Joining Date cannot be in the future"),
 
-  dateOfBirth: z
-    .string()
-    .optional()
-    .refine((date) => {
-      if (!date) return true;
-      const dob = new Date(date);
-      const today = new Date();
-      const age = today.getFullYear() - dob.getFullYear();
-      return age >= 18;
-    }, "Employee must be at least 18 years old"),
+  dateOfBirth: z.string().optional(),
 
   nationality: z.string().min(1, "Nationality is required"),
 
