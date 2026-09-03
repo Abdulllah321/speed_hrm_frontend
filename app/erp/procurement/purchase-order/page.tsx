@@ -117,6 +117,7 @@ export default function PurchaseOrderList() {
                                 <TableHead>Vendor</TableHead>
                                 <TableHead>Brand</TableHead>
                                 <TableHead>Order Date</TableHead>
+                                <TableHead>Notes</TableHead>
                                 <TableHead>Total Amount</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -125,11 +126,11 @@ export default function PurchaseOrderList() {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center h-24">Loading...</TableCell>
+                                    <TableCell colSpan={8} className="text-center h-24">Loading...</TableCell>
                                 </TableRow>
                             ) : orders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center h-24">No purchase orders found.</TableCell>
+                                    <TableCell colSpan={8} className="text-center h-24">No purchase orders found.</TableCell>
                                 </TableRow>
                             ) : (
                                 orders.map((order) => {
@@ -141,6 +142,15 @@ export default function PurchaseOrderList() {
                                             <TableCell>{order.vendor?.name}</TableCell>
                                             <TableCell>{brandNames}</TableCell>
                                             <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                                            <TableCell className="max-w-[220px]">
+                                                {order.notes ? (
+                                                    <span className="text-xs text-foreground line-clamp-2" title={order.notes}>
+                                                        {order.notes}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground/60 italic">—</span>
+                                                )}
+                                            </TableCell>
                                             <TableCell className="font-semibold">Rs. {formatCurrency(order.totalAmount)}</TableCell>
                                         <TableCell>
                                             {(() => {
