@@ -1,12 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Download, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Plus, Eye, Download, Loader2, Search, X, Filter } from 'lucide-react';
 import { PurchaseOrder } from '@/lib/api';
 import { getPurchaseOrders, queuePurchaseOrderExport } from '@/lib/actions/purchase-order';
 import { formatCurrency } from '@/lib/utils';
@@ -19,6 +27,9 @@ export default function PurchaseOrderList() {
     const [loading, setLoading] = useState(true);
     const [exportingId, setExportingId] = useState<string | null>(null);
     const [isExportingAll, setIsExportingAll] = useState(false);
+    const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
+    const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const { hasPermission } = useAuth();
     const canCreate = hasPermission('erp.procurement.po.create');
 
@@ -38,6 +49,50 @@ export default function PurchaseOrderList() {
         }
     };
 
+    const availableBrands = useMemo(() => {
+        const brandsSet = new Set<string>();
+        orders.forEach((o) => {
+            (o.items || []).forEach((item) => {
+                if (item.item?.brand?.name) {
+                    brandsSet.add(item.item.brand.name.toUpperCase());
+                }
+            });
+        });
+        return Array.from(brandsSet).sort();
+    }, [orders]);
+
+    const filteredOrders = useMemo(() => {
+        return orders.filter((order) => {
+            // Brand filter
+            if (selectedBrand !== 'ALL') {
+                const hasBrand = (order.items || []).some(
+                    (i) => (i.item?.brand?.name || '').toUpperCase() === selectedBrand.toUpperCase(),
+                );
+                if (!hasBrand) return false;
+            }
+
+            // Status filter
+            if (selectedStatus !== 'ALL' && order.status !== selectedStatus) {
+                return false;
+            }
+
+            // Search query
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase().trim();
+                const poNum = (order.poNumber || '').toLowerCase();
+                const vendor = (order.vendor?.name || '').toLowerCase();
+                const notes = (order.notes || '').toLowerCase();
+                const brands = (order.items || []).map((i) => i.item?.brand?.name || '').join(' ').toLowerCase();
+
+                if (!poNum.includes(q) && !vendor.includes(q) && !notes.includes(q) && !brands.includes(q)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }, [orders, selectedBrand, selectedStatus, searchQuery]);
+
     const handleExportSingle = async (poId: string, poNumber: string) => {
         try {
             setExportingId(poId);
@@ -54,7 +109,10 @@ export default function PurchaseOrderList() {
     const handleExportAll = async () => {
         try {
             setIsExportingAll(true);
-            await queuePurchaseOrderExport({});
+            await queuePurchaseOrderExport({
+                status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
+                search: searchQuery.trim() || undefined,
+            });
             toast.success('Purchase Orders export queued. You will receive a notification when it is ready.');
         } catch (error: any) {
             console.error('Export error:', error);
@@ -62,6 +120,14 @@ export default function PurchaseOrderList() {
         } finally {
             setIsExportingAll(false);
         }
+    };
+
+    const hasActiveFilters = selectedBrand !== 'ALL' || selectedStatus !== 'ALL' || searchQuery.trim() !== '';
+
+    const handleResetFilters = () => {
+        setSelectedBrand('ALL');
+        setSelectedStatus('ALL');
+        setSearchQuery('');
     };
 
     return (
@@ -106,8 +172,92 @@ export default function PurchaseOrderList() {
             </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Recent Orders</CardTitle>
+                <CardHeader className="pb-3">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <CardTitle className="flex items-center gap-2">
+                            Recent Orders
+                            <span className="text-xs font-normal text-muted-foreground">
+                                ({filteredOrders.length} of {orders.length})
+                            </span>
+                        </CardTitle>
+
+                        {/* Filter Bar */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            {/* Search Filter */}
+                            <div className="relative w-full sm:w-56">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search PO, Vendor, Note..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-8 h-9 text-xs"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Brand Filter */}
+                            <div className="w-full sm:w-44">
+                                <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                                    <SelectTrigger className="h-9 text-xs">
+                                        <div className="flex items-center gap-1.5 truncate">
+                                            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <SelectValue placeholder="Brand: All" />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL" className="text-xs">
+                                            All Brands
+                                        </SelectItem>
+                                        {availableBrands.map((brand) => (
+                                            <SelectItem key={brand} value={brand} className="text-xs">
+                                                {brand}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Status Filter */}
+                            <div className="w-full sm:w-44">
+                                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                                    <SelectTrigger className="h-9 text-xs">
+                                        <SelectValue placeholder="Status: All" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL" className="text-xs">All Statuses</SelectItem>
+                                        <SelectItem value="DRAFT" className="text-xs">Draft</SelectItem>
+                                        <SelectItem value="PENDING_CHECKER" className="text-xs">Pending Checker</SelectItem>
+                                        <SelectItem value="PENDING_AUTHORIZER" className="text-xs">Pending Authorizer</SelectItem>
+                                        <SelectItem value="OPEN" className="text-xs">Open</SelectItem>
+                                        <SelectItem value="PARTIALLY_RECEIVED" className="text-xs">Partially Received</SelectItem>
+                                        <SelectItem value="RECEIVED" className="text-xs">Received</SelectItem>
+                                        <SelectItem value="CLOSED" className="text-xs">Closed</SelectItem>
+                                        <SelectItem value="REJECTED" className="text-xs">Rejected</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Reset Filters */}
+                            {hasActiveFilters && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleResetFilters}
+                                    className="h-9 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                                >
+                                    <X className="mr-1 h-3.5 w-3.5" /> Reset
+                                </Button>
+                            )}
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -128,12 +278,16 @@ export default function PurchaseOrderList() {
                                 <TableRow>
                                     <TableCell colSpan={8} className="text-center h-24">Loading...</TableCell>
                                 </TableRow>
-                            ) : orders.length === 0 ? (
+                            ) : filteredOrders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center h-24">No purchase orders found.</TableCell>
+                                    <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
+                                        {hasActiveFilters
+                                            ? 'No purchase orders match the selected filters.'
+                                            : 'No purchase orders found.'}
+                                    </TableCell>
                                 </TableRow>
                             ) : (
-                                orders.map((order) => {
+                                filteredOrders.map((order) => {
                                     const brands = [...new Set((order.items || []).map(i => i.item?.brand?.name).filter(Boolean))];
                                     const brandNames = brands.length > 0 ? brands.join(", ") : "—";
                                     return (
@@ -151,7 +305,9 @@ export default function PurchaseOrderList() {
                                                     <span className="text-xs text-muted-foreground/60 italic">—</span>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="font-semibold">Rs. {formatCurrency(order.totalAmount)}</TableCell>
+                                            <TableCell className="font-semibold">
+                                                Rs. {Number(order.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                            </TableCell>
                                         <TableCell>
                                             {(() => {
                                                 switch (order.status) {
