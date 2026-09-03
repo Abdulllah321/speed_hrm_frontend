@@ -5,8 +5,8 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import Link from "next/link";
-import { Printer, Download, Eye, Pencil, CheckCircle2, XCircle, Store, Building2, Plus, FileCheck, CheckSquare, Loader2 } from "lucide-react";
-import { ReceiptVoucher, updateReceiptVoucherStatus, bulkUpdateReceiptVoucherStatus, queueReceiptVouchersExport } from "@/lib/actions/receipt-voucher";
+import { Printer, Download, Eye, Pencil, CheckCircle2, XCircle, Store, Building2, Plus, FileCheck, CheckSquare, Loader2, RotateCcw } from "lucide-react";
+import { ReceiptVoucher, updateReceiptVoucherStatus, bulkUpdateReceiptVoucherStatus, queueReceiptVouchersExport, unapproveReceiptVoucher } from "@/lib/actions/receipt-voucher";
 import { RetailSaleReceiptVoucherPrint } from "./retail-sale-receipt-voucher-print";
 import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -82,11 +82,14 @@ export function RetailSaleReceiptVoucherList({
         }
     };
 
+    const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
     const handleUpdateStatus = async (
         id: string,
         newStatus: "draft" | "pending_check" | "pending_approval" | "approved" | "rejected"
     ) => {
         try {
+            setUpdatingStatusId(id);
             const res = await updateReceiptVoucherStatus(id, newStatus);
             if (res.status) {
                 toast.success(`Voucher status updated to ${newStatus.replace(/_/g, " ")}`);
@@ -96,6 +99,26 @@ export function RetailSaleReceiptVoucherList({
             }
         } catch {
             toast.error("An unexpected error occurred");
+        } finally {
+            setUpdatingStatusId(null);
+        }
+    };
+
+    const handleUnapprove = async (id: string) => {
+        if (updatingStatusId) return;
+        try {
+            setUpdatingStatusId(id);
+            const res = await unapproveReceiptVoucher(id);
+            if (res.status) {
+                toast.success("Retail Sale Receipt Voucher unapproved & unposted successfully");
+                setVouchers(prev => prev.map(v => v.id === id ? { ...v, status: "pending_check" as const } : v));
+            } else {
+                toast.error(res.message || "Failed to unapprove voucher");
+            }
+        } catch {
+            toast.error("An unexpected error occurred");
+        } finally {
+            setUpdatingStatusId(null);
         }
     };
 
@@ -379,13 +402,28 @@ export function RetailSaleReceiptVoucherList({
                             <Printer className="h-3.5 w-3.5" />
                         </Button>
                         
+                        {/* Unapprove & Unpost */}
+                        {isApproved && canApprove && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={updatingStatusId === v.id}
+                                onClick={() => handleUnapprove(v.id)}
+                                className="h-7 w-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                                title="Unapprove & Unpost RSRV"
+                            >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
+
                         {/* Step 1: Check / Verify */}
                         {isPendingCheck && canApprove && (
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-blue-600 hover:bg-blue-50"
+                                disabled={updatingStatusId === v.id}
                                 onClick={() => handleUpdateStatus(v.id, "pending_approval")}
+                                className="h-7 w-7 text-blue-600 hover:bg-blue-50"
                                 title="Verify / Mark Checked"
                             >
                                 <FileCheck className="h-3.5 w-3.5" />
@@ -397,8 +435,9 @@ export function RetailSaleReceiptVoucherList({
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-green-600 hover:bg-green-50"
+                                disabled={updatingStatusId === v.id}
                                 onClick={() => handleUpdateStatus(v.id, "approved")}
+                                className="h-7 w-7 text-green-600 hover:bg-green-50"
                                 title="Approve RSRV"
                             >
                                 <CheckCircle2 className="h-3.5 w-3.5" />

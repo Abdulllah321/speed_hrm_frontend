@@ -269,7 +269,12 @@ export default function DataTable<TData extends DataTableRow>({
   const [search, setSearch] = useState(searchValue ?? "");
 
   useEffect(() => {
-    if (searchValue !== undefined && searchValue !== search && !searchDebounceRef.current) {
+    if (
+      searchValue !== undefined &&
+      searchValue !== search &&
+      !searchDebounceRef.current &&
+      document.activeElement !== inputRef.current
+    ) {
       setSearch(searchValue);
     }
   }, [searchValue]);
@@ -453,16 +458,33 @@ export default function DataTable<TData extends DataTableRow>({
     rowCount,
     pageCount,
     globalFilterFn: (row) => {
+      const getRowValue = (key: string): unknown => {
+        const cell = row.getAllCells().find((c) => c.column.id === key);
+        if (cell) {
+          try {
+            return cell.getValue();
+          } catch {}
+        }
+        const obj = row.original as any;
+        if (!obj) return undefined;
+        if (key in obj) return obj[key];
+        if (key.includes(".")) {
+          const parts = key.split(".");
+          let curr = obj;
+          for (const part of parts) {
+            if (curr == null) return undefined;
+            curr = curr[part];
+          }
+          return curr;
+        }
+        return obj[key];
+      };
+
       // Check search filter (OR across searchFields)
       if (search && searchFields?.length) {
         const searchLower = search.toLowerCase();
         const matchesSearch = searchFields.some((field) => {
-          let value: unknown;
-          try {
-            value = row.getValue(field.key);
-          } catch {
-            value = (row.original as Record<string, unknown>)?.[field.key];
-          }
+          const value = getRowValue(field.key);
           return String(value ?? "")
             .toLowerCase()
             .includes(searchLower);
@@ -473,18 +495,7 @@ export default function DataTable<TData extends DataTableRow>({
       // Check active filters (AND across all filters)
       for (const [key, value] of Object.entries(activeFilters)) {
         if (value && value !== "all") {
-          let rowValue: any;
-          try {
-            rowValue = row.getValue(key);
-          } catch {
-            const originalData = row.original as any;
-            rowValue = originalData?.[key];
-          }
-
-          if (rowValue === undefined || rowValue === null) {
-            const originalData = row.original as any;
-            rowValue = originalData?.[key];
-          }
+          const rowValue = getRowValue(key);
 
           const rowValueStr = rowValue != null ? String(rowValue).trim() : "";
           const filterValueStr = String(value).trim();
@@ -639,7 +650,7 @@ export default function DataTable<TData extends DataTableRow>({
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-wrap">
-            {searchFields?.length && (
+            {(searchFields?.length || manualFiltering || !!onSearchChange) && (
               <div className="relative md:w-auto w-full">
                 <Input
                   id={`${id}-input`}
@@ -648,9 +659,11 @@ export default function DataTable<TData extends DataTableRow>({
                   className="peer min-w-60 ps-9"
                   value={search}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder={`Search by ${searchFields
-                    .map((f) => f.label)
-                    .join(", ")}`}
+                  placeholder={
+                    searchFields?.length
+                      ? `Search by ${searchFields.map((f) => f.label).join(", ")}`
+                      : "Search by description, remarks, voucher no..."
+                  }
                   type="text"
                 />
 

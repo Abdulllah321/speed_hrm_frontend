@@ -43,7 +43,8 @@ import { numberToWords } from "../../journal-voucher/components/journal-voucher-
 import Link from "next/link";
 import { toast } from "sonner";
 
-const fmt = (n: number) => {
+const fmt = (n: number | null | undefined) => {
+  if (n === null || n === undefined || isNaN(n)) return "0";
   const rounded = Math.round(n);
   if (rounded < 0) {
     const absVal = Math.abs(rounded).toLocaleString("en-PK", {
@@ -125,6 +126,8 @@ export function GeneralLedgerClient({
   const [sourceType, setSourceType] = React.useState<string>("all");
 
   const [data, setData] = React.useState<GeneralLedgerResult | undefined>();
+  const [activeLedgerIdx, setActiveLedgerIdx] = React.useState(0);
+  const [viewMode, setViewMode] = React.useState<"single" | "all">("single");
   const [isPending, startTransition] = React.useTransition();
   const [isExporting, setIsExporting] = React.useState(false);
 
@@ -215,6 +218,7 @@ export function GeneralLedgerClient({
 
   const handleLoadClick = () => {
     setPage(1);
+    setActiveLedgerIdx(0);
     load(1, limit);
   };
 
@@ -512,419 +516,407 @@ export function GeneralLedgerClient({
               </div>
             )}
 
-            {data && (
-              <>
-                {/* Premium KPI Summary Blocks */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    {
-                      label: "Opening Balance",
-                      value: data.openingBalance,
-                      desc: isDebitNormal ? "Debit normal" : "Credit normal",
-                      color: "text-foreground",
-                      badge: data.openingBalance >= 0 ? "Dr" : "Cr",
-                      gradient:
-                        "from-slate-50 to-slate-100 dark:from-slate-900/30 dark:to-slate-800/20 border-slate-200/60 dark:border-slate-800/40",
-                    },
-                    {
-                      label: "Period Debit",
-                      value: data.rangeTotalDebit,
-                      desc: "Total period volume",
-                      color: "text-indigo-600 dark:text-indigo-400",
-                      badge: "Dr",
-                      gradient:
-                        "from-blue-50/70 to-indigo-50/50 dark:from-blue-950/10 dark:to-indigo-950/10 border-indigo-100/50 dark:border-indigo-950/20",
-                    },
-                    {
-                      label: "Period Credit",
-                      value: data.rangeTotalCredit,
-                      desc: "Total period volume",
-                      color: "text-rose-600 dark:text-rose-400",
-                      badge: "Cr",
-                      gradient:
-                        "from-amber-50/70 to-rose-50/50 dark:from-amber-950/10 dark:to-rose-950/10 border-rose-100/50 dark:border-rose-950/20",
-                    },
-                    {
-                      label: "Closing Balance",
-                      value: data.rangeClosingBalance,
-                      desc: `Net ${isDebitNormal ? "Dr" : "Cr"} normal`,
-                      color:
-                        (isDebitNormal ? data.rangeClosingBalance >= 0 : data.rangeClosingBalance <= 0)
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-rose-600 dark:text-rose-400",
-                      badge: data.rangeClosingBalance >= 0 ? "Dr" : "Cr",
-                      gradient:
-                        (isDebitNormal ? data.rangeClosingBalance >= 0 : data.rangeClosingBalance <= 0)
-                          ? "from-emerald-50/70 to-teal-50/50 dark:from-emerald-950/10 dark:to-teal-950/10 border-emerald-100/50 dark:border-emerald-950/20"
-                          : "from-amber-50/70 to-rose-50/50 dark:from-amber-950/10 dark:to-rose-950/10 border-rose-100/50 dark:border-rose-950/20",
-                    },
-                  ].map((c) => (
-                    <div
-                      key={c.label}
-                      className={cn(
-                        "rounded-xl border p-4 shadow-sm relative overflow-hidden bg-gradient-to-br transition-all hover:shadow-md",
-                        c.gradient,
-                      )}
-                    >
-                      <div className="flex justify-between items-start gap-1">
-                        <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground/80">
-                          {c.label}
-                        </p>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-muted/80 border dark:border-border/30 text-muted-foreground select-none">
-                          {c.badge}
-                        </span>
-                      </div>
-                      <p
-                        className={cn(
-                          "text-lg sm:text-xl font-bold mt-1.5 font-mono tracking-tight",
-                          c.color,
-                        )}
-                      >
-                        {fmt(c.value)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1 italic">
-                        <Info className="h-2.5 w-2.5 shrink-0" />
-                        {c.desc}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+            {data && (() => {
+              const ledgersToRender =
+                data.ledgers && data.ledgers.length > 0 ? data.ledgers : [data];
+              const isMultiLedger = ledgersToRender.length > 1;
 
-                {/* Transactions Table Layout */}
-                <div className="overflow-x-auto rounded-xl border dark:border-border/60 shadow-sm bg-card">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="bg-muted/30 border-b border-border text-muted-foreground/90 font-medium">
-                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
-                          Date
-                        </th>
-                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-36">
-                          VOH No.
-                        </th>
-                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
-                          VOH TYPE
-                        </th>
-                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
-                          Cheque No.
-                        </th>
-                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
-                          Ref 1
-                        </th>
-                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
-                          Ref 2
-                        </th>
-                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50">
-                          Narration
-                        </th>
-                        <th className="text-right px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-32">
-                          Debit
-                        </th>
-                        <th className="text-right px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-32">
-                          Credit
-                        </th>
-                        <th className="text-right px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider w-36">
-                          Running Balance
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {/* Opening Balance Row */}
-                      <tr className="bg-muted/10 border-b dark:border-border/40 font-medium text-xs text-muted-foreground">
-                        <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
-                          —
-                        </td>
-                        <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
-                          —
-                        </td>
-                        <td className="px-4 py-2.5 border-r dark:border-border/40 text-xs italic">
-                          Opening Balance
-                        </td>
-                        <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
-                          —
-                        </td>
-                        <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
-                          —
-                        </td>
-                        <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
-                          —
-                        </td>
-                        <td className="px-4 py-2.5 border-r dark:border-border/40 text-xs italic">
-                          Balance brought forward
-                        </td>
-                        <td className="px-4 py-2.5 text-right border-r dark:border-border/40 font-mono">
-                          —
-                        </td>
-                        <td className="px-4 py-2.5 text-right border-r dark:border-border/40 font-mono">
-                          —
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono font-semibold text-foreground/80 bg-muted/5">
-                          {fmt(data.openingBalance)}
-                        </td>
-                      </tr>
+              const visibleLedgers =
+                isMultiLedger && viewMode === "single"
+                  ? [
+                      ledgersToRender[
+                        Math.min(activeLedgerIdx, ledgersToRender.length - 1)
+                      ],
+                    ]
+                  : ledgersToRender;
 
-                      {data.rows.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={10}
-                            className="px-4 py-12 text-center text-muted-foreground font-medium bg-muted/5 border-b"
-                          >
-                            No accounting transactions recorded in this period.
-                          </td>
-                        </tr>
-                      )}
-
-                      {data.rows.map((row, i) => {
-                        const drillDownLink = getSourceLink(
-                          row.sourceType,
-                          row.sourceId,
-                        );
-                        return (
-                          <tr
-                            key={row.id}
-                            className={cn(
-                              "border-b border-border/50 hover:bg-accent/40 transition-colors text-xs",
-                              i % 2 === 1 && "bg-muted/5",
-                            )}
-                          >
-                            {/* Date */}
-                            <td className="px-4 py-3 border-r dark:border-border/40 whitespace-nowrap text-muted-foreground font-mono">
-                              {format(
-                                new Date(row.transactionDate),
-                                "dd-MMM-yyyy",
-                              )}
-                            </td>
-
-                            {/* Reference & Drill down */}
-                            <td className="px-4 py-3 border-r dark:border-border/40 font-mono font-semibold text-xs">
-                              {drillDownLink ? (
-                                <Link
-                                  href={drillDownLink}
-                                  className="inline-flex items-center text-primary hover:underline hover:text-indigo-600 transition-colors gap-1"
-                                >
-                                  {row.sourceRef}
-                                  <ExternalLink className="h-2.5 w-2.5 text-primary/50" />
-                                </Link>
-                              ) : (
-                                row.sourceRef
-                              )}
-                            </td>
-
-                            {/* Source Badge */}
-                            <td className="px-4 py-3 border-r dark:border-border/40 whitespace-nowrap">
-                              <span
-                                className={cn(
-                                  "px-2 py-0.5 rounded text-[10px] font-bold border",
-                                  SOURCE_BADGES[row.sourceType] ??
-                                    "bg-slate-100 border-slate-200",
-                                )}
-                              >
-                                {SOURCE_LABELS[row.sourceType] ??
-                                  row.sourceType}
-                              </span>
-                            </td>
-
-                            {/* Cheque No */}
-                            <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-xs text-muted-foreground">
-                              {row.chequeNo || "—"}
-                            </td>
-
-                            {/* Ref 1 */}
-                            <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-xs text-muted-foreground">
-                              {row.refBillNo || "—"}
-                            </td>
-
-                            {/* Ref 2 */}
-                            <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-xs text-muted-foreground">
-                              {row.refBillNo2 || "—"}
-                            </td>
-
-                            {/* Narration */}
-                            <td className="px-4 py-3 border-r dark:border-border/40 max-w-[240px] truncate text-muted-foreground/90">
-                              <div className="font-medium truncate">
-                                {row.narration || row.description || "—"}
-                              </div>
-                            </td>
-
-                            {/* Debit */}
-                            <td className="px-4 py-3 text-right border-r dark:border-border/40 font-mono text-xs">
-                              {row.debit > 0 ? (
-                                <span className="font-medium text-foreground">
-                                  {fmt(row.debit)}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground/30">
-                                  —
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Credit */}
-                            <td className="px-4 py-3 text-right border-r dark:border-border/40 font-mono text-xs">
-                              {row.credit > 0 ? (
-                                <span className="font-medium text-foreground">
-                                  {fmt(row.credit)}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground/30">
-                                  —
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Running Balance */}
-                            <td
+              return (
+                <div className="space-y-6">
+                  {/* Multi-Ledger Navigation Switcher Header */}
+                  {isMultiLedger && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/30 p-2.5 rounded-2xl border dark:border-border/60 shadow-xs">
+                      {/* Sub-Account Tabs / Pills */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0 no-scrollbar">
+                        {ledgersToRender.map((lg, idx) => {
+                          const isActive = activeLedgerIdx === idx;
+                          return (
+                            <button
+                              key={lg.account.id || idx}
+                              onClick={() => {
+                                setActiveLedgerIdx(idx);
+                                setViewMode("single");
+                              }}
                               className={cn(
-                                "px-4 py-3 text-right font-mono font-bold text-xs bg-muted/5",
-                                row.runningBalance >= 0
-                                  ? "text-emerald-700 dark:text-emerald-400"
-                                  : "text-rose-700 dark:text-rose-400",
+                                "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200",
+                                isActive
+                                  ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/30 font-bold"
+                                  : "bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground border border-border/50",
                               )}
                             >
-                              {fmt(row.runningBalance)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
+                              <span className="font-mono font-bold text-[11px] opacity-80">
+                                {lg.account.code}
+                              </span>
+                              <span className="truncate max-w-[150px]">
+                                {lg.account.name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                    {/* Totals Footer Row */}
-                    <tfoot>
-                      <tr className="bg-muted/40 border-t-2 border-border font-bold text-xs text-foreground">
-                        <td
-                          colSpan={7}
-                          className="px-4 py-3.5 text-right border-r dark:border-border/40 uppercase tracking-wider font-extrabold text-[10px] text-muted-foreground"
+                      {/* Right / Left Arrow Switcher & Indicators */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-bold font-mono text-muted-foreground px-2.5 py-1 bg-background rounded-lg border">
+                          {activeLedgerIdx + 1} / {ledgersToRender.length} Ledgers
+                        </span>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 rounded-full hover:bg-primary hover:text-primary-foreground transition-all shadow-xs"
+                            onClick={() => {
+                              setViewMode("single");
+                              setActiveLedgerIdx((prev) =>
+                                prev > 0 ? prev - 1 : ledgersToRender.length - 1,
+                              );
+                            }}
+                            title="Previous Ledger (Left Arrow)"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 rounded-full hover:bg-primary hover:text-primary-foreground transition-all shadow-xs"
+                            onClick={() => {
+                              setViewMode("single");
+                              setActiveLedgerIdx((prev) =>
+                                prev < ledgersToRender.length - 1 ? prev + 1 : 0,
+                              );
+                            }}
+                            title="Next Ledger (Right Arrow)"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {/* Mode Switcher Toggle */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs font-semibold px-2.5 rounded-lg border border-border/50 hover:bg-background"
+                          onClick={() =>
+                            setViewMode((m) => (m === "single" ? "all" : "single"))
+                          }
                         >
-                          Total Activity / Range Net
-                        </td>
-                        <td className="px-4 py-3.5 text-right border-r dark:border-border/40 font-mono text-xs text-indigo-600 dark:text-indigo-400">
-                          {fmt(data.rangeTotalDebit)}
-                        </td>
-                        <td className="px-4 py-3.5 text-right border-r dark:border-border/40 font-mono text-xs text-rose-600 dark:text-rose-400">
-                          {fmt(data.rangeTotalCredit)}
-                        </td>
-                        <td
-                          className={cn(
-                            "px-4 py-3.5 text-right font-mono text-xs font-extrabold bg-muted/10",
-                            data.rangeClosingBalance >= 0
-                              ? "text-emerald-700 dark:text-emerald-400 border-l-2 border-emerald-500/50"
-                              : "text-rose-700 dark:text-rose-400 border-l-2 border-rose-500/50",
-                          )}
-                        >
-                          {fmt(data.rangeClosingBalance)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-
-                {/* Advanced Pagination UI Block */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-border/80 bg-muted/10 dark:bg-muted/5">
-                  <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                    <span>
-                      Showing{" "}
-                      <span className="font-semibold text-foreground">
-                        {data.pagination.total === 0
-                          ? 0
-                          : (data.pagination.page - 1) * data.pagination.limit +
-                            1}
-                      </span>{" "}
-                      to{" "}
-                      <span className="font-semibold text-foreground">
-                        {Math.min(
-                          data.pagination.page * data.pagination.limit,
-                          data.pagination.total,
-                        )}
-                      </span>{" "}
-                      of{" "}
-                      <span className="font-semibold text-foreground">
-                        {data.pagination.total}
-                      </span>{" "}
-                      transactions
-                    </span>
-                    <span className="text-muted-foreground/45">•</span>
-                    <span className="font-semibold px-2 py-0.5 bg-muted rounded-md text-foreground border dark:border-border/40">
-                      Page {data.pagination.page} of{" "}
-                      {data.pagination.totalPages || 1}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-4 flex-wrap">
-                    {/* Rows Limit size selector */}
-                    <div className="flex items-center gap-2">
-                      <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground whitespace-nowrap">
-                        Rows per page
-                      </Label>
-                      <Select
-                        value={limit.toString()}
-                        onValueChange={(val) => {
-                          setLimit(Number(val));
-                          setPage(1);
-                        }}
-                      >
-                        <SelectTrigger className="h-8 w-20 text-xs shadow-sm">
-                          <SelectValue placeholder="50" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="50">50</SelectItem>
-                          <SelectItem value="100">100</SelectItem>
-                          <SelectItem value="250">250</SelectItem>
-                          <SelectItem value="500">500</SelectItem>
-                        </SelectContent>
-                      </Select>
+                          {viewMode === "single" ? "View All" : "Single View"}
+                        </Button>
+                      </div>
                     </div>
+                  )}
 
-                    {/* Page Navigator buttons */}
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-accent"
-                        onClick={() => setPage(1)}
-                        disabled={page === 1}
-                        title="First Page"
-                      >
-                        <ChevronsLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-accent"
-                        onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                        disabled={page === 1}
-                        title="Previous Page"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
+                  {visibleLedgers.map((ledgerItem, ledgerIdx) => {
+                    const itemIsDebitNormal =
+                      ledgerItem.account.type === "ASSET" ||
+                      ledgerItem.account.type === "EXPENSE";
 
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-accent"
-                        onClick={() =>
-                          setPage((p) =>
-                            Math.min(p + 1, data.pagination.totalPages),
-                          )
-                        }
-                        disabled={page >= data.pagination.totalPages}
-                        title="Next Page"
+                    return (
+                      <div
+                        key={ledgerItem.account.id || ledgerIdx}
+                        className="space-y-4 pt-4 first:pt-0 border-t border-border/40 first:border-0"
                       >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-accent"
-                        onClick={() => setPage(data.pagination.totalPages)}
-                        disabled={page >= data.pagination.totalPages}
-                        title="Last Page"
-                      >
-                        <ChevronsRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                        {/* Sub-Account Section Badge / Header */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/20 p-3 rounded-xl border border-border/50">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                              {ledgerItem.account.code}
+                            </span>
+                            <span className="text-sm font-bold text-foreground">
+                              {ledgerItem.account.name}
+                            </span>
+                            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground uppercase">
+                              {ledgerItem.account.type}
+                            </span>
+                          </div>
+                          <div className="text-xs font-mono text-muted-foreground">
+                            Sub-Account Ledger #{ledgerIdx + 1} of {ledgersToRender.length}
+                          </div>
+                        </div>
+
+                        {/* Premium KPI Summary Blocks */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                          {[
+                            {
+                              label: "Opening Balance",
+                              value: ledgerItem.openingBalance,
+                              desc: itemIsDebitNormal ? "Debit normal" : "Credit normal",
+                              color: "text-foreground",
+                              badge: ledgerItem.openingBalance >= 0 ? "Dr" : "Cr",
+                              gradient:
+                                "from-slate-50 to-slate-100 dark:from-slate-900/30 dark:to-slate-800/20 border-slate-200/60 dark:border-slate-800/40",
+                            },
+                            {
+                              label: "Period Debit",
+                              value: ledgerItem.rangeTotalDebit,
+                              desc: "Total period volume",
+                              color: "text-indigo-600 dark:text-indigo-400",
+                              badge: "Dr",
+                              gradient:
+                                "from-blue-50/70 to-indigo-50/50 dark:from-blue-950/10 dark:to-indigo-950/10 border-indigo-100/50 dark:border-indigo-950/20",
+                            },
+                            {
+                              label: "Period Credit",
+                              value: ledgerItem.rangeTotalCredit,
+                              desc: "Total period volume",
+                              color: "text-rose-600 dark:text-rose-400",
+                              badge: "Cr",
+                              gradient:
+                                "from-amber-50/70 to-rose-50/50 dark:from-amber-950/10 dark:to-rose-950/10 border-rose-100/50 dark:border-rose-950/20",
+                            },
+                            {
+                              label: "Closing Balance",
+                              value: ledgerItem.rangeClosingBalance,
+                              desc: `Net ${itemIsDebitNormal ? "Dr" : "Cr"} normal`,
+                              color:
+                                (itemIsDebitNormal ? ledgerItem.rangeClosingBalance >= 0 : ledgerItem.rangeClosingBalance <= 0)
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-rose-600 dark:text-rose-400",
+                              badge: ledgerItem.rangeClosingBalance >= 0 ? "Dr" : "Cr",
+                              gradient:
+                                (itemIsDebitNormal ? ledgerItem.rangeClosingBalance >= 0 : ledgerItem.rangeClosingBalance <= 0)
+                                  ? "from-emerald-50/70 to-teal-50/50 dark:from-emerald-950/10 dark:to-teal-950/10 border-emerald-100/50 dark:border-emerald-950/20"
+                                  : "from-amber-50/70 to-rose-50/50 dark:from-amber-950/10 dark:to-rose-950/10 border-rose-100/50 dark:border-rose-950/20",
+                            },
+                          ].map((c) => (
+                            <div
+                              key={c.label}
+                              className={cn(
+                                "rounded-xl border p-4 shadow-sm relative overflow-hidden bg-gradient-to-br transition-all hover:shadow-md",
+                                c.gradient,
+                              )}
+                            >
+                              <div className="flex justify-between items-start gap-1">
+                                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground/80">
+                                  {c.label}
+                                </p>
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-muted/80 border dark:border-border/30 text-muted-foreground select-none">
+                                  {c.badge}
+                                </span>
+                              </div>
+                              <p
+                                className={cn(
+                                  "text-lg sm:text-xl font-bold mt-1.5 font-mono tracking-tight",
+                                  c.color,
+                                )}
+                              >
+                                {fmt(c.value)}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1 italic">
+                                <Info className="h-2.5 w-2.5 shrink-0" />
+                                {c.desc}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Transactions Table Layout */}
+                        <div className="overflow-x-auto rounded-xl border dark:border-border/60 shadow-sm bg-card">
+                          <table className="w-full text-sm border-collapse">
+                            <thead>
+                              <tr className="bg-muted/30 border-b border-border text-muted-foreground/90 font-medium">
+                                <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
+                                  Date
+                                </th>
+                                <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-36">
+                                  VOH No.
+                                </th>
+                                <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
+                                  VOH TYPE
+                                </th>
+                                <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
+                                  Cheque No.
+                                </th>
+                                <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
+                                  Ref 1
+                                </th>
+                                <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
+                                  Ref 2
+                                </th>
+                                <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50">
+                                  Narration
+                                </th>
+                                <th className="text-right px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-32">
+                                  Debit
+                                </th>
+                                <th className="text-right px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-32">
+                                  Credit
+                                </th>
+                                <th className="text-right px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider w-36">
+                                  Running Balance
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {/* Opening Balance Row */}
+                              <tr className="bg-muted/10 border-b dark:border-border/40 font-medium text-xs text-muted-foreground">
+                                <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
+                                  —
+                                </td>
+                                <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
+                                  —
+                                </td>
+                                <td className="px-4 py-2.5 border-r dark:border-border/40 text-xs italic">
+                                  Opening Balance
+                                </td>
+                                <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
+                                  —
+                                </td>
+                                <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
+                                  —
+                                </td>
+                                <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
+                                  —
+                                </td>
+                                <td className="px-4 py-2.5 border-r dark:border-border/40 text-xs italic">
+                                  Balance brought forward
+                                </td>
+                                <td className="px-4 py-2.5 text-right border-r dark:border-border/40 font-mono">
+                                  —
+                                </td>
+                                <td className="px-4 py-2.5 text-right border-r dark:border-border/40 font-mono">
+                                  —
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-mono font-semibold text-foreground/80 bg-muted/5">
+                                  {fmt(ledgerItem.openingBalance)}
+                                </td>
+                              </tr>
+
+                              {ledgerItem.rows.length === 0 && (
+                                <tr>
+                                  <td
+                                    colSpan={10}
+                                    className="px-4 py-12 text-center text-muted-foreground font-medium bg-muted/5 border-b"
+                                  >
+                                    No accounting transactions recorded in this period.
+                                  </td>
+                                </tr>
+                              )}
+
+                              {ledgerItem.rows.map((row, i) => {
+                                const drillDownLink = getSourceLink(
+                                  row.sourceType,
+                                  row.sourceId,
+                                );
+                                return (
+                                  <tr
+                                    key={row.id}
+                                    className={cn(
+                                      "border-b border-border/50 hover:bg-accent/40 transition-colors text-xs",
+                                      i % 2 === 1 && "bg-muted/5",
+                                    )}
+                                  >
+                                    <td className="px-4 py-3 border-r dark:border-border/40 whitespace-nowrap text-muted-foreground font-mono">
+                                      {format(
+                                        new Date(row.transactionDate),
+                                        "dd-MMM-yyyy",
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 border-r dark:border-border/40 font-mono font-semibold text-xs">
+                                      {drillDownLink ? (
+                                        <Link
+                                          href={drillDownLink}
+                                          className="text-primary hover:underline inline-flex items-center gap-1"
+                                          target="_blank"
+                                        >
+                                          {row.sourceRef}
+                                          <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                                        </Link>
+                                      ) : (
+                                        row.sourceRef
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 border-r dark:border-border/40 whitespace-nowrap">
+                                      <span
+                                        className={cn(
+                                          "px-2 py-0.5 rounded text-[10px] font-semibold border",
+                                          SOURCE_BADGES[row.sourceType] ??
+                                            "bg-muted text-muted-foreground border-border",
+                                        )}
+                                      >
+                                        {SOURCE_LABELS[row.sourceType] ??
+                                          row.sourceType}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-muted-foreground">
+                                      {row.chequeNo || "—"}
+                                    </td>
+                                    <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-muted-foreground">
+                                      {row.refBillNo || "—"}
+                                    </td>
+                                    <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-muted-foreground">
+                                      {row.refBillNo2 || "—"}
+                                    </td>
+                                    <td className="px-4 py-3 border-r dark:border-border/40 text-foreground/90">
+                                      <div>{row.narration || row.description || "—"}</div>
+                                      {row.tagAccount && (
+                                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                                          <Tag className="h-3 w-3 text-primary shrink-0" />
+                                          <span className="font-mono">
+                                            {row.tagAccount.code}
+                                          </span>
+                                          <span>—</span>
+                                          <span>{row.tagAccount.name}</span>
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-right border-r dark:border-border/40 font-mono text-indigo-600 dark:text-indigo-400 font-medium">
+                                      {row.debit > 0 ? fmt(row.debit) : "—"}
+                                    </td>
+                                    <td className="px-4 py-3 text-right border-r dark:border-border/40 font-mono text-rose-600 dark:text-rose-400 font-medium">
+                                      {row.credit > 0 ? fmt(row.credit) : "—"}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-mono font-bold text-foreground">
+                                      {fmt(row.runningBalance)}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                            <tfoot className="bg-muted/20 border-t-2 border-border font-bold">
+                              <tr>
+                                <td
+                                  colSpan={7}
+                                  className="px-4 py-3.5 text-right uppercase text-[10px] tracking-wider text-muted-foreground border-r dark:border-border/50"
+                                >
+                                  Ledger Period Summary ({ledgerItem.account.code})
+                                </td>
+                                <td className="px-4 py-3.5 text-right border-r dark:border-border/40 font-mono text-xs text-indigo-600 dark:text-indigo-400">
+                                  {fmt(ledgerItem.rangeTotalDebit)}
+                                </td>
+                                <td className="px-4 py-3.5 text-right border-r dark:border-border/40 font-mono text-xs text-rose-600 dark:text-rose-400">
+                                  {fmt(ledgerItem.rangeTotalCredit)}
+                                </td>
+                                <td
+                                  className={cn(
+                                    "px-4 py-3.5 text-right font-mono text-xs font-extrabold bg-muted/10",
+                                    ledgerItem.rangeClosingBalance >= 0
+                                      ? "text-emerald-700 dark:text-emerald-400 border-l-2 border-emerald-500/50"
+                                      : "text-rose-700 dark:text-rose-400 border-l-2 border-rose-500/50",
+                                  )}
+                                >
+                                  {fmt(ledgerItem.rangeClosingBalance)}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </>
-            )}
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
@@ -955,6 +947,14 @@ export function GeneralLedgerClient({
                 padding: 10px !important;
                 box-sizing: border-box !important;
               }
+              .print-ledger-block {
+                page-break-after: always !important;
+                break-after: page !important;
+              }
+              .print-ledger-block:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+              }
               #general-ledger-print-section tfoot {
                 display: table-row-group !important;
                 page-break-inside: avoid !important;
@@ -964,203 +964,212 @@ export function GeneralLedgerClient({
           `,
             }}
           />
-          {/* Header */}
-          <div className="flex justify-between mb-3 gap-4 items-start border-b pb-2 border-gray-300">
-            <div className="w-[15%] flex flex-col items-start justify-center">
-              <img
-                src="/image.png"
-                alt="Logo"
-                className="w-20 object-contain"
-              />
-            </div>
+          {(() => {
+            const printLedgers =
+              data.ledgers && data.ledgers.length > 0 ? data.ledgers : [data];
 
-            <div className="w-[55%] flex flex-col justify-center text-center">
-              <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 text-md font-bold print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact] uppercase tracking-wider rounded">
-                General Ledger Report
-              </div>
-              <p className="text-[10px] font-bold text-gray-700 mt-1">
-                Account Head: {data.account.code} — {data.account.name}
-              </p>
-            </div>
-
-            <div className="w-[30%] bg-[#f8fafc] text-[8px] sm:text-[9px] p-1.5 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col gap-0.5 rounded">
-              <div className="flex justify-between">
-                <span className="font-bold">Period From:</span>
-                <span>
-                  {fromDate ? format(fromDate, "dd/MM/yyyy") : "Beginning"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-bold">Period To:</span>
-                <span>{toDate ? format(toDate, "dd/MM/yyyy") : "Present"}</span>
-              </div>
-
-              <div className="flex justify-between border-t pt-0.5 mt-0.5 border-gray-200">
-                <span className="font-bold">Printed:</span>
-                <span>{format(new Date(), "dd/MM/yyyy HH:mm")}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Table */}
-          <table className="w-full text-[9px] mb-2 border-collapse table-fixed">
-            <thead>
-              <tr className="border-y border-black font-bold text-left">
-                <th className="py-1 pr-1 w-[7%] text-[8.5px]">Date</th>
-                <th className="py-1 pr-1 w-[10%] text-[8.5px]">VOH No.</th>
-                <th className="py-1 pr-1 w-[6%] text-[8.5px]">VOH TYPE</th>
-                <th className="py-1 pr-1 w-[6%] text-[8.5px]">Cheque No.</th>
-                <th className="py-1 pr-1 w-[8%] text-[8.5px]">Ref. 1</th>
-                <th className="py-1 pr-1 w-[6%] text-[8.5px]">Ref. 2</th>
-                <th className="py-1 pr-1 w-[33%] text-[8.5px]">Narration</th>
-                <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
-                  Debit
-                </th>
-                <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
-                  Credit
-                </th>
-                <th className="py-1 text-right w-[8%] text-[8.5px]">Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Opening Balance Row */}
-              <tr className="border-b border-gray-300 align-top italic text-gray-600 font-medium bg-gray-50/50">
-                <td className="py-1 pr-1">—</td>
-                <td className="py-1 pr-1">—</td>
-                <td className="py-1 pr-1">Opening Balance</td>
-                <td className="py-1 pr-1">—</td>
-                <td className="py-1 pr-1">—</td>
-                <td className="py-1 pr-1">—</td>
-                <td className="py-1 pr-1">Balance brought forward</td>
-                <td className="py-1 pr-1 text-right">—</td>
-                <td className="py-1 pr-1 text-right">—</td>
-                <td className="py-1 text-right font-mono font-semibold">
-                  {fmt(data.openingBalance)}
-                </td>
-              </tr>
-
-              {data.rows.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="py-4 text-center text-gray-500 border-b"
-                  >
-                    No transactions recorded in this period.
-                  </td>
-                </tr>
-              )}
-
-              {data.rows.map((row) => (
-                <tr key={row.id} className="border-b border-gray-200 align-top">
-                  <td className="py-1 pr-1 font-mono text-[8px] whitespace-nowrap">
-                    {format(new Date(row.transactionDate), "dd/MM/yyyy")}
-                  </td>
-                  <td className="py-1 pr-1 font-mono font-semibold text-[8px] whitespace-nowrap">
-                    {row.sourceRef}
-                  </td>
-                  <td
-                    className="py-1 pr-1 text-[8px] whitespace-nowrap truncate max-w-0"
-                    title={SOURCE_LABELS[row.sourceType] ?? row.sourceType}
-                  >
-                    {SOURCE_LABELS[row.sourceType] ?? row.sourceType}
-                  </td>
-                  <td
-                    className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
-                    title={row.chequeNo || undefined}
-                  >
-                    {row.chequeNo || "—"}
-                  </td>
-                  <td
-                    className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
-                    title={row.refBillNo || undefined}
-                  >
-                    {row.refBillNo || "—"}
-                  </td>
-                  <td
-                    className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
-                    title={row.refBillNo2 || undefined}
-                  >
-                    {row.refBillNo2 || "—"}
-                  </td>
-                  <td className="py-1 pr-1 text-[8.5px] leading-tight break-words">
-                    <div>{row.narration || row.description || "—"}</div>
-                  </td>
-                  <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
-                    {row.debit > 0 ? fmt(row.debit) : ""}
-                  </td>
-                  <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
-                    {row.credit > 0 ? fmt(row.credit) : ""}
-                  </td>
-                  <td className="py-1 text-right font-mono font-semibold text-[8px] whitespace-nowrap">
-                    {fmt(row.runningBalance)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="print:table-row-group">
-              <tr>
-                <td
-                  colSpan={7}
-                  className="py-2 px-0 align-bottom border-b border-black"
-                >
-                  <div className="flex gap-2 font-bold text-[9px] leading-tight flex-wrap">
-                    <span className="whitespace-nowrap">
-                      Closing Balance in Words:
-                    </span>
-                    <span className="underline decoration-dashed decoration-gray-400 underline-offset-2 break-words">
-                      {numberToWords(Math.abs(data.rangeClosingBalance))}{" "}
-                      {data.rangeClosingBalance >= 0 ? "(Debit)" : "(Credit)"}
-                    </span>
+            return printLedgers.map((ledgerItem, pIdx) => (
+              <div key={ledgerItem.account.id || pIdx} className="print-ledger-block mb-8">
+                {/* Header */}
+                <div className="flex justify-between mb-3 gap-4 items-start border-b pb-2 border-gray-300">
+                  <div className="w-[15%] flex flex-col items-start justify-center">
+                    <img
+                      src="/image.png"
+                      alt="Logo"
+                      className="w-20 object-contain"
+                    />
                   </div>
-                </td>
-                <td className="py-1 pr-1 text-right align-bottom border-b border-black">
-                  <div
-                    className="ml-auto border-t border-black pb-0.5"
-                    style={{ borderBottom: "2px double black" }}
-                  >
-                    <span className="tabular-nums font-mono text-[8px] block pt-0.5">
-                      {fmt(data.rangeTotalDebit)}
-                    </span>
-                  </div>
-                </td>
-                <td className="py-1 pr-1 text-right align-bottom border-b border-black">
-                  <div
-                    className="ml-auto border-t border-black pb-0.5"
-                    style={{ borderBottom: "2px double black" }}
-                  >
-                    <span className="tabular-nums font-mono text-[8px] block pt-0.5">
-                      {fmt(data.rangeTotalCredit)}
-                    </span>
-                  </div>
-                </td>
-                <td className="py-1 text-right align-bottom border-b border-black">
-                  <div
-                    className="ml-auto border-t border-black pb-0.5"
-                    style={{ borderBottom: "2px double black" }}
-                  >
-                    <span className="tabular-nums font-mono font-bold text-[8px] block pt-0.5">
-                      {fmt(data.rangeClosingBalance)}
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            </tfoot>
-          </table>
 
-          {/* Remarks */}
-          <div className="mt-2 mb-4">
-            <div className="font-bold text-[10px]">
-              General Ledger Summary Remarks
-            </div>
-            <p className="text-[9px] mt-0.5 text-gray-700 leading-tight">
-              This statement represents verified transaction ledger history for
-              Account Head {data.account.code} ({data.account.name}). The
-              opening balance of {fmt(data.openingBalance)} is compiled from
-              postings preceding{" "}
-              {fromDate ? format(fromDate, "dd-MM-yyyy") : "inception"}. Net
-              closing balance is {fmt(data.rangeClosingBalance)}.
-            </p>
-          </div>
+                  <div className="w-[55%] flex flex-col justify-center text-center">
+                    <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 text-md font-bold print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact] uppercase tracking-wider rounded">
+                      General Ledger Report
+                    </div>
+                    <p className="text-[10px] font-bold text-gray-700 mt-1">
+                      Account Head: {ledgerItem.account.code} — {ledgerItem.account.name}
+                    </p>
+                  </div>
+
+                  <div className="w-[30%] bg-[#f8fafc] text-[8px] sm:text-[9px] p-1.5 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col gap-0.5 rounded">
+                    <div className="flex justify-between">
+                      <span className="font-bold">Period From:</span>
+                      <span>
+                        {fromDate ? format(fromDate, "dd/MM/yyyy") : "Beginning"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-bold">Period To:</span>
+                      <span>{toDate ? format(toDate, "dd/MM/yyyy") : "Present"}</span>
+                    </div>
+
+                    <div className="flex justify-between border-t pt-0.5 mt-0.5 border-gray-200">
+                      <span className="font-bold">Printed:</span>
+                      <span>{format(new Date(), "dd/MM/yyyy HH:mm")}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <table className="w-full text-[9px] mb-2 border-collapse table-fixed">
+                  <thead>
+                    <tr className="border-y border-black font-bold text-left">
+                      <th className="py-1 pr-1 w-[7%] text-[8.5px]">Date</th>
+                      <th className="py-1 pr-1 w-[10%] text-[8.5px]">VOH No.</th>
+                      <th className="py-1 pr-1 w-[6%] text-[8.5px]">VOH TYPE</th>
+                      <th className="py-1 pr-1 w-[6%] text-[8.5px]">Cheque No.</th>
+                      <th className="py-1 pr-1 w-[8%] text-[8.5px]">Ref. 1</th>
+                      <th className="py-1 pr-1 w-[6%] text-[8.5px]">Ref. 2</th>
+                      <th className="py-1 pr-1 w-[33%] text-[8.5px]">Narration</th>
+                      <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
+                        Debit
+                      </th>
+                      <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
+                        Credit
+                      </th>
+                      <th className="py-1 text-right w-[8%] text-[8.5px]">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Opening Balance Row */}
+                    <tr className="border-b border-gray-300 align-top italic text-gray-600 font-medium bg-gray-50/50">
+                      <td className="py-1 pr-1">—</td>
+                      <td className="py-1 pr-1">—</td>
+                      <td className="py-1 pr-1">Opening Balance</td>
+                      <td className="py-1 pr-1">—</td>
+                      <td className="py-1 pr-1">—</td>
+                      <td className="py-1 pr-1">—</td>
+                      <td className="py-1 pr-1">Balance brought forward</td>
+                      <td className="py-1 pr-1 text-right">—</td>
+                      <td className="py-1 pr-1 text-right">—</td>
+                      <td className="py-1 text-right font-mono font-semibold">
+                        {fmt(ledgerItem.openingBalance)}
+                      </td>
+                    </tr>
+
+                    {ledgerItem.rows.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={10}
+                          className="py-4 text-center text-gray-500 border-b"
+                        >
+                          No transactions recorded in this period.
+                        </td>
+                      </tr>
+                    )}
+
+                    {ledgerItem.rows.map((row) => (
+                      <tr key={row.id} className="border-b border-gray-200 align-top">
+                        <td className="py-1 pr-1 font-mono text-[8px] whitespace-nowrap">
+                          {format(new Date(row.transactionDate), "dd/MM/yyyy")}
+                        </td>
+                        <td className="py-1 pr-1 font-mono font-semibold text-[8px] whitespace-nowrap">
+                          {row.sourceRef}
+                        </td>
+                        <td
+                          className="py-1 pr-1 text-[8px] whitespace-nowrap truncate max-w-0"
+                          title={SOURCE_LABELS[row.sourceType] ?? row.sourceType}
+                        >
+                          {SOURCE_LABELS[row.sourceType] ?? row.sourceType}
+                        </td>
+                        <td
+                          className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
+                          title={row.chequeNo || undefined}
+                        >
+                          {row.chequeNo || "—"}
+                        </td>
+                        <td
+                          className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
+                          title={row.refBillNo || undefined}
+                        >
+                          {row.refBillNo || "—"}
+                        </td>
+                        <td
+                          className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
+                          title={row.refBillNo2 || undefined}
+                        >
+                          {row.refBillNo2 || "—"}
+                        </td>
+                        <td className="py-1 pr-1 text-[8.5px] leading-tight break-words">
+                          <div>{row.narration || row.description || "—"}</div>
+                        </td>
+                        <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
+                          {row.debit > 0 ? fmt(row.debit) : ""}
+                        </td>
+                        <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
+                          {row.credit > 0 ? fmt(row.credit) : ""}
+                        </td>
+                        <td className="py-1 text-right font-mono font-semibold text-[8px] whitespace-nowrap">
+                          {fmt(row.runningBalance)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="print:table-row-group">
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="py-2 px-0 align-bottom border-b border-black"
+                      >
+                        <div className="flex gap-2 font-bold text-[9px] leading-tight flex-wrap">
+                          <span className="whitespace-nowrap">
+                            Closing Balance in Words:
+                          </span>
+                          <span className="underline decoration-dashed decoration-gray-400 underline-offset-2 break-words">
+                            {numberToWords(Math.abs(ledgerItem.rangeClosingBalance))}{" "}
+                            {ledgerItem.rangeClosingBalance >= 0 ? "(Debit)" : "(Credit)"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-1 pr-1 text-right align-bottom border-b border-black">
+                        <div
+                          className="ml-auto border-t border-black pb-0.5"
+                          style={{ borderBottom: "2px double black" }}
+                        >
+                          <span className="tabular-nums font-mono text-[8px] block pt-0.5">
+                            {fmt(ledgerItem.rangeTotalDebit)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-1 pr-1 text-right align-bottom border-b border-black">
+                        <div
+                          className="ml-auto border-t border-black pb-0.5"
+                          style={{ borderBottom: "2px double black" }}
+                        >
+                          <span className="tabular-nums font-mono text-[8px] block pt-0.5">
+                            {fmt(ledgerItem.rangeTotalCredit)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-1 text-right align-bottom border-b border-black">
+                        <div
+                          className="ml-auto border-t border-black pb-0.5"
+                          style={{ borderBottom: "2px double black" }}
+                        >
+                          <span className="tabular-nums font-mono font-bold text-[8px] block pt-0.5">
+                            {fmt(ledgerItem.rangeClosingBalance)}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                {/* Remarks */}
+                <div className="mt-2 mb-4">
+                  <div className="font-bold text-[10px]">
+                    General Ledger Summary Remarks
+                  </div>
+                  <p className="text-[9px] mt-0.5 text-gray-700 leading-tight">
+                    This statement represents verified transaction ledger history for
+                    Account Head {ledgerItem.account.code} ({ledgerItem.account.name}). The
+                    opening balance of {fmt(ledgerItem.openingBalance)} is compiled from
+                    postings preceding{" "}
+                    {fromDate ? format(fromDate, "dd-MM-yyyy") : "inception"}. Net
+                    closing balance is {fmt(ledgerItem.rangeClosingBalance)}.
+                  </p>
+                </div>
+              </div>
+            ));
+          })()}
         </div>
       )}
     </>

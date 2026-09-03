@@ -75,7 +75,7 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
 
     {/* First Password Banner - Full Screen Width */}
     {!isImpersonating && user?.isFirstPassword && (
-      <div className="bg-orange-600 text-white text-center font-medium shrink-0 h-10 z-60 flex items-center justify-center gap-4 shadow-md border-b border-orange-700 fixed left-0 right-0" style={{ top: "var(--titlebar-height)" }}>
+      <div className="bg-orange-600 text-white text-center font-medium shrink-0 h-10 z-60 flex items-center justify-center gap-4 shadow-md border-b border-orange-700 fixed left-0 right-0 print:hidden" style={{ top: "var(--titlebar-height)" }}>
         <AlertTriangle className="h-4 w-4 text-white animate-pulse" />
         <span className="text-xs tracking-wide">
           TEMPORARY PASSWORD DETECTED - PLEASE CHANGE YOUR PASSWORD

@@ -3,7 +3,7 @@
 import { useState, useEffect, use, useMemo } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { getReceiptVoucher, updateReceiptVoucherStatus, ReceiptVoucher } from "@/lib/actions/receipt-voucher";
+import { getReceiptVoucher, updateReceiptVoucherStatus, unapproveReceiptVoucher, ReceiptVoucher } from "@/lib/actions/receipt-voucher";
 import { RetailSaleReceiptVoucherPrint, numberToWords } from "../components/retail-sale-receipt-voucher-print";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +94,24 @@ export default function RetailSaleReceiptVoucherDetailPage({
       setLoading(false);
     });
   }, [id]);
+
+  const handleUnapprove = async () => {
+    if (!voucher) return;
+    try {
+      setActionPending(true);
+      const res = await unapproveReceiptVoucher(voucher.id);
+      if (res.status) {
+        toast.success("Retail Sale Receipt Voucher unapproved & unposted successfully");
+        setVoucher((prev) => prev ? { ...prev, status: "pending_check" } : null);
+      } else {
+        toast.error(res.message || "Failed to unapprove voucher");
+      }
+    } catch {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setActionPending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -237,7 +255,20 @@ export default function RetailSaleReceiptVoucherDetailPage({
               </Button>
             )}
 
-            {(statusKey === "approved" || statusKey === "rejected") && (
+            {statusKey === "approved" && (
+              <Button
+                onClick={handleUnapprove}
+                size="sm"
+                variant="outline"
+                disabled={actionPending}
+                className="h-9 gap-1.5 border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Unapprove & Unpost
+              </Button>
+            )}
+
+            {statusKey === "rejected" && (
               <Button
                 onClick={() => handleUpdateStatus("draft")}
                 size="sm"
