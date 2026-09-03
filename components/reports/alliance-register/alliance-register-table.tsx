@@ -3,7 +3,9 @@
 import React, { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { AllianceRegisterRecord, AllianceRegisterTotals } from "./types";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 function highlight(text: string, query: string) {
   if (!text) return <></>;
@@ -45,9 +47,16 @@ export function AllianceRegisterTable({ records, grandTotals, searchQuery, isLoa
   const rowVirtualizer = useVirtualizer({
     count: records.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => 38,
     overscan: 25,
   });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const paddingTop = virtualItems.length > 0 ? virtualItems[0]?.start || 0 : 0;
+  const paddingBottom =
+    virtualItems.length > 0
+      ? rowVirtualizer.getTotalSize() - (virtualItems[virtualItems.length - 1]?.end || 0)
+      : 0;
 
   const formatVal = (val: number) => {
     if (val === 0 || val === null || val === undefined) return "-";
@@ -56,7 +65,7 @@ export function AllianceRegisterTable({ records, grandTotals, searchQuery, isLoa
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3 border border-border/60 rounded-2xl bg-background shadow-sm">
+      <div className="flex flex-col items-center justify-center py-20 gap-3 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-2xs">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         <p className="text-xs font-semibold text-muted-foreground animate-pulse">
           Loading Alliance Register records...
@@ -74,128 +83,309 @@ export function AllianceRegisterTable({ records, grandTotals, searchQuery, isLoa
         </div>
       </div>
 
-      {/* Main Virtualized Container */}
-      <div className="border border-border/60 rounded-2xl overflow-hidden bg-background shadow-sm">
-        <div ref={parentRef} className="max-h-[640px] overflow-auto relative">
-          <div className="min-w-[2800px]">
-            {/* Sticky Table Header */}
-            <div className="sticky top-0 z-10 flex items-center bg-indigo-950 text-indigo-100 text-[11px] font-mono font-semibold uppercase tracking-wider h-11 border-b border-border/80 shadow-md">
-              <div className="w-40 px-3">Sales Tax Invoice</div>
-              <div className="w-28 px-2">Date</div>
-              <div className="w-24 px-2">Time</div>
-              <div className="w-32 px-2 text-right">Retail Price</div>
-              <div className="w-32 px-2 text-right">Retail Price WOST</div>
-              <div className="w-28 px-2 text-right text-rose-300 font-bold">Discount</div>
-              <div className="w-28 px-2 text-right">S. Tax</div>
-              <div className="w-36 px-2 text-right text-emerald-300 font-extrabold">Net Sale</div>
-              <div className="w-28 px-2 text-right">Cash</div>
-              <div className="w-28 px-2 text-right">Card</div>
-              <div className="w-36 px-2">Prefix Card No.</div>
-              <div className="w-28 px-2 text-center">Auth ID</div>
-              <div className="w-28 px-2 text-center">Card No.</div>
-              <div className="w-56 px-3">Alliance Option</div>
-              <div className="w-48 px-2">Remarks</div>
-              <div className="w-36 px-2">Gift Voucher</div>
-              <div className="w-28 px-2 text-right">Amt</div>
-              <div className="w-36 px-2">Credit Voucher</div>
-              <div className="w-28 px-2 text-right">Amt</div>
-              <div className="w-36 px-2">Claim Voucher</div>
-              <div className="w-28 px-2 text-right">Amt</div>
-              <div className="w-36 px-2">Credit Issued</div>
-              <div className="w-28 px-2 text-right">Amt</div>
-            </div>
+      {/* Clean Minimalist Matrix Table Container */}
+      <div className="border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs bg-white dark:bg-slate-900 overflow-hidden no-print">
+        <div ref={parentRef} className="overflow-auto max-h-[700px] relative">
+          <table className="w-full text-left border-collapse min-w-[3400px] text-xs">
+            {/* Clean Light-Themed Header */}
+            <thead className="sticky top-0 z-20 bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 uppercase text-[10px] font-mono tracking-wider border-b border-slate-200 dark:border-slate-700 shadow-2xs backdrop-blur-xs">
+              <tr>
+                <th className="py-3 px-3.5 w-[160px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                  Sales Tax Invoice
+                </th>
+                <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                  Date & Time
+                </th>
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                  Retail Price
+                </th>
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                  Retail WOST
+                </th>
+                <th className="py-3 px-3 w-[100px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-rose-600 dark:text-rose-400">
+                  Discount
+                </th>
+                <th className="py-3 px-3 w-[95px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right text-slate-600 dark:text-slate-400">
+                  S. Tax
+                </th>
+                <th className="py-3 px-3 w-[120px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                  Net Sale
+                </th>
 
-            {/* Virtualized Body */}
-            {records.length === 0 ? (
-              <div className="py-16 text-center text-xs text-muted-foreground">
-                No matching alliance register records found for the selected filter criteria.
-              </div>
-            ) : (
-              <div
-                style={{
-                  height: `${rowVirtualizer.getTotalSize()}px`,
-                  position: "relative",
-                }}
-                className="w-full"
-              >
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                {/* 12 Tender Breakdown Columns */}
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-teal-700 dark:text-teal-400 whitespace-nowrap">
+                  Cash Sale
+                </th>
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                  Cash Return
+                </th>
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400 whitespace-nowrap">
+                  Card Sale
+                </th>
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-sky-700 dark:text-sky-400 whitespace-nowrap">
+                  Credit Sale
+                </th>
+                <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-violet-700 dark:text-violet-400 whitespace-nowrap">
+                  Gift Voucher
+                </th>
+                <th className="py-3 px-3 w-[135px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-blue-700 dark:text-blue-400 whitespace-nowrap">
+                  Credit Voucher
+                </th>
+                <th className="py-3 px-3 w-[145px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-orange-700 dark:text-orange-400 whitespace-nowrap">
+                  Exchange Voucher
+                </th>
+                <th className="py-3 px-3 w-[135px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                  Claim Voucher
+                </th>
+                <th className="py-3 px-3 w-[155px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-purple-700 dark:text-purple-400 whitespace-nowrap">
+                  Corporate Voucher
+                </th>
+                <th className="py-3 px-3 w-[135px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-red-700 dark:text-red-400 whitespace-nowrap">
+                  Credit Issued
+                </th>
+                <th className="py-3 px-3 w-[135px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                  Reward Voucher
+                </th>
+                <th className="py-3 px-3 w-[115px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  On Credit
+                </th>
+
+                {/* Card / Alliance Metadata */}
+                <th className="py-3 px-3 w-[120px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                  BIN No.
+                </th>
+                <th className="py-3 px-3 w-[120px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">
+                  4 Digit Card No.
+                </th>
+                <th className="py-3 px-3.5 w-[160px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                  Card Name
+                </th>
+                <th className="py-3 px-3 w-[100px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">
+                  Auth ID
+                </th>
+                <th className="py-3 px-3.5 w-[200px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                  Alliance Option
+                </th>
+                <th className="py-3 px-3 w-[180px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                  Remarks
+                </th>
+                <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                  Gift Voucher No.
+                </th>
+                <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                  Credit Voucher No.
+                </th>
+                <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-200 dark:border-slate-700">
+                  Claim Voucher No.
+                </th>
+                <th className="py-3 px-3.5 w-[130px] shrink-0">
+                  Credit Issued No.
+                </th>
+              </tr>
+            </thead>
+
+            {/* Clean Light-Themed Body */}
+            <tbody>
+              {paddingTop > 0 && (
+                <tr>
+                  <td colSpan={29} style={{ height: `${paddingTop}px` }} />
+                </tr>
+              )}
+
+              {records.length === 0 ? (
+                <tr>
+                  <td colSpan={29} className="p-14 text-center text-muted-foreground font-medium text-xs">
+                    No matching alliance register records found for the selected filter criteria.
+                  </td>
+                </tr>
+              ) : (
+                virtualItems.map((virtualRow) => {
                   const row = records[virtualRow.index];
+                  if (!row) return null;
 
                   return (
-                    <div
+                    <tr
                       key={row.id || virtualRow.index}
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "100%",
-                        height: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
-                      className="border-b border-border/40 text-xs transition-colors hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 flex items-center px-0 whitespace-nowrap text-slate-800 dark:text-slate-200"
+                      className="hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-colors border-b border-slate-200 dark:border-slate-800 text-xs bg-white dark:bg-slate-900"
                     >
-                      <div className="w-40 px-3 shrink-0 font-bold font-mono text-indigo-700 dark:text-indigo-400">
+                      <td className="py-2.5 px-3.5 border-r border-slate-200 dark:border-slate-800 font-bold font-mono text-indigo-700 dark:text-indigo-400">
                         {highlight(row.invoiceNo, searchQuery)}
-                      </div>
-                      <div className="w-28 px-2 shrink-0">{row.date}</div>
-                      <div className="w-24 px-2 shrink-0 text-muted-foreground">{row.time}</div>
-                      <div className="w-32 px-2 shrink-0 text-right font-mono">{formatVal(row.retailPrice)}</div>
-                      <div className="w-32 px-2 shrink-0 text-right font-mono">{formatVal(row.retailWost)}</div>
-                      <div className="w-28 px-2 shrink-0 text-right font-mono font-bold text-rose-600 dark:text-rose-400">{formatVal(row.discount)}</div>
-                      <div className="w-28 px-2 shrink-0 text-right font-mono text-muted-foreground">{formatVal(row.sTax)}</div>
-                      <div className="w-36 px-2 shrink-0 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/5">{formatVal(row.netSale)}</div>
-                      <div className="w-28 px-2 shrink-0 text-right font-mono">{formatVal(row.cash)}</div>
-                      <div className="w-28 px-2 shrink-0 text-right font-mono">{formatVal(row.card)}</div>
-                      <div className="w-36 px-2 shrink-0 font-mono text-[11px]">{highlight(row.prefixCardNo || "-", searchQuery)}</div>
-                      <div className="w-28 px-2 shrink-0 text-center font-mono text-[11px]">{highlight(row.authId || "-", searchQuery)}</div>
-                      <div className="w-28 px-2 shrink-0 text-center font-mono text-[11px]">{row.cardNo ? `****${row.cardNo}` : "-"}</div>
-                      <div className="w-56 px-3 shrink-0 font-semibold text-indigo-900 dark:text-indigo-300 truncate" title={row.allianceOption}>
-                        {highlight(row.allianceOption || "-", searchQuery)}
-                      </div>
-                      <div className="w-48 px-2 shrink-0 text-muted-foreground truncate" title={row.remarks}>
-                        {highlight(row.remarks || "-", searchQuery)}
-                      </div>
-                      <div className="w-36 px-2 shrink-0 font-mono text-[11px]">{row.giftVoucherCode || "-"}</div>
-                      <div className="w-28 px-2 shrink-0 text-right font-mono">{formatVal(row.giftVoucherAmt)}</div>
-                      <div className="w-36 px-2 shrink-0 font-mono text-[11px]">{row.creditCode || "-"}</div>
-                      <div className="w-28 px-2 shrink-0 text-right font-mono">{formatVal(row.creditAmt)}</div>
-                      <div className="w-36 px-2 shrink-0 font-mono text-[11px]">{row.claimCode || "-"}</div>
-                      <div className="w-28 px-2 shrink-0 text-right font-mono">{formatVal(row.claimAmt)}</div>
-                      <div className="w-36 px-2 shrink-0 font-mono text-[11px]">{row.creditVoucherIssued || "-"}</div>
-                      <div className="w-28 px-2 shrink-0 text-right font-mono">{formatVal(row.creditVoucherIssuedAmt)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-muted-foreground whitespace-nowrap">
+                        {row.date} <span className="text-[10px]">{row.time}</span>
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                        {formatVal(row.retailPrice)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                        {formatVal(row.retailWost)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                        {formatVal(row.discount)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono text-muted-foreground">
+                        {formatVal(row.sTax)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10">
+                        {formatVal(row.netSale)}
+                      </td>
 
-            {/* Sticky Table Footer */}
-            <div className="sticky bottom-0 z-10 flex items-center bg-indigo-950 text-indigo-100 uppercase text-[11px] font-mono font-bold h-11 border-t-2 border-indigo-900 shadow-md">
-              <div className="w-40 px-3 shrink-0 font-black">GRAND TOTALS</div>
-              <div className="w-28 px-2 shrink-0">-</div>
-              <div className="w-24 px-2 shrink-0">-</div>
-              <div className="w-32 px-2 shrink-0 text-right font-black">{formatVal(grandTotals.retailPrice)}</div>
-              <div className="w-32 px-2 shrink-0 text-right font-black">{formatVal(grandTotals.retailWost)}</div>
-              <div className="w-28 px-2 shrink-0 text-right font-black text-rose-300">{formatVal(grandTotals.discount)}</div>
-              <div className="w-28 px-2 shrink-0 text-right">{formatVal(grandTotals.sTax)}</div>
-              <div className="w-36 px-2 shrink-0 text-right font-black text-emerald-300">{formatVal(grandTotals.netSale)}</div>
-              <div className="w-28 px-2 shrink-0 text-right">{formatVal(grandTotals.cash)}</div>
-              <div className="w-28 px-2 shrink-0 text-right">{formatVal(grandTotals.card)}</div>
-              <div className="w-36 px-2 shrink-0">-</div>
-              <div className="w-28 px-2 shrink-0 text-center">-</div>
-              <div className="w-28 px-2 shrink-0 text-center">-</div>
-              <div className="w-56 px-3 shrink-0">-</div>
-              <div className="w-48 px-2 shrink-0">-</div>
-              <div className="w-36 px-2 shrink-0">-</div>
-              <div className="w-28 px-2 shrink-0 text-right">{formatVal(grandTotals.giftVoucherAmt)}</div>
-              <div className="w-36 px-2 shrink-0">-</div>
-              <div className="w-28 px-2 shrink-0 text-right">{formatVal(grandTotals.creditAmt)}</div>
-              <div className="w-36 px-2 shrink-0">-</div>
-              <div className="w-28 px-2 shrink-0 text-right">{formatVal(grandTotals.claimAmt)}</div>
-              <div className="w-36 px-2 shrink-0">-</div>
-              <div className="w-28 px-2 shrink-0 text-right">{formatVal(grandTotals.creditVoucherIssuedAmt)}</div>
-            </div>
-          </div>
+                      {/* 12 Tender Breakdown Cells */}
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-teal-700 dark:text-teal-400">
+                        {formatVal(row.cashSale)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                        {formatVal(row.cashReturn)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400">
+                        {formatVal(row.cardSale)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-sky-700 dark:text-sky-400">
+                        {formatVal(row.creditSale)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                        {formatVal(row.giftVoucherAmount)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                        {formatVal(row.creditVoucherAmount)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                        {formatVal(row.exchangeVoucherAmount)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                        {formatVal(row.claimVoucherAmount)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                        {formatVal(row.giftVoucherCorporate)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-red-600 dark:text-red-400">
+                        {formatVal(row.creditVoucherIssuedAmount)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                        {formatVal(row.rewardVoucherAmount)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold">
+                        {formatVal(row.onCreditAmount)}
+                      </td>
+
+                      {/* Card / Alliance Metadata */}
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 font-mono text-[11px]">
+                        {highlight(row.binNo || row.prefixCardNo || "-", searchQuery)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-center font-mono text-[11px]">
+                        {highlight(row.cardNo || row.cardLast4 || "-", searchQuery)}
+                      </td>
+                      <td className="py-2.5 px-3.5 border-r border-slate-200 dark:border-slate-800 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[160px]" title={row.cardName}>
+                        {highlight(row.cardName || "-", searchQuery)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-center font-mono text-[11px]">
+                        {highlight(row.authId || "-", searchQuery)}
+                      </td>
+                      <td className="py-2.5 px-3.5 border-r border-slate-200 dark:border-slate-800 font-semibold text-indigo-900 dark:text-indigo-300 truncate max-w-[200px]" title={row.allianceOption}>
+                        {highlight(row.allianceOption || "-", searchQuery)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-muted-foreground truncate max-w-[180px]" title={row.remarks}>
+                        {highlight(row.remarks || "-", searchQuery)}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 font-mono text-[11px]">
+                        {row.giftVoucherCode || "-"}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 font-mono text-[11px]">
+                        {row.creditCode || "-"}
+                      </td>
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 font-mono text-[11px]">
+                        {row.claimCode || "-"}
+                      </td>
+                      <td className="py-2.5 px-3.5 font-mono text-[11px]">
+                        {row.creditVoucherIssued || "-"}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+
+              {paddingBottom > 0 && (
+                <tr>
+                  <td colSpan={29} style={{ height: `${paddingBottom}px` }} />
+                </tr>
+              )}
+            </tbody>
+
+            {/* Clean Light-Themed Footer */}
+            <tfoot className="sticky bottom-0 z-20 bg-slate-100 dark:bg-slate-800 border-t-2 border-slate-300 dark:border-slate-600 font-mono text-[11px] font-bold text-slate-800 dark:text-slate-100 shadow-md">
+              <tr>
+                <td className="py-3 px-3.5 border-r border-slate-300 dark:border-slate-600 font-black">
+                  GRAND TOTALS
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600">-</td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black">
+                  {formatVal(grandTotals.retailPrice)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black">
+                  {formatVal(grandTotals.retailWost)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-rose-600 dark:text-rose-400">
+                  {formatVal(grandTotals.discount)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                  {formatVal(grandTotals.sTax)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30">
+                  {formatVal(grandTotals.netSale)}
+                </td>
+
+                {/* 12 Tender Breakdown Totals */}
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-teal-700 dark:text-teal-400">
+                  {formatVal(grandTotals.cashSale)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-rose-600 dark:text-rose-400">
+                  {formatVal(grandTotals.cashReturn)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-indigo-700 dark:text-indigo-400">
+                  {formatVal(grandTotals.cardSale)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-sky-700 dark:text-sky-400">
+                  {formatVal(grandTotals.creditSale)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                  {formatVal(grandTotals.giftVoucherAmount)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                  {formatVal(grandTotals.creditVoucherAmount)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                  {formatVal(grandTotals.exchangeVoucherAmount)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                  {formatVal(grandTotals.claimVoucherAmount)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                  {formatVal(grandTotals.giftVoucherCorporate)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-red-600 dark:text-red-400">
+                  {formatVal(grandTotals.creditVoucherIssuedAmount)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                  {formatVal(grandTotals.rewardVoucherAmount)}
+                </td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black">
+                  {formatVal(grandTotals.onCreditAmount)}
+                </td>
+
+                {/* Card / Alliance Metadata Totals */}
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600">-</td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-center">-</td>
+                <td className="py-3 px-3.5 border-r border-slate-300 dark:border-slate-600">-</td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-center">-</td>
+                <td className="py-3 px-3.5 border-r border-slate-300 dark:border-slate-600">-</td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600">-</td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600">-</td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600">-</td>
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600">-</td>
+                <td className="py-3 px-3.5">-</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
     </div>
