@@ -611,6 +611,19 @@ export default function PurchaseOrderDetail({
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between">
+                <span>Total Quantity</span>
+                <span className="font-semibold text-blue-600 dark:text-blue-400">
+                  {order.items
+                    ? order.items
+                        .reduce(
+                          (sum, item) => sum + parseFloat(item.quantity || "0"),
+                          0,
+                        )
+                        .toFixed(2)
+                    : "0.00"}
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span>Subtotal</span>
                 <span className="font-medium">
                   {parseFloat(order.subtotal || "0").toFixed(2)}
