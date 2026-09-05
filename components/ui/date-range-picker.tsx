@@ -566,61 +566,57 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
       <PopoverContent
         align={align}
         side="bottom"
-        sideOffset={6}
+        sideOffset={4}
         avoidCollisions={true}
-        collisionPadding={12}
+        collisionPadding={8}
+        style={{
+          maxHeight: "calc(var(--radix-popover-content-available-height, 460px) - 16px)",
+        }}
         className={cn(
-          "w-auto p-0 flex flex-col max-h-[min(90vh,660px)] max-w-[98vw] shadow-2xl rounded-2xl border border-border/80 bg-popover z-50 overflow-hidden outline-hidden"
+          "w-auto p-0 flex flex-col shadow-2xl rounded-xl border border-border/80 bg-popover z-50 overflow-hidden outline-hidden"
         )}
         onEscapeKeyDown={handleCancel}
       >
-        {/* ─── 1. FIXED TOP HEADER: PRESET CATEGORIES & FY TOOLS ────────── */}
+        {/* ─── 1. COMPACT TOP HEADER: PRESET CATEGORIES & FY TOOLS ────────── */}
         {isPreset && (
-          <div className="flex-shrink-0 border-b border-border/60 bg-muted/20 p-2.5 sm:p-3 space-y-2.5">
-            {/* Tab switch between Fiscal Year & Quick Periods */}
-            <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-              <div className="flex items-center gap-1.5 p-0.5 rounded-lg bg-muted/60 border border-border/50 text-xs">
+          <div className="flex-shrink-0 border-b border-border/60 bg-muted/25 px-2.5 py-1.5 space-y-1.5">
+            {/* Mode Switcher & Presets Row */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+              {/* Mode Toggle Pills */}
+              <div className="flex items-center p-0.5 rounded-lg bg-muted/60 border border-border/60 shrink-0">
                 <button
                   type="button"
                   onClick={() => setPresetTab("fiscal")}
                   className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all",
+                    "flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all",
                     presetTab === "fiscal"
-                      ? "bg-background text-primary shadow-xs"
+                      ? "bg-background text-primary shadow-2xs"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Building2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Fiscal Year (Jul–Jun)</span>
+                  <Building2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>Fiscal Year</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPresetTab("calendar")}
                   className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all",
+                    "flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all",
                     presetTab === "calendar"
-                      ? "bg-background text-primary shadow-xs"
+                      ? "bg-background text-primary shadow-2xs"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>Quick Periods</span>
+                  <Clock className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
+                  <span>Quick</span>
                 </button>
               </div>
 
-              {/* Active Fiscal Year Pill */}
-              <div className="hidden sm:flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-accent/40 px-2 py-0.5 rounded-md">
-                <span>Active:</span>
-                <span className="font-bold text-foreground">{activeFY.fullLabel}</span>
-              </div>
-            </div>
+              <div className="h-3.5 w-px bg-border/70 shrink-0" />
 
-            {/* TAB CONTENT: FISCAL YEAR (JULY - JUNE) */}
-            {presetTab === "fiscal" && (
-              <div className="space-y-2">
-                {/* Fiscal Year Selector & Quarters */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {/* FY Select */}
+              {/* Fiscal Year Presets */}
+              {presetTab === "fiscal" && (
+                <div className="flex items-center gap-1 shrink-0">
                   <Select
                     value={selectedFyKey}
                     onValueChange={(key) => {
@@ -631,10 +627,10 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                       }
                     }}
                   >
-                    <SelectTrigger className="h-7 w-[105px] text-xs font-bold border-primary/30 text-primary bg-primary/5">
+                    <SelectTrigger className="h-6 w-[95px] text-[11px] font-bold border-primary/30 text-primary bg-primary/5 px-2">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="max-h-[220px]">
+                    <SelectContent className="max-h-[200px]">
                       {availableFiscalYears.map((fy) => (
                         <SelectItem key={fy.key} value={fy.key} className="text-xs font-medium">
                           {fy.fullLabel}
@@ -643,12 +639,11 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                     </SelectContent>
                   </Select>
 
-                  {/* Core FY Buttons */}
                   <Button
                     type="button"
                     variant={selectedPreset === "fy_full_fy" ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs px-2.5 font-semibold"
+                    className="h-6 text-[11px] px-2 font-semibold"
                     onClick={() => applyFiscalPreset("full_fy")}
                   >
                     Full FY
@@ -657,135 +652,131 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                     type="button"
                     variant={selectedPreset === "fy_fy_ytd" ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs px-2.5 font-semibold"
+                    className="h-6 text-[11px] px-2 font-semibold"
                     onClick={() => applyFiscalPreset("fy_ytd")}
                   >
-                    FY YTD
+                    YTD
                   </Button>
 
-                  {/* Quarters */}
-                  <div className="h-4 w-px bg-border/80 mx-0.5 hidden sm:block" />
                   {(["q1", "q2", "q3", "q4"] as const).map((q, idx) => (
                     <Button
                       key={q}
                       type="button"
                       variant={selectedPreset === `fy_${q}` ? "default" : "outline"}
                       size="sm"
-                      className="h-7 text-xs px-2 font-medium"
+                      className="h-6 text-[11px] px-1.5 font-medium"
                       onClick={() => applyFiscalPreset(q)}
                     >
                       {`Q${idx + 1}`}
                     </Button>
                   ))}
 
-                  {/* Halves */}
-                  <div className="h-4 w-px bg-border/80 mx-0.5 hidden sm:block" />
                   <Button
                     type="button"
                     variant={selectedPreset === "fy_h1" ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs px-2 font-medium"
+                    className="h-6 text-[11px] px-1.5 font-medium"
                     onClick={() => applyFiscalPreset("h1")}
                   >
-                    H1 (Jul–Dec)
+                    H1
                   </Button>
                   <Button
                     type="button"
                     variant={selectedPreset === "fy_h2" ? "default" : "outline"}
                     size="sm"
-                    className="h-7 text-xs px-2 font-medium"
+                    className="h-6 text-[11px] px-1.5 font-medium"
                     onClick={() => applyFiscalPreset("h2")}
                   >
-                    H2 (Jan–Jun)
+                    H2
                   </Button>
                 </div>
+              )}
 
-                {/* 12-Month Fiscal Ribbon (Jul .. Jun) */}
-                <div className="flex items-center gap-1 overflow-x-auto pb-1 pt-0.5 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mr-1 shrink-0">
-                    Months:
-                  </span>
-                  {FISCAL_MONTHS.slice(0, 6).map((m) => (
-                    <button
-                      key={m.short}
-                      type="button"
-                      onClick={() => applyFiscalMonth(m)}
-                      className={cn(
-                        "px-2 py-0.5 rounded-md text-xs font-medium transition-all shrink-0 border",
-                        selectedPreset === `fy_m_${m.short}`
-                          ? "bg-primary text-primary-foreground border-primary shadow-2xs"
-                          : "border-border/60 hover:bg-accent text-foreground/80 hover:text-foreground"
-                      )}
-                    >
-                      {m.short}
-                    </button>
-                  ))}
-                  <div className="h-4 w-px bg-border/80 mx-1 shrink-0" />
-                  {FISCAL_MONTHS.slice(6, 12).map((m) => (
-                    <button
-                      key={m.short}
-                      type="button"
-                      onClick={() => applyFiscalMonth(m)}
-                      className={cn(
-                        "px-2 py-0.5 rounded-md text-xs font-medium transition-all shrink-0 border",
-                        selectedPreset === `fy_m_${m.short}`
-                          ? "bg-primary text-primary-foreground border-primary shadow-2xs"
-                          : "border-border/60 hover:bg-accent text-foreground/80 hover:text-foreground"
-                      )}
-                    >
-                      {m.short}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* TAB CONTENT: STANDARD / CALENDAR PERIODS */}
-            {presetTab === "calendar" && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* Year Select */}
-                <Select
-                  value={selectedCalendarYear.toString()}
-                  onValueChange={(y) => {
-                    const yearNum = parseInt(y, 10);
-                    setSelectedCalendarYear(yearNum);
-                    const newDate = new Date(calendarMonth);
-                    newDate.setFullYear(yearNum);
-                    setCalendarMonth(newDate);
-                  }}
-                >
-                  <SelectTrigger className="h-7 w-[85px] text-xs font-semibold">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[220px]">
-                    {availableYears.map((year) => (
-                      <SelectItem key={year} value={year.toString()} className="text-xs">
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {[
-                  { name: "today", label: "Today" },
-                  { name: "yesterday", label: "Yesterday" },
-                  { name: "thisWeek", label: "This Week" },
-                  { name: "last7Days", label: "Last 7 Days" },
-                  { name: "thisMonth", label: "This Month" },
-                  { name: "lastMonth", label: "Last Month" },
-                  { name: "last30Days", label: "Last 30 Days" },
-                  { name: "fullCalendarYear", label: `Full ${selectedCalendarYear}` },
-                ].map((preset) => (
-                  <Button
-                    key={preset.name}
-                    type="button"
-                    variant={selectedPreset === preset.name ? "default" : "outline"}
-                    size="sm"
-                    className="h-7 text-xs px-2.5 font-medium"
-                    onClick={() => applyStandardPreset(preset.name)}
+              {/* Standard Calendar Presets */}
+              {presetTab === "calendar" && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <Select
+                    value={selectedCalendarYear.toString()}
+                    onValueChange={(y) => {
+                      const yearNum = parseInt(y, 10);
+                      setSelectedCalendarYear(yearNum);
+                      const newDate = new Date(calendarMonth);
+                      newDate.setFullYear(yearNum);
+                      setCalendarMonth(newDate);
+                    }}
                   >
-                    {preset.label}
-                  </Button>
+                    <SelectTrigger className="h-6 w-[75px] text-[11px] font-semibold px-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {availableYears.map((year) => (
+                        <SelectItem key={year} value={year.toString()} className="text-xs">
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {[
+                    { name: "today", label: "Today" },
+                    { name: "yesterday", label: "Yesterday" },
+                    { name: "thisWeek", label: "This Week" },
+                    { name: "thisMonth", label: "This Month" },
+                    { name: "lastMonth", label: "Last Month" },
+                    { name: "last30Days", label: "Last 30D" },
+                    { name: "fullCalendarYear", label: `Full ${selectedCalendarYear}` },
+                  ].map((preset) => (
+                    <Button
+                      key={preset.name}
+                      type="button"
+                      variant={selectedPreset === preset.name ? "default" : "outline"}
+                      size="sm"
+                      className="h-6 text-[11px] px-2 font-medium"
+                      onClick={() => applyStandardPreset(preset.name)}
+                    >
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Fiscal Months Ribbon (only when Fiscal Year active) */}
+            {presetTab === "fiscal" && (
+              <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar pt-0.5">
+                <span className="text-[9.5px] uppercase font-bold text-muted-foreground tracking-wider mr-1 shrink-0">
+                  Months:
+                </span>
+                {FISCAL_MONTHS.slice(0, 6).map((m) => (
+                  <button
+                    key={m.short}
+                    type="button"
+                    onClick={() => applyFiscalMonth(m)}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[10.5px] font-medium transition-all shrink-0 border",
+                      selectedPreset === `fy_m_${m.short}`
+                        ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                        : "border-border/50 hover:bg-accent text-foreground/80 hover:text-foreground"
+                    )}
+                  >
+                    {m.short}
+                  </button>
+                ))}
+                <div className="h-3 w-px bg-border/80 mx-1 shrink-0" />
+                {FISCAL_MONTHS.slice(6, 12).map((m) => (
+                  <button
+                    key={m.short}
+                    type="button"
+                    onClick={() => applyFiscalMonth(m)}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[10.5px] font-medium transition-all shrink-0 border",
+                      selectedPreset === `fy_m_${m.short}`
+                        ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                        : "border-border/50 hover:bg-accent text-foreground/80 hover:text-foreground"
+                    )}
+                  >
+                    {m.short}
+                  </button>
                 ))}
               </div>
             )}
@@ -793,47 +784,40 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
         )}
 
         {/* ─── 2. SCROLLABLE MIDDLE CONTAINER: INPUTS & CALENDAR ─────── */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-3 space-y-2.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full">
-          {/* Direct Date Input Row & Duration */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 bg-muted/40 rounded-xl border border-border/50">
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                  From:
+        <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full">
+          {/* Combined Direct Date Inputs & Jump Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-1.5 px-2 py-1 bg-muted/30 rounded-lg border border-border/50 text-xs">
+            {/* Left: From / To Inputs */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                From
+              </span>
+              <input
+                type="date"
+                value={fromInputStr}
+                onChange={(e) => handleManualDateChange("from", e.target.value)}
+                className="h-6 w-[112px] px-1.5 rounded border border-input bg-background text-[11px] font-medium text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary shadow-2xs"
+              />
+              <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                To
+              </span>
+              <input
+                type="date"
+                value={toInputStr}
+                onChange={(e) => handleManualDateChange("to", e.target.value)}
+                className="h-6 w-[112px] px-1.5 rounded border border-input bg-background text-[11px] font-medium text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary shadow-2xs"
+              />
+              {durationDays !== null && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+                  {durationDays}d
                 </span>
-                <input
-                  type="date"
-                  value={fromInputStr}
-                  onChange={(e) => handleManualDateChange("from", e.target.value)}
-                  className="h-7 px-2 rounded-md border border-input bg-background text-xs font-semibold text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary transition-all shadow-2xs"
-                />
-              </div>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                  To:
-                </span>
-                <input
-                  type="date"
-                  value={toInputStr}
-                  onChange={(e) => handleManualDateChange("to", e.target.value)}
-                  className="h-7 px-2 rounded-md border border-input bg-background text-xs font-semibold text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary transition-all shadow-2xs"
-                />
-              </div>
+              )}
             </div>
 
-            {durationDays !== null && (
-              <div className="flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                <span>{durationDays} {durationDays === 1 ? "day" : "days"}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Month & Year Navigation Jump Bar */}
-          <div className="flex items-center justify-between px-1 text-xs">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-medium text-muted-foreground">Jump to:</span>
-              {/* Month Jump */}
+            {/* Right: Quick Jump */}
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] font-medium text-muted-foreground hidden sm:inline">Jump:</span>
               <Select
                 value={calendarMonth.getMonth().toString()}
                 onValueChange={(val) => {
@@ -843,10 +827,10 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                   setCalendarMonth(updated);
                 }}
               >
-                <SelectTrigger className="h-7 w-[105px] text-xs font-medium bg-background">
+                <SelectTrigger className="h-6 w-[88px] text-[11px] font-medium bg-background px-1.5">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="max-h-[240px]">
+                <SelectContent className="max-h-[220px]">
                   {CALENDAR_MONTHS.map((name, idx) => (
                     <SelectItem key={idx} value={idx.toString()} className="text-xs">
                       {name}
@@ -855,7 +839,6 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                 </SelectContent>
               </Select>
 
-              {/* Year Jump */}
               <Select
                 value={calendarMonth.getFullYear().toString()}
                 onValueChange={(val) => {
@@ -865,10 +848,10 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                   setCalendarMonth(updated);
                 }}
               >
-                <SelectTrigger className="h-7 w-[85px] text-xs font-medium bg-background">
+                <SelectTrigger className="h-6 w-[70px] text-[11px] font-medium bg-background px-1.5">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="max-h-[240px]">
+                <SelectContent className="max-h-[220px]">
                   {availableYears.map((year) => (
                     <SelectItem key={year} value={year.toString()} className="text-xs">
                       {year}
@@ -876,21 +859,21 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs text-muted-foreground hover:text-foreground px-2"
-              onClick={() => setCalendarMonth(new Date())}
-            >
-              Today
-            </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[10.5px] text-muted-foreground hover:text-foreground px-1.5"
+                onClick={() => setCalendarMonth(new Date())}
+              >
+                Today
+              </Button>
+            </div>
           </div>
 
           {/* Interactive Calendar Component */}
-          <div className="flex justify-center border rounded-xl p-1 bg-background/50 shadow-2xs">
+          <div className="flex justify-center border rounded-lg p-0.5 bg-background/50 shadow-2xs">
             <Calendar
               mode="range"
               selected={{
@@ -903,6 +886,19 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
               toYear={dateRange?.latestDate ? new Date(dateRange.latestDate).getFullYear() : new Date().getFullYear() + 10}
               month={calendarMonth}
               onMonthChange={setCalendarMonth}
+              className="p-1 [--cell-size:26px] sm:[--cell-size:28px]"
+              classNames={{
+                months: "flex gap-3 flex-col sm:flex-row relative",
+                month: "flex flex-col gap-0.5",
+                month_caption: "flex items-center justify-center h-6 text-xs font-semibold",
+                nav: "flex items-center gap-1 w-full absolute top-0 inset-x-0 justify-between z-10 pointer-events-none",
+                button_previous: "size-6 p-0",
+                button_next: "size-6 p-0",
+                weekdays: "flex text-[10.5px]",
+                weekday: "text-muted-foreground/70 rounded-md flex-1 font-medium text-[0.68rem] text-center select-none py-0",
+                week: "flex w-full mt-0.5",
+                day: "relative w-full h-full p-0 text-center text-xs group/day aspect-square select-none",
+              }}
               disabled={(date) => {
                 if (dateRange?.oldestDate && date < new Date(dateRange.oldestDate)) return true;
                 if (dateRange?.latestDate && date > new Date(dateRange.latestDate)) return true;
@@ -921,16 +917,16 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
         </div>
 
         {/* ─── 3. STICKY ACTION FOOTER (ALWAYS VISIBLE & ACCESSIBLE) ──── */}
-        <div className="flex-shrink-0 border-t border-border/80 bg-muted/40 backdrop-blur-xs p-2.5 sm:p-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex-shrink-0 border-t border-border/80 bg-muted/40 backdrop-blur-xs px-2.5 py-1.5 sm:py-2 flex flex-wrap items-center justify-between gap-2">
           {/* Selected Range Summary */}
           <div className="flex items-center gap-1.5 text-xs">
             {tempRange.from ? (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-foreground">
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="font-bold text-foreground text-xs">
                   {format(tempRange.from, "MMM d, yyyy")}
                 </span>
                 <span className="text-muted-foreground font-medium">—</span>
-                <span className="font-bold text-foreground">
+                <span className="font-bold text-foreground text-xs">
                   {tempRange.to ? (
                     format(tempRange.to, "MMM d, yyyy")
                   ) : (
@@ -938,7 +934,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                   )}
                 </span>
                 {durationDays !== null && (
-                  <span className="ml-1 text-[11px] text-muted-foreground font-medium">
+                  <span className="ml-1 text-[10.5px] text-muted-foreground font-medium">
                     ({durationDays} {durationDays === 1 ? "day" : "days"})
                   </span>
                 )}
@@ -949,12 +945,12 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
           </div>
 
           {/* Action Buttons: Clear, Cancel, Done */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleClear}
-              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              className="h-7 text-xs text-muted-foreground hover:text-foreground px-2"
               type="button"
             >
               Clear
@@ -963,20 +959,20 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
               variant="outline"
               size="sm"
               onClick={handleCancel}
-              className="h-8 text-xs font-medium"
+              className="h-7 text-xs font-medium px-2.5"
               type="button"
             >
-              <X className="h-3.5 w-3.5 mr-1" />
+              <X className="h-3 w-3 mr-1" />
               Cancel
             </Button>
             <Button
               size="sm"
               onClick={handleConfirm}
               disabled={!tempRange.from}
-              className="h-8 text-xs font-bold px-4 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+              className="h-7 text-xs font-bold px-3.5 bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
               type="button"
             >
-              <Check className="h-3.5 w-3.5 mr-1.5" />
+              <Check className="h-3 w-3 mr-1" />
               Done
             </Button>
           </div>
