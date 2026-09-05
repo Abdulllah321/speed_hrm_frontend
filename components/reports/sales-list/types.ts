@@ -39,6 +39,43 @@ export interface SalesListLineItem {
   subTotal: number;
 }
 
+export interface CardTenderInfo {
+  merchant?: string;
+  cardholderName?: string;
+  cardLast4?: string;
+  authId?: string;
+  binNo?: string;
+  amount?: number;
+}
+
+export interface VoucherTenderInfo {
+  code: string;
+  amount: number;
+  description?: string;
+  companyName?: string;
+  remarks?: string;
+}
+
+export interface SalesListTenderDetails {
+  card?: CardTenderInfo;
+  giftVouchers?: VoucherTenderInfo[];
+  exchangeVouchers?: VoucherTenderInfo[];
+  claimVouchers?: VoucherTenderInfo[];
+  creditVouchers?: VoucherTenderInfo[];
+  corporateVouchers?: VoucherTenderInfo[];
+  rewardVouchers?: VoucherTenderInfo[];
+  creditSale?: {
+    customerName?: string;
+    customerPhone?: string;
+    balance?: number;
+  };
+  creditIssued?: VoucherTenderInfo[];
+  cashReturn?: {
+    amount?: number;
+    reason?: string;
+  };
+}
+
 export interface SalesListInvoiceNode {
   id: string;
   orderNumber: string;
@@ -52,6 +89,7 @@ export interface SalesListInvoiceNode {
   fbrStatus: string;
   totals: SalesListTotals;
   items: SalesListLineItem[];
+  tenderDetails?: SalesListTenderDetails;
 }
 
 export interface SalesListLocationNode {
@@ -143,4 +181,5 @@ export interface SalesListTableRow {
   isExpanded?: boolean;
   nodeId?: string;
   totals: SalesListTotals;
+  tenderDetails?: SalesListTenderDetails;
 }

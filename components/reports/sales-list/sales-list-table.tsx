@@ -2,9 +2,29 @@ import React, { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 import { SalesListTableRow, SalesListTotals } from "./types";
-import { Barcode, ChevronRight, ChevronDown, UnfoldVertical, FoldVertical, Info, Receipt, UserCheck, ShieldCheck } from "lucide-react";
+import {
+  Barcode,
+  ChevronRight,
+  ChevronDown,
+  UnfoldVertical,
+  FoldVertical,
+  Info,
+  Receipt,
+  UserCheck,
+  ShieldCheck,
+  CreditCard,
+  Coins,
+  Gift,
+  Ticket,
+  Repeat,
+  ShieldAlert,
+  Building2,
+  Award,
+  Undo2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 
 interface SalesListTableProps {
   rows: SalesListTableRow[];
@@ -12,6 +32,381 @@ interface SalesListTableProps {
   onToggleNode?: (nodeId: string) => void;
   onExpandAll?: () => void;
   onCollapseAll?: () => void;
+}
+
+function TenderHoverValue({
+  val,
+  type,
+  row,
+  className,
+}: {
+  val?: number;
+  type:
+    | "cash"
+    | "cashReturn"
+    | "card"
+    | "creditSale"
+    | "giftVoucher"
+    | "creditVoucher"
+    | "exchangeVoucher"
+    | "claimVoucher"
+    | "corporateVoucher"
+    | "creditIssued"
+    | "rewardVoucher"
+    | "onCredit";
+  row: SalesListTableRow;
+  className?: string;
+}) {
+  if (val === undefined || val === 0) {
+    return <span>-</span>;
+  }
+
+  const details = row.tenderDetails;
+  const formattedVal = val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  if (row.type === "location") {
+    return <span className={className}>{formattedVal}</span>;
+  }
+
+  let title = "Tender Settlement";
+  let icon = <Coins className="h-4 w-4 text-slate-500" />;
+  let badgeColor = "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300";
+  let content: React.ReactNode = null;
+
+  if (type === "card") {
+    title = "Card Payment Details";
+    icon = <CreditCard className="h-4 w-4 text-indigo-500" />;
+    badgeColor = "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300";
+    const card = details?.card;
+    const merchant = card?.merchant || row.merchant || "Bank Card Acquirer";
+    const cardholder = card?.cardholderName || "Walk-in Cardholder";
+    const last4 = card?.cardLast4 ? `**** ${card.cardLast4}` : "Card on File";
+    const authId = card?.authId || "Approved";
+    const binNo = card?.binNo;
+
+    content = (
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2 text-[11px]">
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+            <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-semibold">Merchant / Bank</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block" title={merchant}>
+              {merchant}
+            </span>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+            <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-semibold">Card Number</span>
+            <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 block">
+              {last4}
+            </span>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+            <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-semibold">Cardholder Name</span>
+            <span className="font-medium text-slate-800 dark:text-slate-200 truncate block" title={cardholder}>
+              {cardholder}
+            </span>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+            <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-semibold">Auth ID / Slip #</span>
+            <span className="font-mono font-bold text-slate-800 dark:text-slate-200 block">
+              {authId}
+            </span>
+          </div>
+        </div>
+        {binNo && (
+          <div className="text-[10px] text-slate-500 font-mono flex items-center justify-between px-1">
+            <span>BIN Prefix:</span>
+            <span className="font-bold text-slate-700 dark:text-slate-300">{binNo}</span>
+          </div>
+        )}
+      </div>
+    );
+  } else if (type === "giftVoucher") {
+    title = "Gift Voucher Settlement";
+    icon = <Gift className="h-4 w-4 text-violet-500" />;
+    badgeColor = "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-300";
+    const list = details?.giftVouchers || [];
+    content = (
+      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+        {list.length > 0 ? (
+          list.map((v, i) => (
+            <div key={i} className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="font-mono font-bold text-[11px] text-violet-700 dark:text-violet-400 block">{v.code}</span>
+                {v.description && <span className="text-[10px] text-slate-400 block truncate max-w-[140px]">{v.description}</span>}
+              </div>
+              <span className="font-mono font-extrabold text-xs text-slate-800 dark:text-slate-200">
+                Rs. {v.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="p-2 text-center text-slate-500 text-[11px]">
+            Redeemed Gift Voucher at checkout
+          </div>
+        )}
+      </div>
+    );
+  } else if (type === "exchangeVoucher") {
+    title = "Exchange Voucher Settlement";
+    icon = <Repeat className="h-4 w-4 text-orange-500" />;
+    badgeColor = "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300";
+    const list = details?.exchangeVouchers || [];
+    content = (
+      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+        {list.length > 0 ? (
+          list.map((v, i) => (
+            <div key={i} className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="font-mono font-bold text-[11px] text-orange-700 dark:text-orange-400 block">{v.code}</span>
+                <span className="text-[10px] text-slate-400 block">Return Exchange Voucher</span>
+              </div>
+              <span className="font-mono font-extrabold text-xs text-slate-800 dark:text-slate-200">
+                Rs. {v.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="p-2 text-center text-slate-500 text-[11px]">
+            Exchange Voucher redeemed against return
+          </div>
+        )}
+      </div>
+    );
+  } else if (type === "claimVoucher") {
+    title = "Claim Voucher Settlement";
+    icon = <ShieldAlert className="h-4 w-4 text-amber-500" />;
+    badgeColor = "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300";
+    const list = details?.claimVouchers || [];
+    content = (
+      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+        {list.length > 0 ? (
+          list.map((v, i) => (
+            <div key={i} className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="font-mono font-bold text-[11px] text-amber-700 dark:text-amber-400 block">{v.code}</span>
+                <span className="text-[10px] text-slate-400 block">Warranty Claim Voucher</span>
+              </div>
+              <span className="font-mono font-extrabold text-xs text-slate-800 dark:text-slate-200">
+                Rs. {v.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="p-2 text-center text-slate-500 text-[11px]">
+            Claim voucher redeemed at counter
+          </div>
+        )}
+      </div>
+    );
+  } else if (type === "corporateVoucher") {
+    title = "Corporate Gift Voucher";
+    icon = <Building2 className="h-4 w-4 text-purple-500" />;
+    badgeColor = "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300";
+    const list = details?.corporateVouchers || [];
+    content = (
+      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+        {list.length > 0 ? (
+          list.map((v, i) => (
+            <div key={i} className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="font-mono font-bold text-[11px] text-purple-700 dark:text-purple-400 block">{v.code}</span>
+                <span className="text-[10px] text-slate-400 block truncate max-w-[130px]">{v.companyName || "Corporate Account"}</span>
+              </div>
+              <span className="font-mono font-extrabold text-xs text-slate-800 dark:text-slate-200">
+                Rs. {v.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="p-2 text-center text-slate-500 text-[11px]">
+            Corporate institutional gift voucher
+          </div>
+        )}
+      </div>
+    );
+  } else if (type === "creditVoucher") {
+    title = "Credit Voucher / Note";
+    icon = <Ticket className="h-4 w-4 text-blue-500" />;
+    badgeColor = "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300";
+    const list = details?.creditVouchers || [];
+    content = (
+      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+        {list.length > 0 ? (
+          list.map((v, i) => (
+            <div key={i} className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="font-mono font-bold text-[11px] text-blue-700 dark:text-blue-400 block">{v.code}</span>
+                <span className="text-[10px] text-slate-400 block">Customer Credit Note</span>
+              </div>
+              <span className="font-mono font-extrabold text-xs text-slate-800 dark:text-slate-200">
+                Rs. {v.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="p-2 text-center text-slate-500 text-[11px]">
+            Store credit voucher redeemed
+          </div>
+        )}
+      </div>
+    );
+  } else if (type === "rewardVoucher") {
+    title = "Reward Voucher / Loyalty";
+    icon = <Award className="h-4 w-4 text-emerald-500" />;
+    badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300";
+    const list = details?.rewardVouchers || [];
+    content = (
+      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+        {list.length > 0 ? (
+          list.map((v, i) => (
+            <div key={i} className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="font-mono font-bold text-[11px] text-emerald-700 dark:text-emerald-400 block">{v.code || "Reward Voucher"}</span>
+                {v.remarks && <span className="text-[10px] text-slate-400 block truncate max-w-[130px]">{v.remarks}</span>}
+              </div>
+              <span className="font-mono font-extrabold text-xs text-slate-800 dark:text-slate-200">
+                Rs. {v.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="p-2 text-center text-slate-500 text-[11px]">
+            Loyalty reward voucher points redeemed
+          </div>
+        )}
+      </div>
+    );
+  } else if (type === "creditSale" || type === "onCredit") {
+    title = "Credit Sale Account Details";
+    icon = <UserCheck className="h-4 w-4 text-sky-500" />;
+    badgeColor = "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300";
+    const cs = details?.creditSale;
+    const cust = cs?.customerName || row.customerName || "Customer Account";
+    const phone = cs?.customerPhone || row.customerPhone || "-";
+    content = (
+      <div className="space-y-2 text-[11px]">
+        <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 text-[10px] uppercase font-semibold">Customer:</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">{cust}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 text-[10px] uppercase font-semibold">Phone:</span>
+            <span className="font-mono text-slate-700 dark:text-slate-300">{phone}</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between px-1 text-[11px]">
+          <span className="text-slate-500">Unpaid Balance / Due:</span>
+          <span className="font-mono font-extrabold text-sky-700 dark:text-sky-400">Rs. {formattedVal}</span>
+        </div>
+      </div>
+    );
+  } else if (type === "creditIssued") {
+    title = "Credit Voucher Issued";
+    icon = <Receipt className="h-4 w-4 text-rose-500" />;
+    badgeColor = "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300";
+    const list = details?.creditIssued || [];
+    content = (
+      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+        {list.length > 0 ? (
+          list.map((v, i) => (
+            <div key={i} className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="font-mono font-bold text-[11px] text-rose-700 dark:text-rose-400 block">{v.code}</span>
+                <span className="text-[10px] text-slate-400 block">New Voucher Issued</span>
+              </div>
+              <span className="font-mono font-extrabold text-xs text-rose-800 dark:text-rose-200">
+                Rs. {v.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="p-2 text-center text-slate-500 text-[11px]">
+            Issued Credit Voucher balance
+          </div>
+        )}
+      </div>
+    );
+  } else if (type === "cashReturn") {
+    title = "Cash Return / Refund";
+    icon = <Undo2 className="h-4 w-4 text-rose-500" />;
+    badgeColor = "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300";
+    content = (
+      <div className="space-y-1.5 text-[11px]">
+        <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <span className="text-slate-500">Refund Amount:</span>
+          <span className="font-mono font-extrabold text-rose-700 dark:text-rose-400">Rs. {formattedVal}</span>
+        </div>
+        <p className="text-[10px] text-slate-400 px-1">Cash returned directly to customer at register</p>
+      </div>
+    );
+  } else if (type === "cash") {
+    title = "Cash Payment";
+    icon = <Coins className="h-4 w-4 text-teal-500" />;
+    badgeColor = "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/50 dark:text-teal-300";
+    content = (
+      <div className="space-y-1.5 text-[11px]">
+        <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 text-[10px] uppercase font-semibold">Tender:</span>
+            <span className="font-bold text-teal-700 dark:text-teal-400">Physical Cash</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 text-[10px] uppercase font-semibold">Cashier:</span>
+            <span className="font-medium text-slate-700 dark:text-slate-300">{row.cashierName || "Counter"}</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between px-1">
+          <span className="text-slate-500">Collected:</span>
+          <span className="font-mono font-extrabold text-teal-800 dark:text-teal-300">Rs. {formattedVal}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <HoverCard openDelay={100} closeDelay={150}>
+      <HoverCardTrigger asChild>
+        <span
+          className={cn(
+            "cursor-pointer font-mono font-bold transition-all duration-150 inline-flex items-center gap-1 group/tender hover:opacity-85 select-none",
+            className
+          )}
+        >
+          <span className="underline decoration-dotted underline-offset-3 decoration-slate-300 dark:decoration-slate-600 group-hover/tender:decoration-current">
+            {formattedVal}
+          </span>
+          <span className="w-1 h-1 rounded-full bg-current opacity-60 group-hover/tender:scale-125 transition-transform" />
+        </span>
+      </HoverCardTrigger>
+      <HoverCardContent
+        align="end"
+        side="top"
+        sideOffset={6}
+        className="w-72 p-0 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl z-50 text-xs"
+      >
+        <div className="p-3 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={cn("p-1.5 rounded-lg border", badgeColor)}>
+              {icon}
+            </div>
+            <div>
+              <span className="font-bold text-slate-900 dark:text-slate-100 text-xs block leading-tight">
+                {title}
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {row.orderNumber ? `Order: ${row.orderNumber}` : "Invoice Tender"}
+              </span>
+            </div>
+          </div>
+          <span className="font-mono font-extrabold text-xs text-slate-900 dark:text-slate-100">
+            Rs. {formattedVal}
+          </span>
+        </div>
+        <div className="p-3">{content}</div>
+      </HoverCardContent>
+    </HoverCard>
+  );
 }
 
 export function SalesListTable({
@@ -401,62 +796,62 @@ export function SalesListTable({
 
                       {/* 1. CashSale */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-teal-700 dark:text-teal-400">
-                        {formatVal(t.cashSale)}
+                        <TenderHoverValue val={t.cashSale} type="cash" row={item} className="text-teal-700 dark:text-teal-400" />
                       </td>
 
                       {/* 2. CashRetrun */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
-                        {formatVal(t.cashReturn)}
+                        <TenderHoverValue val={t.cashReturn} type="cashReturn" row={item} className="text-rose-600 dark:text-rose-400" />
                       </td>
 
                       {/* 3. CardSale */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400">
-                        {formatVal(t.cardSale)}
+                        <TenderHoverValue val={t.cardSale} type="card" row={item} className="text-indigo-700 dark:text-indigo-400" />
                       </td>
 
                       {/* 4. CreditSale */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-sky-700 dark:text-sky-400">
-                        {formatVal(t.creditSale)}
+                        <TenderHoverValue val={t.creditSale} type="creditSale" row={item} className="text-sky-700 dark:text-sky-400" />
                       </td>
 
                       {/* 5. GiftVoucherAmount */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.giftVoucherAmount)}
+                        <TenderHoverValue val={t.giftVoucherAmount} type="giftVoucher" row={item} className="text-violet-700 dark:text-violet-400" />
                       </td>
 
                       {/* 6. CreditVoucherAmount */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.creditVoucherAmount)}
+                        <TenderHoverValue val={t.creditVoucherAmount} type="creditVoucher" row={item} className="text-blue-700 dark:text-blue-400" />
                       </td>
 
                       {/* 7. ExchangeVoucherAmount */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.exchangeVoucherAmount)}
+                        <TenderHoverValue val={t.exchangeVoucherAmount} type="exchangeVoucher" row={item} className="text-orange-700 dark:text-orange-400" />
                       </td>
 
                       {/* 8. ClaimVoucherAmount */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.claimVoucherAmount)}
+                        <TenderHoverValue val={t.claimVoucherAmount} type="claimVoucher" row={item} className="text-amber-700 dark:text-amber-400" />
                       </td>
 
                       {/* 9. GiftVoucherAmount_Corporate */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.giftVoucherCorporate)}
+                        <TenderHoverValue val={t.giftVoucherCorporate} type="corporateVoucher" row={item} className="text-purple-700 dark:text-purple-400" />
                       </td>
 
                       {/* 10. CreditVoucherIssuedAmount */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-rose-700 dark:text-rose-400 font-bold">
-                        {formatVal(t.creditVoucherIssuedAmount)}
+                        <TenderHoverValue val={t.creditVoucherIssuedAmount} type="creditIssued" row={item} className="text-rose-700 dark:text-rose-400" />
                       </td>
 
                       {/* 11. RewardVoucherAmount */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.rewardVoucherAmount)}
+                        <TenderHoverValue val={t.rewardVoucherAmount} type="rewardVoucher" row={item} className="text-emerald-700 dark:text-emerald-400" />
                       </td>
 
                       {/* 12. OnCreditAmount */}
                       <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
-                        {formatVal(t.onCreditAmount)}
+                        <TenderHoverValue val={t.onCreditAmount} type="onCredit" row={item} className="text-slate-800 dark:text-slate-200" />
                       </td>
                     </tr>
                   );
