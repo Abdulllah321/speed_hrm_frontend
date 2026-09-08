@@ -137,9 +137,10 @@ export const columns: ColumnDef<CprTaxRow>[] = [
         CPR Number
       </div>
     ),
-    cell: ({ row }) => (
-      <div className="text-sm font-mono font-medium text-foreground">{row.getValue('cprNo')}</div>
-    ),
+    cell: ({ row }) => {
+      const val = row.getValue('cprNo') as string | undefined;
+      return <div className="text-sm font-mono font-medium text-foreground">{val || '—'}</div>;
+    },
     size: 160,
     enableSorting: true,
   },
@@ -329,7 +330,7 @@ function RowActions({ row }: { row: any }) {
     startTransition(async () => {
       const result = await updateCprTax(item.id, {
         carAmount: carAmount ? parseFloat(carAmount) : 0,
-        cprNo: cprNo || undefined,
+        cprNo: cprNo !== undefined ? cprNo.trim() : undefined,
         name: name || undefined,
         city: city || undefined,
         ntn: ntn || undefined,
@@ -423,14 +424,14 @@ function RowActions({ row }: { row: any }) {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-cprNo" className="text-right">
-                  CPR No
+                  CPR No <span className="text-[11px] font-normal text-muted-foreground">(Opt)</span>
                 </Label>
                 <Input
                   id="edit-cprNo"
                   value={cprNo}
                   onChange={(e) => setCprNo(e.target.value)}
                   className="col-span-3"
-                  required
+                  placeholder="Optional"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -495,7 +496,7 @@ function RowActions({ row }: { row: any }) {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the CPR Tax record for{' '}
-              <strong className="text-foreground">{item.name}</strong> (CPR No: {item.cprNo}).
+              <strong className="text-foreground">{item.name}</strong>{item.cprNo ? ` (CPR No: ${item.cprNo})` : ''}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

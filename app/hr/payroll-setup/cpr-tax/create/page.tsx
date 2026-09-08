@@ -261,7 +261,6 @@ export default function CreateCprTaxPage() {
     e.preventDefault();
     if (!manualData.cnic.trim()) return toast.error('CNIC is required');
     if (!manualData.name.trim()) return toast.error('Name is required');
-    if (!manualData.cprNo.trim()) return toast.error('CPR Number is required');
 
     setManualLoading(true);
     try {
@@ -270,7 +269,7 @@ export default function CreateCprTaxPage() {
         cnic: manualData.cnic.trim(),
         name: manualData.name.trim(),
         city: manualData.city.trim() || undefined,
-        cprNo: manualData.cprNo.trim(),
+        cprNo: manualData.cprNo.trim() || undefined,
         carAmount: manualData.carAmount ? parseFloat(manualData.carAmount) : undefined,
         ntn: manualData.ntn.trim() || undefined,
         taxableAmountAnnual: manualData.taxableAmountAnnual
@@ -705,17 +704,14 @@ export default function CreateCprTaxPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="cprNo">
-                      CPR Number <span className="text-destructive">*</span>
-                    </Label>
+                    <Label htmlFor="cprNo">CPR Number (Optional)</Label>
                     <Input
                       id="cprNo"
                       value={manualData.cprNo}
                       onChange={(e) =>
                         setManualData((prev) => ({ ...prev, cprNo: e.target.value }))
                       }
-                      placeholder="e.g. IT-20260529-0101-1714853"
-                      required
+                      placeholder="e.g. IT-20260529-0101-1714853 (Optional)"
                     />
                   </div>
 
