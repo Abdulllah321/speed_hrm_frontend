@@ -64,7 +64,7 @@ export async function createCprTax(data: {
   cnic: string;
   name: string;
   city?: string;
-  cprNo: string;
+  cprNo?: string;
   carAmount?: number;
   ntn?: string;
   taxableAmountAnnual?: number;

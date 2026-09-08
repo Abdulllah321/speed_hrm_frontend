@@ -4,12 +4,12 @@ import { useState, useMemo } from 'react';
 import DataTable from '@/components/common/data-table';
 import { columns, type CprTaxRow } from './columns';
 import { Button } from '@/components/ui/button';
-import { Printer, Download, Plus, RotateCcw, Loader2 } from 'lucide-react';
+import { Printer, Download, Plus, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CprTaxRecord, queueCprTaxesExport } from '@/lib/actions/cpr-tax';
+import { CprTaxRecord } from '@/lib/actions/cpr-tax';
 import { MonthYearPicker } from '@/components/ui/month-year-picker';
 import { EmployeeMultiSelect } from '@/components/employees/employee-multi-select';
 
@@ -45,7 +45,6 @@ export function CprList({ initialData = [] }: CprListProps) {
     return [];
   });
 
-  const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Transform API records to CprTaxRow format
@@ -143,8 +142,15 @@ export function CprList({ initialData = [] }: CprListProps) {
   };
 
   const handleExportCSV = () => {
-    if (filteredData.length === 0) {
-      toast.error('No data to export');
+    // Exclude employees whose tax is 0 (both monthly and annual tax are 0 or null)
+    const exportData = filteredData.filter((row) => {
+      const monthly = Number(row.taxAmountMonthlyTax || 0);
+      const annual = Number(row.taxAmountAnnual || 0);
+      return monthly > 0 || annual > 0;
+    });
+
+    if (exportData.length === 0) {
+      toast.error('No records with tax greater than 0 found to export');
       return;
     }
 
@@ -167,7 +173,7 @@ export function CprList({ initialData = [] }: CprListProps) {
       'NTN',
     ];
 
-    const rows = filteredData.map((row, idx) => {
+    const rows = exportData.map((row, idx) => {
       let formattedDate = '—';
       if (row.paymentDate) {
         const date = new Date(row.paymentDate);
@@ -204,27 +210,7 @@ export function CprList({ initialData = [] }: CprListProps) {
     link.href = URL.createObjectURL(blob);
     link.download = `cpr_tax_records_${format(new Date(), 'yyyy-MM-dd')}.csv`;
     link.click();
-    toast.success('CPR Tax records exported successfully');
-  };
-
-  const handleExportExcel = async () => {
-    setIsExporting(true);
-    try {
-      const res = await queueCprTaxesExport({
-        search: searchQuery,
-        months: monthYears.join(','),
-        employeeIds: selectedEmployeeIds.join(','),
-      });
-      if (res.status) {
-        toast.success(res.message || "Export queued successfully. You'll be notified when it's ready.");
-      } else {
-        toast.error(res.message || 'Failed to queue export');
-      }
-    } catch (err) {
-      toast.error('An error occurred while queuing export');
-    } finally {
-      setIsExporting(false);
-    }
+    toast.success(`Exported ${exportData.length} CPR Tax records successfully`);
   };
 
   return (
@@ -251,19 +237,6 @@ export function CprList({ initialData = [] }: CprListProps) {
           <Button variant="secondary" onClick={handleExportCSV}>
             <Download className="h-4 w-4 mr-2" />
             Export CSV
-          </Button>
-          <Button variant="secondary" onClick={handleExportExcel} disabled={isExporting}>
-            {isExporting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4 mr-2" />
-                Export Excel
-              </>
-            )}
           </Button>
         </div>
       </div>
