@@ -219,19 +219,34 @@ export async function getGeneralLedger(
 ): Promise<{ status: boolean; data?: GeneralLedgerResult; message?: string }> {
   try {
     const { from, to, page, limit, sourceType, sortBy, sortOrder } = params ?? {};
-    const res = await authFetch(
-      `/finance/reports/general-ledger/${accountId}${buildQuery({
-        from,
-        to,
-        page: page?.toString(),
-        limit: limit?.toString(),
-        sourceType,
-        sortBy,
-        sortOrder,
-      })}`,
-      {},
-    );
-    return res.data;
+    const cleanId = (accountId || "").trim();
+    const url = cleanId.includes(",")
+      ? `/finance/reports/general-ledger${buildQuery({
+          accountId: cleanId,
+          from,
+          to,
+          page: page?.toString(),
+          limit: limit?.toString(),
+          sourceType,
+          sortBy,
+          sortOrder,
+        })}`
+      : `/finance/reports/general-ledger/${encodeURIComponent(cleanId)}${buildQuery({
+          from,
+          to,
+          page: page?.toString(),
+          limit: limit?.toString(),
+          sourceType,
+          sortBy,
+          sortOrder,
+        })}`;
+
+    const res = await authFetch(url, {});
+    const data = res.data;
+    if (data && typeof data === 'object' && 'status' in data) {
+      return data;
+    }
+    return { status: Boolean(res.ok), data, message: data?.message };
   } catch (e: any) {
     return { status: false, message: e.message };
   }

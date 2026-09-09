@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo, useRef } from "react";
+import { useState, useTransition, useMemo, useRef, useEffect } from "react";
 import { format, parseISO, subYears, subMonths } from "date-fns";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -22,9 +22,11 @@ import {
   FoldVertical,
   Filter,
   Check,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Switch } from "@/components/ui/switch";
@@ -42,6 +44,17 @@ import {
   IncomeStatementResult,
   IncomeStatementAccount,
 } from "@/lib/actions/finance-reports";
+import {
+  ChartOfAccountSelect,
+  fetchSharedTree,
+  getSharedTree,
+} from "@/components/ui/chart-of-account-select";
+import {
+  TagAccountSelect,
+  TagSubAccountGroup,
+  findInTree,
+} from "@/components/ui/tag-account-select";
+import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { exportProfitLossToExcel } from "./profit-loss-excel-export";
 
 import { ProfitLossPrint } from "./profit-loss-print";
@@ -84,12 +97,129 @@ export function ProfitLossClient({
   initialData,
   defaultFrom,
   defaultTo,
+  accounts: accountsProp,
 }: {
   initialData?: IncomeStatementResult;
   defaultFrom?: string;
   defaultTo?: string;
+  accounts?: ChartOfAccount[];
 }) {
   const [data, setData] = useState<IncomeStatementResult | undefined>(initialData);
+
+  // Tree state for Chart of Accounts
+  const [tree, setTree] = useState<ChartOfAccount[]>(accountsProp ?? []);
+
+  useEffect(() => {
+    if (accountsProp && accountsProp.length > 0) {
+      setTree(accountsProp);
+      return;
+    }
+    fetchSharedTree().then((t) => {
+      if (t && t.length > 0) setTree(t);
+    });
+  }, [accountsProp]);
+
+  // Account Head & Tag Sub-Account filter states
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [selectedTagAccountIds, setSelectedTagAccountIds] = useState<string[]>([]);
+
+  // Sub-accounts grouped by Account Head
+  const activeSubAccountGroups: TagSubAccountGroup[] = useMemo(() => {
+    const sourceNodes =
+      tree.length > 0
+        ? tree
+        : getSharedTree().length > 0
+          ? getSharedTree()
+          : accountsProp ?? [];
+    if (selectedAccountIds.length === 0 || sourceNodes.length === 0) return [];
+
+    const collectLeafs = (items: ChartOfAccount[]): ChartOfAccount[] => {
+      const result: ChartOfAccount[] = [];
+      for (const item of items) {
+        if (item.children && item.children.length > 0) {
+          result.push(...collectLeafs(item.children));
+        } else {
+          result.push(item);
+        }
+      }
+      return result;
+    };
+
+    const groups: TagSubAccountGroup[] = [];
+    for (const accId of selectedAccountIds) {
+      const node = findInTree(sourceNodes, accId);
+      if (!node) continue;
+
+      let subAccs: ChartOfAccount[] = [];
+      if (node.children && node.children.length > 0) {
+        subAccs = collectLeafs(node.children);
+      } else {
+        subAccs = [node];
+      }
+
+      const uniqueMap = new Map<string, ChartOfAccount>();
+      for (const acc of subAccs) {
+        uniqueMap.set(acc.id, acc);
+      }
+
+      const uniqueAccs = Array.from(uniqueMap.values());
+      if (uniqueAccs.length > 0) {
+        groups.push({
+          head: {
+            id: node.id,
+            code: node.code,
+            name: node.name,
+            type: node.type,
+          },
+          accounts: uniqueAccs,
+        });
+      }
+    }
+    return groups;
+  }, [selectedAccountIds, tree, accountsProp]);
+
+  // Flattened deduplicated sub-accounts for backward compatibility & filtering
+  const activeSubAccounts = useMemo(() => {
+    const map = new Map<string, ChartOfAccount>();
+    for (const grp of activeSubAccountGroups) {
+      for (const acc of grp.accounts) {
+        map.set(acc.id, acc);
+      }
+    }
+    return Array.from(map.values());
+  }, [activeSubAccountGroups]);
+
+  const selectedAccountNodes = useMemo(() => {
+    const sourceNodes =
+      tree.length > 0
+        ? tree
+        : getSharedTree().length > 0
+          ? getSharedTree()
+          : accountsProp ?? [];
+    if (selectedAccountIds.length === 0 || sourceNodes.length === 0) return [];
+    return selectedAccountIds
+      .map((id) => findInTree(sourceNodes, id))
+      .filter((n): n is ChartOfAccount => Boolean(n));
+  }, [selectedAccountIds, tree, accountsProp]);
+
+  const selectedTagAccountNodes = useMemo(() => {
+    if (selectedTagAccountIds.length === 0) return [];
+    return activeSubAccounts.filter((a) =>
+      selectedTagAccountIds.includes(a.id),
+    );
+  }, [selectedTagAccountIds, activeSubAccounts]);
+
+  // Reset tag selection if selected head changes or sub-account list changes
+  useEffect(() => {
+    if (selectedTagAccountIds.length > 0) {
+      const valid = selectedTagAccountIds.filter((id) =>
+        activeSubAccounts.some((c) => c.id === id),
+      );
+      if (valid.length !== selectedTagAccountIds.length) {
+        setSelectedTagAccountIds(valid);
+      }
+    }
+  }, [selectedAccountIds, activeSubAccounts, selectedTagAccountIds]);
 
   // Filter States
   const [fromDate, setFromDate] = useState<Date | undefined>(
@@ -169,9 +299,75 @@ export function ProfitLossClient({
     setExpandedNodes(newMap);
   };
 
+  // Helper to filter accounts by selected account heads & tag sub-accounts
+  const applyAccountFilter = (
+    accounts: IncomeStatementAccount[] | undefined,
+    headIds: string[],
+    tagIds: string[],
+  ): IncomeStatementAccount[] => {
+    if (!accounts || accounts.length === 0) return [];
+    if (headIds.length === 0 && tagIds.length === 0) return accounts;
+
+    const parentMap = new Map<string, string>();
+    accounts.forEach((a) => {
+      if (a.parentId) parentMap.set(a.id, a.parentId);
+    });
+
+    if (tagIds.length > 0) {
+      const ids = new Set<string>();
+      tagIds.forEach((tagId) => {
+        ids.add(tagId);
+        let curr = parentMap.get(tagId);
+        while (curr) {
+          ids.add(curr);
+          curr = parentMap.get(curr);
+        }
+      });
+      headIds.forEach((accId) => {
+        ids.add(accId);
+        let curr = parentMap.get(accId);
+        while (curr) {
+          ids.add(curr);
+          curr = parentMap.get(curr);
+        }
+      });
+      return accounts.filter((a) => ids.has(a.id));
+    }
+
+    if (headIds.length > 0) {
+      const targetIds = new Set<string>(headIds);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        accounts.forEach((a) => {
+          if (a.parentId && targetIds.has(a.parentId) && !targetIds.has(a.id)) {
+            targetIds.add(a.id);
+            changed = true;
+          }
+        });
+      }
+      headIds.forEach((accId) => {
+        let curr = parentMap.get(accId);
+        while (curr) {
+          targetIds.add(curr);
+          curr = parentMap.get(curr);
+        }
+      });
+      return accounts.filter((a) => targetIds.has(a.id));
+    }
+
+    return accounts;
+  };
+
   // Filter accounts by search query, max level, and parent collapsed state
   const computeVisibleAccounts = (accounts?: IncomeStatementAccount[]) => {
     if (!accounts || accounts.length === 0) return [];
+
+    let filtered = applyAccountFilter(
+      accounts,
+      selectedAccountIds,
+      selectedTagAccountIds,
+    );
 
     const q = searchQuery.toLowerCase().trim();
     const maxLvl = maxLevelFilter === "all" ? 99 : parseInt(maxLevelFilter, 10);
@@ -179,7 +375,7 @@ export function ProfitLossClient({
     // 1. Direct Search Matching
     const matchingIds = new Set<string>();
     if (q) {
-      accounts.forEach((acc) => {
+      filtered.forEach((acc) => {
         if (
           acc.code.toLowerCase().includes(q) ||
           acc.name.toLowerCase().includes(q)
@@ -189,7 +385,7 @@ export function ProfitLossClient({
           let currParentId = acc.parentId;
           while (currParentId) {
             matchingIds.add(currParentId);
-            const parentAcc = accounts.find((a) => a.id === currParentId);
+            const parentAcc = filtered.find((a) => a.id === currParentId);
             currParentId = parentAcc?.parentId;
           }
         }
@@ -197,19 +393,19 @@ export function ProfitLossClient({
     }
 
     // 2. Filter rows based on search, level depth, and parent fold state
-    return accounts.filter((acc) => {
+    return filtered.filter((acc) => {
       // Level depth filter
       if ((acc.level || 0) > maxLvl) return false;
 
       // Search query filter
       if (q && !matchingIds.has(acc.id)) return false;
 
-      // Parent collapsed state (if search active, auto-expand parents to show match)
-      if (!q && acc.parentId) {
+      // Parent collapsed state (if search active or head filter active, auto-expand)
+      if (!q && selectedAccountIds.length === 0 && selectedTagAccountIds.length === 0 && acc.parentId) {
         let currParentId: string | null | undefined = acc.parentId;
         while (currParentId) {
           if (expandedNodes[currParentId] === false) return false;
-          const parentRow = accounts.find((r) => r.id === currParentId);
+          const parentRow = filtered.find((r) => r.id === currParentId);
           currParentId = parentRow?.parentId;
         }
       }
@@ -221,14 +417,41 @@ export function ProfitLossClient({
   const visibleIncome = useMemo(
     () => computeVisibleAccounts(data?.income),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data?.income, searchQuery, maxLevelFilter, expandedNodes]
+    [data?.income, selectedAccountIds, selectedTagAccountIds, searchQuery, maxLevelFilter, expandedNodes]
   );
 
   const visibleExpense = useMemo(
     () => computeVisibleAccounts(data?.expense),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data?.expense, searchQuery, maxLevelFilter, expandedNodes]
+    [data?.expense, selectedAccountIds, selectedTagAccountIds, searchQuery, maxLevelFilter, expandedNodes]
   );
+
+  const totalIncomeValue = useMemo(() => {
+    if (selectedAccountIds.length === 0 && selectedTagAccountIds.length === 0) {
+      return data?.totalIncome ?? 0;
+    }
+    const parentIds = new Set(visibleIncome.map((a) => a.parentId).filter(Boolean));
+    return visibleIncome
+      .filter((a) => !parentIds.has(a.id))
+      .reduce((sum, a) => sum + (a.amount || 0), 0);
+  }, [visibleIncome, selectedAccountIds, selectedTagAccountIds, data?.totalIncome]);
+
+  const totalExpenseValue = useMemo(() => {
+    if (selectedAccountIds.length === 0 && selectedTagAccountIds.length === 0) {
+      return data?.totalExpense ?? 0;
+    }
+    const parentIds = new Set(visibleExpense.map((a) => a.parentId).filter(Boolean));
+    return visibleExpense
+      .filter((a) => !parentIds.has(a.id))
+      .reduce((sum, a) => sum + (a.amount || 0), 0);
+  }, [visibleExpense, selectedAccountIds, selectedTagAccountIds, data?.totalExpense]);
+
+  const netProfitValue = useMemo(() => {
+    if (selectedAccountIds.length === 0 && selectedTagAccountIds.length === 0) {
+      return data?.netProfit ?? 0;
+    }
+    return totalIncomeValue - totalExpenseValue;
+  }, [totalIncomeValue, totalExpenseValue, selectedAccountIds, selectedTagAccountIds, data?.netProfit]);
 
   // Construct unified Virtual Display List
   const displayRows = useMemo<DisplayRowItem[]>(() => {
@@ -257,7 +480,7 @@ export function ProfitLossClient({
       kind: "section_total",
       id: "tot_income",
       title: "TOTAL REVENUE / OPERATING INCOME",
-      total: data.totalIncome,
+      total: totalIncomeValue,
       compareTotal: data.compareTotalIncome,
     });
 
@@ -283,7 +506,7 @@ export function ProfitLossClient({
       kind: "section_total",
       id: "tot_expense",
       title: "TOTAL EXPENSES & OPERATING COSTS",
-      total: data.totalExpense,
+      total: totalExpenseValue,
       compareTotal: data.compareTotalExpense,
     });
 
@@ -291,14 +514,14 @@ export function ProfitLossClient({
     list.push({
       kind: "grand_total",
       id: "grand_total_net",
-      netProfit: data.netProfit,
+      netProfit: netProfitValue,
       compareNetProfit: data.compareNetProfit,
       varianceNetProfit: data.varianceNetProfit,
       percentageNetProfit: data.percentageNetProfit,
     });
 
     return list;
-  }, [data, visibleIncome, visibleExpense]);
+  }, [data, visibleIncome, visibleExpense, totalIncomeValue, totalExpenseValue, netProfitValue]);
 
   // TanStack Virtualizer Hook
   const parentRef = useRef<HTMLDivElement>(null);
@@ -324,9 +547,9 @@ export function ProfitLossClient({
       : 0;
 
   // KPI Financial Calculations
-  const netProfit = data?.netProfit ?? 0;
-  const totalRevenue = data?.totalIncome ?? 0;
-  const totalExpense = data?.totalExpense ?? 0;
+  const netProfit = netProfitValue;
+  const totalRevenue = totalIncomeValue;
+  const totalExpense = totalExpenseValue;
   const grossProfit = data?.grossProfit ?? totalRevenue;
   const grossMarginPct = totalRevenue !== 0 ? (grossProfit / totalRevenue) * 100 : 0;
   const netMarginPct = totalRevenue !== 0 ? (netProfit / totalRevenue) * 100 : 0;
@@ -404,6 +627,96 @@ export function ProfitLossClient({
         <CardContent className="pt-6 space-y-6">
           {/* Controls & Filtration Toolbar */}
           <div className="rounded-xl border dark:border-border bg-card p-4 space-y-4 shadow-2xs">
+            {/* Account Head and Tag Sub-Account Selectors */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end pb-3 border-b border-border/60">
+              {/* Account Head */}
+              <div className="space-y-1.5 md:col-span-6">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Building2 className="h-3 w-3 text-primary/70" /> Account Head(s)
+                    {selectedAccountIds.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground/70 font-normal">
+                        ({selectedAccountIds.length})
+                      </span>
+                    )}
+                  </Label>
+                  {selectedAccountIds.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setSelectedAccountIds([]);
+                        setSelectedTagAccountIds([]);
+                      }}
+                      className="text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    >
+                      Clear ({selectedAccountIds.length})
+                    </button>
+                  )}
+                </div>
+                <ChartOfAccountSelect
+                  accounts={accountsProp}
+                  value={selectedAccountIds}
+                  onValueChange={(val: string[]) => {
+                    setSelectedAccountIds(val);
+                    setSelectedTagAccountIds([]);
+                  }}
+                  placeholder="All Account Heads (Default)"
+                  allowGroups={true}
+                  excludeTags={true}
+                  multiple={true}
+                  mode="popover"
+                  className="h-10 text-sm shadow-sm"
+                />
+              </div>
+
+              {/* Tag Sub-Account */}
+              <div className="space-y-1.5 md:col-span-6">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Tag className="h-3 w-3 text-primary/70" /> Tag Sub-Account(s)
+                    {activeSubAccounts.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground/70 font-normal">
+                        ({activeSubAccounts.length}
+                        {activeSubAccountGroups.length > 1
+                          ? ` in ${activeSubAccountGroups.length} Heads`
+                          : ""}
+                        )
+                      </span>
+                    )}
+                  </Label>
+                  {selectedTagAccountIds.length > 0 && (
+                    <button
+                      onClick={() => setSelectedTagAccountIds([])}
+                      className="text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    >
+                      Clear ({selectedTagAccountIds.length})
+                    </button>
+                  )}
+                </div>
+                <TagAccountSelect
+                  groups={activeSubAccountGroups}
+                  children={activeSubAccounts}
+                  value={selectedTagAccountIds}
+                  onValueChange={(val) => {
+                    setSelectedTagAccountIds(val);
+                    if (val.length > 0 && !includeTagAccounts) {
+                      setIncludeTagAccounts(true);
+                      loadData(fromDate, toDate, enableCompare ? compareFromDate : undefined, enableCompare ? compareToDate : undefined, true);
+                    }
+                  }}
+                  disabled={selectedAccountIds.length === 0 || activeSubAccounts.length === 0}
+                  placeholder={
+                    selectedAccountIds.length === 0
+                      ? "Select Account Head first"
+                      : activeSubAccounts.length === 0
+                        ? "No sub-accounts under selected head(s)"
+                        : activeSubAccountGroups.length > 1
+                          ? `All Sub-accounts across ${activeSubAccountGroups.length} Heads (Default)`
+                          : "All Sub-accounts (Default)"
+                  }
+                />
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-end gap-4">
               {/* Primary Period */}
               <div className="space-y-1.5">
@@ -479,6 +792,23 @@ export function ProfitLossClient({
 
               {/* Action Buttons */}
               <div className="ml-auto flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedAccountIds([]);
+                    setSelectedTagAccountIds([]);
+                    setSearchQuery("");
+                    setMaxLevelFilter("all");
+                    setEnableCompare(false);
+                    setCompareFromDate(undefined);
+                    setCompareToDate(undefined);
+                    setIncludeTagAccounts(true);
+                    setShowZeroBalances(false);
+                    loadData(fromDate, toDate, undefined, undefined, true, false);
+                  }}
+                >
+                  Reset
+                </Button>
                 <Button
                   onClick={() =>
                     loadData(
@@ -585,6 +915,45 @@ export function ProfitLossClient({
               </div>
             </div>
           </div>
+
+          {/* Filter Banner */}
+          {data && (selectedAccountIds.length > 0 || selectedTagAccountIds.length > 0) && (
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium bg-primary/10 text-primary border border-primary/20">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Building2 className="h-4 w-4 shrink-0" />
+                <span>
+                  Filtered by Account Head{selectedAccountNodes.length === 1 ? "" : "s"}:{" "}
+                  <strong>
+                    {selectedAccountNodes.map((n) => `${n.code} — ${n.name}`).join(", ")}
+                  </strong>
+                </span>
+                {selectedTagAccountNodes.length > 0 && (
+                  <span className="flex items-center gap-1.5 ml-1 font-normal text-primary/90 flex-wrap">
+                    <span>(Tags:</span>
+                    {selectedTagAccountNodes.map((tagNode) => (
+                      <Badge
+                        key={tagNode.id}
+                        variant="outline"
+                        className="text-xs bg-primary/15 border-primary/30 text-primary py-0 px-1.5"
+                      >
+                        {tagNode.code} — {tagNode.name}
+                      </Badge>
+                    ))}
+                    <span>)</span>
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedAccountIds([]);
+                  setSelectedTagAccountIds([]);
+                }}
+                className="text-xs font-semibold underline hover:opacity-80 transition-opacity shrink-0 ml-4 cursor-pointer"
+              >
+                Clear Filter (View All)
+              </button>
+            </div>
+          )}
 
           {/* KPI Cards Summary */}
           {data && (
