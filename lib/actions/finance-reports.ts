@@ -58,8 +58,20 @@ export interface GeneralLedgerRow {
   refBillNo2?: string | null;
 }
 
+export interface GeneralLedgerHeadGroup {
+  head: { id: string; code: string; name: string };
+  openingBalance: number;
+  rangeTotalDebit: number;
+  rangeTotalCredit: number;
+  rangeClosingBalance: number;
+  ledgerCount: number;
+  transactionCount: number;
+  ledgers: SingleAccountLedger[];
+}
+
 export interface SingleAccountLedger {
   account: { id: string; code: string; name: string; type: string; balance: number };
+  head?: { id: string; code: string; name: string };
   openingBalance: number;
   rows: GeneralLedgerRow[];
   closingBalance: number;
@@ -79,6 +91,7 @@ export interface GeneralLedgerResult {
   rangeClosingBalance: number;
   pagination: { total: number; page: number; limit: number; totalPages: number };
   ledgers?: SingleAccountLedger[];
+  heads?: GeneralLedgerHeadGroup[];
 }
 
 export interface IncomeStatementAccount {

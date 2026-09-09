@@ -13,14 +13,11 @@ import {
   Receipt,
   Settings,
   Shield,
-  Menu,
-  Database,
   Landmark,
   Package,
   ShoppingCart,
   TrendingUp,
   Monitor,
-  CheckSquare,
   ChartNoAxesGantt,
 } from "lucide-react";
 
@@ -749,7 +746,7 @@ export const menuData: MenuItem[] = [
         ],
       },
       {
-        title: "RS RV List",
+        title: "Retail Sale Receipt Voucher (RSRV)",
         permissions: ["erp.finance.receipt-voucher.read"],
         children: [
           {

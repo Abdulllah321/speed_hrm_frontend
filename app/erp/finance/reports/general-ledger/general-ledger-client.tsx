@@ -8,21 +8,20 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   BookOpen,
-  ArrowUpDown,
   Filter,
   Calendar,
   ExternalLink,
   Info,
   Tag,
+  Layers,
+  CheckSquare,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { ChartOfAccountSelect } from "@/components/ui/chart-of-account-select";
 import {
   Select,
   SelectContent,
@@ -31,12 +30,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Autocomplete } from "@/components/ui/autocomplete";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import {
   getGeneralLedger,
   GeneralLedgerResult,
+  GeneralLedgerHeadGroup,
+  SingleAccountLedger,
   queueGeneralLedgerExport,
 } from "@/lib/actions/finance-reports";
 import { numberToWords } from "../../journal-voucher/components/journal-voucher-print";
@@ -115,83 +115,157 @@ export function GeneralLedgerClient({
 }: {
   accounts: ChartOfAccount[];
 }) {
-  const [accountId, setAccountId] = React.useState("");
-  const [selectedSubAccountIds, setSelectedSubAccountIds] = React.useState<
-    string[]
-  >([]);
+  // ─── Filter States ──────────────────────────────────────────────────────────
+  const [selectedHeadIds, setSelectedHeadIds] = React.useState<string[]>([]);
+  const [selectedSubAccountIds, setSelectedSubAccountIds] = React.useState<string[]>([]);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
     new Date(new Date().getFullYear(), 0, 1),
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   const [sourceType, setSourceType] = React.useState<string>("all");
 
+  // ─── Data & View States ─────────────────────────────────────────────────────
   const [data, setData] = React.useState<GeneralLedgerResult | undefined>();
+  const [activeHeadFilter, setActiveHeadFilter] = React.useState<string>("all");
   const [activeLedgerIdx, setActiveLedgerIdx] = React.useState(0);
   const [viewMode, setViewMode] = React.useState<"single" | "all">("single");
   const [isPending, startTransition] = React.useTransition();
   const [isExporting, setIsExporting] = React.useState(false);
 
-  // Find selected account in the tree to check for children (sub-accounts)
-  const selectedAccountInTree = React.useMemo(() => {
-    if (!accountId || accounts.length === 0) return null;
-    const findInTree = (
-      nodes: ChartOfAccount[],
-      id: string,
-    ): ChartOfAccount | undefined => {
+  // Pagination states
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(50);
+
+  // ─── 1. Build Head Options (Groups, Parent Accounts & Standalone Heads) ────
+  const headOptions = React.useMemo(() => {
+    const list: {
+      value: string;
+      label: string;
+      description?: string;
+      code: string;
+      name: string;
+      type: string;
+      childCount: number;
+    }[] = [];
+
+    const scan = (nodes: ChartOfAccount[]) => {
+      for (const node of nodes) {
+        const hasChildren = (node.children?.length ?? 0) > 0;
+        if (node.isGroup || hasChildren || !node.parentId) {
+          let leafCount = 0;
+          const countLeafs = (items: ChartOfAccount[]) => {
+            for (const it of items) {
+              if (it.children?.length) countLeafs(it.children);
+              else leafCount++;
+            }
+          };
+          if (node.children?.length) countLeafs(node.children);
+          else leafCount = 1;
+
+          list.push({
+            value: node.id,
+            label: `${node.code} — ${node.name}`,
+            description: `${node.type} • ${leafCount} account${leafCount === 1 ? "" : "s"}`,
+            code: node.code,
+            name: node.name,
+            type: node.type,
+            childCount: leafCount,
+          });
+        }
+        if (node.children?.length) {
+          scan(node.children);
+        }
+      }
+    };
+    scan(accounts);
+    return list;
+  }, [accounts]);
+
+  // ─── 2. Build Sub-Account List dynamically from Selected Heads ────────────
+  const availableSubAccounts = React.useMemo(() => {
+    if (selectedHeadIds.length === 0) return [];
+
+    const findNode = (nodes: ChartOfAccount[], id: string): ChartOfAccount | undefined => {
       for (const node of nodes) {
         if (node.id === id) return node;
         if (node.children?.length) {
-          const found = findInTree(node.children, id);
+          const found = findNode(node.children, id);
           if (found) return found;
         }
       }
       return undefined;
     };
-    return findInTree(accounts, accountId);
-  }, [accountId, accounts]);
 
-  const subAccounts = React.useMemo(() => {
-    const leafs: ChartOfAccount[] = [];
-    const collectLeafs = (items: ChartOfAccount[]) => {
-      for (const item of items) {
-        if (item.children && item.children.length > 0) {
-          collectLeafs(item.children);
+    const result: {
+      id: string;
+      code: string;
+      name: string;
+      type: string;
+      headId: string;
+      headCode: string;
+      headName: string;
+    }[] = [];
+    const seen = new Set<string>();
+
+    for (const hId of selectedHeadIds) {
+      const headNode = findNode(accounts, hId);
+      if (!headNode) continue;
+
+      const collectLeafs = (node: ChartOfAccount) => {
+        if (node.children && node.children.length > 0) {
+          for (const c of node.children) collectLeafs(c);
         } else {
-          leafs.push(item);
+          if (!seen.has(node.id)) {
+            seen.add(node.id);
+            result.push({
+              id: node.id,
+              code: node.code,
+              name: node.name,
+              type: node.type,
+              headId: headNode.id,
+              headCode: headNode.code,
+              headName: headNode.name,
+            });
+          }
         }
-      }
-    };
-    if (selectedAccountInTree) {
-      if (selectedAccountInTree.children && selectedAccountInTree.children.length > 0) {
-        collectLeafs(selectedAccountInTree.children);
-      } else {
-        leafs.push(selectedAccountInTree);
-      }
-    } else {
-      collectLeafs(accounts);
+      };
+      collectLeafs(headNode);
     }
-    return leafs;
-  }, [selectedAccountInTree, accounts]);
+
+    return result;
+  }, [selectedHeadIds, accounts]);
 
   const subAccountOptions = React.useMemo(() => {
-    return subAccounts.map((child) => ({
-      value: child.id,
-      label: `${child.code} - ${child.name}`,
+    return availableSubAccounts.map((sa) => ({
+      value: sa.id,
+      label: `${sa.code} — ${sa.name}`,
+      description: `Head: ${sa.headCode} (${sa.headName})`,
     }));
-  }, [subAccounts]);
+  }, [availableSubAccounts]);
 
-  // Target account ID (single or comma-separated sub-account IDs)
+  // Reset sub-account selection if head selection changes and previously selected accounts are no longer valid
+  React.useEffect(() => {
+    if (selectedSubAccountIds.length > 0) {
+      const validIds = new Set(availableSubAccounts.map((a) => a.id));
+      const filtered = selectedSubAccountIds.filter((id) => validIds.has(id));
+      if (filtered.length !== selectedSubAccountIds.length) {
+        setSelectedSubAccountIds(filtered);
+      }
+    }
+  }, [selectedHeadIds, availableSubAccounts, selectedSubAccountIds]);
+
+  // ─── 3. Target Account ID (Comma-separated for multi-account) ──────────────
   const targetAccountId = React.useMemo(() => {
     if (selectedSubAccountIds.length > 0) {
       return selectedSubAccountIds.join(",");
     }
-    return accountId;
-  }, [selectedSubAccountIds, accountId]);
+    if (availableSubAccounts.length > 0) {
+      return availableSubAccounts.map((sa) => sa.id).join(",");
+    }
+    return selectedHeadIds.join(",");
+  }, [selectedSubAccountIds, availableSubAccounts, selectedHeadIds]);
 
-  // Pagination states
-  const [page, setPage] = React.useState(1);
-  const [limit, setLimit] = React.useState(50);
-
+  // ─── 4. Query & Load Ledger ────────────────────────────────────────────────
   const load = (targetPage = page, targetLimit = limit) => {
     if (!targetAccountId) return;
     startTransition(async () => {
@@ -208,7 +282,6 @@ export function GeneralLedgerClient({
     });
   };
 
-  // Handle pagination/limit updates
   React.useEffect(() => {
     if (data) {
       load(page, limit);
@@ -219,16 +292,81 @@ export function GeneralLedgerClient({
   const handleLoadClick = () => {
     setPage(1);
     setActiveLedgerIdx(0);
+    setActiveHeadFilter("all");
     load(1, limit);
   };
 
-  // Dynamic Normal balance checks for account layout
-  const isDebitNormal =
-    data?.account.type === "ASSET" || data?.account.type === "EXPENSE";
+  // ─── 5. Hierarchical Data Grouping (Heads & Ledgers) ───────────────────────
+  const groupedHeads: GeneralLedgerHeadGroup[] = React.useMemo(() => {
+    if (!data) return [];
+    if (data.heads && data.heads.length > 0) return data.heads;
 
-  // Client-side CSV export
+    const ledgersList: SingleAccountLedger[] =
+      data.ledgers && data.ledgers.length > 0
+        ? data.ledgers
+        : [
+            {
+              account: data.account,
+              openingBalance: data.openingBalance,
+              rows: data.rows,
+              closingBalance: data.closingBalance,
+              rangeTotalDebit: data.rangeTotalDebit,
+              rangeTotalCredit: data.rangeTotalCredit,
+              rangeClosingBalance: data.rangeClosingBalance,
+              pagination: data.pagination,
+            },
+          ];
+
+    const map = new Map<string, GeneralLedgerHeadGroup>();
+    for (const lg of ledgersList) {
+      const h = lg.head ?? {
+        id: lg.account.id,
+        code: lg.account.code,
+        name: lg.account.name,
+      };
+      if (!map.has(h.id)) {
+        map.set(h.id, {
+          head: h,
+          openingBalance: 0,
+          rangeTotalDebit: 0,
+          rangeTotalCredit: 0,
+          rangeClosingBalance: 0,
+          ledgerCount: 0,
+          transactionCount: 0,
+          ledgers: [],
+        });
+      }
+      const grp = map.get(h.id)!;
+      grp.openingBalance += lg.openingBalance;
+      grp.rangeTotalDebit += lg.rangeTotalDebit;
+      grp.rangeTotalCredit += lg.rangeTotalCredit;
+      grp.rangeClosingBalance += lg.rangeClosingBalance;
+      grp.ledgerCount += 1;
+      grp.transactionCount += (lg.pagination?.total ?? lg.rows.length);
+      grp.ledgers.push(lg);
+    }
+    return Array.from(map.values());
+  }, [data]);
+
+  // All flat ledgers for navigation
+  const allLedgers: SingleAccountLedger[] = React.useMemo(() => {
+    if (groupedHeads.length === 0) return [];
+    if (activeHeadFilter === "all") {
+      return groupedHeads.flatMap((h) => h.ledgers);
+    }
+    const found = groupedHeads.find((h) => h.head.id === activeHeadFilter);
+    return found ? found.ledgers : [];
+  }, [groupedHeads, activeHeadFilter]);
+
+  // Safe active ledger for single view
+  const safeActiveLedger = allLedgers[
+    Math.min(activeLedgerIdx, Math.max(0, allLedgers.length - 1))
+  ] ?? allLedgers[0];
+
+  // ─── 6. Multi-Account CSV Export ───────────────────────────────────────────
   const exportToCSV = () => {
-    if (!data) return;
+    if (!data || groupedHeads.length === 0) return;
+
     const headers = [
       "Date",
       "VOH No.",
@@ -242,46 +380,87 @@ export function GeneralLedgerClient({
       "Running Balance",
     ];
 
-    // Convert rows to plain values
-    const rows = data.rows.map((r) => [
-      format(new Date(r.transactionDate), "yyyy-MM-dd"),
-      r.sourceRef,
-      SOURCE_LABELS[r.sourceType] ?? r.sourceType,
-      r.chequeNo ?? "",
-      r.refBillNo ?? "",
-      r.refBillNo2 ?? "",
-      r.narration || r.description || "",
-      r.debit > 0 ? r.debit.toFixed(2) : "0.00",
-      r.credit > 0 ? r.credit.toFixed(2) : "0.00",
-      r.runningBalance.toFixed(2),
-    ]);
-
-    // Build the CSV structure
-    const csvContent = [
-      [`General Ledger Report - ${data.account.code} - ${data.account.name}`],
+    const csvLines: string[][] = [
+      ["GENERAL LEDGER REPORT — MULTI-ACCOUNT & SUB-ACCOUNT STATEMENT"],
       [
         `Period: ${fromDate ? format(fromDate, "dd-MMM-yyyy") : "Beginning"} to ${toDate ? format(toDate, "dd-MMM-yyyy") : "Present"}`,
       ],
-      [
-        `Normal Balance Type: ${isDebitNormal ? "Debit Normal" : "Credit Normal"}`,
-      ],
+      [`Export Date: ${new Date().toLocaleString("en-PK")}`],
+      [`Document Filter: ${sourceType === "all" ? "All Documents" : (SOURCE_LABELS[sourceType] ?? sourceType)}`],
+      [`Scope: ${groupedHeads.length} Heads, ${allLedgers.length} Sub-Accounts`],
       [],
-      headers,
-      ["", "", "Opening Balance", "", "", "", "Balance brought forward", "", "", data.openingBalance.toFixed(2)],
-      ...rows,
-      [
-        "",
-        "",
-        "Closing Balance",
-        "",
-        "",
-        "",
-        "",
-        data.rangeTotalDebit.toFixed(2),
-        data.rangeTotalCredit.toFixed(2),
-        data.rangeClosingBalance.toFixed(2),
-      ],
-    ]
+    ];
+
+    for (const hGroup of groupedHeads) {
+      csvLines.push([`=== HEAD: ${hGroup.head.code} — ${hGroup.head.name} ===`]);
+      csvLines.push([]);
+
+      for (const lg of hGroup.ledgers) {
+        csvLines.push([
+          `Account: ${lg.account.code} — ${lg.account.name} (${lg.account.type})`,
+        ]);
+        csvLines.push(headers);
+        csvLines.push([
+          "",
+          "",
+          "Opening Balance",
+          "",
+          "",
+          "",
+          "Balance brought forward",
+          "",
+          "",
+          lg.openingBalance.toFixed(2),
+        ]);
+
+        for (const r of lg.rows) {
+          csvLines.push([
+            format(new Date(r.transactionDate), "yyyy-MM-dd"),
+            r.sourceRef,
+            SOURCE_LABELS[r.sourceType] ?? r.sourceType,
+            r.chequeNo ?? "",
+            r.refBillNo ?? "",
+            r.refBillNo2 ?? "",
+            r.narration || r.description || "",
+            r.debit > 0 ? r.debit.toFixed(2) : "0.00",
+            r.credit > 0 ? r.credit.toFixed(2) : "0.00",
+            r.runningBalance.toFixed(2),
+          ]);
+        }
+
+        csvLines.push([
+          "",
+          "",
+          `Closing Balance (${lg.account.code})`,
+          "",
+          "",
+          "",
+          "",
+          lg.rangeTotalDebit.toFixed(2),
+          lg.rangeTotalCredit.toFixed(2),
+          lg.rangeClosingBalance.toFixed(2),
+        ]);
+        csvLines.push([]);
+      }
+
+      if (hGroup.ledgers.length > 1) {
+        csvLines.push([
+          `HEAD TOTAL (${hGroup.head.code})`,
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          hGroup.rangeTotalDebit.toFixed(2),
+          hGroup.rangeTotalCredit.toFixed(2),
+          hGroup.rangeClosingBalance.toFixed(2),
+        ]);
+        csvLines.push([]);
+      }
+    }
+
+    const csvContent = csvLines
       .map((row) =>
         row
           .map((val) => {
@@ -298,14 +477,14 @@ export function GeneralLedgerClient({
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `general-ledger-${data.account.code}-${format(new Date(), "yyyyMMdd")}.csv`,
+      `general-ledger-multi-${format(new Date(), "yyyyMMdd-HHmm")}.csv`,
     );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Dispatch Background Excel queue export
+  // ─── 7. Dispatch Background Multi-Sheet Excel Export ───────────────────────
   const handleQueueExport = () => {
     if (!targetAccountId) return;
     setIsExporting(true);
@@ -317,11 +496,11 @@ export function GeneralLedgerClient({
         sourceType: sourceType === "all" ? undefined : sourceType,
       }),
       {
-        loading: "Queueing Excel export job...",
+        loading: "Queueing multi-sheet Excel export job...",
         success: (res) => {
           setIsExporting(false);
           if (res && res.status) {
-            return "Export queued! We will notify you when your workbook is ready.";
+            return "Export queued! Your multi-sheet workbook distributed by Head will notify you upon completion.";
           } else {
             throw new Error(res?.message || "Failed to queue export");
           }
@@ -341,13 +520,13 @@ export function GeneralLedgerClient({
         <Card className="border-border/50 shadow-lg dark:bg-card/45 dark:backdrop-blur-md">
           <CardHeader className="border-b dark:border-border/50 flex flex-row items-center justify-between flex-wrap gap-4 py-5 bg-muted/20">
             <div>
-              <CardTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
-                General Ledger
+              <CardTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" /> General Ledger
               </CardTitle>
               {data && (
                 <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground flex-wrap">
-                  <span className="font-semibold px-2 py-0.5 bg-muted rounded-full border dark:border-border/40">
-                    {data.account.code} — {data.account.name}
+                  <span className="font-semibold px-2 py-0.5 bg-primary/10 text-primary rounded-full border border-primary/20">
+                    {groupedHeads.length} Head{groupedHeads.length === 1 ? "" : "s"} • {allLedgers.length} Sub-Account{allLedgers.length === 1 ? "" : "s"}
                   </span>
                   <span className="text-muted-foreground/60">•</span>
                   <span className="flex items-center gap-1">
@@ -400,43 +579,66 @@ export function GeneralLedgerClient({
           </CardHeader>
 
           <CardContent className="pt-6 space-y-6">
-            {/* Filters Bar */}
+            {/* Multi-Account & Sub-Account Hierarchy Filters Bar */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end p-5 rounded-xl border border-border bg-muted/10 dark:bg-muted/5 shadow-sm">
+              {/* Heads Multi-Select */}
               <div
                 className={cn(
                   "space-y-2",
-                  subAccounts.length > 0 ? "md:col-span-3" : "md:col-span-4",
+                  selectedHeadIds.length > 0 ? "md:col-span-3" : "md:col-span-4",
                 )}
               >
-                <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <BookOpen className="h-3 w-3 text-primary/70" /> Chart of
-                  Account
-                </Label>
-                <ChartOfAccountSelect
-                  accounts={accounts}
-                  value={accountId}
-                  onValueChange={(val) => {
-                    setAccountId(val);
-                    setSelectedSubAccountIds([]); // Reset sub-account selection when main account changes
-                  }}
-                  placeholder="Select Account..."
-                  allowGroups={true}
-                  excludeTags
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Building2 className="h-3 w-3 text-primary/70" /> Account Head(s)
+                  </Label>
+                  {selectedHeadIds.length > 0 && (
+                    <button
+                      onClick={() => setSelectedHeadIds([])}
+                      className="text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <MultiSelect
+                  options={headOptions}
+                  value={selectedHeadIds}
+                  onValueChange={setSelectedHeadIds}
+                  placeholder="Select Account Head(s)..."
+                  searchPlaceholder="Search heads by code or name..."
+                  maxDisplayedItems={2}
+                  showSelectAll
                   className="h-10 text-sm shadow-sm"
                 />
               </div>
 
-              {subAccounts.length > 0 && (
+              {/* Sub-Accounts Multi-Select (Hierarchical) */}
+              {selectedHeadIds.length > 0 && (
                 <div className="space-y-2 md:col-span-3">
-                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Tag className="h-3 w-3 text-primary/70" /> Sub-accounts ({subAccounts.length})
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Tag className="h-3 w-3 text-primary/70" /> Sub-Accounts ({availableSubAccounts.length})
+                    </Label>
+                    {selectedSubAccountIds.length > 0 ? (
+                      <button
+                        onClick={() => setSelectedSubAccountIds([])}
+                        className="text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        All ({availableSubAccounts.length})
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                        All Included
+                      </span>
+                    )}
+                  </div>
                   <MultiSelect
                     options={subAccountOptions}
                     value={selectedSubAccountIds}
                     onValueChange={setSelectedSubAccountIds}
-                    placeholder="All Sub-accounts"
-                    searchPlaceholder="Search sub-accounts..."
+                    placeholder="All Sub-accounts (Default)"
+                    searchPlaceholder="Search sub-accounts by name or head..."
                     maxDisplayedItems={2}
                     showSelectAll
                     className="h-10 text-sm shadow-sm"
@@ -444,10 +646,11 @@ export function GeneralLedgerClient({
                 </div>
               )}
 
+              {/* Date Range Picker */}
               <div
                 className={cn(
                   "space-y-2",
-                  subAccounts.length > 0 ? "md:col-span-2" : "md:col-span-3",
+                  selectedHeadIds.length > 0 ? "md:col-span-2" : "md:col-span-3",
                 )}
               >
                 <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -467,10 +670,11 @@ export function GeneralLedgerClient({
                 />
               </div>
 
+              {/* Document Filter */}
               <div
                 className={cn(
                   "space-y-2",
-                  subAccounts.length > 0 ? "md:col-span-2" : "md:col-span-3",
+                  selectedHeadIds.length > 0 ? "md:col-span-2" : "md:col-span-3",
                 )}
               >
                 <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -491,10 +695,11 @@ export function GeneralLedgerClient({
                 </Select>
               </div>
 
+              {/* Load Ledger Action */}
               <div className="md:col-span-2">
                 <Button
                   onClick={handleLoadClick}
-                  disabled={isPending || !accountId}
+                  disabled={isPending || selectedHeadIds.length === 0}
                   className="h-10 w-full font-medium text-sm shadow-md transition-all hover:translate-y-[-1px] active:translate-y-[0px] hover:shadow-lg bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-600/95"
                 >
                   <RefreshCw
@@ -505,103 +710,118 @@ export function GeneralLedgerClient({
               </div>
             </div>
 
+            {/* Empty placeholder */}
             {!data && (
-              <div className="flex flex-col items-center justify-center h-52 text-muted-foreground border border-dashed rounded-xl p-8 bg-muted/5">
-                <BookOpen className="h-10 w-10 text-muted-foreground/35 mb-3 stroke-[1.5]" />
-                <p className="text-sm font-medium">No account selected</p>
-                <p className="text-xs text-muted-foreground/70 mt-1 max-w-[280px] text-center">
-                  Select a chart of account head and specify a date range, then
-                  click "Load Ledger" to inspect transaction records.
+              <div className="flex flex-col items-center justify-center h-56 text-muted-foreground border border-dashed rounded-xl p-8 bg-muted/5">
+                <BookOpen className="h-12 w-12 text-muted-foreground/35 mb-3 stroke-[1.5]" />
+                <p className="text-sm font-semibold text-foreground/80">No Account Head Selected</p>
+                <p className="text-xs text-muted-foreground/70 mt-1 max-w-[340px] text-center">
+                  Select one or more Account Heads and optional Sub-Accounts above, specify the reporting period, and click "Load Ledger" to inspect detailed transaction ledgers.
                 </p>
               </div>
             )}
 
+            {/* Render Data with Hierarchical Navigation */}
             {data && (() => {
               const ledgersToRender =
-                data.ledgers && data.ledgers.length > 0 ? data.ledgers : [data];
-              const isMultiLedger = ledgersToRender.length > 1;
-
-              const visibleLedgers =
-                isMultiLedger && viewMode === "single"
-                  ? [
-                      ledgersToRender[
-                        Math.min(activeLedgerIdx, ledgersToRender.length - 1)
-                      ],
-                    ]
-                  : ledgersToRender;
+                viewMode === "single"
+                  ? (safeActiveLedger ? [safeActiveLedger] : [])
+                  : allLedgers;
 
               return (
                 <div className="space-y-6">
-                  {/* Multi-Ledger Navigation Switcher Header */}
-                  {isMultiLedger && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/30 p-2.5 rounded-2xl border dark:border-border/60 shadow-xs">
-                      {/* Sub-Account Tabs / Pills */}
+                  {/* Master Hierarchy Navigation Bar */}
+                  <div className="flex flex-col gap-3 bg-muted/30 p-3.5 rounded-2xl border dark:border-border/60 shadow-xs">
+                    {/* Head Filter Tabs */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0 no-scrollbar">
-                        {ledgersToRender.map((lg, idx) => {
-                          const isActive = activeLedgerIdx === idx;
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground/80 flex items-center gap-1 mr-1 shrink-0">
+                          <Layers className="h-3 w-3 text-primary" /> Heads:
+                        </span>
+
+                        <button
+                          onClick={() => {
+                            setActiveHeadFilter("all");
+                            setActiveLedgerIdx(0);
+                          }}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200",
+                            activeHeadFilter === "all"
+                              ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20 font-bold"
+                              : "bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground border border-border/50",
+                          )}
+                        >
+                          All Heads ({groupedHeads.length})
+                        </button>
+
+                        {groupedHeads.map((hg) => {
+                          const isActive = activeHeadFilter === hg.head.id;
                           return (
                             <button
-                              key={lg.account.id || idx}
+                              key={hg.head.id}
                               onClick={() => {
-                                setActiveLedgerIdx(idx);
-                                setViewMode("single");
+                                setActiveHeadFilter(hg.head.id);
+                                setActiveLedgerIdx(0);
                               }}
                               className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200",
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200",
                                 isActive
-                                  ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/30 font-bold"
+                                  ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20 font-bold"
                                   : "bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground border border-border/50",
                               )}
                             >
-                              <span className="font-mono font-bold text-[11px] opacity-80">
-                                {lg.account.code}
+                              <span className="font-mono text-[11px] opacity-85">
+                                {hg.head.code}
                               </span>
-                              <span className="truncate max-w-[150px]">
-                                {lg.account.name}
+                              <span className="truncate max-w-[140px]">
+                                {hg.head.name}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted/60 text-muted-foreground font-mono">
+                                {hg.ledgers.length}
                               </span>
                             </button>
                           );
                         })}
                       </div>
 
-                      {/* Right / Left Arrow Switcher & Indicators */}
+                      {/* Controls: Next/Prev & View Mode Toggle */}
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs font-bold font-mono text-muted-foreground px-2.5 py-1 bg-background rounded-lg border">
-                          {activeLedgerIdx + 1} / {ledgersToRender.length} Ledgers
-                        </span>
+                        {viewMode === "single" && allLedgers.length > 1 && (
+                          <>
+                            <span className="text-xs font-bold font-mono text-muted-foreground px-2.5 py-1 bg-background rounded-lg border">
+                              {activeLedgerIdx + 1} / {allLedgers.length}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-full hover:bg-primary hover:text-primary-foreground transition-all shadow-xs"
+                                onClick={() => {
+                                  setActiveLedgerIdx((prev) =>
+                                    prev > 0 ? prev - 1 : allLedgers.length - 1,
+                                  );
+                                }}
+                                title="Previous Account"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 rounded-full hover:bg-primary hover:text-primary-foreground transition-all shadow-xs"
+                                onClick={() => {
+                                  setActiveLedgerIdx((prev) =>
+                                    prev < allLedgers.length - 1 ? prev + 1 : 0,
+                                  );
+                                }}
+                                title="Next Account"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
 
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-full hover:bg-primary hover:text-primary-foreground transition-all shadow-xs"
-                            onClick={() => {
-                              setViewMode("single");
-                              setActiveLedgerIdx((prev) =>
-                                prev > 0 ? prev - 1 : ledgersToRender.length - 1,
-                              );
-                            }}
-                            title="Previous Ledger (Left Arrow)"
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-full hover:bg-primary hover:text-primary-foreground transition-all shadow-xs"
-                            onClick={() => {
-                              setViewMode("single");
-                              setActiveLedgerIdx((prev) =>
-                                prev < ledgersToRender.length - 1 ? prev + 1 : 0,
-                              );
-                            }}
-                            title="Next Ledger (Right Arrow)"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        {/* Mode Switcher Toggle */}
                         <Button
                           variant="outline"
                           size="sm"
@@ -614,21 +834,60 @@ export function GeneralLedgerClient({
                         </Button>
                       </div>
                     </div>
-                  )}
 
-                  {visibleLedgers.map((ledgerItem, ledgerIdx) => {
+                    {/* Sub-Account Pills for Fast Jumping */}
+                    {allLedgers.length > 1 && (
+                      <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pt-1.5 border-t border-border/40 no-scrollbar">
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground/80 flex items-center gap-1 mr-1 shrink-0">
+                          <Tag className="h-3 w-3 text-primary" /> Accounts:
+                        </span>
+                        {allLedgers.map((lg, idx) => {
+                          const isSelected = activeLedgerIdx === idx;
+                          return (
+                            <button
+                              key={lg.account.id || idx}
+                              onClick={() => {
+                                setActiveLedgerIdx(idx);
+                                setViewMode("single");
+                              }}
+                              className={cn(
+                                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all",
+                                isSelected && viewMode === "single"
+                                  ? "bg-indigo-600 text-white font-bold shadow-xs"
+                                  : "bg-background hover:bg-accent text-muted-foreground hover:text-foreground border border-border/40",
+                              )}
+                            >
+                              <span className="font-mono text-[10px]">
+                                {lg.account.code}
+                              </span>
+                              <span className="truncate max-w-[120px]">
+                                {lg.account.name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Render Ledgers */}
+                  {ledgersToRender.map((ledgerItem, ledgerIdx) => {
                     const itemIsDebitNormal =
                       ledgerItem.account.type === "ASSET" ||
                       ledgerItem.account.type === "EXPENSE";
+
+                    const headName = ledgerItem.head
+                      ? `${ledgerItem.head.code} — ${ledgerItem.head.name}`
+                      : "Main Account Head";
 
                     return (
                       <div
                         key={ledgerItem.account.id || ledgerIdx}
                         className="space-y-4 pt-4 first:pt-0 border-t border-border/40 first:border-0"
                       >
-                        {/* Sub-Account Section Badge / Header */}
+                        {/* Sub-Account Section Header Banner */}
                         <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/20 p-3 rounded-xl border border-border/50">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                               {ledgerItem.account.code}
                             </span>
@@ -638,13 +897,16 @@ export function GeneralLedgerClient({
                             <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground uppercase">
                               {ledgerItem.account.type}
                             </span>
+                            <span className="text-xs text-muted-foreground/80 font-medium">
+                              (Head: {headName})
+                            </span>
                           </div>
                           <div className="text-xs font-mono text-muted-foreground">
-                            Sub-Account Ledger #{ledgerIdx + 1} of {ledgersToRender.length}
+                            Account {allLedgers.indexOf(ledgerItem) + 1} of {allLedgers.length}
                           </div>
                         </div>
 
-                        {/* Premium KPI Summary Blocks */}
+                        {/* KPI Summary Blocks */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                           {[
                             {
@@ -679,12 +941,17 @@ export function GeneralLedgerClient({
                               value: ledgerItem.rangeClosingBalance,
                               desc: `Net ${itemIsDebitNormal ? "Dr" : "Cr"} normal`,
                               color:
-                                (itemIsDebitNormal ? ledgerItem.rangeClosingBalance >= 0 : ledgerItem.rangeClosingBalance <= 0)
+                                (itemIsDebitNormal
+                                  ? ledgerItem.rangeClosingBalance >= 0
+                                  : ledgerItem.rangeClosingBalance <= 0)
                                   ? "text-emerald-600 dark:text-emerald-400"
                                   : "text-rose-600 dark:text-rose-400",
-                              badge: ledgerItem.rangeClosingBalance >= 0 ? "Dr" : "Cr",
+                              badge:
+                                ledgerItem.rangeClosingBalance >= 0 ? "Dr" : "Cr",
                               gradient:
-                                (itemIsDebitNormal ? ledgerItem.rangeClosingBalance >= 0 : ledgerItem.rangeClosingBalance <= 0)
+                                (itemIsDebitNormal
+                                  ? ledgerItem.rangeClosingBalance >= 0
+                                  : ledgerItem.rangeClosingBalance <= 0)
                                   ? "from-emerald-50/70 to-teal-50/50 dark:from-emerald-950/10 dark:to-teal-950/10 border-emerald-100/50 dark:border-emerald-950/20"
                                   : "from-amber-50/70 to-rose-50/50 dark:from-amber-950/10 dark:to-rose-950/10 border-rose-100/50 dark:border-rose-950/20",
                             },
@@ -889,7 +1156,7 @@ export function GeneralLedgerClient({
                                   colSpan={7}
                                   className="px-4 py-3.5 text-right uppercase text-[10px] tracking-wider text-muted-foreground border-r dark:border-border/50"
                                 >
-                                  Ledger Period Summary ({ledgerItem.account.code})
+                                  Account Summary ({ledgerItem.account.code})
                                 </td>
                                 <td className="px-4 py-3.5 text-right border-r dark:border-border/40 font-mono text-xs text-indigo-600 dark:text-indigo-400">
                                   {fmt(ledgerItem.rangeTotalDebit)}
@@ -964,212 +1231,208 @@ export function GeneralLedgerClient({
           `,
             }}
           />
-          {(() => {
-            const printLedgers =
-              data.ledgers && data.ledgers.length > 0 ? data.ledgers : [data];
-
-            return printLedgers.map((ledgerItem, pIdx) => (
-              <div key={ledgerItem.account.id || pIdx} className="print-ledger-block mb-8">
-                {/* Header */}
-                <div className="flex justify-between mb-3 gap-4 items-start border-b pb-2 border-gray-300">
-                  <div className="w-[15%] flex flex-col items-start justify-center">
-                    <img
-                      src="/image.png"
-                      alt="Logo"
-                      className="w-20 object-contain"
-                    />
-                  </div>
-
-                  <div className="w-[55%] flex flex-col justify-center text-center">
-                    <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 text-md font-bold print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact] uppercase tracking-wider rounded">
-                      General Ledger Report
-                    </div>
-                    <p className="text-[10px] font-bold text-gray-700 mt-1">
-                      Account Head: {ledgerItem.account.code} — {ledgerItem.account.name}
-                    </p>
-                  </div>
-
-                  <div className="w-[30%] bg-[#f8fafc] text-[8px] sm:text-[9px] p-1.5 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col gap-0.5 rounded">
-                    <div className="flex justify-between">
-                      <span className="font-bold">Period From:</span>
-                      <span>
-                        {fromDate ? format(fromDate, "dd/MM/yyyy") : "Beginning"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-bold">Period To:</span>
-                      <span>{toDate ? format(toDate, "dd/MM/yyyy") : "Present"}</span>
-                    </div>
-
-                    <div className="flex justify-between border-t pt-0.5 mt-0.5 border-gray-200">
-                      <span className="font-bold">Printed:</span>
-                      <span>{format(new Date(), "dd/MM/yyyy HH:mm")}</span>
-                    </div>
-                  </div>
+          {allLedgers.map((ledgerItem, pIdx) => (
+            <div key={ledgerItem.account.id || pIdx} className="print-ledger-block mb-8">
+              {/* Header */}
+              <div className="flex justify-between mb-3 gap-4 items-start border-b pb-2 border-gray-300">
+                <div className="w-[15%] flex flex-col items-start justify-center">
+                  <img
+                    src="/image.png"
+                    alt="Logo"
+                    className="w-20 object-contain"
+                  />
                 </div>
 
-                {/* Table */}
-                <table className="w-full text-[9px] mb-2 border-collapse table-fixed">
-                  <thead>
-                    <tr className="border-y border-black font-bold text-left">
-                      <th className="py-1 pr-1 w-[7%] text-[8.5px]">Date</th>
-                      <th className="py-1 pr-1 w-[10%] text-[8.5px]">VOH No.</th>
-                      <th className="py-1 pr-1 w-[6%] text-[8.5px]">VOH TYPE</th>
-                      <th className="py-1 pr-1 w-[6%] text-[8.5px]">Cheque No.</th>
-                      <th className="py-1 pr-1 w-[8%] text-[8.5px]">Ref. 1</th>
-                      <th className="py-1 pr-1 w-[6%] text-[8.5px]">Ref. 2</th>
-                      <th className="py-1 pr-1 w-[33%] text-[8.5px]">Narration</th>
-                      <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
-                        Debit
-                      </th>
-                      <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
-                        Credit
-                      </th>
-                      <th className="py-1 text-right w-[8%] text-[8.5px]">Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Opening Balance Row */}
-                    <tr className="border-b border-gray-300 align-top italic text-gray-600 font-medium bg-gray-50/50">
-                      <td className="py-1 pr-1">—</td>
-                      <td className="py-1 pr-1">—</td>
-                      <td className="py-1 pr-1">Opening Balance</td>
-                      <td className="py-1 pr-1">—</td>
-                      <td className="py-1 pr-1">—</td>
-                      <td className="py-1 pr-1">—</td>
-                      <td className="py-1 pr-1">Balance brought forward</td>
-                      <td className="py-1 pr-1 text-right">—</td>
-                      <td className="py-1 pr-1 text-right">—</td>
-                      <td className="py-1 text-right font-mono font-semibold">
-                        {fmt(ledgerItem.openingBalance)}
-                      </td>
-                    </tr>
-
-                    {ledgerItem.rows.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={10}
-                          className="py-4 text-center text-gray-500 border-b"
-                        >
-                          No transactions recorded in this period.
-                        </td>
-                      </tr>
-                    )}
-
-                    {ledgerItem.rows.map((row) => (
-                      <tr key={row.id} className="border-b border-gray-200 align-top">
-                        <td className="py-1 pr-1 font-mono text-[8px] whitespace-nowrap">
-                          {format(new Date(row.transactionDate), "dd/MM/yyyy")}
-                        </td>
-                        <td className="py-1 pr-1 font-mono font-semibold text-[8px] whitespace-nowrap">
-                          {row.sourceRef}
-                        </td>
-                        <td
-                          className="py-1 pr-1 text-[8px] whitespace-nowrap truncate max-w-0"
-                          title={SOURCE_LABELS[row.sourceType] ?? row.sourceType}
-                        >
-                          {SOURCE_LABELS[row.sourceType] ?? row.sourceType}
-                        </td>
-                        <td
-                          className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
-                          title={row.chequeNo || undefined}
-                        >
-                          {row.chequeNo || "—"}
-                        </td>
-                        <td
-                          className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
-                          title={row.refBillNo || undefined}
-                        >
-                          {row.refBillNo || "—"}
-                        </td>
-                        <td
-                          className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
-                          title={row.refBillNo2 || undefined}
-                        >
-                          {row.refBillNo2 || "—"}
-                        </td>
-                        <td className="py-1 pr-1 text-[8.5px] leading-tight break-words">
-                          <div>{row.narration || row.description || "—"}</div>
-                        </td>
-                        <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
-                          {row.debit > 0 ? fmt(row.debit) : ""}
-                        </td>
-                        <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
-                          {row.credit > 0 ? fmt(row.credit) : ""}
-                        </td>
-                        <td className="py-1 text-right font-mono font-semibold text-[8px] whitespace-nowrap">
-                          {fmt(row.runningBalance)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="print:table-row-group">
-                    <tr>
-                      <td
-                        colSpan={7}
-                        className="py-2 px-0 align-bottom border-b border-black"
-                      >
-                        <div className="flex gap-2 font-bold text-[9px] leading-tight flex-wrap">
-                          <span className="whitespace-nowrap">
-                            Closing Balance in Words:
-                          </span>
-                          <span className="underline decoration-dashed decoration-gray-400 underline-offset-2 break-words">
-                            {numberToWords(Math.abs(ledgerItem.rangeClosingBalance))}{" "}
-                            {ledgerItem.rangeClosingBalance >= 0 ? "(Debit)" : "(Credit)"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-1 pr-1 text-right align-bottom border-b border-black">
-                        <div
-                          className="ml-auto border-t border-black pb-0.5"
-                          style={{ borderBottom: "2px double black" }}
-                        >
-                          <span className="tabular-nums font-mono text-[8px] block pt-0.5">
-                            {fmt(ledgerItem.rangeTotalDebit)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-1 pr-1 text-right align-bottom border-b border-black">
-                        <div
-                          className="ml-auto border-t border-black pb-0.5"
-                          style={{ borderBottom: "2px double black" }}
-                        >
-                          <span className="tabular-nums font-mono text-[8px] block pt-0.5">
-                            {fmt(ledgerItem.rangeTotalCredit)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-1 text-right align-bottom border-b border-black">
-                        <div
-                          className="ml-auto border-t border-black pb-0.5"
-                          style={{ borderBottom: "2px double black" }}
-                        >
-                          <span className="tabular-nums font-mono font-bold text-[8px] block pt-0.5">
-                            {fmt(ledgerItem.rangeClosingBalance)}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-
-                {/* Remarks */}
-                <div className="mt-2 mb-4">
-                  <div className="font-bold text-[10px]">
-                    General Ledger Summary Remarks
+                <div className="w-[55%] flex flex-col justify-center text-center">
+                  <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 text-md font-bold print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact] uppercase tracking-wider rounded">
+                    General Ledger Report
                   </div>
-                  <p className="text-[9px] mt-0.5 text-gray-700 leading-tight">
-                    This statement represents verified transaction ledger history for
-                    Account Head {ledgerItem.account.code} ({ledgerItem.account.name}). The
-                    opening balance of {fmt(ledgerItem.openingBalance)} is compiled from
-                    postings preceding{" "}
-                    {fromDate ? format(fromDate, "dd-MM-yyyy") : "inception"}. Net
-                    closing balance is {fmt(ledgerItem.rangeClosingBalance)}.
+                  <p className="text-[10px] font-bold text-gray-700 mt-1">
+                    Account: {ledgerItem.account.code} — {ledgerItem.account.name}
+                    {ledgerItem.head && ` (Head: ${ledgerItem.head.code} - ${ledgerItem.head.name})`}
                   </p>
                 </div>
+
+                <div className="w-[30%] bg-[#f8fafc] text-[8px] sm:text-[9px] p-1.5 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col gap-0.5 rounded">
+                  <div className="flex justify-between">
+                    <span className="font-bold">Period From:</span>
+                    <span>
+                      {fromDate ? format(fromDate, "dd/MM/yyyy") : "Beginning"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-bold">Period To:</span>
+                    <span>{toDate ? format(toDate, "dd/MM/yyyy") : "Present"}</span>
+                  </div>
+
+                  <div className="flex justify-between border-t pt-0.5 mt-0.5 border-gray-200">
+                    <span className="font-bold">Printed:</span>
+                    <span>{format(new Date(), "dd/MM/yyyy HH:mm")}</span>
+                  </div>
+                </div>
               </div>
-            ));
-          })()}
+
+              {/* Table */}
+              <table className="w-full text-[9px] mb-2 border-collapse table-fixed">
+                <thead>
+                  <tr className="border-y border-black font-bold text-left">
+                    <th className="py-1 pr-1 w-[7%] text-[8.5px]">Date</th>
+                    <th className="py-1 pr-1 w-[10%] text-[8.5px]">VOH No.</th>
+                    <th className="py-1 pr-1 w-[6%] text-[8.5px]">VOH TYPE</th>
+                    <th className="py-1 pr-1 w-[6%] text-[8.5px]">Cheque No.</th>
+                    <th className="py-1 pr-1 w-[8%] text-[8.5px]">Ref. 1</th>
+                    <th className="py-1 pr-1 w-[6%] text-[8.5px]">Ref. 2</th>
+                    <th className="py-1 pr-1 w-[33%] text-[8.5px]">Narration</th>
+                    <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
+                      Debit
+                    </th>
+                    <th className="py-1 pr-1 text-right w-[8%] text-[8.5px]">
+                      Credit
+                    </th>
+                    <th className="py-1 text-right w-[8%] text-[8.5px]">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Opening Balance Row */}
+                  <tr className="border-b border-gray-300 align-top italic text-gray-600 font-medium bg-gray-50/50">
+                    <td className="py-1 pr-1">—</td>
+                    <td className="py-1 pr-1">—</td>
+                    <td className="py-1 pr-1">Opening Balance</td>
+                    <td className="py-1 pr-1">—</td>
+                    <td className="py-1 pr-1">—</td>
+                    <td className="py-1 pr-1">—</td>
+                    <td className="py-1 pr-1">Balance brought forward</td>
+                    <td className="py-1 pr-1 text-right">—</td>
+                    <td className="py-1 pr-1 text-right">—</td>
+                    <td className="py-1 text-right font-mono font-semibold">
+                      {fmt(ledgerItem.openingBalance)}
+                    </td>
+                  </tr>
+
+                  {ledgerItem.rows.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={10}
+                        className="py-4 text-center text-gray-500 border-b"
+                      >
+                        No transactions recorded in this period.
+                      </td>
+                    </tr>
+                  )}
+
+                  {ledgerItem.rows.map((row) => (
+                    <tr key={row.id} className="border-b border-gray-200 align-top">
+                      <td className="py-1 pr-1 font-mono text-[8px] whitespace-nowrap">
+                        {format(new Date(row.transactionDate), "dd/MM/yyyy")}
+                      </td>
+                      <td className="py-1 pr-1 font-mono font-semibold text-[8px] whitespace-nowrap">
+                        {row.sourceRef}
+                      </td>
+                      <td
+                        className="py-1 pr-1 text-[8px] whitespace-nowrap truncate max-w-0"
+                        title={SOURCE_LABELS[row.sourceType] ?? row.sourceType}
+                      >
+                        {SOURCE_LABELS[row.sourceType] ?? row.sourceType}
+                      </td>
+                      <td
+                        className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
+                        title={row.chequeNo || undefined}
+                      >
+                        {row.chequeNo || "—"}
+                      </td>
+                      <td
+                        className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
+                        title={row.refBillNo || undefined}
+                      >
+                        {row.refBillNo || "—"}
+                      </td>
+                      <td
+                        className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
+                        title={row.refBillNo2 || undefined}
+                      >
+                        {row.refBillNo2 || "—"}
+                      </td>
+                      <td className="py-1 pr-1 text-[8.5px] leading-tight break-words">
+                        <div>{row.narration || row.description || "—"}</div>
+                      </td>
+                      <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
+                        {row.debit > 0 ? fmt(row.debit) : ""}
+                      </td>
+                      <td className="py-1 pr-1 text-right font-mono text-[8px] whitespace-nowrap">
+                        {row.credit > 0 ? fmt(row.credit) : ""}
+                      </td>
+                      <td className="py-1 text-right font-mono font-semibold text-[8px] whitespace-nowrap">
+                        {fmt(row.runningBalance)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="print:table-row-group">
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="py-2 px-0 align-bottom border-b border-black"
+                    >
+                      <div className="flex gap-2 font-bold text-[9px] leading-tight flex-wrap">
+                        <span className="whitespace-nowrap">
+                          Closing Balance in Words:
+                        </span>
+                        <span className="underline decoration-dashed decoration-gray-400 underline-offset-2 break-words">
+                          {numberToWords(Math.abs(ledgerItem.rangeClosingBalance))}{" "}
+                          {ledgerItem.rangeClosingBalance >= 0 ? "(Debit)" : "(Credit)"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-1 pr-1 text-right align-bottom border-b border-black">
+                      <div
+                        className="ml-auto border-t border-black pb-0.5"
+                        style={{ borderBottom: "2px double black" }}
+                      >
+                        <span className="tabular-nums font-mono text-[8px] block pt-0.5">
+                          {fmt(ledgerItem.rangeTotalDebit)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-1 pr-1 text-right align-bottom border-b border-black">
+                      <div
+                        className="ml-auto border-t border-black pb-0.5"
+                        style={{ borderBottom: "2px double black" }}
+                      >
+                        <span className="tabular-nums font-mono text-[8px] block pt-0.5">
+                          {fmt(ledgerItem.rangeTotalCredit)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-1 text-right align-bottom border-b border-black">
+                      <div
+                        className="ml-auto border-t border-black pb-0.5"
+                        style={{ borderBottom: "2px double black" }}
+                      >
+                        <span className="tabular-nums font-mono font-bold text-[8px] block pt-0.5">
+                          {fmt(ledgerItem.rangeClosingBalance)}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              {/* Remarks */}
+              <div className="mt-2 mb-4">
+                <div className="font-bold text-[10px]">
+                  General Ledger Summary Remarks
+                </div>
+                <p className="text-[9px] mt-0.5 text-gray-700 leading-tight">
+                  This statement represents verified transaction ledger history for
+                  Account {ledgerItem.account.code} ({ledgerItem.account.name}). The
+                  opening balance of {fmt(ledgerItem.openingBalance)} is compiled from
+                  postings preceding{" "}
+                  {fromDate ? format(fromDate, "dd-MM-yyyy") : "inception"}. Net
+                  closing balance is {fmt(ledgerItem.rangeClosingBalance)}.
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </>
