@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import {
   Download,
@@ -35,6 +35,17 @@ import {
   BalanceSheetResult,
   BalanceSheetAccount,
 } from "@/lib/actions/finance-reports";
+import {
+  ChartOfAccountSelect,
+  fetchSharedTree,
+  getSharedTree,
+} from "@/components/ui/chart-of-account-select";
+import {
+  TagAccountSelect,
+  TagSubAccountGroup,
+  findInTree,
+} from "@/components/ui/tag-account-select";
+import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 
 const fmt = (n: number) =>
   n.toLocaleString("en-PK", {
@@ -46,10 +57,127 @@ const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 
 export function BalanceSheetClient({
   initialData,
+  accounts: accountsProp,
 }: {
   initialData?: BalanceSheetResult;
+  accounts?: ChartOfAccount[];
 }) {
   const [data, setData] = useState<BalanceSheetResult | undefined>(initialData);
+
+  // Tree state for Chart of Accounts
+  const [tree, setTree] = useState<ChartOfAccount[]>(accountsProp ?? []);
+
+  useEffect(() => {
+    if (accountsProp && accountsProp.length > 0) {
+      setTree(accountsProp);
+      return;
+    }
+    fetchSharedTree().then((t) => {
+      if (t && t.length > 0) setTree(t);
+    });
+  }, [accountsProp]);
+
+  // Account Head & Tag Sub-Account filter states
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [selectedTagAccountIds, setSelectedTagAccountIds] = useState<string[]>([]);
+
+  // Sub-accounts grouped by Account Head
+  const activeSubAccountGroups: TagSubAccountGroup[] = useMemo(() => {
+    const sourceNodes =
+      tree.length > 0
+        ? tree
+        : getSharedTree().length > 0
+          ? getSharedTree()
+          : accountsProp ?? [];
+    if (selectedAccountIds.length === 0 || sourceNodes.length === 0) return [];
+
+    const collectLeafs = (items: ChartOfAccount[]): ChartOfAccount[] => {
+      const result: ChartOfAccount[] = [];
+      for (const item of items) {
+        if (item.children && item.children.length > 0) {
+          result.push(...collectLeafs(item.children));
+        } else {
+          result.push(item);
+        }
+      }
+      return result;
+    };
+
+    const groups: TagSubAccountGroup[] = [];
+    for (const accId of selectedAccountIds) {
+      const node = findInTree(sourceNodes, accId);
+      if (!node) continue;
+
+      let subAccs: ChartOfAccount[] = [];
+      if (node.children && node.children.length > 0) {
+        subAccs = collectLeafs(node.children);
+      } else {
+        subAccs = [node];
+      }
+
+      const uniqueMap = new Map<string, ChartOfAccount>();
+      for (const acc of subAccs) {
+        uniqueMap.set(acc.id, acc);
+      }
+
+      const uniqueAccs = Array.from(uniqueMap.values());
+      if (uniqueAccs.length > 0) {
+        groups.push({
+          head: {
+            id: node.id,
+            code: node.code,
+            name: node.name,
+            type: node.type,
+          },
+          accounts: uniqueAccs,
+        });
+      }
+    }
+    return groups;
+  }, [selectedAccountIds, tree, accountsProp]);
+
+  // Flattened deduplicated sub-accounts for backward compatibility & filtering
+  const activeSubAccounts = useMemo(() => {
+    const map = new Map<string, ChartOfAccount>();
+    for (const grp of activeSubAccountGroups) {
+      for (const acc of grp.accounts) {
+        map.set(acc.id, acc);
+      }
+    }
+    return Array.from(map.values());
+  }, [activeSubAccountGroups]);
+
+  const selectedAccountNodes = useMemo(() => {
+    const sourceNodes =
+      tree.length > 0
+        ? tree
+        : getSharedTree().length > 0
+          ? getSharedTree()
+          : accountsProp ?? [];
+    if (selectedAccountIds.length === 0 || sourceNodes.length === 0) return [];
+    return selectedAccountIds
+      .map((id) => findInTree(sourceNodes, id))
+      .filter((n): n is ChartOfAccount => Boolean(n));
+  }, [selectedAccountIds, tree, accountsProp]);
+
+  const selectedTagAccountNodes = useMemo(() => {
+    if (selectedTagAccountIds.length === 0) return [];
+    return activeSubAccounts.filter((a) =>
+      selectedTagAccountIds.includes(a.id),
+    );
+  }, [selectedTagAccountIds, activeSubAccounts]);
+
+  // Reset tag selection if selected head changes or sub-account list changes
+  useEffect(() => {
+    if (selectedTagAccountIds.length > 0) {
+      const valid = selectedTagAccountIds.filter((id) =>
+        activeSubAccounts.some((c) => c.id === id),
+      );
+      if (valid.length !== selectedTagAccountIds.length) {
+        setSelectedTagAccountIds(valid);
+      }
+    }
+  }, [selectedAccountIds, activeSubAccounts, selectedTagAccountIds]);
 
   // Filter States
   const [asOf, setAsOf] = useState<string>(initialData?.asOf || "");
@@ -137,11 +265,75 @@ export function BalanceSheetClient({
     setExpandedNodes(new Set());
   };
 
-  // Filter rows by level, search, and collapse hierarchy
+  // Helper to filter rows by selected account heads & tag sub-accounts
+  const applyAccountFilter = (
+    rows: BalanceSheetAccount[],
+    headIds: string[],
+    tagIds: string[],
+  ): BalanceSheetAccount[] => {
+    if (!rows || rows.length === 0) return [];
+    if (headIds.length === 0 && tagIds.length === 0) return rows;
+
+    const parentMap = new Map<string, string>();
+    rows.forEach((r) => {
+      if (r.parentId) parentMap.set(r.id, r.parentId);
+    });
+
+    if (tagIds.length > 0) {
+      const ids = new Set<string>();
+      tagIds.forEach((tagId) => {
+        ids.add(tagId);
+        let curr = parentMap.get(tagId);
+        while (curr) {
+          ids.add(curr);
+          curr = parentMap.get(curr);
+        }
+      });
+      headIds.forEach((accId) => {
+        ids.add(accId);
+        let curr = parentMap.get(accId);
+        while (curr) {
+          ids.add(curr);
+          curr = parentMap.get(curr);
+        }
+      });
+      return rows.filter((r) => ids.has(r.id));
+    }
+
+    if (headIds.length > 0) {
+      const targetIds = new Set<string>(headIds);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        rows.forEach((r) => {
+          if (r.parentId && targetIds.has(r.parentId) && !targetIds.has(r.id)) {
+            targetIds.add(r.id);
+            changed = true;
+          }
+        });
+      }
+      headIds.forEach((accId) => {
+        let curr = parentMap.get(accId);
+        while (curr) {
+          targetIds.add(curr);
+          curr = parentMap.get(curr);
+        }
+      });
+      return rows.filter((r) => targetIds.has(r.id));
+    }
+
+    return rows;
+  };
+
+  // Filter rows by account head / tag, level, search, and collapse hierarchy
   const filterRows = (rows: BalanceSheetAccount[]) => {
     if (!rows) return [];
 
-    let filtered = rows;
+    let filtered = applyAccountFilter(
+      rows,
+      selectedAccountIds,
+      selectedTagAccountIds,
+    );
 
     // 1. Search Query
     if (searchQuery.trim()) {
@@ -158,8 +350,8 @@ export function BalanceSheetClient({
       filtered = filtered.filter((r) => (r.level ?? 0) < maxLvl);
     }
 
-    // 3. Parent Collapse Filter (unless search is active)
-    if (!searchQuery.trim()) {
+    // 3. Parent Collapse Filter (unless search is active or filtered)
+    if (!searchQuery.trim() && selectedAccountIds.length === 0 && selectedTagAccountIds.length === 0) {
       const visibleRows: BalanceSheetAccount[] = [];
       const parentVisible = (parentId?: string | null): boolean => {
         if (!parentId) return true;
@@ -181,15 +373,42 @@ export function BalanceSheetClient({
 
   const filteredAssets = useMemo(
     () => filterRows(data?.assets || []),
-    [data?.assets, searchQuery, levelFilter, expandedNodes],
+    [data?.assets, selectedAccountIds, selectedTagAccountIds, searchQuery, levelFilter, expandedNodes],
   );
   const filteredLiabilities = useMemo(
     () => filterRows(data?.liabilities || []),
-    [data?.liabilities, searchQuery, levelFilter, expandedNodes],
+    [data?.liabilities, selectedAccountIds, selectedTagAccountIds, searchQuery, levelFilter, expandedNodes],
   );
   const filteredEquity = useMemo(
     () => filterRows(data?.equity || []),
-    [data?.equity, searchQuery, levelFilter, expandedNodes],
+    [data?.equity, selectedAccountIds, selectedTagAccountIds, searchQuery, levelFilter, expandedNodes],
+  );
+
+  const calcSectionTotal = (rows: BalanceSheetAccount[], defaultTotal: number) => {
+    if (selectedAccountIds.length === 0 && selectedTagAccountIds.length === 0) {
+      return defaultTotal;
+    }
+    const parentIds = new Set(rows.map((r) => r.parentId).filter(Boolean));
+    return rows
+      .filter((r) => !parentIds.has(r.id))
+      .reduce((sum, r) => sum + (r.amount || 0), 0);
+  };
+
+  const totalAssetsValue = useMemo(
+    () => calcSectionTotal(filteredAssets, data?.totalAssets ?? 0),
+    [filteredAssets, selectedAccountIds, selectedTagAccountIds, data?.totalAssets],
+  );
+  const totalLiabilitiesValue = useMemo(
+    () => calcSectionTotal(filteredLiabilities, data?.totalLiabilities ?? 0),
+    [filteredLiabilities, selectedAccountIds, selectedTagAccountIds, data?.totalLiabilities],
+  );
+  const totalEquityValue = useMemo(
+    () => calcSectionTotal(filteredEquity, data?.totalEquity ?? 0),
+    [filteredEquity, selectedAccountIds, selectedTagAccountIds, data?.totalEquity],
+  );
+  const totalLiabilitiesAndEquityValue = useMemo(
+    () => totalLiabilitiesValue + totalEquityValue,
+    [totalLiabilitiesValue, totalEquityValue],
   );
 
   const asOfDisplay = asOf
@@ -708,6 +927,95 @@ export function BalanceSheetClient({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
+            {/* Account Head and Tag Sub-Account Selectors */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end pb-3 border-b border-border/60">
+              {/* Account Head */}
+              <div className="space-y-1.5 md:col-span-6">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Building2 className="h-3 w-3 text-primary/70" /> Account Head(s)
+                    {selectedAccountIds.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground/70 font-normal">
+                        ({selectedAccountIds.length})
+                      </span>
+                    )}
+                  </Label>
+                  {selectedAccountIds.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setSelectedAccountIds([]);
+                        setSelectedTagAccountIds([]);
+                      }}
+                      className="text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    >
+                      Clear ({selectedAccountIds.length})
+                    </button>
+                  )}
+                </div>
+                <ChartOfAccountSelect
+                  accounts={accountsProp}
+                  value={selectedAccountIds}
+                  onValueChange={(val: string[]) => {
+                    setSelectedAccountIds(val);
+                    setSelectedTagAccountIds([]);
+                  }}
+                  placeholder="All Account Heads (Default)"
+                  allowGroups={true}
+                  excludeTags={true}
+                  multiple={true}
+                  mode="popover"
+                  className="h-10 text-sm shadow-sm"
+                />
+              </div>
+
+              {/* Tag Sub-Account */}
+              <div className="space-y-1.5 md:col-span-6">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Tag className="h-3 w-3 text-primary/70" /> Tag Sub-Account(s)
+                    {activeSubAccounts.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground/70 font-normal">
+                        ({activeSubAccounts.length}
+                        {activeSubAccountGroups.length > 1
+                          ? ` in ${activeSubAccountGroups.length} Heads`
+                          : ""}
+                        )
+                      </span>
+                    )}
+                  </Label>
+                  {selectedTagAccountIds.length > 0 && (
+                    <button
+                      onClick={() => setSelectedTagAccountIds([])}
+                      className="text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    >
+                      Clear ({selectedTagAccountIds.length})
+                    </button>
+                  )}
+                </div>
+                <TagAccountSelect
+                  groups={activeSubAccountGroups}
+                  children={activeSubAccounts}
+                  value={selectedTagAccountIds}
+                  onValueChange={(val) => {
+                    setSelectedTagAccountIds(val);
+                    if (val.length > 0 && !includeTagAccounts) {
+                      setIncludeTagAccounts(true);
+                    }
+                  }}
+                  disabled={selectedAccountIds.length === 0 || activeSubAccounts.length === 0}
+                  placeholder={
+                    selectedAccountIds.length === 0
+                      ? "Select Account Head first"
+                      : activeSubAccounts.length === 0
+                        ? "No sub-accounts under selected head(s)"
+                        : activeSubAccountGroups.length > 1
+                          ? `All Sub-accounts across ${activeSubAccountGroups.length} Heads (Default)`
+                          : "All Sub-accounts (Default)"
+                  }
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
               {/* As Of Date */}
               <div className="space-y-1.5">
@@ -845,6 +1153,25 @@ export function BalanceSheetClient({
                   Collapse All
                 </Button>
                 <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    setSelectedAccountIds([]);
+                    setSelectedTagAccountIds([]);
+                    setSearchQuery("");
+                    setLevelFilter("all");
+                    setAsOf("");
+                    setCompareAsOf("");
+                    setEnableCompare(false);
+                    setIncludeTagAccounts(true);
+                    setShowZeroBalances(false);
+                    loadReport();
+                  }}
+                >
+                  Reset
+                </Button>
+                <Button
                   onClick={loadReport}
                   disabled={isPending}
                   size="sm"
@@ -863,6 +1190,45 @@ export function BalanceSheetClient({
           </CardContent>
         </Card>
 
+        {/* Filter Banner */}
+        {data && (selectedAccountIds.length > 0 || selectedTagAccountIds.length > 0) && (
+          <div className="flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium bg-primary/10 text-primary border border-primary/20">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Building2 className="h-4 w-4 shrink-0" />
+              <span>
+                Filtered by Account Head{selectedAccountNodes.length === 1 ? "" : "s"}:{" "}
+                <strong>
+                  {selectedAccountNodes.map((n) => `${n.code} — ${n.name}`).join(", ")}
+                </strong>
+              </span>
+              {selectedTagAccountNodes.length > 0 && (
+                <span className="flex items-center gap-1.5 ml-1 font-normal text-primary/90 flex-wrap">
+                  <span>(Tags:</span>
+                  {selectedTagAccountNodes.map((tagNode) => (
+                    <Badge
+                      key={tagNode.id}
+                      variant="outline"
+                      className="text-xs bg-primary/15 border-primary/30 text-primary py-0 px-1.5"
+                    >
+                      {tagNode.code} — {tagNode.name}
+                    </Badge>
+                  ))}
+                  <span>)</span>
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setSelectedAccountIds([]);
+                setSelectedTagAccountIds([]);
+              }}
+              className="text-xs font-semibold underline hover:opacity-80 transition-opacity shrink-0 ml-4 cursor-pointer"
+            >
+              Clear Filter (View All)
+            </button>
+          </div>
+        )}
+
         {/* ── Main Report Content (Dual Layout Modes) ── */}
         {data && (
           <>
@@ -873,7 +1239,7 @@ export function BalanceSheetClient({
                 <RenderTreeSection
                   title="Assets"
                   rows={filteredAssets}
-                  totalAmount={data.totalAssets}
+                  totalAmount={totalAssetsValue}
                   compareTotalAmount={data.compareTotalAssets}
                   headerBgClass="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900"
                   accentColorClass="bg-blue-500"
@@ -884,7 +1250,7 @@ export function BalanceSheetClient({
                   <RenderTreeSection
                     title="Liabilities"
                     rows={filteredLiabilities}
-                    totalAmount={data.totalLiabilities}
+                    totalAmount={totalLiabilitiesValue}
                     compareTotalAmount={data.compareTotalLiabilities}
                     headerBgClass="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900"
                     accentColorClass="bg-amber-500"
@@ -893,7 +1259,7 @@ export function BalanceSheetClient({
                   <RenderTreeSection
                     title="Equity"
                     rows={filteredEquity}
-                    totalAmount={data.totalEquity}
+                    totalAmount={totalEquityValue}
                     compareTotalAmount={data.compareTotalEquity}
                     headerBgClass="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900"
                     accentColorClass="bg-purple-500"
@@ -905,7 +1271,7 @@ export function BalanceSheetClient({
                       Total Liabilities + Equity
                     </span>
                     <span className="font-mono text-lg text-primary">
-                      {fmt(data.totalLiabilitiesAndEquity)}
+                      {fmt(totalLiabilitiesAndEquityValue)}
                     </span>
                   </div>
                 </div>
@@ -916,7 +1282,7 @@ export function BalanceSheetClient({
                 <RenderTreeSection
                   title="Assets"
                   rows={filteredAssets}
-                  totalAmount={data.totalAssets}
+                  totalAmount={totalAssetsValue}
                   compareTotalAmount={data.compareTotalAssets}
                   headerBgClass="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900"
                   accentColorClass="bg-blue-500"
@@ -925,7 +1291,7 @@ export function BalanceSheetClient({
                 <RenderTreeSection
                   title="Liabilities"
                   rows={filteredLiabilities}
-                  totalAmount={data.totalLiabilities}
+                  totalAmount={totalLiabilitiesValue}
                   compareTotalAmount={data.compareTotalLiabilities}
                   headerBgClass="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900"
                   accentColorClass="bg-amber-500"
@@ -934,7 +1300,7 @@ export function BalanceSheetClient({
                 <RenderTreeSection
                   title="Equity"
                   rows={filteredEquity}
-                  totalAmount={data.totalEquity}
+                  totalAmount={totalEquityValue}
                   compareTotalAmount={data.compareTotalEquity}
                   headerBgClass="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900"
                   accentColorClass="bg-purple-500"
@@ -946,7 +1312,7 @@ export function BalanceSheetClient({
                     Total Liabilities + Equity
                   </span>
                   <span className="font-mono text-lg text-primary">
-                    {fmt(data.totalLiabilitiesAndEquity)}
+                    {fmt(totalLiabilitiesAndEquityValue)}
                   </span>
                 </div>
               </div>

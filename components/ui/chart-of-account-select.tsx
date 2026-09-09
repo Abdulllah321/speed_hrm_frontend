@@ -41,6 +41,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { authFetch } from "@/lib/auth";
 import { ChartOfAccount, createChartOfAccount } from "@/lib/actions/chart-of-account";
 import { toast } from "sonner";
@@ -186,8 +188,8 @@ function filterTreeExcludeTags(nodes: ChartOfAccount[]): ChartOfAccount[] {
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface ChartOfAccountSelectProps {
     accounts?: ChartOfAccount[];
-    value?: string;
-    onValueChange?: (value: string) => void;
+    value?: string | string[];
+    onValueChange?: (value: any) => void;
     placeholder?: string;
     disabled?: boolean;
     className?: string;
@@ -197,6 +199,7 @@ export interface ChartOfAccountSelectProps {
     excludeTags?: boolean;
     id?: string;
     mode?: "popover" | "modal";
+    multiple?: boolean;
 }
 
 // ─── Tree row ─────────────────────────────────────────────────────────────────
@@ -206,6 +209,8 @@ interface TreeRowProps {
     expanded: Set<string>;
     onToggle: (id: string) => void;
     selectedId?: string;
+    selectedIds?: Set<string>;
+    multiple?: boolean;
     onSelect: (id: string) => void;
     allowGroups?: boolean;
     groupsOnly?: boolean;
@@ -217,12 +222,14 @@ function TreeRow({
     expanded,
     onToggle,
     selectedId,
+    selectedIds,
+    multiple = false,
     onSelect,
     allowGroups = false,
     groupsOnly = false,
 }: TreeRowProps) {
     const isExpanded = expanded.has(node.id);
-    const isSelected = selectedId === node.id;
+    const isSelected = multiple ? selectedIds?.has(node.id) : selectedId === node.id;
     const hasChildren = (node.children?.length ?? 0) > 0;
 
     const isSelectable = groupsOnly
@@ -270,6 +277,13 @@ function TreeRow({
                     ) : null}
                 </span>
 
+                {multiple && isSelectable && (
+                    <Checkbox
+                        checked={!!isSelected}
+                        className="h-3.5 w-3.5 shrink-0 pointer-events-none mr-0.5"
+                    />
+                )}
+
                 {/* Icon */}
                 {node.isGroup ? (
                     isExpanded ? (
@@ -297,6 +311,8 @@ function TreeRow({
                     expanded={expanded}
                     onToggle={onToggle}
                     selectedId={selectedId}
+                    selectedIds={selectedIds}
+                    multiple={multiple}
                     onSelect={onSelect}
                     allowGroups={allowGroups}
                     groupsOnly={groupsOnly}
@@ -463,6 +479,7 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
             excludeTags = false,
             id,
             mode = "popover",
+            multiple = false,
         },
         ref
     ) {
@@ -482,7 +499,8 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
                 setTree(accountsProp);
                 return;
             }
-            if ((!open && !value) || tree.length > 0) return;
+            const hasVal = Array.isArray(value) ? value.length > 0 : !!value;
+            if ((!open && !hasVal) || tree.length > 0) return;
 
             setIsLoading(true);
             fetchTree().then((data) => {
@@ -556,14 +574,32 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
             return baseSearchResults.filter(a => a.type === activeTab);
         }, [baseSearchResults, activeTab, mode]);
 
+        const selectedIds = React.useMemo(() => {
+            if (!multiple) return new Set<string>();
+            return new Set(Array.isArray(value) ? value : (value ? [value] : []));
+        }, [multiple, value]);
+
+        const selectedAccounts = React.useMemo(() => {
+            if (!multiple) return [];
+            return Array.from(selectedIds)
+                .map((id) => findById(baseFilteredTree, id))
+                .filter(Boolean) as ChartOfAccount[];
+        }, [multiple, selectedIds, baseFilteredTree]);
+
         const selectedAccount = React.useMemo(
-            () => (value ? findById(baseFilteredTree, value) : undefined),
-            [baseFilteredTree, value]
+            () => (!multiple && value && typeof value === "string" ? findById(baseFilteredTree, value) : undefined),
+            [baseFilteredTree, value, multiple]
         );
 
-        const displayLabel = selectedAccount
-            ? `${selectedAccount.code} - ${selectedAccount.name}`
-            : null;
+        const displayLabel = multiple
+            ? selectedAccounts.length === 0
+                ? null
+                : selectedAccounts.length === 1
+                    ? `${selectedAccounts[0].code} - ${selectedAccounts[0].name}`
+                    : null
+            : selectedAccount
+                ? `${selectedAccount.code} - ${selectedAccount.name}`
+                : null;
 
         // ── Handlers ───────────────────────────────────────────────────────────────
         function toggleExpand(id: string) {
@@ -575,8 +611,14 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
         }
 
         function handleSelect(id: string) {
-            onValueChange?.(value === id ? "" : id);
-            setOpen(false);
+            if (multiple) {
+                const current = Array.isArray(value) ? value : (value ? [value] : []);
+                const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+                onValueChange?.(next);
+            } else {
+                onValueChange?.(value === id ? "" : id);
+                setOpen(false);
+            }
         }
 
         const handleCreated = async (newAcc: ChartOfAccount) => {
@@ -603,6 +645,26 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
                     autoFocus
                 />
 
+                {/* Multiple select quick bar */}
+                {multiple && (
+                    <div className="flex items-center justify-between px-3 py-1.5 border-b text-[11px] bg-muted/20">
+                        <span className="text-muted-foreground font-medium">
+                            {selectedIds.size > 0
+                                ? `${selectedIds.size} selected`
+                                : "Select accounts..."}
+                        </span>
+                        {selectedIds.size > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => onValueChange?.([])}
+                                className="text-muted-foreground hover:text-foreground font-medium cursor-pointer"
+                            >
+                                Clear All
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {/* Body */}
                 <CommandList className={cn("overflow-y-auto p-1", mode === "modal" ? "max-h-[380px]" : "max-h-80")}>
                     {isLoading ? (
@@ -617,32 +679,41 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
                                 No accounts found.
                             </CommandEmpty>
                         ) : (
-                            searchResults.map((acc) => (
-                                <CommandItem
-                                    key={acc.id}
-                                    value={acc.id}
-                                    onSelect={() => handleSelect(acc.id)}
-                                    className="flex items-start gap-2 px-3 py-2 rounded-md cursor-pointer select-none"
-                                >
-                                    <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
-                                    <div className="flex flex-col flex-1 min-w-0">
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                            <span className="text-[11px] font-mono text-muted-foreground shrink-0">{acc.code}</span>
-                                            <span className={cn("text-sm truncate", value === acc.id && "font-medium")}>{acc.name}</span>
-                                            <span className={cn(
-                                                "text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase shrink-0 self-center",
-                                                TYPE_CONFIG[acc.type]?.className || "bg-muted"
-                                            )}>
-                                                {TYPE_CONFIG[acc.type]?.label || acc.type}
-                                            </span>
-                                        </div>
-                                        {breadcrumbMap.get(acc.id) && (
-                                            <span className="text-[10px] text-muted-foreground truncate">{breadcrumbMap.get(acc.id)}</span>
+                            searchResults.map((acc) => {
+                                const isSelected = multiple ? selectedIds.has(acc.id) : value === acc.id;
+                                return (
+                                    <CommandItem
+                                        key={acc.id}
+                                        value={acc.id}
+                                        onSelect={() => handleSelect(acc.id)}
+                                        className="flex items-start gap-2 px-3 py-2 rounded-md cursor-pointer select-none"
+                                    >
+                                        {multiple && (
+                                            <Checkbox
+                                                checked={isSelected}
+                                                className="h-3.5 w-3.5 shrink-0 pointer-events-none mt-1 mr-0.5"
+                                            />
                                         )}
-                                    </div>
-                                    {value === acc.id && <CheckIcon className="h-4 w-4 shrink-0 text-primary mt-0.5" />}
-                                </CommandItem>
-                            ))
+                                        <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
+                                        <div className="flex flex-col flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <span className="text-[11px] font-mono text-muted-foreground shrink-0">{acc.code}</span>
+                                                <span className={cn("text-sm truncate", isSelected && "font-medium")}>{acc.name}</span>
+                                                <span className={cn(
+                                                    "text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase shrink-0 self-center",
+                                                    TYPE_CONFIG[acc.type]?.className || "bg-muted"
+                                                )}>
+                                                    {TYPE_CONFIG[acc.type]?.label || acc.type}
+                                                </span>
+                                            </div>
+                                            {breadcrumbMap.get(acc.id) && (
+                                                <span className="text-[10px] text-muted-foreground truncate">{breadcrumbMap.get(acc.id)}</span>
+                                            )}
+                                        </div>
+                                        {isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-primary mt-0.5 ml-auto" />}
+                                    </CommandItem>
+                                );
+                            })
                         )
                     ) : (
                         /* ── Tree mode ── */
@@ -658,7 +729,9 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
                                     depth={0}
                                     expanded={expanded}
                                     onToggle={toggleExpand}
-                                    selectedId={value}
+                                    selectedId={typeof value === "string" ? value : undefined}
+                                    selectedIds={selectedIds}
+                                    multiple={multiple}
                                     onSelect={handleSelect}
                                     allowGroups={allowGroups}
                                     groupsOnly={groupsOnly}
@@ -696,7 +769,7 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
                                     ? `${allFlat.filter((a) => a.isGroup).length} groups`
                                     : `${allFlat.filter((a) => !a.isGroup).length} accounts`}
                         </span>
-                        {value && (
+                        {!multiple && value && (
                             <button
                                 type="button"
                                 onClick={() => { onValueChange?.(""); setOpen(false); }}
@@ -704,6 +777,16 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
                             >
                                 Clear selection
                             </button>
+                        )}
+                        {multiple && (
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="h-6 text-xs px-2.5 ml-auto"
+                                onClick={() => setOpen(false)}
+                            >
+                                Done
+                            </Button>
                         )}
                     </div>
                 )}
@@ -743,10 +826,34 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
                 )}
             >
                 <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mr-2" />
-                <span className={cn("flex-1 min-w-0 truncate", !displayLabel && "text-muted-foreground")}>
-                    {displayLabel ?? placeholder}
-                </span>
-                {selectedAccount && (
+                {multiple && selectedAccounts.length > 1 ? (
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                        <Badge
+                            variant="secondary"
+                            className="px-1.5 py-0 text-[11px] font-semibold shrink-0 bg-primary/15 text-primary border-primary/20"
+                        >
+                            {selectedAccounts.length} selected
+                        </Badge>
+                        <span className="truncate text-xs text-muted-foreground">
+                            {selectedAccounts.map((c) => c.name).join(", ")}
+                        </span>
+                    </div>
+                ) : (
+                    <span className={cn("flex-1 min-w-0 truncate", !displayLabel && "text-muted-foreground")}>
+                        {displayLabel ?? placeholder}
+                    </span>
+                )}
+                {multiple && selectedAccounts.length === 1 && (
+                    <span
+                        className={cn(
+                            "ml-2 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                            TYPE_CONFIG[selectedAccounts[0].type]?.className ?? "bg-muted text-muted-foreground"
+                        )}
+                    >
+                        {TYPE_CONFIG[selectedAccounts[0].type]?.label ?? selectedAccounts[0].type}
+                    </span>
+                )}
+                {!multiple && selectedAccount && (
                     <span
                         className={cn(
                             "ml-2 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded",
@@ -773,7 +880,12 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
                             {triggerButton}
                         </PopoverTrigger>
                         <PopoverContent
-                            className="w-(--radix-popover-trigger-width) min-w-80 p-0"
+                            className={cn(
+                                "p-0 shadow-lg",
+                                multiple
+                                    ? "w-88 sm:w-96"
+                                    : "w-(--radix-popover-trigger-width) min-w-80"
+                            )}
                             align="start"
                             sideOffset={4}
                         >

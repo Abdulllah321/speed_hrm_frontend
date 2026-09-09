@@ -17,11 +17,34 @@ import {
   Layers,
   CheckSquare,
   Building2,
+  CheckIcon,
+  ChevronDownIcon,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import {
+  ChartOfAccountSelect,
+  getSharedTree,
+  fetchSharedTree,
+} from "@/components/ui/chart-of-account-select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Select,
   SelectContent,
@@ -30,7 +53,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { MultiSelect } from "@/components/ui/multi-select";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import {
   getGeneralLedger,
@@ -67,6 +89,19 @@ const getLocalEndOfDayISO = (d: Date) => {
   const end = new Date(d);
   end.setHours(23, 59, 59, 999);
   return end.toISOString();
+};
+
+/**
+ * Formats voucher number for compact print layout (e.g. BPV-26-27-0001 -> BPV-0001, JV-26-27-0003 -> JV-0003).
+ * Strips out fiscal year/year component only in print to reduce column width.
+ */
+const formatVoucherNoForPrint = (vohNo?: string | null): string => {
+  if (!vohNo) return "—";
+  const match = vohNo.match(/^([A-Za-z]+)-\d{2,4}(?:-\d{2})?-(.+)$/);
+  if (match) {
+    return `${match[1]}-${match[2]}`;
+  }
+  return vohNo;
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -110,14 +145,437 @@ const getSourceLink = (sourceType: string, sourceId: string) => {
   }
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function findInTree(
+  nodes: ChartOfAccount[],
+  id: string,
+): ChartOfAccount | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children?.length) {
+      const found = findInTree(node.children, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+// ─── Tag account selector (Hierarchy sub-account dropdown with Multi-Select & Head Grouping) ──
+export interface TagSubAccountGroup {
+  head: {
+    id: string;
+    code: string;
+    name: string;
+    type?: string;
+  };
+  accounts: ChartOfAccount[];
+}
+
+interface TagAccountSelectProps {
+  groups?: TagSubAccountGroup[];
+  children?: ChartOfAccount[];
+  value?: string[];
+  onValueChange: (value: string[]) => void;
+  disabled?: boolean;
+  id?: string;
+  placeholder?: string;
+}
+
+function TagAccountSelect({
+  groups = [],
+  children = [],
+  value = [],
+  onValueChange,
+  disabled,
+  id,
+  placeholder,
+}: TagAccountSelectProps) {
+  const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+
+  React.useEffect(() => {
+    if (!open) {
+      setSearch("");
+    }
+  }, [open]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+    if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      setSearch(e.key);
+      setOpen(true);
+    } else if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpen(true);
+    }
+  };
+
+  // Harmonize groups with fallback to flat children if groups are empty
+  const effectiveGroups: TagSubAccountGroup[] = React.useMemo(() => {
+    if (groups && groups.length > 0) return groups;
+    if (children && children.length > 0) {
+      return [
+        {
+          head: { id: "all", code: "", name: "All Sub-Accounts" },
+          accounts: children,
+        },
+      ];
+    }
+    return [];
+  }, [groups, children]);
+
+  // All flat accounts from effective groups
+  const allAccounts = React.useMemo(() => {
+    const map = new Map<string, ChartOfAccount>();
+    for (const g of effectiveGroups) {
+      for (const a of g.accounts) {
+        map.set(a.id, a);
+      }
+    }
+    return Array.from(map.values());
+  }, [effectiveGroups]);
+
+  const selectedAccounts = React.useMemo(() => {
+    return allAccounts.filter((c) => value.includes(c.id));
+  }, [allAccounts, value]);
+
+  // Distinct heads represented in current selection
+  const selectedHeadsCount = React.useMemo(() => {
+    const headIds = new Set<string>();
+    for (const g of effectiveGroups) {
+      if (g.accounts.some((a) => value.includes(a.id))) {
+        headIds.add(g.head.id);
+      }
+    }
+    return headIds.size;
+  }, [effectiveGroups, value]);
+
+  const isAllSelected =
+    allAccounts.length > 0 && selectedAccounts.length === allAccounts.length;
+
+  const handleToggle = (childId: string) => {
+    if (value.includes(childId)) {
+      onValueChange(value.filter((id) => id !== childId));
+    } else {
+      onValueChange([...value, childId]);
+    }
+  };
+
+  const handleSelectAll = () => {
+    onValueChange(allAccounts.map((c) => c.id));
+  };
+
+  const handleClearAll = () => {
+    onValueChange([]);
+  };
+
+  // Find parent head for a single selected account
+  const singleSelectedHead = React.useMemo(() => {
+    if (value.length !== 1 || !selectedAccounts[0]) return null;
+    return (
+      effectiveGroups.find((g) =>
+        g.accounts.some((a) => a.id === selectedAccounts[0].id),
+      )?.head ?? null
+    );
+  }, [value, selectedAccounts, effectiveGroups]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          id={id}
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          onKeyDown={handleKeyDown}
+          className={cn(
+            "flex items-center w-full h-10 px-3 rounded-md border border-input bg-background text-sm cursor-pointer select-none text-left shadow-sm",
+            "hover:bg-accent hover:text-accent-foreground transition-colors",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
+            open && "ring-1 ring-ring/20",
+            disabled &&
+              "pointer-events-none opacity-50 bg-muted/30 cursor-not-allowed",
+          )}
+        >
+          <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground mr-2" />
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
+            {value.length === 0 ? (
+              <span className="truncate text-muted-foreground">
+                {placeholder ??
+                  (allAccounts.length === 0
+                    ? "No sub-accounts"
+                    : effectiveGroups.length > 1
+                      ? `All Sub-accounts across ${effectiveGroups.length} Heads`
+                      : "All Sub-accounts (Default)")}
+              </span>
+            ) : value.length === 1 && selectedAccounts[0] ? (
+              <span className="truncate font-medium flex items-center gap-1.5">
+                <span className="font-mono text-xs">{selectedAccounts[0].code}</span>
+                <span className="truncate">{selectedAccounts[0].name}</span>
+                {singleSelectedHead && singleSelectedHead.code && effectiveGroups.length > 1 && (
+                  <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">
+                    {singleSelectedHead.code}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                <Badge
+                  variant="secondary"
+                  className="px-1.5 py-0 text-[11px] font-semibold shrink-0 bg-primary/15 text-primary border-primary/20"
+                >
+                  {value.length} selected
+                </Badge>
+                {effectiveGroups.length > 1 && selectedHeadsCount > 0 && (
+                  <span className="text-[10px] font-medium text-muted-foreground shrink-0">
+                    ({selectedHeadsCount} {selectedHeadsCount === 1 ? "Head" : "Heads"})
+                  </span>
+                )}
+                <span className="truncate text-xs text-muted-foreground">
+                  {selectedAccounts.map((c) => c.name).join(", ")}
+                </span>
+              </div>
+            )}
+          </div>
+          {value.length === 1 && selectedAccounts[0] && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                navigator.clipboard.writeText(selectedAccounts[0].name);
+                toast.success(
+                  `Copied tag name: "${selectedAccounts[0].name}"`,
+                );
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  navigator.clipboard.writeText(selectedAccounts[0].name);
+                  toast.success(
+                    `Copied tag name: "${selectedAccounts[0].name}"`,
+                  );
+                }
+              }}
+              className="p-1 ml-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              title="Copy tag account name"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </span>
+          )}
+          <ChevronDownIcon
+            className={cn(
+              "ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180",
+            )}
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-88 sm:w-[440px] p-0" align="start" sideOffset={4}>
+        <Command>
+          <CommandInput
+            placeholder={
+              effectiveGroups.length > 1
+                ? "Search sub-account or head name/code..."
+                : "Search sub-account..."
+            }
+            className="h-9 text-xs"
+            value={search}
+            onValueChange={setSearch}
+            autoFocus
+          />
+          {allAccounts.length > 0 && (
+            <div className="flex items-center justify-between px-3 py-1.5 border-b text-[11px] bg-muted/20">
+              <span className="text-muted-foreground font-medium">
+                {value.length > 0
+                  ? `${value.length} of ${allAccounts.length} selected`
+                  : `${allAccounts.length} available sub-accounts`}
+                {effectiveGroups.length > 1 && (
+                  <span className="text-muted-foreground/70 ml-1">
+                    ({effectiveGroups.length} Heads)
+                  </span>
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  disabled={isAllSelected}
+                  className={cn(
+                    "text-primary hover:underline font-medium cursor-pointer",
+                    isAllSelected && "opacity-50 pointer-events-none",
+                  )}
+                >
+                  Select All
+                </button>
+                <span className="text-muted-foreground/40">•</span>
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  disabled={value.length === 0}
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground font-medium cursor-pointer",
+                    value.length === 0 && "opacity-50 pointer-events-none",
+                  )}
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          )}
+          <CommandList className="max-h-72 overflow-y-auto">
+            <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
+              No sub-accounts found.
+            </CommandEmpty>
+            {effectiveGroups.map((grp) => {
+              const groupIds = grp.accounts.map((a) => a.id);
+              const selectedInGroupCount = groupIds.filter((id) =>
+                value.includes(id),
+              ).length;
+              const isGroupAllSelected =
+                grp.accounts.length > 0 &&
+                selectedInGroupCount === grp.accounts.length;
+
+              const handleToggleGroup = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (isGroupAllSelected) {
+                  onValueChange(value.filter((id) => !groupIds.includes(id)));
+                } else {
+                  onValueChange(Array.from(new Set([...value, ...groupIds])));
+                }
+              };
+
+              return (
+                <CommandGroup
+                  key={grp.head.id}
+                  heading={
+                    effectiveGroups.length > 1 || grp.head.code ? (
+                      <div className="flex items-center justify-between w-full py-1 text-xs font-semibold text-foreground/90 border-b border-border/50 mb-1">
+                        <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                          <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                          {grp.head.code && (
+                            <span className="font-mono text-[11px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20 shrink-0">
+                              {grp.head.code}
+                            </span>
+                          )}
+                          <span className="truncate font-semibold text-foreground">
+                            {grp.head.name}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-mono font-normal shrink-0">
+                            ({grp.accounts.length})
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleToggleGroup}
+                          className={cn(
+                            "text-[10px] font-semibold px-2 py-0.5 rounded transition-all shrink-0 cursor-pointer",
+                            isGroupAllSelected
+                              ? "bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 dark:text-rose-400"
+                              : "bg-primary/10 text-primary hover:bg-primary/20",
+                          )}
+                        >
+                          {isGroupAllSelected
+                            ? "Deselect Head"
+                            : selectedInGroupCount > 0
+                              ? `Select Rest (${grp.accounts.length - selectedInGroupCount})`
+                              : `Select Head (${grp.accounts.length})`}
+                        </button>
+                      </div>
+                    ) : undefined
+                  }
+                >
+                  {grp.accounts.map((child) => {
+                    const isSelected = value.includes(child.id);
+                    return (
+                      <CommandItem
+                        key={child.id}
+                        value={`${grp.head.code} ${grp.head.name} ${child.code} ${child.name}`}
+                        onSelect={() => handleToggle(child.id)}
+                        className={cn(
+                          "flex items-center gap-2.5 text-xs py-2 px-3 cursor-pointer aria-selected:bg-accent/60 transition-colors",
+                          effectiveGroups.length > 1 && "pl-4",
+                        )}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          className="h-4 w-4 pointer-events-none shrink-0"
+                        />
+                        <span className="font-mono text-muted-foreground shrink-0 text-[11px]">
+                          {child.code}
+                        </span>
+                        <span className="flex-1 truncate font-medium">
+                          {child.name}
+                        </span>
+                        {effectiveGroups.length > 1 && grp.head.code && (
+                          <span
+                            className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-muted text-muted-foreground/70 shrink-0"
+                            title={`Head: ${grp.head.code} - ${grp.head.name}`}
+                          >
+                            {grp.head.code}
+                          </span>
+                        )}
+                        {isSelected && (
+                          <CheckIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              );
+            })}
+          </CommandList>
+          <div className="flex items-center justify-between p-2 border-t bg-muted/10">
+            <span className="text-[11px] text-muted-foreground px-1">
+              {value.length === 0
+                ? effectiveGroups.length > 1
+                  ? `All sub-accounts across ${effectiveGroups.length} Heads included`
+                  : "All sub-accounts included"
+                : `${value.length} selected`}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 text-xs px-3"
+              onClick={() => setOpen(false)}
+            >
+              Done
+            </Button>
+          </div>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function GeneralLedgerClient({
   accounts,
 }: {
   accounts: ChartOfAccount[];
 }) {
+  // ─── Tree State ─────────────────────────────────────────────────────────────
+  const [tree, setTree] = React.useState<ChartOfAccount[]>(accounts ?? []);
+
+  React.useEffect(() => {
+    if (accounts && accounts.length > 0) {
+      setTree(accounts);
+      return;
+    }
+    fetchSharedTree().then((t) => {
+      if (t && t.length > 0) setTree(t);
+    });
+  }, [accounts]);
+
   // ─── Filter States ──────────────────────────────────────────────────────────
-  const [selectedHeadIds, setSelectedHeadIds] = React.useState<string[]>([]);
-  const [selectedSubAccountIds, setSelectedSubAccountIds] = React.useState<string[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = React.useState<string[]>([]);
+  const [selectedTagAccountIds, setSelectedTagAccountIds] = React.useState<string[]>([]);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
     new Date(new Date().getFullYear(), 0, 1),
   );
@@ -128,7 +586,7 @@ export function GeneralLedgerClient({
   const [data, setData] = React.useState<GeneralLedgerResult | undefined>();
   const [activeHeadFilter, setActiveHeadFilter] = React.useState<string>("all");
   const [activeLedgerIdx, setActiveLedgerIdx] = React.useState(0);
-  const [viewMode, setViewMode] = React.useState<"single" | "all">("single");
+  const [viewMode, setViewMode] = React.useState<"all" | "single" | "consolidated">("all");
   const [isPending, startTransition] = React.useTransition();
   const [isExporting, setIsExporting] = React.useState(false);
 
@@ -136,148 +594,124 @@ export function GeneralLedgerClient({
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(50);
 
-  // ─── 1. Build Head Options (Groups, Parent Accounts & Standalone Heads) ────
-  const headOptions = React.useMemo(() => {
-    const list: {
-      value: string;
-      label: string;
-      description?: string;
-      code: string;
-      name: string;
-      type: string;
-      childCount: number;
-    }[] = [];
+  // ─── Sub-Accounts Grouped by Account Head ──────────────────────────────────
+  const activeSubAccountGroups: TagSubAccountGroup[] = React.useMemo(() => {
+    const sourceNodes =
+      tree.length > 0
+        ? tree
+        : getSharedTree().length > 0
+          ? getSharedTree()
+          : accounts;
+    if (selectedAccountIds.length === 0 || sourceNodes.length === 0) return [];
 
-    const scan = (nodes: ChartOfAccount[]) => {
-      for (const node of nodes) {
-        const hasChildren = (node.children?.length ?? 0) > 0;
-        if (node.isGroup || hasChildren || !node.parentId) {
-          let leafCount = 0;
-          const countLeafs = (items: ChartOfAccount[]) => {
-            for (const it of items) {
-              if (it.children?.length) countLeafs(it.children);
-              else leafCount++;
-            }
-          };
-          if (node.children?.length) countLeafs(node.children);
-          else leafCount = 1;
+    const collectLeafs = (items: ChartOfAccount[]): ChartOfAccount[] => {
+      const result: ChartOfAccount[] = [];
+      for (const item of items) {
+        if (item.children && item.children.length > 0) {
+          result.push(...collectLeafs(item.children));
+        } else {
+          result.push(item);
+        }
+      }
+      return result;
+    };
 
-          list.push({
-            value: node.id,
-            label: `${node.code} — ${node.name}`,
-            description: `${node.type} • ${leafCount} account${leafCount === 1 ? "" : "s"}`,
+    const groups: TagSubAccountGroup[] = [];
+
+    for (const accId of selectedAccountIds) {
+      const node = findInTree(sourceNodes, accId);
+      if (!node) continue;
+
+      let subAccs: ChartOfAccount[] = [];
+      if (node.children && node.children.length > 0) {
+        subAccs = collectLeafs(node.children);
+      } else {
+        subAccs = [node];
+      }
+
+      // Deduplicate within this head's group
+      const uniqueMap = new Map<string, ChartOfAccount>();
+      for (const acc of subAccs) {
+        uniqueMap.set(acc.id, acc);
+      }
+
+      const uniqueAccs = Array.from(uniqueMap.values());
+      if (uniqueAccs.length > 0) {
+        groups.push({
+          head: {
+            id: node.id,
             code: node.code,
             name: node.name,
             type: node.type,
-            childCount: leafCount,
-          });
-        }
-        if (node.children?.length) {
-          scan(node.children);
-        }
+          },
+          accounts: uniqueAccs,
+        });
       }
-    };
-    scan(accounts);
-    return list;
-  }, [accounts]);
-
-  // ─── 2. Build Sub-Account List dynamically from Selected Heads ────────────
-  const availableSubAccounts = React.useMemo(() => {
-    if (selectedHeadIds.length === 0) return [];
-
-    const findNode = (nodes: ChartOfAccount[], id: string): ChartOfAccount | undefined => {
-      for (const node of nodes) {
-        if (node.id === id) return node;
-        if (node.children?.length) {
-          const found = findNode(node.children, id);
-          if (found) return found;
-        }
-      }
-      return undefined;
-    };
-
-    const result: {
-      id: string;
-      code: string;
-      name: string;
-      type: string;
-      headId: string;
-      headCode: string;
-      headName: string;
-    }[] = [];
-    const seen = new Set<string>();
-
-    for (const hId of selectedHeadIds) {
-      const headNode = findNode(accounts, hId);
-      if (!headNode) continue;
-
-      const collectLeafs = (node: ChartOfAccount) => {
-        if (node.children && node.children.length > 0) {
-          for (const c of node.children) collectLeafs(c);
-        } else {
-          if (!seen.has(node.id)) {
-            seen.add(node.id);
-            result.push({
-              id: node.id,
-              code: node.code,
-              name: node.name,
-              type: node.type,
-              headId: headNode.id,
-              headCode: headNode.code,
-              headName: headNode.name,
-            });
-          }
-        }
-      };
-      collectLeafs(headNode);
     }
 
-    return result;
-  }, [selectedHeadIds, accounts]);
+    return groups;
+  }, [selectedAccountIds, tree, accounts]);
 
-  const subAccountOptions = React.useMemo(() => {
-    return availableSubAccounts.map((sa) => ({
-      value: sa.id,
-      label: `${sa.code} — ${sa.name}`,
-      description: `Head: ${sa.headCode} (${sa.headName})`,
-    }));
-  }, [availableSubAccounts]);
+  // Flattened deduplicated sub-accounts for backward compatibility & filtering
+  const activeSubAccounts = React.useMemo(() => {
+    const map = new Map<string, ChartOfAccount>();
+    for (const grp of activeSubAccountGroups) {
+      for (const acc of grp.accounts) {
+        map.set(acc.id, acc);
+      }
+    }
+    return Array.from(map.values());
+  }, [activeSubAccountGroups]);
 
-  // Reset sub-account selection if head selection changes and previously selected accounts are no longer valid
+  // Reset tag selection if selected head changes or active sub-accounts change
   React.useEffect(() => {
-    if (selectedSubAccountIds.length > 0) {
-      const validIds = new Set(availableSubAccounts.map((a) => a.id));
-      const filtered = selectedSubAccountIds.filter((id) => validIds.has(id));
-      if (filtered.length !== selectedSubAccountIds.length) {
-        setSelectedSubAccountIds(filtered);
+    if (selectedTagAccountIds.length > 0) {
+      const valid = selectedTagAccountIds.filter((id) =>
+        activeSubAccounts.some((c) => c.id === id),
+      );
+      if (valid.length !== selectedTagAccountIds.length) {
+        setSelectedTagAccountIds(valid);
       }
     }
-  }, [selectedHeadIds, availableSubAccounts, selectedSubAccountIds]);
+  }, [selectedAccountIds, activeSubAccounts, selectedTagAccountIds]);
 
-  // ─── 3. Target Account ID (Comma-separated for multi-account) ──────────────
+  // ─── Target Account ID ─────────────────────────────────────────────────────
   const targetAccountId = React.useMemo(() => {
-    if (selectedSubAccountIds.length > 0) {
-      return selectedSubAccountIds.join(",");
+    if (selectedTagAccountIds.length > 0) {
+      return selectedTagAccountIds.join(",");
     }
-    if (availableSubAccounts.length > 0) {
-      return availableSubAccounts.map((sa) => sa.id).join(",");
+    if (selectedAccountIds.length > 0) {
+      const ids = [...selectedAccountIds, ...activeSubAccounts.map((a) => a.id)];
+      return Array.from(new Set(ids)).join(",");
     }
-    return selectedHeadIds.join(",");
-  }, [selectedSubAccountIds, availableSubAccounts, selectedHeadIds]);
+    return "";
+  }, [selectedTagAccountIds, selectedAccountIds, activeSubAccounts]);
 
-  // ─── 4. Query & Load Ledger ────────────────────────────────────────────────
+  // ─── Query & Load Ledger ───────────────────────────────────────────────────
   const load = (targetPage = page, targetLimit = limit) => {
-    if (!targetAccountId) return;
+    if (!targetAccountId) {
+      toast.warning("Please select an Account Head or Sub-Account first.");
+      return;
+    }
     startTransition(async () => {
-      const res = await getGeneralLedger(targetAccountId, {
-        from: fromDate ? getLocalStartOfDayISO(fromDate) : undefined,
-        to: toDate ? getLocalEndOfDayISO(toDate) : undefined,
-        page: targetPage,
-        limit: targetLimit,
-        sourceType: sourceType === "all" ? undefined : sourceType,
-      });
-      if (res.status && res.data) {
-        setData(res.data);
+      try {
+        const res = await getGeneralLedger(targetAccountId, {
+          from: fromDate ? getLocalStartOfDayISO(fromDate) : undefined,
+          to: toDate ? getLocalEndOfDayISO(toDate) : undefined,
+          page: targetPage,
+          limit: targetLimit,
+          sourceType: sourceType === "all" ? undefined : sourceType,
+        });
+        if (res?.status && res?.data) {
+          setData(res.data);
+          if (res.data.ledgers && res.data.ledgers.length > 1) {
+            setViewMode("all");
+          }
+        } else {
+          toast.error(res?.message || "Failed to load general ledger data");
+        }
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to load general ledger data");
       }
     });
   };
@@ -293,6 +727,9 @@ export function GeneralLedgerClient({
     setPage(1);
     setActiveLedgerIdx(0);
     setActiveHeadFilter("all");
+    if (selectedTagAccountIds.length > 1 || selectedAccountIds.length > 1) {
+      setViewMode("all");
+    }
     load(1, limit);
   };
 
@@ -363,6 +800,22 @@ export function GeneralLedgerClient({
     Math.min(activeLedgerIdx, Math.max(0, allLedgers.length - 1))
   ] ?? allLedgers[0];
 
+  // Consolidated ledger combining all accounts
+  const consolidatedLedger: SingleAccountLedger | null = React.useMemo(() => {
+    if (!data || allLedgers.length <= 1) return null;
+    return {
+      account: data.account,
+      openingBalance: data.openingBalance,
+      rows: data.rows,
+      closingBalance: data.closingBalance,
+      rangeTotalDebit: data.rangeTotalDebit,
+      rangeTotalCredit: data.rangeTotalCredit,
+      rangeClosingBalance: data.rangeClosingBalance,
+      pagination: data.pagination,
+      head: { id: "consolidated", code: "ALL", name: `${allLedgers.length} Accounts Consolidated` },
+    };
+  }, [data, allLedgers]);
+
   // ─── 6. Multi-Account CSV Export ───────────────────────────────────────────
   const exportToCSV = () => {
     if (!data || groupedHeads.length === 0) return;
@@ -403,7 +856,7 @@ export function GeneralLedgerClient({
         csvLines.push([
           "",
           "",
-          "Opening Balance",
+          "",
           "",
           "",
           "",
@@ -579,80 +1032,91 @@ export function GeneralLedgerClient({
           </CardHeader>
 
           <CardContent className="pt-6 space-y-6">
-            {/* Multi-Account & Sub-Account Hierarchy Filters Bar */}
+            {/* Account Head & Tag Sub-Account Hierarchy Filters Bar */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end p-5 rounded-xl border border-border bg-muted/10 dark:bg-muted/5 shadow-sm">
-              {/* Heads Multi-Select */}
-              <div
-                className={cn(
-                  "space-y-2",
-                  selectedHeadIds.length > 0 ? "md:col-span-3" : "md:col-span-4",
-                )}
-              >
+              {/* Account Head Selector */}
+              <div className="space-y-2 md:col-span-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Building2 className="h-3 w-3 text-primary/70" /> Account Head(s)
+                    <Building2 className="h-3 w-3 text-primary/70" /> Account Head(s) *
+                    {selectedAccountIds.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground/70 font-normal">
+                        ({selectedAccountIds.length})
+                      </span>
+                    )}
                   </Label>
-                  {selectedHeadIds.length > 0 && (
+                  {selectedAccountIds.length > 0 && (
                     <button
-                      onClick={() => setSelectedHeadIds([])}
-                      className="text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                      onClick={() => {
+                        setSelectedAccountIds([]);
+                        setSelectedTagAccountIds([]);
+                      }}
+                      className="text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                     >
-                      Clear
+                      Clear ({selectedAccountIds.length})
                     </button>
                   )}
                 </div>
-                <MultiSelect
-                  options={headOptions}
-                  value={selectedHeadIds}
-                  onValueChange={setSelectedHeadIds}
+                <ChartOfAccountSelect
+                  accounts={accounts}
+                  value={selectedAccountIds}
+                  onValueChange={(val: string[]) => {
+                    setSelectedAccountIds(val);
+                    setSelectedTagAccountIds([]);
+                  }}
                   placeholder="Select Account Head(s)..."
-                  searchPlaceholder="Search heads by code or name..."
-                  maxDisplayedItems={2}
-                  showSelectAll
+                  allowGroups={true}
+                  excludeTags={true}
+                  multiple={true}
+                  mode="popover"
                   className="h-10 text-sm shadow-sm"
                 />
               </div>
 
-              {/* Sub-Accounts Multi-Select (Hierarchical) */}
-              {selectedHeadIds.length > 0 && (
-                <div className="space-y-2 md:col-span-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <Tag className="h-3 w-3 text-primary/70" /> Sub-Accounts ({availableSubAccounts.length})
-                    </Label>
-                    {selectedSubAccountIds.length > 0 ? (
-                      <button
-                        onClick={() => setSelectedSubAccountIds([])}
-                        className="text-[10px] text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        All ({availableSubAccounts.length})
-                      </button>
-                    ) : (
-                      <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                        All Included
+              {/* Tag Sub-Account Selector */}
+              <div className="space-y-2 md:col-span-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Tag className="h-3 w-3 text-primary/70" /> Tag Sub-Account(s)
+                    {activeSubAccounts.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground/70 font-normal">
+                        ({activeSubAccounts.length}
+                        {activeSubAccountGroups.length > 1
+                          ? ` in ${activeSubAccountGroups.length} Heads`
+                          : ""}
+                        )
                       </span>
                     )}
-                  </div>
-                  <MultiSelect
-                    options={subAccountOptions}
-                    value={selectedSubAccountIds}
-                    onValueChange={setSelectedSubAccountIds}
-                    placeholder="All Sub-accounts (Default)"
-                    searchPlaceholder="Search sub-accounts by name or head..."
-                    maxDisplayedItems={2}
-                    showSelectAll
-                    className="h-10 text-sm shadow-sm"
-                  />
+                  </Label>
+                  {selectedTagAccountIds.length > 0 && (
+                    <button
+                      onClick={() => setSelectedTagAccountIds([])}
+                      className="text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    >
+                      Clear ({selectedTagAccountIds.length})
+                    </button>
+                  )}
                 </div>
-              )}
+                <TagAccountSelect
+                  groups={activeSubAccountGroups}
+                  children={activeSubAccounts}
+                  value={selectedTagAccountIds}
+                  onValueChange={setSelectedTagAccountIds}
+                  disabled={selectedAccountIds.length === 0 || activeSubAccounts.length === 0}
+                  placeholder={
+                    selectedAccountIds.length === 0
+                      ? "Select Account Head first"
+                      : activeSubAccounts.length === 0
+                        ? "No sub-accounts under selected head(s)"
+                        : activeSubAccountGroups.length > 1
+                          ? `All Sub-accounts across ${activeSubAccountGroups.length} Heads (Default)`
+                          : "All Sub-accounts (Default)"
+                  }
+                />
+              </div>
 
               {/* Date Range Picker */}
-              <div
-                className={cn(
-                  "space-y-2",
-                  selectedHeadIds.length > 0 ? "md:col-span-2" : "md:col-span-3",
-                )}
-              >
+              <div className="space-y-2 md:col-span-2">
                 <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="h-3 w-3 text-primary/70" /> Date Range
                 </Label>
@@ -671,12 +1135,7 @@ export function GeneralLedgerClient({
               </div>
 
               {/* Document Filter */}
-              <div
-                className={cn(
-                  "space-y-2",
-                  selectedHeadIds.length > 0 ? "md:col-span-2" : "md:col-span-3",
-                )}
-              >
+              <div className="space-y-2 md:col-span-2">
                 <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Filter className="h-3 w-3 text-primary/70" /> Document Type
                 </Label>
@@ -699,8 +1158,8 @@ export function GeneralLedgerClient({
               <div className="md:col-span-2">
                 <Button
                   onClick={handleLoadClick}
-                  disabled={isPending || selectedHeadIds.length === 0}
-                  className="h-10 w-full font-medium text-sm shadow-md transition-all hover:translate-y-[-1px] active:translate-y-[0px] hover:shadow-lg bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-600/95"
+                  disabled={isPending || selectedAccountIds.length === 0}
+                  className="h-10 w-full font-medium text-sm shadow-md transition-all hover:translate-y-[-1px] active:translate-y-[0px] hover:shadow-lg bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-600/95 cursor-pointer"
                 >
                   <RefreshCw
                     className={cn("h-4 w-4 mr-2", isPending && "animate-spin")}
@@ -714,9 +1173,13 @@ export function GeneralLedgerClient({
             {!data && (
               <div className="flex flex-col items-center justify-center h-56 text-muted-foreground border border-dashed rounded-xl p-8 bg-muted/5">
                 <BookOpen className="h-12 w-12 text-muted-foreground/35 mb-3 stroke-[1.5]" />
-                <p className="text-sm font-semibold text-foreground/80">No Account Head Selected</p>
-                <p className="text-xs text-muted-foreground/70 mt-1 max-w-[340px] text-center">
-                  Select one or more Account Heads and optional Sub-Accounts above, specify the reporting period, and click "Load Ledger" to inspect detailed transaction ledgers.
+                <p className="text-sm font-semibold text-foreground/80">
+                  No Account Head Selected
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-1 max-w-[360px] text-center">
+                  Select one or more Account Heads and optional Tag Sub-Accounts above,
+                  specify the reporting period, and click &quot;Load Ledger&quot;
+                  to inspect detailed transaction ledgers.
                 </p>
               </div>
             )}
@@ -724,9 +1187,11 @@ export function GeneralLedgerClient({
             {/* Render Data with Hierarchical Navigation */}
             {data && (() => {
               const ledgersToRender =
-                viewMode === "single"
-                  ? (safeActiveLedger ? [safeActiveLedger] : [])
-                  : allLedgers;
+                viewMode === "consolidated"
+                  ? (consolidatedLedger ? [consolidatedLedger] : allLedgers)
+                  : viewMode === "single"
+                    ? (safeActiveLedger ? [safeActiveLedger] : [])
+                    : allLedgers;
 
               return (
                 <div className="space-y-6">
@@ -785,7 +1250,7 @@ export function GeneralLedgerClient({
                       </div>
 
                       {/* Controls: Next/Prev & View Mode Toggle */}
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         {viewMode === "single" && allLedgers.length > 1 && (
                           <>
                             <span className="text-xs font-bold font-mono text-muted-foreground px-2.5 py-1 bg-background rounded-lg border">
@@ -822,16 +1287,47 @@ export function GeneralLedgerClient({
                           </>
                         )}
 
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs font-semibold px-2.5 rounded-lg border border-border/50 hover:bg-background"
-                          onClick={() =>
-                            setViewMode((m) => (m === "single" ? "all" : "single"))
-                          }
-                        >
-                          {viewMode === "single" ? "View All" : "Single View"}
-                        </Button>
+                        {allLedgers.length > 1 && (
+                          <div className="flex items-center p-0.5 bg-background border border-border/60 rounded-xl shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => setViewMode("all")}
+                              className={cn(
+                                "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all",
+                                viewMode === "all"
+                                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              All ({allLedgers.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setViewMode("single")}
+                              className={cn(
+                                "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all",
+                                viewMode === "single"
+                                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              Single View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setViewMode("consolidated")}
+                              className={cn(
+                                "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all",
+                                viewMode === "consolidated"
+                                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                                  : "text-muted-foreground hover:text-foreground",
+                              )}
+                              title="Combined chronological ledger across all selected accounts"
+                            >
+                              Consolidated
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -902,7 +1398,9 @@ export function GeneralLedgerClient({
                             </span>
                           </div>
                           <div className="text-xs font-mono text-muted-foreground">
-                            Account {allLedgers.indexOf(ledgerItem) + 1} of {allLedgers.length}
+                            {viewMode === "consolidated"
+                              ? "Consolidated Statement"
+                              : `Account ${allLedgers.indexOf(ledgerItem) + 1} of ${allLedgers.length}`}
                           </div>
                         </div>
 
@@ -1033,8 +1531,8 @@ export function GeneralLedgerClient({
                                 <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
                                   —
                                 </td>
-                                <td className="px-4 py-2.5 border-r dark:border-border/40 text-xs italic">
-                                  Opening Balance
+                                <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
+                                  —
                                 </td>
                                 <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
                                   —
@@ -1297,7 +1795,7 @@ export function GeneralLedgerClient({
                   <tr className="border-b border-gray-300 align-top italic text-gray-600 font-medium bg-gray-50/50">
                     <td className="py-1 pr-1">—</td>
                     <td className="py-1 pr-1">—</td>
-                    <td className="py-1 pr-1">Opening Balance</td>
+                    <td className="py-1 pr-1">—</td>
                     <td className="py-1 pr-1">—</td>
                     <td className="py-1 pr-1">—</td>
                     <td className="py-1 pr-1">—</td>
@@ -1326,7 +1824,7 @@ export function GeneralLedgerClient({
                         {format(new Date(row.transactionDate), "dd/MM/yyyy")}
                       </td>
                       <td className="py-1 pr-1 font-mono font-semibold text-[8px] whitespace-nowrap">
-                        {row.sourceRef}
+                        {formatVoucherNoForPrint(row.sourceRef)}
                       </td>
                       <td
                         className="py-1 pr-1 text-[8px] whitespace-nowrap truncate max-w-0"

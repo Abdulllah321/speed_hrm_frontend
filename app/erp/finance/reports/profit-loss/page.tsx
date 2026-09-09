@@ -1,4 +1,5 @@
 import { getIncomeStatement } from "@/lib/actions/finance-reports";
+import { getChartOfAccountsTree } from "@/lib/actions/chart-of-account";
 import { ProfitLossClient } from "./profit-loss-client";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink,
@@ -11,7 +12,10 @@ export default async function ProfitLossPage() {
   const now = new Date();
   const from = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
   const to   = now.toISOString().split("T")[0];
-  const result = await getIncomeStatement(from, to);
+  const [result, coaRes] = await Promise.all([
+    getIncomeStatement(from, to),
+    getChartOfAccountsTree(),
+  ]);
 
   return (
     <>
@@ -35,7 +39,12 @@ export default async function ProfitLossPage() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <ProfitLossClient initialData={result.data} defaultFrom={from} defaultTo={to} />
+        <ProfitLossClient
+          initialData={result.data}
+          defaultFrom={from}
+          defaultTo={to}
+          accounts={coaRes.data ?? []}
+        />
       </div>
     </>
   );
