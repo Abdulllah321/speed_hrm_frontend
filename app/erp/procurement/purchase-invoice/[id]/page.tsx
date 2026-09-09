@@ -808,22 +808,24 @@ export default function PurchaseInvoiceDetailPage() {
               </div>
             </div>
             <div className="flex gap-2" key={`buttons-${invoice.status}`}>
-              <PermissionGuard
-                permissions="erp.procurement.pi.update"
-                fallback={null}
-              >
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    router.push(
-                      `/erp/procurement/purchase-invoice/${invoice.id}/edit`,
-                    )
-                  }
+              {invoice.status === "DRAFT" && (
+                <PermissionGuard
+                  permissions="erp.procurement.pi.update"
+                  fallback={null}
                 >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-              </PermissionGuard>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      router.push(
+                        `/erp/procurement/purchase-invoice/${invoice.id}/edit`,
+                      )
+                    }
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                </PermissionGuard>
+              )}
               {invoice.status === "DRAFT" && (
                 <>
                   <PermissionGuard
