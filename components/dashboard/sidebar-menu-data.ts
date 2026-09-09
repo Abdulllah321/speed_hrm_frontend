@@ -749,7 +749,7 @@ export const menuData: MenuItem[] = [
         ],
       },
       {
-        title: "RS RV List",
+        title: "Retail Sale Receipt Voucher (RSRV)",
         permissions: ["erp.finance.receipt-voucher.read"],
         children: [
           {
