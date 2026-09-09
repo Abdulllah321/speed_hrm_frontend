@@ -13,14 +13,11 @@ import {
   Receipt,
   Settings,
   Shield,
-  Menu,
-  Database,
   Landmark,
   Package,
   ShoppingCart,
   TrendingUp,
   Monitor,
-  CheckSquare,
   ChartNoAxesGantt,
 } from "lucide-react";
 
