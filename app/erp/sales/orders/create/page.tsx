@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Search, Filter, Trash2, Package, Info } from "lucide-react";
+import { ArrowLeft, Plus, Search, Filter, Trash2, Package, Info, FileSpreadsheet } from "lucide-react";
+import { SalesOrderBulkItemUploadModal } from "@/components/sales/sales-order-bulk-item-upload-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +96,39 @@ export default function CreateSalesOrderPage() {
     brandIds: string[];
     categoryIds: string[];
   }>({ brandIds: [], categoryIds: [] });
+
+  // Bulk upload state
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+
+  // Handle bulk import
+  const handleBulkImportComplete = (importedItems: any[]) => {
+    let addedCount = 0;
+    let skippedCount = 0;
+    importedItems.forEach((importItem) => {
+      const alreadyExists = selectedItems.some((s) => s.id === importItem.id);
+      if (alreadyExists) {
+        skippedCount++;
+        return;
+      }
+      const newItem: SelectedItem = {
+        id: importItem.id,
+        sku: importItem.sku,
+        description: importItem.description,
+        costPrice: importItem.salePrice || 0,
+        salePrice: importItem.salePrice || 0,
+        quantity: importItem.quantity,
+        discount: 0,
+        total: importItem.salePrice * importItem.quantity || 0,
+        availableStock: importItem.availableStock,
+        taxRate: importItem.taxRate || 0,
+      };
+      setSelectedItems((prev) => [...prev, newItem]);
+      addedCount++;
+    });
+    if (skippedCount > 0) {
+      toast.info(addedCount + ' item(s) added. ' + skippedCount + ' duplicate(s) skipped.');
+    }
+  };
 
   // Load data
   useEffect(() => {
@@ -394,6 +428,21 @@ export default function CreateSalesOrderPage() {
               Add Items
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">{selectedItems.length} Items Selected</Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!selectedWarehouseId) {
+                      toast.error("Please select a warehouse first before bulk uploading.");
+                      return;
+                    }
+                    setIsBulkUploadOpen(true);
+                  }}
+                  className="text-violet-700 border-violet-200 hover:bg-violet-50"
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Bulk Upload
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -816,6 +865,15 @@ export default function CreateSalesOrderPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Bulk Item Upload Modal */}
+      <SalesOrderBulkItemUploadModal
+        open={isBulkUploadOpen}
+        onOpenChange={setIsBulkUploadOpen}
+        warehouseId={selectedWarehouseId}
+        warehouseName={warehouses.find(w => w.id === selectedWarehouseId)?.name}
+        onImportComplete={handleBulkImportComplete}
+      />
     </div>
   );
 }
