@@ -3,57 +3,72 @@
 import { format } from "date-fns";
 import { SalesListInvoiceNode, SalesListTotals } from "./types";
 
+const yieldToMain = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 export async function generateSalesListPdf(opts: {
   invoices: SalesListInvoiceNode[];
   grandTotals: SalesListTotals;
   dateRange: { from?: Date; to?: Date };
   locationNames: string;
+  onProgress?: (percent: number, message?: string) => void;
 }): Promise<void> {
-  const { invoices, grandTotals, dateRange, locationNames } = opts;
+  const { invoices, grandTotals, dateRange, locationNames, onProgress } = opts;
+
+  onProgress?.(5, "Preparing printable document template...");
+  await yieldToMain();
 
   const dateStr = format(new Date(), "yyyy-MM-dd");
   const fromDateStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : "Start";
   const toDateStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : "End";
 
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    alert("Please allow popups to open the PDF print view.");
-    return;
+  const totalCount = Math.min(invoices.length, 3000);
+  const rowChunks: string[] = [];
+
+  for (let i = 0; i < totalCount; i++) {
+    const inv = invoices[i];
+    rowChunks.push(`
+      <tr>
+        <td>${inv.orderNumber}</td>
+        <td>${format(new Date(inv.createdAt), "yyyy-MM-dd HH:mm")}</td>
+        <td>${inv.customerName} (${inv.customerPhone})</td>
+        <td>${inv.cashierName}</td>
+        <td style="text-align: center;">${inv.paymentMethod}</td>
+        <td>${inv.merchant || "-"}</td>
+        <td>${inv.fbrInvoiceNumber || "-"}</td>
+        <td style="text-align: right;">${inv.totals.totalItems}</td>
+        <td style="text-align: right;">Rs. ${inv.totals.grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+        <td style="text-align: right; color: #b45309;">Rs. ${inv.totals.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+        <td style="text-align: right;">Rs. ${inv.totals.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+        <td style="text-align: right; font-weight: bold; color: #047857;">Rs. ${inv.totals.netAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+        <td style="text-align: right;">${inv.totals.cashSale ? `Rs. ${inv.totals.cashSale.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right; color: #e11d48;">${inv.totals.cashReturn ? `Rs. ${inv.totals.cashReturn.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right;">${inv.totals.cardSale ? `Rs. ${inv.totals.cardSale.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right;">${inv.totals.creditSale ? `Rs. ${inv.totals.creditSale.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right;">${inv.totals.giftVoucherAmount ? `Rs. ${inv.totals.giftVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right;">${inv.totals.creditVoucherAmount ? `Rs. ${inv.totals.creditVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right;">${inv.totals.exchangeVoucherAmount ? `Rs. ${inv.totals.exchangeVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right;">${inv.totals.claimVoucherAmount ? `Rs. ${inv.totals.claimVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right;">${inv.totals.giftVoucherCorporate ? `Rs. ${inv.totals.giftVoucherCorporate.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right; color: #b91c1c;">${inv.totals.creditVoucherIssuedAmount ? `Rs. ${inv.totals.creditVoucherIssuedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right;">${inv.totals.rewardVoucherAmount ? `Rs. ${inv.totals.rewardVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+        <td style="text-align: right;">${inv.totals.onCreditAmount ? `Rs. ${inv.totals.onCreditAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
+      </tr>
+    `);
+
+    if (i % 80 === 0 || i === totalCount - 1) {
+      const pct = Math.round(((i + 1) / Math.max(1, totalCount)) * 75) + 10;
+      onProgress?.(
+        pct,
+        `Rendering invoice ${i + 1} of ${totalCount.toLocaleString()}...`,
+      );
+      await yieldToMain();
+    }
   }
 
-  const rowsHtml = invoices
-    .slice(0, 1500)
-    .map(
-      (inv) => `
-    <tr>
-      <td>${inv.orderNumber}</td>
-      <td>${format(new Date(inv.createdAt), "yyyy-MM-dd HH:mm")}</td>
-      <td>${inv.customerName} (${inv.customerPhone})</td>
-      <td>${inv.cashierName}</td>
-      <td style="text-align: center;">${inv.paymentMethod}</td>
-      <td>${inv.merchant || "-"}</td>
-      <td>${inv.fbrInvoiceNumber || "-"}</td>
-      <td style="text-align: right;">${inv.totals.totalItems}</td>
-      <td style="text-align: right;">Rs. ${inv.totals.grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-      <td style="text-align: right; color: #b45309;">Rs. ${inv.totals.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-      <td style="text-align: right;">Rs. ${inv.totals.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-      <td style="text-align: right; font-weight: bold; color: #047857;">Rs. ${inv.totals.netAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-      <td style="text-align: right;">${inv.totals.cashSale ? `Rs. ${inv.totals.cashSale.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right; color: #e11d48;">${inv.totals.cashReturn ? `Rs. ${inv.totals.cashReturn.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right;">${inv.totals.cardSale ? `Rs. ${inv.totals.cardSale.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right;">${inv.totals.creditSale ? `Rs. ${inv.totals.creditSale.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right;">${inv.totals.giftVoucherAmount ? `Rs. ${inv.totals.giftVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right;">${inv.totals.creditVoucherAmount ? `Rs. ${inv.totals.creditVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right;">${inv.totals.exchangeVoucherAmount ? `Rs. ${inv.totals.exchangeVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right;">${inv.totals.claimVoucherAmount ? `Rs. ${inv.totals.claimVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right;">${inv.totals.giftVoucherCorporate ? `Rs. ${inv.totals.giftVoucherCorporate.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right; color: #b91c1c;">${inv.totals.creditVoucherIssuedAmount ? `Rs. ${inv.totals.creditVoucherIssuedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right;">${inv.totals.rewardVoucherAmount ? `Rs. ${inv.totals.rewardVoucherAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-      <td style="text-align: right;">${inv.totals.onCreditAmount ? `Rs. ${inv.totals.onCreditAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}</td>
-    </tr>
-  `,
-    )
-    .join("");
+  onProgress?.(88, "Compiling print layout & summary metrics...");
+  await yieldToMain();
+
+  const rowsHtml = rowChunks.join("");
 
   const html = `
     <!DOCTYPE html>
@@ -182,6 +197,17 @@ export async function generateSalesListPdf(opts: {
     </html>
   `;
 
+  onProgress?.(95, "Opening print preview window...");
+  await yieldToMain();
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    alert("Please allow popups to open the PDF print view.");
+    return;
+  }
+
   printWindow.document.write(html);
   printWindow.document.close();
+
+  onProgress?.(100, "Print document ready!");
 }

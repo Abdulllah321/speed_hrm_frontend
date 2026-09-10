@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { LocationHeader, WarehouseHeader } from "./types";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { ReportSseState } from "@/hooks/use-report-sse";
@@ -24,18 +24,34 @@ import {
   Loader2,
   AlertCircle,
   Clock,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export type AsOfPreset = "today" | "fy-current" | "fy-previous" | "custom";
+
+export function getFiscalYearEndDate(offsetYears = 0): { dateStr: string; label: string } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-11, July is 6
+  const currentFyEndYear = month >= 6 ? year + 1 : year;
+  const targetEndYear = currentFyEndYear - offsetYears;
+  const dateStr = `${targetEndYear}-06-30`;
+  const fyLabel = `FY ${targetEndYear - 1}-${String(targetEndYear).slice(2)}`;
+  return { dateStr, label: `${fyLabel} (30 Jun ${targetEndYear})` };
+}
 
 interface InventoryAgingFiltersProps {
   isPosLevel?: boolean;
   posLocationName?: string;
   reportType: "merged" | "separate";
   onReportTypeChange: (type: "merged" | "separate") => void;
+  asOfPreset: string;
+  onAsOfPresetChange: (preset: string) => void;
+  asOfDate: string;
+  onAsOfDateChange: (date: string) => void;
   agingHorizon?: string;
   onAgingHorizonChange?: (preset: string) => void;
-  dateRange: DateRange;
-  onDateRangeChange: (range: DateRange) => void;
   locations: LocationHeader[];
   warehouses: WarehouseHeader[];
   selectedLocationIds: string[];
@@ -74,10 +90,12 @@ export function InventoryAgingFilters({
   posLocationName = "Current Store",
   reportType,
   onReportTypeChange,
+  asOfPreset,
+  onAsOfPresetChange,
+  asOfDate,
+  onAsOfDateChange,
   agingHorizon = "9m",
   onAgingHorizonChange,
-  dateRange,
-  onDateRangeChange,
   locations,
   warehouses,
   selectedLocationIds,
@@ -106,6 +124,9 @@ export function InventoryAgingFilters({
   exportProgressMessage = "",
 }: InventoryAgingFiltersProps) {
   const [showFormulaInfo, setShowFormulaInfo] = useState(true);
+
+  const currentFy = useMemo(() => getFiscalYearEndDate(0), []);
+  const prevFy = useMemo(() => getFiscalYearEndDate(1), []);
 
   const locationOptions: MultiSelectOption[] = useMemo(() => {
     return locations.map((loc) => ({
@@ -247,17 +268,54 @@ export function InventoryAgingFilters({
             </Select>
           </div>
 
-          {/* Date Range Picker */}
-          <DateRangePicker
-            initialDateFrom={dateRange.from}
-            initialDateTo={dateRange.to}
-            onUpdate={({ range }: { range: DateRange }) => {
-              if (range) {
-                onDateRangeChange(range);
-                onAgingHorizonChange?.("custom");
-              }
-            }}
-          />
+          {/* As-Of Snapshot Presets Selector */}
+          <div className="w-52 sm:w-60">
+            <Select
+              value={asOfPreset}
+              onValueChange={(val) => {
+                onAsOfPresetChange(val);
+                if (val === "today") {
+                  onAsOfDateChange(new Date().toISOString().slice(0, 10));
+                } else if (val === "fy-current") {
+                  onAsOfDateChange(currentFy.dateStr);
+                } else if (val === "fy-previous") {
+                  onAsOfDateChange(prevFy.dateStr);
+                }
+              }}
+            >
+              <SelectTrigger className="h-9 rounded-xl text-xs bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold">
+                <div className="flex items-center gap-1.5 truncate">
+                  <Calendar className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                  <SelectValue placeholder="Select Snapshot Date" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">
+                  <span className="font-bold">As of Today</span> ({new Date().toISOString().slice(0, 10)})
+                </SelectItem>
+                <SelectItem value="fy-current">
+                  <span className="font-bold">Current FY End:</span> {currentFy.label}
+                </SelectItem>
+                <SelectItem value="fy-previous">
+                  <span className="font-bold">Previous FY End:</span> {prevFy.label}
+                </SelectItem>
+                <SelectItem value="custom">Custom As-Of Date...</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Custom Date Picker (visible when custom snapshot date is selected) */}
+          {asOfPreset === "custom" && (
+            <div className="w-36 sm:w-44">
+              <DatePicker
+                value={asOfDate}
+                onChange={(newDate) => {
+                  if (newDate) onAsOfDateChange(newDate);
+                }}
+                className="h-9 text-xs rounded-xl"
+              />
+            </div>
+          )}
         </div>
 
         {/* Search & Actions */}

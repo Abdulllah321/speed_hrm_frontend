@@ -83,6 +83,9 @@ export interface SalesListInvoiceNode {
   customerName: string;
   customerPhone: string;
   cashierName: string;
+  cashierUserId?: string;
+  locationId?: string;
+  locationName?: string;
   paymentMethod: string;
   merchant?: string;
   fbrInvoiceNumber: string;

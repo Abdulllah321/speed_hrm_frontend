@@ -18,6 +18,8 @@ export async function queueInventoryAgingPreview(params: {
   warehouseId?: string;
   startDate?: string;
   endDate?: string;
+  asOfDate?: string;
+  fiscalYear?: string;
   reportType?: "merged" | "separate";
 }) {
   try {

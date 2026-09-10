@@ -13,7 +13,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Printer, Receipt, Loader2, FileSpreadsheet, Download, FileText, MessageSquare } from "lucide-react";
+import {
+  Printer,
+  Receipt,
+  Loader2,
+  FileSpreadsheet,
+  Download,
+  FileText,
+  MessageSquare,
+} from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import type { PosSettings } from "@/hooks/use-pos-settings";
 import { POS_SETTINGS_DEFAULTS } from "@/hooks/use-pos-settings";
@@ -26,7 +34,17 @@ import { toast } from "sonner";
 
 // ── Barcode helper ───────────────────────────────────────────────────────────
 
-function BarcodeImg({ value, height = 36, fontSize = 9, displayValue = true }: { value: string; height?: number; fontSize?: number; displayValue?: boolean }) {
+function BarcodeImg({
+  value,
+  height = 36,
+  fontSize = 9,
+  displayValue = true,
+}: {
+  value: string;
+  height?: number;
+  fontSize?: number;
+  displayValue?: boolean;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [dataUrl, setDataUrl] = useState<string>("");
 
@@ -60,7 +78,14 @@ function BarcodeImg({ value, height = 36, fontSize = 9, displayValue = true }: {
   if (!value) return null;
 
   return (
-    <div style={{ textAlign: "center", lineHeight: 0, marginTop: 4, marginBottom: 2 }}>
+    <div
+      style={{
+        textAlign: "center",
+        lineHeight: 0,
+        marginTop: 4,
+        marginBottom: 2,
+      }}
+    >
       {/* Hidden canvas used to generate the barcode PNG */}
       <canvas ref={canvasRef} style={{ display: "none" }} />
       {/* Rendered as <img> so it survives html-to-image / print snapshots */}
@@ -68,7 +93,11 @@ function BarcodeImg({ value, height = 36, fontSize = 9, displayValue = true }: {
         <img
           src={dataUrl}
           alt={`Barcode: ${value}`}
-          style={{ maxWidth: "100%", height: `${height + fontSize + 10}px`, objectFit: "contain" }}
+          style={{
+            maxWidth: "100%",
+            height: `${height + fontSize + 10}px`,
+            objectFit: "contain",
+          }}
         />
       )}
     </div>
@@ -238,8 +267,18 @@ export function PrintReceipt({
   // Default layout selection to A4 if invoice grand total >= 1,000,000 PKR
   const defaultLayout =
     (Number(order?.grandTotal ?? 0) ||
-      Number(order?.items?.reduce((acc: number, item: any) => acc + Number(item.lineTotal ?? 0), 0) ?? 0) ||
-      Number(propCartItems?.reduce((acc, item) => acc + (item.price * item.quantity), 0) ?? 0)) >= 1000000
+      Number(
+        order?.items?.reduce(
+          (acc: number, item: any) => acc + Number(item.lineTotal ?? 0),
+          0,
+        ) ?? 0,
+      ) ||
+      Number(
+        propCartItems?.reduce(
+          (acc, item) => acc + item.price * item.quantity,
+          0,
+        ) ?? 0,
+      )) >= 1000000
       ? "a4"
       : "thermal";
 
@@ -251,7 +290,8 @@ export function PrintReceipt({
     setMounted(true);
   }, []);
 
-  const shouldAutoPrint = autoPrint !== undefined ? autoPrint : (settings.receiptAutoPrint ?? false);
+  const shouldAutoPrint =
+    autoPrint !== undefined ? autoPrint : (settings.receiptAutoPrint ?? false);
 
   useEffect(() => {
     if (!isLoading && mounted && shouldAutoPrint) {
@@ -276,65 +316,69 @@ export function PrintReceipt({
     }
   };
 
-const handleDownloadPdf = async () => {
-  if (isLoading) return;
-  setIsDownloading(true);
-  const toastId = toast.loading("Generating Invoice PDF...");
+  const handleDownloadPdf = async () => {
+    if (isLoading) return;
+    setIsDownloading(true);
+    const toastId = toast.loading("Generating Invoice PDF...");
 
-  try {
-    const node = reportRef.current;
-    if (!node) {
-      toast.error("Failed to capture report content", { id: toastId });
-      return;
+    try {
+      const node = reportRef.current;
+      if (!node) {
+        toast.error("Failed to capture report content", { id: toastId });
+        return;
+      }
+
+      // Wait for every <img> inside (e.g. FBR logo) to actually finish loading
+      const images = Array.from(node.querySelectorAll("img"));
+      await Promise.all(
+        images.map((img) =>
+          img.complete
+            ? Promise.resolve()
+            : new Promise<void>((res) => {
+                img.onload = () => res();
+                img.onerror = () => res();
+              }),
+        ),
+      );
+
+      // Let the browser settle a couple of paint cycles before snapshotting
+      await new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r)),
+      );
+
+      const dataUrl = await htmlToImage.toPng(node, {
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+        cacheBust: true,
+        style: {
+          position: "relative",
+          left: "0",
+          top: "0",
+        },
+      });
+
+      const imgProps = new jsPDF().getImageProperties(dataUrl);
+      const pdfWidth = layout === "thermal" ? 80 : 210;
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [pdfWidth, pdfHeight],
+      });
+
+      pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${order?.orderNumber || `invoice-${Date.now()}`}.pdf`);
+      toast.success("PDF downloaded successfully", { id: toastId });
+    } catch (error) {
+      console.error("PDF download error:", error);
+      toast.error("An error occurred while downloading the PDF", {
+        id: toastId,
+      });
+    } finally {
+      setIsDownloading(false);
     }
-
-    // Wait for every <img> inside (e.g. FBR logo) to actually finish loading
-    const images = Array.from(node.querySelectorAll("img"));
-    await Promise.all(
-      images.map((img) =>
-        img.complete
-          ? Promise.resolve()
-          : new Promise<void>((res) => {
-              img.onload = () => res();
-              img.onerror = () => res();
-            })
-      )
-    );
-
-    // Let the browser settle a couple of paint cycles before snapshotting
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    const dataUrl = await htmlToImage.toPng(node, {
-      backgroundColor: "#ffffff",
-      pixelRatio: 2,
-      cacheBust: true,
-      style: {
-        position: "relative",
-        left: "0",
-        top: "0",
-      },
-    });
-
-    const imgProps = new jsPDF().getImageProperties(dataUrl);
-    const pdfWidth = layout === "thermal" ? 80 : 210;
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-    const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: [pdfWidth, pdfHeight],
-    });
-
-    pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`${order?.orderNumber || `invoice-${Date.now()}`}.pdf`);
-    toast.success("PDF downloaded successfully", { id: toastId });
-  } catch (error) {
-    console.error("PDF download error:", error);
-    toast.error("An error occurred while downloading the PDF", { id: toastId });
-  } finally {
-    setIsDownloading(false);
-  }
-};
+  };
 
   // ── Store info ────────────────────────────────────────────────────
   const storeName =
@@ -479,10 +523,17 @@ const handleDownloadPdf = async () => {
     order?.fbrInvoiceNumber
   );
 
-  const fbrPosFee = hasFbrInfo ? (Number(order?.fbrPosFee ?? 0) || 1) : 0;
+  const fbrPosFee = hasFbrInfo ? Number(order?.fbrPosFee ?? 0) || 1 : 0;
   const finalGrandTotal = isSavedOrder ? grandTotal : grandTotal + fbrPosFee;
   const changeAmount = Number(order?.changeAmount ?? 0);
-  const totalPaid = tenders.reduce((s, t) => s + (t.method === "voucher" && t.voucherFaceValue ? t.voucherFaceValue : t.amount), 0);
+  const totalPaid = tenders.reduce(
+    (s, t) =>
+      s +
+      (t.method === "voucher" && t.voucherFaceValue
+        ? t.voucherFaceValue
+        : t.amount),
+    0,
+  );
 
   // Alliance distribution for display - proportional to item value
   const calculateProportionalDiscount = (
@@ -561,23 +612,35 @@ const handleDownloadPdf = async () => {
         .map(
           (i) =>
             `• ${i.name}${i.size ? ` (${i.size})` : ""} x ${i.quantity} = Rs. ${fmtDec(
-              i.price * i.quantity
-            )}`
+              i.price * i.quantity,
+            )}`,
         )
         .join("\n");
 
       const custName = order?.customer?.name || order?.customerName || "";
-      const custPhone = order?.customer?.contactNo || order?.customer?.phone || order?.customerPhone || order?.customerMobile || "";
+      const custPhone =
+        order?.customer?.contactNo ||
+        order?.customer?.phone ||
+        order?.customerPhone ||
+        order?.customerMobile ||
+        "";
       const custEmail = order?.customer?.email || order?.customerEmail || "";
-      const custAddr = order?.customer?.deliveryAddress || order?.customer?.address || order?.customerAddress || "";
-      const extRef = order?.externalOrderNo || (
-        order?.notes && order.notes.includes("EZCommerce Order")
+      const custAddr =
+        order?.customer?.deliveryAddress ||
+        order?.customer?.address ||
+        order?.customerAddress ||
+        "";
+      const extRef =
+        order?.externalOrderNo ||
+        (order?.notes && order.notes.includes("EZCommerce Order")
           ? order.notes.split("|")[0].replace("EZCommerce Order", "").trim()
-          : null
-      );
+          : null);
 
       const itemsValInclTax = Math.round(finalGrandTotal - fbrPosFee);
-      const calcShipping = Math.max(0, Math.round(finalGrandTotal - fbrPosFee - (valueForSales + totalTax)));
+      const calcShipping = Math.max(
+        0,
+        Math.round(finalGrandTotal - fbrPosFee - (valueForSales + totalTax)),
+      );
       const shipFee = Number(order?.shippingFee ?? 0) || calcShipping;
       const itemsTotInclTax = itemsValInclTax - shipFee;
 
@@ -711,10 +774,14 @@ Software by Innovative Network (pvt.) Limited`;
 
       {/* ── Screen: dialog preview ────────────────────────────────── */}
       <Dialog open onOpenChange={onClose}>
-        <DialogContent className={cn(
-          "h-[92vh] flex flex-col p-0 gap-0 transition-all duration-300",
-          layout === "thermal" ? "sm:max-w-2xl w-full" : "sm:max-w-5xl w-full"
-        )}>
+        <DialogContent
+          className={cn(
+            "h-[92vh] flex flex-col p-0 gap-0 transition-all duration-300",
+            layout === "thermal"
+              ? "sm:max-w-2xl w-full"
+              : "sm:max-w-5xl w-full",
+          )}
+        >
           <DialogHeader className="px-5 pt-4 pb-3 border-b shrink-0 flex flex-row items-center gap-4">
             <div className="flex items-center gap-2">
               {isLoading && (
@@ -725,7 +792,7 @@ Software by Innovative Network (pvt.) Limited`;
                 Receipt Preview
               </DialogTitle>
             </div>
-            
+
             {/* Format Switcher */}
             {!isLoading && (
               <div className="flex items-center gap-1 bg-muted p-1 rounded-full border ml-auto">
@@ -737,7 +804,7 @@ Software by Innovative Network (pvt.) Limited`;
                     "rounded-full h-7 px-3 text-xs font-semibold gap-1 transition-all",
                     layout === "thermal"
                       ? "bg-background shadow text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <Receipt className="w-3.5 h-3.5" />
@@ -751,7 +818,7 @@ Software by Innovative Network (pvt.) Limited`;
                     "rounded-full h-7 px-3 text-xs font-semibold gap-1 transition-all",
                     layout === "a4"
                       ? "bg-background shadow text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -765,7 +832,13 @@ Software by Innovative Network (pvt.) Limited`;
             {isLoading ? (
               <ReceiptSkeleton />
             ) : (
-              <div className={layout === "thermal" ? "w-[320px] bg-white border shadow-md p-4 rounded-md h-fit animate-in zoom-in-95 duration-150" : "w-[210mm] min-w-[210mm] h-fit shadow-lg border rounded-sm overflow-hidden bg-white animate-in zoom-in-95 duration-150"}>
+              <div
+                className={
+                  layout === "thermal"
+                    ? "w-[320px] bg-white border shadow-md p-4 rounded-md h-fit animate-in zoom-in-95 duration-150"
+                    : "w-[210mm] min-w-[210mm] h-fit shadow-lg border rounded-sm overflow-hidden bg-white animate-in zoom-in-95 duration-150"
+                }
+              >
                 {layout === "thermal" ? (
                   <ReceiptBody {...bodyProps} />
                 ) : (
@@ -787,11 +860,13 @@ Software by Innovative Network (pvt.) Limited`;
             >
               {isGeneratingImage ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin text-emerald-600" /> Preparing Cash Memo…
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />{" "}
+                  Preparing Cash Memo…
                 </>
               ) : (
                 <>
-                  <MessageSquare className="h-4 w-4 text-emerald-600" /> Send via WhatsApp
+                  <MessageSquare className="h-4 w-4 text-emerald-600" /> Send
+                  via WhatsApp
                 </>
               )}
             </Button>
@@ -803,7 +878,8 @@ Software by Innovative Network (pvt.) Limited`;
             >
               {isDownloading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> Generating PDF…
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />{" "}
+                  Generating PDF…
                 </>
               ) : (
                 <>
@@ -1020,12 +1096,14 @@ function ReceiptBody({
       <div className="space-y-0.5 text-[11px]">
         <Row label="Receipt No." value={order?.orderNumber ?? ""} bold />
         {(() => {
-          const extRef = order?.externalOrderNo || (
-            order?.notes && order.notes.includes("EZCommerce Order")
+          const extRef =
+            order?.externalOrderNo ||
+            (order?.notes && order.notes.includes("EZCommerce Order")
               ? order.notes.split("|")[0].replace("EZCommerce Order", "").trim()
-              : null
-          );
-          return extRef ? <Row label="Original Order Ref #" value={extRef} bold /> : null;
+              : null);
+          return extRef ? (
+            <Row label="Original Order Ref #" value={extRef} bold />
+          ) : null;
         })()}
         {order?.paymentStatus && (
           <Row
@@ -1034,7 +1112,10 @@ function ReceiptBody({
             bold
           />
         )}
-        <Row label="Date" value={`${fmtDate(order?.createdAt)} ${fmtTime(order?.createdAt)}`} />
+        <Row
+          label="Date"
+          value={`${fmtDate(order?.createdAt)} ${fmtTime(order?.createdAt)}`}
+        />
         {cashierName && <Row label="Sales By" value={cashierName} />}
         {terminalName && <Row label="Terminal" value={terminalName} />}
       </div>
@@ -1042,9 +1123,18 @@ function ReceiptBody({
       {/* ── Customer & Delivery Details ── */}
       {(() => {
         const custName = order?.customer?.name || order?.customerName || "";
-        const custPhone = order?.customer?.contactNo || order?.customer?.phone || order?.customerPhone || order?.customerMobile || "";
+        const custPhone =
+          order?.customer?.contactNo ||
+          order?.customer?.phone ||
+          order?.customerPhone ||
+          order?.customerMobile ||
+          "";
         const custEmail = order?.customer?.email || order?.customerEmail || "";
-        const custAddr = order?.customer?.deliveryAddress || order?.customer?.address || order?.customerAddress || "";
+        const custAddr =
+          order?.customer?.deliveryAddress ||
+          order?.customer?.address ||
+          order?.customerAddress ||
+          "";
         const hasCustInfo = !!(custName || custPhone || custEmail || custAddr);
 
         if (!hasCustInfo) return null;
@@ -1062,7 +1152,9 @@ function ReceiptBody({
               {custAddr && (
                 <div className="pt-0.5 text-[10px]">
                   <span className="font-semibold block">Delivery Address:</span>
-                  <span className="text-zinc-800 block leading-tight">{custAddr}</span>
+                  <span className="text-zinc-800 block leading-tight">
+                    {custAddr}
+                  </span>
                 </div>
               )}
             </div>
@@ -1185,9 +1277,7 @@ function ReceiptBody({
                   gap: "0 4px",
                 }}
               >
-                <span className="text-zinc-955 truncate">
-                  {uniqueNo}
-                </span>
+                <span className="text-zinc-955 truncate">{uniqueNo}</span>
                 <span style={{ textAlign: "center" }}>{item.size || "—"}</span>
                 <span style={{ textAlign: "center", fontWeight: "bold" }}>
                   {item.quantity}
@@ -1211,16 +1301,14 @@ function ReceiptBody({
                   gap: "0 4px",
                 }}
               >
-                <span className="text-zinc-955 truncate">
-                  {uniqueNo}
-                </span>
+                <span className="text-zinc-955 truncate">{uniqueNo}</span>
                 <span style={{ textAlign: "center" }}>{item.size || "—"}</span>
                 <span style={{ textAlign: "center", fontWeight: "bold" }}>
                   {item.quantity}
                 </span>
               </div>
             )}
-              <Separator />
+            <Separator />
             {!isGiftReceipt && (
               <div className="mt-1 space-y-0.5 text-[10px]">
                 {!suppressItemDiscounts && (
@@ -1277,7 +1365,12 @@ function ReceiptBody({
           )}
           {(() => {
             const itemsValInclTax = Math.round(finalGrandTotal - fbrPosFee);
-            const calcShipping = Math.max(0, Math.round(finalGrandTotal - fbrPosFee - (valueForSales + totalTax)));
+            const calcShipping = Math.max(
+              0,
+              Math.round(
+                finalGrandTotal - fbrPosFee - (valueForSales + totalTax),
+              ),
+            );
             const shipFee = Number(order?.shippingFee ?? 0) || calcShipping;
             const itemsTotInclTax = itemsValInclTax - shipFee;
 
@@ -1295,7 +1388,11 @@ function ReceiptBody({
                   <span>{fmt(Math.round(itemsTotInclTax))}</span>
                 </div>
                 {shipFee > 0 && (
-                  <Row label="Shipping / Delivery Fee" value={fmt(Math.round(shipFee))} bold />
+                  <Row
+                    label="Shipping / Delivery Fee"
+                    value={fmt(Math.round(shipFee))}
+                    bold
+                  />
                 )}
               </>
             );
@@ -1338,7 +1435,9 @@ function ReceiptBody({
                 {t.method === "card" || t.method === "bank_transfer"
                   ? order?.merchant?.description || order?.merchant?.bankName
                     ? ` (${order.merchant.description || order.merchant.bankName})`
-                    : t.slipNo ? ` (${t.slipNo})` : ""
+                    : t.slipNo
+                      ? ` (${t.slipNo})`
+                      : ""
                   : t.slipNo
                     ? t.method === "voucher"
                       ? ` #${t.slipNo}`
@@ -1477,7 +1576,9 @@ function ReceiptBody({
         {storeSTRN && <p>NTN: {storeSTRN}</p>}
         <p>{settings.receiptFooter || "*** THANK YOU FOR SHOPPING ***"}</p>
         <p className="tracking-widest font-bold">{order?.orderNumber}</p>
-        <p className="text-[9px] text-zinc-550 pt-0.5">Software by Innovative Network</p>
+        <p className="text-[9px] text-zinc-550 pt-0.5">
+          Software By Innovative Network (Pvt.) ltd
+        </p>
       </div>
     </div>
   );
@@ -1515,8 +1616,13 @@ function A4InvoiceBody({
 }: ReceiptBodyProps & { fbrInvoiceNumber?: string }) {
   const isSavedOrder = !!(order && order.id);
 
-  const customerName = order?.customer?.name || order?.customerName || "Walk-in Customer";
-  const customerPhone = order?.customer?.phone || order?.customerPhone || order?.customerMobile || "";
+  const customerName =
+    order?.customer?.name || order?.customerName || "Walk-in Customer";
+  const customerPhone =
+    order?.customer?.phone ||
+    order?.customerPhone ||
+    order?.customerMobile ||
+    "";
   const cnic = order?.customer?.cnic || order?.customerCnic || "";
 
   const formatInvoiceDateTime = (dateStr?: string | null) => {
@@ -1539,23 +1645,36 @@ function A4InvoiceBody({
           <h1 className="text-lg font-bold tracking-widest uppercase">
             {storeName || "Point of Sales - Corporate"}
           </h1>
-          <p className="text-[10px] text-zinc-700 mt-0.5">{storeAddress || "Corporate Office"}</p>
-          <p className="text-[10px] text-zinc-700">{storePhone || "021-35641339"}</p>
+          <p className="text-[10px] text-zinc-700 mt-0.5">
+            {storeAddress || "Corporate Office"}
+          </p>
+          <p className="text-[10px] text-zinc-700">
+            {storePhone || "021-35641339"}
+          </p>
         </div>
 
         {/* Invoice Title & Meta details */}
         <div className="flex justify-between items-start mb-4 text-xs">
           <div>
-            <h2 className="text-base font-bold tracking-[0.2em] uppercase">Sales Tax Invoice</h2>
-            {cashierName && <p className="text-xs mt-0.5">Sales By: {cashierName}</p>}
+            <h2 className="text-base font-bold tracking-[0.2em] uppercase">
+              Sales Tax Invoice
+            </h2>
+            {cashierName && (
+              <p className="text-xs mt-0.5">Sales By: {cashierName}</p>
+            )}
           </div>
 
           <div className="text-right text-xs leading-tight">
-            {hasFbrInfo && storeNTN && <p className="font-bold">FBR POS ID {storeNTN}</p>}
+            {hasFbrInfo && storeNTN && (
+              <p className="font-bold">FBR POS ID {storeNTN}</p>
+            )}
             <p className="mt-1">
-              STI No. <span className="font-bold">{order?.orderNumber ?? ""}</span>
+              STI No.{" "}
+              <span className="font-bold">{order?.orderNumber ?? ""}</span>
               {"   "}
-              <span className="ml-2 font-mono font-bold">{formatInvoiceDateTime(order?.createdAt)}</span>
+              <span className="ml-2 font-mono font-bold">
+                {formatInvoiceDateTime(order?.createdAt)}
+              </span>
             </p>
           </div>
         </div>
@@ -1566,13 +1685,17 @@ function A4InvoiceBody({
             <tr className="border-b border-t border-black text-[10px] font-bold uppercase">
               <th className="py-2 px-1 w-[15%]">Code</th>
               <th className="py-2 px-1 w-[38%]">Name</th>
-              {!isGiftReceipt && <th className="py-2 px-1 text-center w-[8%]">Size</th>}
+              {!isGiftReceipt && (
+                <th className="py-2 px-1 text-center w-[8%]">Size</th>
+              )}
               <th className="py-2 px-1 text-center w-[7%]">Qty</th>
               {!isGiftReceipt && (
                 <>
                   <th className="py-2 px-1 text-right w-[10%]">Rate (Rs.)</th>
                   <th className="py-2 px-1 text-right w-[11%]">Value (Rs.)</th>
-                  <th className="py-2 px-1 text-right w-[11%]">Total Value (Rs.)</th>
+                  <th className="py-2 px-1 text-right w-[11%]">
+                    Total Value (Rs.)
+                  </th>
                 </>
               )}
             </tr>
@@ -1587,15 +1710,27 @@ function A4InvoiceBody({
 
               return (
                 <tr key={item.id ?? idx} className="align-top">
-                  <td className="py-1.5 px-1 font-mono text-[10px]">{uniqueNo}</td>
+                  <td className="py-1.5 px-1 font-mono text-[10px]">
+                    {uniqueNo}
+                  </td>
                   <td className="py-1.5 px-1">{item.name}</td>
-                  {!isGiftReceipt && <td className="py-1.5 px-1 text-center">{item.size || "—"}</td>}
+                  {!isGiftReceipt && (
+                    <td className="py-1.5 px-1 text-center">
+                      {item.size || "—"}
+                    </td>
+                  )}
                   <td className="py-1.5 px-1 text-center">{item.quantity}</td>
                   {!isGiftReceipt && (
                     <>
-                      <td className="py-1.5 px-1 text-right font-mono">{fmtDec(retailPrice)}</td>
-                      <td className="py-1.5 px-1 text-right font-mono">{fmtDec(wostPerUnit)}</td>
-                      <td className="py-1.5 px-1 text-right font-mono">{fmtDec(totalWost)}</td>
+                      <td className="py-1.5 px-1 text-right font-mono">
+                        {fmtDec(retailPrice)}
+                      </td>
+                      <td className="py-1.5 px-1 text-right font-mono">
+                        {fmtDec(wostPerUnit)}
+                      </td>
+                      <td className="py-1.5 px-1 text-right font-mono">
+                        {fmtDec(totalWost)}
+                      </td>
                     </>
                   )}
                 </tr>
@@ -1611,21 +1746,42 @@ function A4InvoiceBody({
             <div className="w-[50%] max-w-[360px] text-xs space-y-1">
               <Row label="SubTotal" value={fmtDec(subtotal)} />
               {totalDiscount > 0 && (
-                <Row label={orderDiscountLabel} value={`(${fmtDec(totalDiscount)})`} negative />
+                <Row
+                  label={orderDiscountLabel}
+                  value={`(${fmtDec(totalDiscount)})`}
+                  negative
+                />
               )}
-              <Row label="Value Excluding Sales Tax" value={fmtDec(valueForSales)} />
-              {settings.receiptShowTax && <Row label="Sales Tax" value={fmtDec(totalTax)} />}
+              <Row
+                label="Value Excluding Sales Tax"
+                value={fmtDec(valueForSales)}
+              />
+              {settings.receiptShowTax && (
+                <Row label="Sales Tax" value={fmtDec(totalTax)} />
+              )}
               {(() => {
                 const itemsValInclTax = Math.round(finalGrandTotal - fbrPosFee);
-                const calcShipping = Math.max(0, Math.round(finalGrandTotal - fbrPosFee - (valueForSales + totalTax)));
+                const calcShipping = Math.max(
+                  0,
+                  Math.round(
+                    finalGrandTotal - fbrPosFee - (valueForSales + totalTax),
+                  ),
+                );
                 const shipFee = Number(order?.shippingFee ?? 0) || calcShipping;
                 const itemsTotInclTax = itemsValInclTax - shipFee;
 
                 return (
                   <>
-                    <Row label="Value Including Sales Tax" value={fmtDec(itemsTotInclTax)} />
+                    <Row
+                      label="Value Including Sales Tax"
+                      value={fmtDec(itemsTotInclTax)}
+                    />
                     {shipFee > 0 && (
-                      <Row label="Shipping / Delivery Fee" value={fmtDec(shipFee)} bold />
+                      <Row
+                        label="Shipping / Delivery Fee"
+                        value={fmtDec(shipFee)}
+                        bold
+                      />
                     )}
                   </>
                 );
@@ -1634,17 +1790,25 @@ function A4InvoiceBody({
                 <Row label="POS Services Fee Re." value={fmtDec(fbrPosFee)} />
               )}
               <div className="border-t border-black mt-1 pt-1">
-                <Row label="Net Total" value={`Rs. ${fmtDec(finalGrandTotal)}`} bold />
+                <Row
+                  label="Net Total"
+                  value={`Rs. ${fmtDec(finalGrandTotal)}`}
+                  bold
+                />
               </div>
               <div className="border-t border-dashed border-zinc-300 mt-2 pt-2 space-y-1">
                 {tenders.map((t, i) => {
-                  let label = t.method === "cash" ? "Cash" : t.method.replace(/_/g, " ");
+                  let label =
+                    t.method === "cash" ? "Cash" : t.method.replace(/_/g, " ");
                   if (t.method === "card" || t.method === "bank_transfer") {
                     const cardSuffix = t.cardLast4 ? ` ••••${t.cardLast4}` : "";
-                    const merchantName = order?.merchant?.description || order?.merchant?.bankName;
+                    const merchantName =
+                      order?.merchant?.description || order?.merchant?.bankName;
                     const merchantSuffix = merchantName
                       ? ` (${merchantName})`
-                      : t.slipNo ? ` (${t.slipNo})` : "";
+                      : t.slipNo
+                        ? ` (${t.slipNo})`
+                        : "";
                     label = `${label}${cardSuffix}${merchantSuffix}`;
                   } else if (t.method === "voucher" && t.slipNo) {
                     label = `${label} #${t.slipNo}`;
@@ -1653,11 +1817,17 @@ function A4InvoiceBody({
                     <Row
                       key={i}
                       label={label}
-                      value={fmtDec(t.method === "voucher" && t.voucherFaceValue ? t.voucherFaceValue : t.amount)}
+                      value={fmtDec(
+                        t.method === "voucher" && t.voucherFaceValue
+                          ? t.voucherFaceValue
+                          : t.amount,
+                      )}
                     />
                   );
                 })}
-                {changeAmount > 0 && <Row label="Change" value={fmtDec(changeAmount)} />}
+                {changeAmount > 0 && (
+                  <Row label="Change" value={fmtDec(changeAmount)} />
+                )}
               </div>
             </div>
           </div>
@@ -1687,7 +1857,9 @@ function A4InvoiceBody({
       <div className="mt-auto pt-6 border-t border-zinc-300">
         <div className="flex justify-between items-end mb-6 text-xs">
           <div className="w-[300px]">
-            <div className="border-b border-black pb-1">CNIC #: {cnic || ""}</div>
+            <div className="border-b border-black pb-1">
+              CNIC #: {cnic || ""}
+            </div>
           </div>
           <div className="w-[180px] text-center border-t border-black pt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
             Authorized Signature
@@ -1697,29 +1869,39 @@ function A4InvoiceBody({
         {hasFbrInfo && (
           <>
             <div className="border-t border-black pt-3 mb-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">FBR Invoice Number</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
+                FBR Invoice Number
+              </p>
               <p className="font-mono font-bold text-sm border-t border-b border-black py-1 px-8 inline-block bg-white min-w-[220px]">
                 {fbrInvoiceNumber || order?.fbrInvoiceNumber || "—"}
               </p>
               {(fbrInvoiceNumber || order?.fbrInvoiceNumber) && (
                 <div className="mt-1">
-                  <BarcodeImg value={fbrInvoiceNumber || order?.fbrInvoiceNumber} height={36} fontSize={9} />
+                  <BarcodeImg
+                    value={fbrInvoiceNumber || order?.fbrInvoiceNumber}
+                    height={36}
+                    fontSize={9}
+                  />
                 </div>
               )}
             </div>
 
             <div className="flex justify-between items-end">
               <p className="text-[10px] text-zinc-600 max-w-[65%] leading-relaxed">
-                This Receipt / Invoice is verified by FBR POS Invoicing System. Verify this
-                invoice through FBR Tax Asaan Mobile App or SMS at <strong>9966</strong> and win
-                exciting prizes in draw.
+                This Receipt / Invoice is verified by FBR POS Invoicing System.
+                Verify this invoice through FBR Tax Asaan Mobile App or SMS at{" "}
+                <strong>9966</strong> and win exciting prizes in draw.
               </p>
               <div className="flex items-center gap-3 shrink-0 bg-white p-2 rounded border border-zinc-200 shadow-sm">
                 <div className="w-[50px] h-[50px] flex items-center justify-center">
                   <QRCodeSVG value={fbrVerifyUrl} size={50} level="M" />
                 </div>
                 <Image
-                  src={typeof window !== "undefined" ? `${window.location.origin}/fbr_logo.png` : "/fbr_logo.png"}
+                  src={
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/fbr_logo.png`
+                      : "/fbr_logo.png"
+                  }
                   alt="FBR POS Logo"
                   width={56}
                   height={56}
@@ -1738,7 +1920,9 @@ function A4InvoiceBody({
           <p className="text-[9px] text-zinc-400 font-mono mt-0.5">
             Invoice Ref: {order?.orderNumber}
           </p>
-          <p className="text-[9px] text-zinc-400">Software by Innovative Network</p>
+          <p className="text-[9px] text-zinc-400">
+            Software By Innovative Network (Pvt.) ltd
+          </p>
         </div>
       </div>
     </div>
@@ -1757,9 +1941,13 @@ function Row({
   negative?: boolean;
 }) {
   return (
-    <div className={`flex justify-between py-0.5 text-xs ${bold ? "font-bold text-sm pt-1" : ""}`}>
+    <div
+      className={`flex justify-between py-0.5 text-xs ${bold ? "font-bold text-sm pt-1" : ""}`}
+    >
       <span className="text-zinc-700">{label}</span>
-      <span className={`font-mono ${negative ? "text-red-650" : ""}`}>{value}</span>
+      <span className={`font-mono ${negative ? "text-red-650" : ""}`}>
+        {value}
+      </span>
     </div>
   );
 }

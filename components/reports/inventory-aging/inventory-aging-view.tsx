@@ -41,8 +41,10 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
   }, [isPosLevel, posLocationId]);
 
   const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [asOfPreset, setAsOfPreset] = useState<string>("today");
+  const [asOfDate, setAsOfDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(new Date().setDate(new Date().getDate() - 30)),
+    from: new Date(),
     to: new Date(),
   });
 
@@ -129,10 +131,9 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
     startTransition(async () => {
       try {
         const res = await queueInventoryAgingPreview({
-          locationId: selectedLocationIds.join(","),
-          warehouseId: selectedWarehouseIds.join(","),
-          startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
-          endDate: dateRange.to ? dateRange.to.toISOString() : undefined,
+          locationId: isPosLevel && posLocationId ? posLocationId : undefined,
+          asOfDate,
+          fiscalYear: asOfPreset.startsWith("fy-") ? asOfPreset : undefined,
           reportType,
         });
 
@@ -147,12 +148,12 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         setIsQueueingJob(false);
       }
     });
-  }, [selectedLocationIds, selectedWarehouseIds, dateRange.from, dateRange.to, reportType]);
+  }, [asOfDate, asOfPreset, isPosLevel, posLocationId, reportType]);
 
-  // Auto trigger report fetch on filter change
+  // Auto trigger report fetch on mount and when asOfDate changes
   useEffect(() => {
     handleFetchReport();
-  }, [handleFetchReport]);
+  }, [asOfDate, handleFetchReport]);
 
   // Handle SSE completed state
   useEffect(() => {
@@ -187,11 +188,13 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
     (!!previewJobId && sseState.status !== "completed") ||
     (!reportData && isPending);
 
-  // Client-side filtration hook
+  // Client-side filtration hook (0ms instant in-memory filtering)
   const { filteredItems, grandTotals } = useInventoryAgingData({
     rawItems: reportData?.flatItemsList || [],
     locations: reportData?.locations || locations,
     warehouses: reportData?.warehouses || warehouses,
+    selectedLocationIds,
+    selectedWarehouseIds,
     searchQuery,
     selectedBrandId,
     selectedCategoryId,
@@ -209,9 +212,9 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
       await generateInventoryAgingExcel({
         items: filteredItems,
         totals: grandTotals,
-        locations: reportData.locations || locations,
-        warehouses: reportData.warehouses || warehouses,
-        dateRange,
+        locations: reportData?.locations || locations,
+        warehouses: reportData?.warehouses || warehouses,
+        dateRange: { from: new Date(asOfDate), to: new Date(asOfDate) },
         reportType,
         activeSelectionNames,
         isPosLevel,
@@ -239,9 +242,9 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
       await generateInventoryAgingPdf({
         items: filteredItems,
         totals: grandTotals,
-        locations: reportData.locations || locations,
-        warehouses: reportData.warehouses || warehouses,
-        dateRange,
+        locations: reportData?.locations || locations,
+        warehouses: reportData?.warehouses || warehouses,
+        dateRange: { from: new Date(asOfDate), to: new Date(asOfDate) },
         reportType,
         activeSelectionNames,
         isPosLevel,
@@ -271,10 +274,12 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
         posLocationName={posLocationName}
         reportType={reportType}
         onReportTypeChange={setReportType}
+        asOfPreset={asOfPreset}
+        onAsOfPresetChange={setAsOfPreset}
+        asOfDate={asOfDate}
+        onAsOfDateChange={setAsOfDate}
         agingHorizon={agingHorizon}
         onAgingHorizonChange={handleAgingHorizonChange}
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
         locations={locations}
         warehouses={warehouses}
         selectedLocationIds={selectedLocationIds}

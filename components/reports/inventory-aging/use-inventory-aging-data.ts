@@ -10,6 +10,8 @@ interface UseInventoryAgingDataProps {
   rawItems: InventoryAgingRecord[];
   locations: LocationHeader[];
   warehouses: WarehouseHeader[];
+  selectedLocationIds?: string[];
+  selectedWarehouseIds?: string[];
   searchQuery: string;
   selectedBrandId?: string;
   selectedCategoryId?: string;
@@ -21,71 +23,121 @@ export function useInventoryAgingData({
   rawItems,
   locations,
   warehouses,
+  selectedLocationIds = [],
+  selectedWarehouseIds = [],
   searchQuery,
   selectedBrandId,
   selectedCategoryId,
   selectedAgeBucket = "all",
   isPosLevel = false,
 }: UseInventoryAgingDataProps) {
-  // 1. Filtered & Value-Mapped Items
+  // 1. Filtered & Value-Mapped Items (0ms instant in-memory client slicing)
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    const hasLocationFilter = selectedLocationIds.length > 0;
+    const hasWarehouseFilter = selectedWarehouseIds.length > 0;
 
-    return rawItems
-      .map((item) => {
-        // Adjust values for POS level (Retail Price) vs ERP level (Cost Price)
-        const price = isPosLevel ? item.unitPrice : item.unitCost;
-        const totalVal = item.totalQty * price;
+    const mappedList: InventoryAgingRecord[] = [];
 
-        return {
-          ...item,
-          totalValue: totalVal,
-          bucket0to6mValue: item.bucket0to6mQty * price,
-          bucket6to9mValue: item.bucket6to9mQty * price,
-          bucket9to12mValue: item.bucket9to12mQty * price,
-          bucket12to15mValue: item.bucket12to15mQty * price,
-          bucket15to18mValue: item.bucket15to18mQty * price,
-          bucket18mPlusValue: item.bucket18mPlusQty * price,
-        };
-      })
-      .filter((item) => {
-        // Search query filter
-        if (query) {
-          const matchesSku = item.sku.toLowerCase().includes(query);
-          const matchesBarcode = item.barCode.toLowerCase().includes(query);
-          const matchesName = item.name.toLowerCase().includes(query);
-          const matchesDesc = (item.description || "").toLowerCase().includes(query);
-          const matchesBrand = (item.brandName || "").toLowerCase().includes(query);
-          const matchesCat = (item.categoryName || "").toLowerCase().includes(query);
+    for (const item of rawItems) {
+      const price = isPosLevel ? item.unitPrice : item.unitCost;
+      let effectiveQty = item.totalQty;
+      let b0to6 = item.bucket0to6mQty;
+      let b6to9 = item.bucket6to9mQty;
+      let b9to12 = item.bucket9to12mQty;
+      let b12to15 = item.bucket12to15mQty;
+      let b15to18 = item.bucket15to18mQty;
+      let b18plus = item.bucket18mPlusQty;
 
-          if (!matchesSku && !matchesBarcode && !matchesName && !matchesDesc && !matchesBrand && !matchesCat) {
-            return false;
+      // Filter by selected stores / warehouses in-memory
+      if (hasLocationFilter || hasWarehouseFilter) {
+        let selectedQty = 0;
+        if (hasLocationFilter) {
+          for (const locId of selectedLocationIds) {
+            selectedQty += item.locationStocks[locId] || 0;
           }
         }
-
-        // Brand filter
-        if (selectedBrandId && selectedBrandId !== "all" && item.brandId !== selectedBrandId) {
-          return false;
+        if (hasWarehouseFilter) {
+          for (const whId of selectedWarehouseIds) {
+            selectedQty += item.warehouseStocks[whId] || 0;
+          }
         }
+        if (selectedQty <= 0) continue;
 
-        // Category filter
-        if (selectedCategoryId && selectedCategoryId !== "all" && item.categoryId !== selectedCategoryId) {
-          return false;
+        const ratio = item.totalQty > 0 ? selectedQty / item.totalQty : 0;
+        effectiveQty = selectedQty;
+        b0to6 = Math.round(item.bucket0to6mQty * ratio);
+        b6to9 = Math.round(item.bucket6to9mQty * ratio);
+        b9to12 = Math.round(item.bucket9to12mQty * ratio);
+        b12to15 = Math.round(item.bucket12to15mQty * ratio);
+        b15to18 = Math.round(item.bucket15to18mQty * ratio);
+        b18plus = Math.round(item.bucket18mPlusQty * ratio);
+      }
+
+      // Search query filter
+      if (query) {
+        const matchesSku = item.sku.toLowerCase().includes(query);
+        const matchesBarcode = item.barCode.toLowerCase().includes(query);
+        const matchesName = item.name.toLowerCase().includes(query);
+        const matchesDesc = (item.description || "").toLowerCase().includes(query);
+        const matchesBrand = (item.brandName || "").toLowerCase().includes(query);
+        const matchesCat = (item.categoryName || "").toLowerCase().includes(query);
+
+        if (!matchesSku && !matchesBarcode && !matchesName && !matchesDesc && !matchesBrand && !matchesCat) {
+          continue;
         }
+      }
 
-        // Age Bucket filter (0-6m, 6-9m, 9-12m, 12-15m, 15-18m, 18+m)
-        if (selectedAgeBucket && selectedAgeBucket !== "all") {
-          if (selectedAgeBucket === "0-6m" && item.bucket0to6mQty <= 0) return false;
-          if (selectedAgeBucket === "6-9m" && item.bucket6to9mQty <= 0) return false;
-          if (selectedAgeBucket === "9-12m" && item.bucket9to12mQty <= 0) return false;
-          if (selectedAgeBucket === "12-15m" && item.bucket12to15mQty <= 0) return false;
-          if (selectedAgeBucket === "15-18m" && item.bucket15to18mQty <= 0) return false;
-          if (selectedAgeBucket === "18+m" && item.bucket18mPlusQty <= 0) return false;
-        }
+      // Brand filter
+      if (selectedBrandId && selectedBrandId !== "all" && item.brandId !== selectedBrandId) {
+        continue;
+      }
 
-        return true;
+      // Category filter
+      if (selectedCategoryId && selectedCategoryId !== "all" && item.categoryId !== selectedCategoryId) {
+        continue;
+      }
+
+      // Age Bucket filter (0-6m, 6-9m, 9-12m, 12-15m, 15-18m, 18+m)
+      if (selectedAgeBucket && selectedAgeBucket !== "all") {
+        if (selectedAgeBucket === "0-6m" && b0to6 <= 0) continue;
+        if (selectedAgeBucket === "6-9m" && b6to9 <= 0) continue;
+        if (selectedAgeBucket === "9-12m" && b9to12 <= 0) continue;
+        if (selectedAgeBucket === "12-15m" && b12to15 <= 0) continue;
+        if (selectedAgeBucket === "15-18m" && b15to18 <= 0) continue;
+        if (selectedAgeBucket === "18+m" && b18plus <= 0) continue;
+      }
+
+      mappedList.push({
+        ...item,
+        totalQty: effectiveQty,
+        totalValue: effectiveQty * price,
+        bucket0to6mQty: b0to6,
+        bucket0to6mValue: b0to6 * price,
+        bucket6to9mQty: b6to9,
+        bucket6to9mValue: b6to9 * price,
+        bucket9to12mQty: b9to12,
+        bucket9to12mValue: b9to12 * price,
+        bucket12to15mQty: b12to15,
+        bucket12to15mValue: b12to15 * price,
+        bucket15to18mQty: b15to18,
+        bucket15to18mValue: b15to18 * price,
+        bucket18mPlusQty: b18plus,
+        bucket18mPlusValue: b18plus * price,
       });
-  }, [rawItems, searchQuery, selectedBrandId, selectedCategoryId, selectedAgeBucket, isPosLevel]);
+    }
+
+    return mappedList;
+  }, [
+    rawItems,
+    selectedLocationIds,
+    selectedWarehouseIds,
+    searchQuery,
+    selectedBrandId,
+    selectedCategoryId,
+    selectedAgeBucket,
+    isPosLevel,
+  ]);
 
   // 2. Computed Dynamic Grand Totals
   const grandTotals = useMemo<InventoryAgingTotals>(() => {

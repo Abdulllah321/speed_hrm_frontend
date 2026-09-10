@@ -79,9 +79,11 @@ export function InventoryAgingTable({
           {/* Table Header */}
           <div className="sticky top-0 z-20 bg-slate-900 text-white font-bold text-xs uppercase tracking-wider shadow-xs">
             <div className="flex items-center px-4 py-3 border-b border-slate-800 min-w-max">
-              <div className="w-12 shrink-0 text-center">#</div>
-              <div className="w-36 shrink-0 font-mono">SKU / Barcode</div>
-              <div className="w-64 shrink-0">Item Description</div>
+              <div className="sticky left-0 z-30 bg-slate-900 w-12 shrink-0 text-center">#</div>
+              <div className="sticky left-12 z-30 bg-slate-900 w-36 shrink-0 font-mono">SKU / Barcode</div>
+              <div className="sticky left-48 z-30 bg-slate-900 w-64 shrink-0 shadow-[4px_0_8px_-3px_rgba(0,0,0,0.4)] border-r border-slate-800">
+                Item Description
+              </div>
               <div className="w-32 shrink-0">Brand</div>
               <div className="w-32 shrink-0">Category</div>
               <div className="w-24 shrink-0 text-right">
@@ -164,13 +166,13 @@ export function InventoryAgingTable({
                     isEven ? "bg-white dark:bg-slate-900" : "bg-slate-50/60 dark:bg-slate-800/30",
                   )}
                 >
-                  <div className="w-12 shrink-0 text-center text-slate-400 font-mono">
+                  <div className={cn("sticky left-0 z-10 w-12 shrink-0 text-center text-slate-400 font-mono", isEven ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-slate-800")}>
                     {virtualRow.index + 1}
                   </div>
-                  <div className="w-36 shrink-0 font-mono font-bold text-slate-900 dark:text-slate-100 truncate">
+                  <div className={cn("sticky left-12 z-10 w-36 shrink-0 font-mono font-bold text-slate-900 dark:text-slate-100 truncate", isEven ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-slate-800")}>
                     {item.sku}
                   </div>
-                  <div className="w-64 shrink-0 font-semibold text-slate-800 dark:text-slate-200 truncate pr-2">
+                  <div className={cn("sticky left-48 z-10 w-64 shrink-0 font-semibold text-slate-800 dark:text-slate-200 truncate pr-2 shadow-[4px_0_8px_-3px_rgba(0,0,0,0.1)] border-r border-slate-100 dark:border-slate-800", isEven ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-slate-800")}>
                     {item.name}
                   </div>
                   <div className="w-32 shrink-0 text-slate-600 dark:text-slate-400 truncate">
@@ -236,11 +238,13 @@ export function InventoryAgingTable({
           {/* Sticky Footer Grand Totals Row */}
           <div className="sticky bottom-0 z-20 bg-slate-900 text-white font-bold text-xs shadow-md">
             <div className="flex items-center px-4 py-3 border-t border-slate-800 min-w-max">
-              <div className="w-12 shrink-0 text-center text-slate-400">TOTAL</div>
-              <div className="w-36 shrink-0 font-mono text-indigo-400">
+              <div className="sticky left-0 z-30 bg-slate-900 w-12 shrink-0 text-center text-slate-400">TOTAL</div>
+              <div className="sticky left-12 z-30 bg-slate-900 w-36 shrink-0 font-mono text-indigo-400">
                 {totals.totalItems.toLocaleString()} SKUs
               </div>
-              <div className="w-64 shrink-0 text-slate-300">Grand Total Inventory Balance</div>
+              <div className="sticky left-48 z-30 bg-slate-900 w-64 shrink-0 text-slate-300 shadow-[4px_0_8px_-3px_rgba(0,0,0,0.4)] border-r border-slate-800">
+                Grand Total Inventory Balance
+              </div>
               <div className="w-32 shrink-0"></div>
               <div className="w-32 shrink-0"></div>
               <div className="w-24 shrink-0 text-right"></div>

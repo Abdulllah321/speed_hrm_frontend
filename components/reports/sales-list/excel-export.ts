@@ -13,7 +13,7 @@ export async function generateSalesListExcel(opts: {
   grandTotals: SalesListTotals;
   dateRange: { from?: Date; to?: Date };
   locationNames: string;
-  onProgress?: (percent: number) => void;
+  onProgress?: (percent: number, message?: string) => void;
 }): Promise<{ excelBuffer: ArrayBuffer; fileName: string; fileBase64: string }> {
   const {
     exportType,
@@ -25,7 +25,7 @@ export async function generateSalesListExcel(opts: {
     onProgress,
   } = opts;
 
-  onProgress?.(10);
+  onProgress?.(5, "Initializing Excel workbook...");
   await yieldToMain();
 
   const workbook = XLSX.utils.book_new();
@@ -110,8 +110,12 @@ export async function generateSalesListExcel(opts: {
         item.onCreditAmount,
       ]);
 
-      if (i % 500 === 0) {
-        onProgress?.(Math.round((i / Math.max(1, totalCount)) * 70) + 10);
+      if (i % 100 === 0 || i === totalCount - 1) {
+        const pct = Math.round(((i + 1) / Math.max(1, totalCount)) * 70) + 10;
+        onProgress?.(
+          pct,
+          `Processing item ${i + 1} of ${totalCount.toLocaleString()}...`,
+        );
         await yieldToMain();
       }
     }
@@ -255,8 +259,12 @@ export async function generateSalesListExcel(opts: {
         t.onCreditAmount,
       ]);
 
-      if (i % 300 === 0) {
-        onProgress?.(Math.round((i / Math.max(1, totalCount)) * 70) + 10);
+      if (i % 80 === 0 || i === totalCount - 1) {
+        const pct = Math.round(((i + 1) / Math.max(1, totalCount)) * 70) + 10;
+        onProgress?.(
+          pct,
+          `Processing invoice ${i + 1} of ${totalCount.toLocaleString()}...`,
+        );
         await yieldToMain();
       }
     }
@@ -286,6 +294,9 @@ export async function generateSalesListExcel(opts: {
       grandTotals.rewardVoucherAmount,
       grandTotals.onCreditAmount,
     ]);
+
+    onProgress?.(82, "Configuring Excel worksheet grid...");
+    await yieldToMain();
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
     worksheet["!cols"] = [
@@ -317,12 +328,15 @@ export async function generateSalesListExcel(opts: {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Invoices Matrix");
   }
 
-  onProgress?.(90);
+  onProgress?.(88, "Encoding Excel workbook binary data...");
   await yieldToMain();
 
   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
   const base64 = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
 
-  onProgress?.(100);
+  onProgress?.(98, "Preparing download...");
+  await yieldToMain();
+
+  onProgress?.(100, "Excel file ready!");
   return { excelBuffer, fileName, fileBase64: base64 };
 }

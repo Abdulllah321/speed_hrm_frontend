@@ -628,6 +628,8 @@ export async function queueSalesListPreview(opts: {
     minAmount?: number;
     maxAmount?: number;
     fbrOnly?: boolean;
+    fiscalYear?: string;
+    year?: number | string;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const res = await authFetch("/pos-sales/reports/sales-list/queue", {
