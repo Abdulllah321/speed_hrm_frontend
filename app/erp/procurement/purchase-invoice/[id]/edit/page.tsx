@@ -91,13 +91,27 @@ export default function EditPurchaseInvoicePage() {
                 return;
             }
 
+            const toDateInputValue = (d: any) => {
+                if (!d) return '';
+                if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) {
+                    return d.split('T')[0];
+                }
+                try {
+                    const dateObj = new Date(d);
+                    if (isNaN(dateObj.getTime())) return '';
+                    return dateObj.toISOString().split('T')[0];
+                } catch {
+                    return '';
+                }
+            };
+
             setInvoice(data);
             setInvoiceNumber(data.invoiceNumber || '');
-            setInvoiceDate(data.invoiceDate ? new Date(data.invoiceDate).toISOString().split('T')[0] : '');
-            setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split('T')[0] : '');
+            setInvoiceDate(toDateInputValue(data.invoiceDate));
+            setDueDate(toDateInputValue(data.dueDate));
             setNotes(data.notes || '');
             setStaxEInvoiceNumber(data.staxEInvoiceNumber || '');
-            setStaxEInvoiceDate(data.staxEInvoiceDate ? new Date(data.staxEInvoiceDate).toISOString().split('T')[0] : '');
+            setStaxEInvoiceDate(toDateInputValue(data.staxEInvoiceDate));
             setDiscountAmount(Number(data.discountAmount || 0));
             setAdvanceTaxRate(Number(data.advanceTaxRate ?? 0.5));
 
@@ -266,11 +280,11 @@ export default function EditPurchaseInvoicePage() {
             setSaving(true);
 
             const payload = {
-                invoiceDate: new Date(invoiceDate).toISOString(),
-                dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-                notes: notes || undefined,
-                staxEInvoiceNumber: staxEInvoiceNumber || undefined,
-                staxEInvoiceDate: staxEInvoiceDate ? new Date(staxEInvoiceDate).toISOString() : undefined,
+                invoiceDate: invoiceDate ? new Date(invoiceDate).toISOString() : new Date().toISOString(),
+                dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+                notes: notes || null,
+                staxEInvoiceNumber: staxEInvoiceNumber || null,
+                staxEInvoiceDate: staxEInvoiceDate ? new Date(staxEInvoiceDate).toISOString() : null,
                 discountAmount: Number(discountAmount) || 0,
                 advanceTaxRate: Number(advanceTaxRate) || 0,
                 items: items.map(item => ({
@@ -389,15 +403,17 @@ export default function EditPurchaseInvoicePage() {
                                 <div>
                                     <Label className="text-xs text-gray-500">Invoice Date *</Label>
                                     <DatePicker
-                                        date={invoiceDate ? new Date(invoiceDate) : undefined}
-                                        onSelect={(date) => setInvoiceDate(date ? date.toISOString().split('T')[0] : '')}
+                                        value={invoiceDate}
+                                        onChange={setInvoiceDate}
+                                        placeholder="Pick invoice date"
                                     />
                                 </div>
                                 <div>
                                     <Label className="text-xs text-gray-500">Due Date</Label>
                                     <DatePicker
-                                        date={dueDate ? new Date(dueDate) : undefined}
-                                        onSelect={(date) => setDueDate(date ? date.toISOString().split('T')[0] : '')}
+                                        value={dueDate}
+                                        onChange={setDueDate}
+                                        placeholder="Pick due date"
                                     />
                                 </div>
                             </div>
@@ -415,8 +431,9 @@ export default function EditPurchaseInvoicePage() {
                                 <div>
                                     <Label className="text-xs text-gray-500">Sales Tax / E-Invoice Date</Label>
                                     <DatePicker
-                                        date={staxEInvoiceDate ? new Date(staxEInvoiceDate) : undefined}
-                                        onSelect={(date) => setStaxEInvoiceDate(date ? date.toISOString().split('T')[0] : '')}
+                                        value={staxEInvoiceDate}
+                                        onChange={setStaxEInvoiceDate}
+                                        placeholder="Pick sales tax date"
                                     />
                                 </div>
                             </div>

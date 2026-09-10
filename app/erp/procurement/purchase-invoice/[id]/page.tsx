@@ -268,6 +268,13 @@ export default function PurchaseInvoiceDetailPage() {
         ["Supplier Name", invoice.supplier?.name ?? "—"],
         ["Supplier Code", invoice.supplier?.code ?? "—"],
         ["Invoice Type", (invoice as any).invoiceType ?? "—"],
+        ["STax e-Inv #", invoice.staxEInvoiceNumber || "—"],
+        [
+          "Sale Tax Invoice Date",
+          invoice.staxEInvoiceDate
+            ? new Date(invoice.staxEInvoiceDate).toLocaleDateString("en-GB")
+            : "—",
+        ],
         ["Status", invoice.status],
         ["Payment Status", invoice.paymentStatus?.replace(/_/g, " ") ?? "—"],
         [],
@@ -456,6 +463,13 @@ export default function PurchaseInvoiceDetailPage() {
         ["Supplier Name", invoice.supplier?.name ?? "—"],
         ["Supplier Code", invoice.supplier?.code ?? "—"],
         ["Invoice Type", (invoice as any).invoiceType ?? "—"],
+        ["STax e-Inv #", invoice.staxEInvoiceNumber || "—"],
+        [
+          "Sale Tax Invoice Date",
+          invoice.staxEInvoiceDate
+            ? new Date(invoice.staxEInvoiceDate).toLocaleDateString("en-GB")
+            : "—",
+        ],
         ["Status", invoice.status],
         ["Payment Status", invoice.paymentStatus?.replace(/_/g, " ") ?? "—"],
         [],
@@ -966,24 +980,22 @@ export default function PurchaseInvoiceDetailPage() {
                         </Badge>
                       </div>
                     </div>
-                    {invoice.staxEInvoiceNumber && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          STax e-Inv #
-                        </label>
-                        <p className="font-medium">{invoice.staxEInvoiceNumber}</p>
-                      </div>
-                    )}
-                    {invoice.staxEInvoiceDate && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Sale Tax Invoice Date
-                        </label>
-                        <p className="font-medium">
-                          {new Date(invoice.staxEInvoiceDate).toLocaleDateString("en-GB")}
-                        </p>
-                      </div>
-                    )}
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        STax e-Inv #
+                      </label>
+                      <p className="font-medium">{invoice.staxEInvoiceNumber || "—"}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Sale Tax Invoice Date
+                      </label>
+                      <p className="font-medium">
+                        {invoice.staxEInvoiceDate
+                          ? new Date(invoice.staxEInvoiceDate).toLocaleDateString("en-GB")
+                          : "—"}
+                      </p>
+                    </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">
                         Total Amount

@@ -9,22 +9,60 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
-export function DatePicker({ value, onChange, disabled, className, placeholder, name, fromYear = 1970, toYear = new Date().getFullYear() + 10 }: { value?: string; onChange?: (value: string) => void; disabled?: boolean; className?: string; placeholder?: string; name?: string; fromYear?: number; toYear?: number }) {
-  const [date, setDate] = React.useState<Date | undefined>(value ? new Date(value) : undefined);
-  const [viewMonth, setViewMonth] = React.useState<Date | undefined>(value ? new Date(value) : new Date());
+export function DatePicker({
+  value,
+  onChange,
+  date: legacyDate,
+  onSelect: legacyOnSelect,
+  disabled,
+  className,
+  placeholder,
+  name,
+  fromYear = 1970,
+  toYear = new Date().getFullYear() + 10,
+}: {
+  value?: string;
+  onChange?: (value: string) => void;
+  date?: Date;
+  onSelect?: (date: Date | undefined) => void;
+  disabled?: boolean;
+  className?: string;
+  placeholder?: string;
+  name?: string;
+  fromYear?: number;
+  toYear?: number;
+}) {
+  const parseVal = (v?: string, d?: Date): Date | undefined => {
+    if (d instanceof Date && !isNaN(d.getTime())) return d;
+    if (!v) return undefined;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      const parsed = new Date(v + "T00:00:00");
+      return isNaN(parsed.getTime()) ? undefined : parsed;
+    }
+    const parsed = new Date(v);
+    return isNaN(parsed.getTime()) ? undefined : parsed;
+  };
+
+  const initialDate = parseVal(value, legacyDate);
+  const [date, setDate] = React.useState<Date | undefined>(initialDate);
+  const [viewMonth, setViewMonth] = React.useState<Date | undefined>(initialDate || new Date());
 
   React.useEffect(() => {
+    const next = parseVal(value, legacyDate);
     setDate((prev) => {
-      const next = value ? new Date(value) : undefined;
       if (!next && !prev) return prev;
       if (next && prev && format(next, "yyyy-MM-dd") === format(prev, "yyyy-MM-dd")) return prev;
       return next;
     });
-  }, [value]);
+    if (next) {
+      setViewMonth(next);
+    }
+  }, [value, legacyDate]);
 
   const handleSelect = (d: Date | undefined) => {
     setDate(d);
     if (onChange) onChange(d ? format(d, "yyyy-MM-dd") : "");
+    if (legacyOnSelect) legacyOnSelect(d);
   };
 
   return (
