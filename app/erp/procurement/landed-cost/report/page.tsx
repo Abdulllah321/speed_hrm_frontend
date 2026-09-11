@@ -96,7 +96,7 @@ export default function LandedCostListPage() {
                                         <TableCell>{item.grn?.grnNumber}</TableCell>
                                         <TableCell>{item.supplier?.name}</TableCell>
                                         <TableCell className="text-right">{Number(item.totalQuantity).toLocaleString()}</TableCell>
-                                        <TableCell className="text-right font-bold">{Number(item.totalLandedCost).toLocaleString()}</TableCell>
+                                        <TableCell className="text-right font-bold">{Math.round(Number(item.totalLandedCost || 0)).toLocaleString()}</TableCell>
                                         <TableCell className="text-center">
                                             <Button
                                                 variant="ghost"
