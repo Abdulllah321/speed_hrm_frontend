@@ -171,6 +171,7 @@ interface PrintReceiptProps {
     code: string;
     faceValue: number;
     expiresAt: Date | null;
+    voucherType?: string;
   }[];
   onClose: () => void;
 }
@@ -285,6 +286,15 @@ export function PrintReceipt({
   const [layout, setLayout] = useState<"thermal" | "a4">(defaultLayout);
   const [isDownloading, setIsDownloading] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+
+  // Only legitimate credit vouchers issued during sale (unused voucher balance, not return/claim exchange vouchers)
+  const validCreditVouchers = creditVouchers?.filter((v: any) => {
+    if (v.voucherType) {
+      return v.voucherType === "CREDIT" || v.voucherType === "CORPORATE";
+    }
+    const code = (v.code || "").toUpperCase();
+    return !code.startsWith("EXC-") && !code.startsWith("CLM-") && !code.startsWith("REF-");
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -590,7 +600,7 @@ export function PrintReceipt({
     settings,
     suppressItemDiscounts,
     suppressLabel,
-    creditVouchers,
+    creditVouchers: validCreditVouchers,
     hasFbrInfo,
   };
 
@@ -1003,6 +1013,15 @@ function ReceiptBody({
   hasFbrInfo,
 }: ReceiptBodyProps) {
   const isSavedOrder = !!(order && order.id);
+
+  // Only legitimate credit vouchers issued during sale (unused voucher balance, not return/claim exchange vouchers)
+  const validCreditVouchers = creditVouchers?.filter((v: any) => {
+    if (v.voucherType) {
+      return v.voucherType === "CREDIT" || v.voucherType === "CORPORATE";
+    }
+    const code = (v.code || "").toUpperCase();
+    return !code.startsWith("EXC-") && !code.startsWith("CLM-") && !code.startsWith("REF-");
+  });
 
   // Calculate total WOST value for proportional discount
   const totalWostValue = items.reduce((sum, item) => {
@@ -1461,14 +1480,14 @@ function ReceiptBody({
       )}
 
       {/* ── Credit Vouchers ── */}
-      {creditVouchers && creditVouchers.length > 0 && (
+      {validCreditVouchers && validCreditVouchers.length > 0 && (
         <>
           <Separator />
           <div className="text-center space-y-2 border-2 border-dashed border-zinc-950 rounded-lg px-3 py-3 bg-zinc-50">
             <p className="font-bold text-xs uppercase tracking-wide text-zinc-950">
               Credit Voucher Issued
             </p>
-            {creditVouchers.map((voucher, idx) => (
+            {validCreditVouchers.map((voucher, idx) => (
               <div
                 key={idx}
                 className="bg-white border-2 border-zinc-950 rounded px-2 py-2 space-y-1"
@@ -1616,13 +1635,17 @@ function A4InvoiceBody({
 }: ReceiptBodyProps & { fbrInvoiceNumber?: string }) {
   const isSavedOrder = !!(order && order.id);
 
-  const customerName =
-    order?.customer?.name || order?.customerName || "Walk-in Customer";
-  const customerPhone =
-    order?.customer?.phone ||
-    order?.customerPhone ||
-    order?.customerMobile ||
-    "";
+  // Only legitimate credit vouchers issued during sale (unused voucher balance, not return/claim exchange vouchers)
+  const validCreditVouchers = creditVouchers?.filter((v: any) => {
+    if (v.voucherType) {
+      return v.voucherType === "CREDIT" || v.voucherType === "CORPORATE";
+    }
+    const code = (v.code || "").toUpperCase();
+    return !code.startsWith("EXC-") && !code.startsWith("CLM-") && !code.startsWith("REF-");
+  });
+
+  const customerName = order?.customer?.name || order?.customerName || "Walk-in Customer";
+  const customerPhone = order?.customer?.phone || order?.customerPhone || order?.customerMobile || "";
   const cnic = order?.customer?.cnic || order?.customerCnic || "";
 
   const formatInvoiceDateTime = (dateStr?: string | null) => {
@@ -1837,10 +1860,10 @@ function A4InvoiceBody({
           </p>
         )}
 
-        {creditVouchers && creditVouchers.length > 0 && (
+        {validCreditVouchers && validCreditVouchers.length > 0 && (
           <div className="border border-black rounded p-3 mb-4 text-[10px] max-w-sm">
             <p className="font-bold uppercase mb-1">Credit Voucher Issued</p>
-            {creditVouchers.map((v, i) => (
+            {validCreditVouchers.map((v, i) => (
               <div key={i} className="py-1 space-y-1">
                 <div className="flex justify-between font-mono">
                   <span>{v.code}</span>

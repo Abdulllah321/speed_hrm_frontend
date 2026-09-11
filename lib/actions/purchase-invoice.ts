@@ -135,15 +135,15 @@ export async function getAvailableLandedCosts() {
 export async function updatePurchaseInvoice(id: string, data: {
     invoiceNumber?: string;
     invoiceDate?: string;
-    dueDate?: string;
+    dueDate?: string | null;
     supplierId?: string;
     grnId?: string;
     landedCostId?: string;
     discountAmount?: number;
     advanceTaxRate?: number;
-    notes?: string;
-    staxEInvoiceNumber?: string;
-    staxEInvoiceDate?: string;
+    notes?: string | null;
+    staxEInvoiceNumber?: string | null;
+    staxEInvoiceDate?: string | null;
     status?: string;
     items?: {
         itemId: string;
