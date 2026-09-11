@@ -106,22 +106,54 @@ export function useSalesListData(
     setCollapsedNodes(new Set());
   }, []);
 
+  // Check whether any in-memory filter is actually applied by the user
+  const hasSubDateFilter = useMemo(() => {
+    if (!subDateRange?.from || !subDateRange?.to || !reportData?.dateRange) return false;
+    const repFrom = new Date(reportData.dateRange.startDate).getTime();
+    const repTo = new Date(reportData.dateRange.endDate).getTime();
+    const subFrom = new Date(subDateRange.from).getTime();
+    const subTo = new Date(subDateRange.to).getTime();
+    return subFrom - repFrom > 86400000 || repTo - subTo > 86400000;
+  }, [subDateRange?.from, subDateRange?.to, reportData?.dateRange]);
+
+  const hasActiveFilters = useMemo(() => {
+    return Boolean(
+      searchQuery.trim() ||
+      (selectedLocationIds && selectedLocationIds.length > 0) ||
+      (selectedCashierId && selectedCashierId !== "all") ||
+      fbrOnlyFilter ||
+      (paymentModeFilter && paymentModeFilter !== "all") ||
+      hasSubDateFilter
+    );
+  }, [
+    searchQuery,
+    selectedLocationIds,
+    selectedCashierId,
+    fbrOnlyFilter,
+    paymentModeFilter,
+    hasSubDateFilter,
+  ]);
+
   // 1. In-memory Filtered Invoices (0ms latency, zero backend hits)
   const filteredInvoices = useMemo(() => {
     if (!reportData?.invoices) return [];
+    if (!hasActiveFilters) return reportData.invoices;
 
     const q = searchQuery.toLowerCase().trim();
     const fromTime = subDateRange?.from ? new Date(subDateRange.from).getTime() : undefined;
-    const toTime = subDateRange?.to
-      ? new Date(subDateRange.to).setHours(23, 59, 59, 999)
-      : undefined;
+    let toTime: number | undefined;
+    if (subDateRange?.to) {
+      const d = new Date(subDateRange.to);
+      d.setHours(23, 59, 59, 999);
+      toTime = d.getTime();
+    }
 
     const hasLocationFilter = selectedLocationIds.length > 0;
     const hasCashierFilter = !!selectedCashierId && selectedCashierId !== "all";
 
     return reportData.invoices.filter((inv) => {
       // Date bounds within the year
-      if (fromTime || toTime) {
+      if (hasSubDateFilter && (fromTime || toTime)) {
         const invTime = new Date(inv.createdAt).getTime();
         if (fromTime && invTime < fromTime) return false;
         if (toTime && invTime > toTime) return false;
@@ -168,6 +200,8 @@ export function useSalesListData(
     });
   }, [
     reportData?.invoices,
+    hasActiveFilters,
+    hasSubDateFilter,
     selectedLocationIds,
     selectedCashierId,
     subDateRange?.from,
@@ -177,14 +211,17 @@ export function useSalesListData(
     searchQuery,
   ]);
 
-  // 2. Dynamic Grand Totals Recalculation based on active filtered invoices
+  // 2. Grand Totals: Return verified server totals if no in-memory filter, else recalculate
   const grandTotals = useMemo<SalesListTotals>(() => {
+    if (!hasActiveFilters && reportData?.grandTotals) {
+      return reportData.grandTotals;
+    }
     const totals = createEmptyTotals();
     for (const inv of filteredInvoices) {
       addTotals(totals, inv.totals);
     }
     return totals;
-  }, [filteredInvoices]);
+  }, [filteredInvoices, hasActiveFilters, reportData?.grandTotals]);
 
   // 3. Dynamic Location Grouping for "Separate" Mode
   const locationGroups = useMemo(() => {

@@ -659,25 +659,25 @@ export function PrintReceipt({
       const statusIcon = pStatus === "PAID" ? "🟢" : "🔴";
 
       const text = `🛍️ *${storeName}*
-Sales Tax Invoice: *${order?.orderNumber || "INV"}*
-${extRef ? `Shopify / Order Ref #: *${extRef}*\n` : ""}Date: ${fmtDate(order?.createdAt)} ${fmtTime(order?.createdAt)}
+        Sales Tax Invoice: *${order?.orderNumber || "INV"}*
+        ${extRef ? `Shopify / Order Ref #: *${extRef}*\n` : ""}Date: ${fmtDate(order?.createdAt)} ${fmtTime(order?.createdAt)}
 
-👤 *Customer & Delivery Details:*
-Name: ${custName || "Walk-in Customer"}
-${custPhone ? `Phone: ${custPhone}\n` : ""}${custEmail ? `Email: ${custEmail}\n` : ""}${custAddr ? `Address: ${custAddr}\n` : ""}
-📦 *Items Purchased:*
-${itemsList}
+        👤 *Customer & Delivery Details:*
+        Name: ${custName || "Walk-in Customer"}
+        ${custPhone ? `Phone: ${custPhone}\n` : ""}${custEmail ? `Email: ${custEmail}\n` : ""}${custAddr ? `Address: ${custAddr}\n` : ""}
+        📦 *Items Purchased:*
+        ${itemsList}
 
-💵 *Bill Breakdown:*
-• Subtotal (excl. Tax): Rs. ${fmt(Math.round(subtotal))}
-• Total Sales Tax: Rs. ${fmt(Math.round(totalTax))}
-• Items Total (incl. Tax): Rs. ${fmt(Math.round(itemsTotInclTax))}
-${shipFee > 0 ? `• Shipping / Delivery Fee: Rs. ${fmt(Math.round(shipFee))}\n` : ""}-------------------------
-*Grand Total: Rs. ${fmt(Math.round(finalGrandTotal))}*
-${statusIcon} Payment Status: *${pStatus}* (${pMethod})
+        💵 *Bill Breakdown:*
+        • Subtotal (excl. Tax): Rs. ${fmt(Math.round(subtotal))}
+        • Total Sales Tax: Rs. ${fmt(Math.round(totalTax))}
+        • Items Total (incl. Tax): Rs. ${fmt(Math.round(itemsTotInclTax))}
+        ${shipFee > 0 ? `• Shipping / Delivery Fee: Rs. ${fmt(Math.round(shipFee))}\n` : ""}-------------------------
+        *Grand Total: Rs. ${fmt(Math.round(finalGrandTotal))}*
+        ${statusIcon} Payment Status: *${pStatus}* (${pMethod})
 
-Thank you for shopping with us!
-Software by Innovative Network (pvt.) Limited`;
+        Thank you for shopping with us!
+        Software by Innovative Network (pvt.) Limited`;
 
       // Copy text to clipboard
       await navigator.clipboard.writeText(text);
