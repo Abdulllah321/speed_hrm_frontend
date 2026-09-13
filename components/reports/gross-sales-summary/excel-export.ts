@@ -214,7 +214,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
   await yieldToMain();
 
   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  const base64 = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
+  const base64 = "";
 
   onProgress?.(100);
   return { excelBuffer, fileName, fileBase64: base64 };

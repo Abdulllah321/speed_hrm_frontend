@@ -354,11 +354,13 @@ export async function getSalesListReport(filters: {
 }
 
 export async function queueSalesListReportExport(filters: {
-    locationId: string;
+    locationId?: string;
+    locationIds?: string[];
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
     format: "xlsx" | "pdf";
+    exportType?: "flat" | "hierarchical";
     search?: string;
     paymentModeGroup?: string;
     minAmount?: number;
@@ -437,11 +439,13 @@ export async function getGrossSalesSummaryReport(filters: {
 }
 
 export async function queueGrossSalesSummaryReportExport(filters: {
-    locationId: string;
+    locationId?: string;
+    locationIds?: string[];
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
     format: "xlsx" | "pdf";
+    exportType?: "flat" | "hierarchical";
     search?: string;
     paymentModeGroup?: string;
     minAmount?: number;
@@ -517,11 +521,13 @@ export async function getGrossSalesReturnReport(filters: {
 }
 
 export async function queueGrossSalesReturnReportExport(filters: {
-    locationId: string;
+    locationId?: string;
+    locationIds?: string[];
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
     format: "xlsx" | "pdf";
+    exportType?: "flat" | "hierarchical";
     search?: string;
     paymentModeGroup?: string;
     minAmount?: number;

@@ -50,6 +50,7 @@ export interface GrossSalesSummaryFlatRecord {
 
 export interface GrossSalesSummaryReportData {
   reportType: "merged" | "separate";
+  categories?: any[];
   flatItems: GrossSalesSummaryFlatRecord[];
   grandTotals: GrossSalesSummaryTotals;
   dateRange: { startDate?: string; endDate?: string };

@@ -8,12 +8,17 @@ export async function generateGrossSalesSummaryPdf(opts: {
   grandTotals: GrossSalesSummaryTotals;
   dateRange: { from?: Date; to?: Date };
   locationNames: string;
+  onProgress?: (percent: number, message?: string) => void;
 }): Promise<void> {
-  const { flatItems, grandTotals, dateRange, locationNames } = opts;
+  const { flatItems, grandTotals, dateRange, locationNames, onProgress } = opts;
+
+  onProgress?.(10, "Initializing PDF layout...");
 
   const dateStr = format(new Date(), "yyyy-MM-dd");
   const fromDateStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : "Start";
   const toDateStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : "End";
+
+  onProgress?.(35, "Rendering table rows...");
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
@@ -37,9 +42,9 @@ export async function generateGrossSalesSummaryPdf(opts: {
       <td>${item.sizeName || "-"}</td>
       <td>${item.colorName || "-"}</td>
       <td style="text-align: right; font-family: monospace;">${item.quantity.toLocaleString()}</td>
-      <td style="text-align: right; font-family: monospace;">$${item.unitPrice.toFixed(2)}</td>
-      <td style="text-align: right; font-family: monospace;">$${item.discountAmount.toFixed(2)}</td>
-      <td style="text-align: right; font-family: monospace; font-weight: bold;">$${item.subTotal.toFixed(2)}</td>
+      <td style="text-align: right; font-family: monospace;">Rs. ${item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td style="text-align: right; font-family: monospace;">Rs. ${item.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. ${item.subTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
     </tr>
   `
     )
@@ -93,11 +98,11 @@ export async function generateGrossSalesSummaryPdf(opts: {
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Total Discounts</div>
-            <div class="kpi-val" style="color: #d97706;">$${grandTotals.discountAmount.toFixed(2)}</div>
+            <div class="kpi-val" style="color: #d97706;">Rs. ${grandTotals.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Gross Revenue</div>
-            <div class="kpi-val" style="color: #059669;">$${grandTotals.netAmount.toFixed(2)}</div>
+            <div class="kpi-val" style="color: #059669;">Rs. ${grandTotals.netAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           </div>
         </div>
 

@@ -7,6 +7,8 @@ import { getUsers, User } from "@/lib/actions/users";
 import {
   queueSalesListPreview,
   getSalesListResult,
+  queueSalesListReportExport,
+  getSalesListReportExportStatus,
 } from "@/lib/actions/pos-sales";
 import { streamSalesListResult } from "@/lib/stream-ndjson";
 import { useReportSse } from "@/hooks/use-report-sse";
@@ -21,6 +23,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { Progress } from "@/components/ui/progress";
 import { FileSpreadsheet, Printer, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { getApiBaseUrl } from "@/lib/utils";
 
 interface SalesListViewProps {
   isPosLevel?: boolean;
@@ -386,7 +389,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
     searchQuery,
   });
 
-  // Client Excel Export Handler using filtered dataset with progress
+  // Excel Export Handler: Instant in-browser for small sets (<=2,500), high-speed Bull queue streaming for large datasets (>2,500)
   const handleExportExcel = async (type: "flat" | "hierarchical") => {
     if (!reportData) return;
     setIsExportingExcel(true);
@@ -398,6 +401,129 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
       message: "Initializing Excel export...",
     });
 
+    const totalCount = type === "flat" ? filteredFlatItems.length : filteredInvoices.length;
+
+    // Instant On-The-Fly Server Filtered Streaming Export
+    // Avoids freezing browser main thread with SheetJS, zero database re-querying,
+    // and preserves 100% of user search keywords, payment mode, FBR toggle, and outlet filters.
+    if (previewJobId) {
+      try {
+        setExportProgressState((prev) => ({
+          ...prev,
+          progress: 50,
+          message: "Streaming filtered Excel directly from server...",
+        }));
+
+        const baseUrl = getApiBaseUrl();
+        const params = new URLSearchParams();
+        params.append("exportType", type);
+        if (searchQuery) params.append("search", searchQuery);
+        if (paymentModeFilter && paymentModeFilter !== "all") params.append("paymentMode", paymentModeFilter);
+        if (fbrOnlyFilter) params.append("fbrOnly", "true");
+        if (selectedLocationIds.length > 0) params.append("locationId", selectedLocationIds.join(","));
+        if (selectedCashierId && selectedCashierId !== "all") params.append("cashierId", selectedCashierId);
+
+        const downloadUrl = `${baseUrl}/pos-sales/reports/sales-list/stream-preview-excel/${previewJobId}?${params.toString()}`;
+        window.open(downloadUrl, "_blank");
+        toast.success("Filtered Excel stream started! Download will begin shortly.");
+
+        setExportProgressState((prev) => ({
+          ...prev,
+          progress: 100,
+          message: "Download initiated successfully!",
+        }));
+      } catch (err: any) {
+        toast.error("Failed to initiate filtered Excel download");
+      } finally {
+        setIsExportingExcel(false);
+        setTimeout(() => {
+          setExportProgressState((prev) => ({ ...prev, isExporting: false }));
+        }, 1200);
+      }
+      return;
+    }
+
+    // For large un-previewed datasets (> 2,500 items),
+    // delegate directly to backend Bull queue with streaming ExcelJS WorkbookWriter and S3 upload.
+    if (totalCount > 2500) {
+      try {
+        setExportProgressState((prev) => ({
+          ...prev,
+          progress: 10,
+          message: `Large dataset (${totalCount.toLocaleString()} items) detected. Initializing streaming background export...`,
+        }));
+
+        const queueRes = await queueSalesListReportExport({
+          locationId: selectedLocationIds.length === 1 ? selectedLocationIds[0] : undefined,
+          locationIds: selectedLocationIds.length > 1 ? selectedLocationIds : undefined,
+          startDate: dateRange.from?.toISOString(),
+          endDate: dateRange.to?.toISOString(),
+          cashierUserId: selectedCashierId !== "all" ? selectedCashierId : undefined,
+          format: "xlsx",
+          exportType: type,
+          search: searchQuery || undefined,
+          paymentModeGroup: paymentModeFilter !== "all" ? paymentModeFilter : undefined,
+          fbrOnly: fbrOnlyFilter ? true : undefined,
+        });
+
+        if (!queueRes.status || !queueRes.data?.jobId) {
+          throw new Error(queueRes.message || "Failed to queue background export job");
+        }
+
+        const jobId = queueRes.data.jobId;
+
+        // Poll job progress every 2 seconds until completed or failed
+        await new Promise<void>((resolve, reject) => {
+          const pollInterval = setInterval(async () => {
+            try {
+              const statusRes = await getSalesListReportExportStatus(jobId);
+              if (statusRes.status && statusRes.data) {
+                const { state, progress, message } = statusRes.data;
+                setExportProgressState((prev) => ({
+                  ...prev,
+                  progress: Math.max(10, Math.min(99, progress || 10)),
+                  message: message || `Processing on server (${progress || 0}%)...`,
+                }));
+
+                if (state === "completed") {
+                  clearInterval(pollInterval);
+                  setExportProgressState((prev) => ({
+                    ...prev,
+                    progress: 100,
+                    message: "Export completed! Initiating download...",
+                  }));
+
+                  // Workspace rule AGENTS.md:
+                  // "Trigger file downloads using window.open(url, "_blank") rather than fetch.
+                  // Navigating directly via browser navigation routes around cross-origin CORS limitations on S3/CDN 302 redirects,
+                  // and sends cookies automatically to authenticate the download."
+                  const downloadUrl = `/api/pos-sales/reports/sales-list/export/${jobId}/download`;
+                  window.open(downloadUrl, "_blank");
+                  toast.success("Excel report exported successfully!");
+                  resolve();
+                } else if (state === "failed") {
+                  clearInterval(pollInterval);
+                  reject(new Error("Background export task failed on server."));
+                }
+              }
+            } catch (pollErr) {
+              console.error("[SalesListExport poll error]", pollErr);
+            }
+          }, 2000);
+        });
+      } catch (err: any) {
+        console.error("Export error:", err);
+        toast.error(err.message || "Failed to generate Excel export");
+      } finally {
+        setIsExportingExcel(false);
+        setTimeout(() => {
+          setExportProgressState((prev) => ({ ...prev, isExporting: false }));
+        }, 1500);
+      }
+      return;
+    }
+
+    // Fast client-side generation for small datasets (<= 2,500)
     try {
       const { excelBuffer, fileName } = await generateSalesListExcel({
         exportType: type,

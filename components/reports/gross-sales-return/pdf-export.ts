@@ -8,8 +8,10 @@ export async function generateGrossSalesReturnPdf(opts: {
   grandTotals: GrossSalesReturnTotals;
   dateRange: { from?: Date; to?: Date };
   locationNames: string;
+  onProgress?: (percent: number, message?: string) => void;
 }): Promise<void> {
-  const { returns, grandTotals, dateRange, locationNames } = opts;
+  const { returns, grandTotals, dateRange, locationNames, onProgress } = opts;
+  onProgress?.(30, "Compiling PDF document layout...");
 
   const dateStr = format(new Date(), "yyyy-MM-dd");
   const fromDateStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : "Start";
