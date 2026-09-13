@@ -236,7 +236,7 @@ export default function CreatePurchaseInvoicePage() {
         landedCostItemId: item.id,
         description: item.description || "",
         quantity: item.availableQty,
-        unitPrice: item.unitCostPKR,
+        unitPrice: Math.round(Number(item.unitCostPKR || 0)),
         taxRate: (item as any).item?.taxRate1 || 0,
         discountRate: 0,
         sku: (item as any).item?.sku || "",
@@ -558,7 +558,7 @@ export default function CreatePurchaseInvoicePage() {
                       <Input
                         type="number"
                         step="0.01"
-                        value={item.unitPrice}
+                        value={Math.round(Number(item.unitPrice || 0))}
                         onChange={(e) =>
                           updateItem(
                             index,
@@ -616,24 +616,24 @@ export default function CreatePurchaseInvoicePage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>{subtotal.toLocaleString()}</span>
+                  <span>{Math.round(subtotal).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Sale Tax Amount:</span>
-                  <span>{taxAmount.toLocaleString()}</span>
+                  <span>{Math.round(taxAmount).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Invoice Discount:</span>
-                  <span>-{formData.discountAmount.toLocaleString()}</span>
+                  <span>-{Math.round(formData.discountAmount || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground text-sm">
                   <span>Advance Tax ({formData.advanceTaxRate}%):</span>
-                  <span>{advanceTaxAmount.toLocaleString()}</span>
+                  <span>{Math.round(advanceTaxAmount).toLocaleString()}</span>
                 </div>
                 <hr />
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total Amount:</span>
-                  <span>{totalAmount.toLocaleString()}</span>
+                  <span>{Math.round(totalAmount).toLocaleString()}</span>
                 </div>
               </div>
             </CardContent>
