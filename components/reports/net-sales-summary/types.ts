@@ -53,6 +53,9 @@ export interface NetSalesSummaryLineItem {
 }
 
 export interface NetSalesSummaryFlatRecord {
+  locationId?: string;
+  cashierUserId?: string;
+  createdAt?: string | Date;
   locationName: string;
   docNo?: string;
   docDate?: string;

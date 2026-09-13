@@ -4,6 +4,7 @@ import {
   NetSalesSummaryTotals,
   GroupingLevels,
   NetSalesSummaryTreeNode,
+  NetSalesSummaryFlatRecord,
 } from "./types";
 
 function createEmptyTotals(): NetSalesSummaryTotals {
@@ -43,11 +44,33 @@ function addTotals(target: NetSalesSummaryTotals, source: NetSalesSummaryTotals)
   target.netSalesAmount += source.netSalesAmount;
 }
 
-export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | null) {
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
-  const [searchQuery, setSearchQuery] = useState("");
+export interface UseNetSalesSummaryDataOptions {
+  reportType?: "merged" | "separate";
+  selectedLocationIds?: string[];
+  selectedCashierId?: string;
+  subDateRange?: { from?: Date; to?: Date };
+  searchQuery?: string;
+}
+
+export function useNetSalesSummaryData(
+  reportData: NetSalesSummaryReportData | null,
+  options?: UseNetSalesSummaryDataOptions,
+) {
+  const {
+    reportType: optionReportType,
+    selectedLocationIds = [],
+    selectedCashierId,
+    subDateRange,
+    searchQuery: optionSearchQuery,
+  } = options || {};
+
+  const [internalReportType, setInternalReportType] = useState<"merged" | "separate">("merged");
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [paymentModeFilter, setPaymentModeFilter] = useState("all");
   const [fbrOnlyFilter, setFbrOnlyFilter] = useState(false);
+
+  const effectiveReportType = optionReportType ?? internalReportType;
+  const effectiveSearchQuery = optionSearchQuery ?? internalSearchQuery;
 
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
     month: true,
@@ -67,14 +90,14 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
 
   useEffect(() => {
     if (reportData?.reportType) {
-      setReportType(reportData.reportType);
+      setInternalReportType(reportData.reportType);
     }
   }, [reportData?.reportType]);
 
   const rawItems = reportData?.flatItems || [];
 
-  const { treeData, grandTotals } = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
+  const { treeData, grandTotals, filteredFlatItems } = useMemo(() => {
+    const q = effectiveSearchQuery.toLowerCase().trim();
 
     // Helper to format date string like "2026-07-15" into Month "July 2026"
     const getMonthLabel = (dateStr?: string, monthStr?: string): string => {
@@ -96,30 +119,55 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
       return dateStr;
     };
 
-    // 1. Filter flat items
-    const filteredFlatItems = rawItems.filter((item) => {
-      if (!q) return true;
-      const monthLbl = getMonthLabel(item.docDate, item.docMonth);
-      return (
-        item.locationName.toLowerCase().includes(q) ||
-        (item.docNo && item.docNo.toLowerCase().includes(q)) ||
-        (item.docDate && item.docDate.toLowerCase().includes(q)) ||
-        monthLbl.toLowerCase().includes(q) ||
-        (item.salesPerson && item.salesPerson.toLowerCase().includes(q)) ||
-        (item.taxRateName && item.taxRateName.toLowerCase().includes(q)) ||
-        (item.brandName && item.brandName.toLowerCase().includes(q)) ||
-        (item.divisionName && item.divisionName.toLowerCase().includes(q)) ||
-        (item.categoryName && item.categoryName.toLowerCase().includes(q)) ||
-        (item.genderName && item.genderName.toLowerCase().includes(q)) ||
-        (item.silhouetteName && item.silhouetteName.toLowerCase().includes(q)) ||
-        item.sku.toLowerCase().includes(q) ||
-        item.barCode.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q)
-      );
+    // 1. In-Memory Client Slicing across all filters (0ms, zero backend hits)
+    const filtered = rawItems.filter((item) => {
+      // Location filter
+      if (selectedLocationIds.length > 0) {
+        const matchesLoc =
+          (item.locationId && selectedLocationIds.includes(item.locationId)) ||
+          selectedLocationIds.some((id) => item.locationName?.toLowerCase().includes(id.toLowerCase()));
+        if (!matchesLoc) return false;
+      }
+
+      // Cashier filter
+      if (selectedCashierId && item.cashierUserId && item.cashierUserId !== selectedCashierId) {
+        return false;
+      }
+
+      // Sub-date filter within loaded period
+      if (subDateRange?.from && subDateRange?.to && item.createdAt) {
+        const itemDate = new Date(item.createdAt).getTime();
+        const fromTime = new Date(subDateRange.from).setHours(0, 0, 0, 0);
+        const toTime = new Date(subDateRange.to).setHours(23, 59, 59, 999);
+        if (itemDate < fromTime || itemDate > toTime) return false;
+      }
+
+      // Search keyword filter
+      if (q) {
+        const monthLbl = getMonthLabel(item.docDate, item.docMonth);
+        const matchesQuery =
+          item.locationName.toLowerCase().includes(q) ||
+          (item.docNo && item.docNo.toLowerCase().includes(q)) ||
+          (item.docDate && item.docDate.toLowerCase().includes(q)) ||
+          monthLbl.toLowerCase().includes(q) ||
+          (item.salesPerson && item.salesPerson.toLowerCase().includes(q)) ||
+          (item.taxRateName && item.taxRateName.toLowerCase().includes(q)) ||
+          (item.brandName && item.brandName.toLowerCase().includes(q)) ||
+          (item.divisionName && item.divisionName.toLowerCase().includes(q)) ||
+          (item.categoryName && item.categoryName.toLowerCase().includes(q)) ||
+          (item.genderName && item.genderName.toLowerCase().includes(q)) ||
+          (item.silhouetteName && item.silhouetteName.toLowerCase().includes(q)) ||
+          item.sku.toLowerCase().includes(q) ||
+          item.barCode.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q);
+        if (!matchesQuery) return false;
+      }
+
+      return true;
     });
 
     // 2. Build level sequence
-    const isSeparate = reportType === "separate";
+    const isSeparate = effectiveReportType === "separate";
     const levels: string[] = [];
 
     if (isSeparate && groupingLevels.location) levels.push("location");
@@ -142,42 +190,24 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
 
     const root: NetSalesSummaryTreeNode[] = [];
 
-    for (const item of filteredFlatItems) {
-      const soldQty = item.soldQty || 0;
-      const returnQty = item.returnQty || 0;
-      const netQty = item.netQty !== undefined ? item.netQty : (soldQty - returnQty);
-
-      let unitPrice = item.unitPrice || 0;
-      if (unitPrice === 0 && soldQty > 0 && item.grossAmount > 0) {
-        unitPrice = item.grossAmount / soldQty;
-      }
-
-      const taxPct = item.taxRatePercent || 18;
-      const taxDivisor = 1 + taxPct / 100;
-      const defaultWost = Math.round((unitPrice / taxDivisor) * netQty * 100) / 100;
-
-      const retailSalesValue = item.retailSalesValue !== undefined ? item.retailSalesValue : (unitPrice * netQty);
-      const wostAmount = item.wostAmount !== undefined ? item.wostAmount : defaultWost;
-      const discountAmount = item.discountAmount || 0;
-      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((wostAmount - discountAmount) * 100) / 100;
-      const taxAmount = item.taxAmount || 0;
-      const valueInclSalesTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : Math.round((valueExSalesTax + taxAmount) * 100) / 100;
+    for (const item of filtered) {
+      if (item.soldQty === 0 && item.returnQty === 0 && item.netQty === 0) continue;
 
       const itemTotals: NetSalesSummaryTotals = {
         orderCount: 1,
-        unitPrice,
-        totalItemsSold: soldQty,
-        totalItemsReturned: returnQty,
-        netItems: netQty,
-        retailSalesValue,
-        wostAmount,
-        discountAmount,
-        valueExSalesTax,
-        taxAmount,
-        valueInclSalesTax,
+        unitPrice: item.unitPrice || 0,
+        totalItemsSold: item.soldQty,
+        totalItemsReturned: item.returnQty,
+        netItems: item.netQty,
+        retailSalesValue: item.retailSalesValue || 0,
+        wostAmount: item.wostAmount || 0,
+        discountAmount: item.discountAmount,
+        valueExSalesTax: item.valueExSalesTax || 0,
+        taxAmount: item.taxAmount,
+        valueInclSalesTax: item.valueInclSalesTax || 0,
         grossSalesAmount: item.grossAmount,
         returnAmount: item.returnAmount,
-        netSalesAmount: valueInclSalesTax,
+        netSalesAmount: item.netAmount,
       };
 
       let currentLevelNodes = root;
@@ -192,20 +222,13 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
         } else if (levelName === "month") {
           nodeVal = getMonthLabel(item.docDate, item.docMonth);
         } else if (levelName === "date") {
-          nodeVal = item.docDate || "Date Wise";
+          nodeVal = item.docDate ? item.docDate.split("T")[0] : "No Date";
         } else if (levelName === "document") {
-          nodeVal = item.docNo ? `Doc #${item.docNo}` : "Document Wise";
+          nodeVal = item.docNo || "General Transaction";
         } else if (levelName === "salesPerson") {
           nodeVal = item.salesPerson || "Default Cashier";
         } else if (levelName === "taxRate") {
-          if (item.taxRateName) {
-            nodeVal = item.taxRateName;
-          } else if (item.taxRatePercent !== undefined) {
-            nodeVal = `${item.taxRatePercent}% Sales Tax Group`;
-          } else {
-            const calculatedPct = valueExSalesTax > 0 ? Math.round((taxAmount / valueExSalesTax) * 100) : 0;
-            nodeVal = calculatedPct > 0 ? `${calculatedPct}% Sales Tax Group` : "0% Tax Exempt Group";
-          }
+          nodeVal = item.taxRateName || (item.taxRatePercent !== undefined ? `${item.taxRatePercent}% Tax` : "Standard Tax");
         } else if (levelName === "brand") {
           nodeVal = item.brandName || "Default Brand";
         } else if (levelName === "division") {
@@ -221,7 +244,6 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
           extraFields.sku = item.sku;
           extraFields.articleName = item.description || "Article";
           extraFields.barCode = item.barCode;
-          extraFields.unitPrice = unitPrice;
         } else if (levelName === "variant") {
           nodeVal = item.barCode
             ? `[${item.barCode}] ${item.colorName || "Default"}-${item.sizeName || "Default"}`
@@ -230,7 +252,6 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
           extraFields.size = item.sizeName || "Default";
           extraFields.barCode = item.barCode;
           extraFields.sku = item.sku;
-          extraFields.unitPrice = unitPrice;
         }
 
         let existingNode = currentLevelNodes.find(
@@ -248,10 +269,6 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
           currentLevelNodes.push(existingNode);
         }
 
-        if (unitPrice > 0) {
-          existingNode.totals.unitPrice = unitPrice;
-        }
-
         addTotals(existingNode.totals, itemTotals);
 
         if (i < levels.length - 1) {
@@ -265,18 +282,18 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
       addTotals(calculatedGrandTotals, node.totals);
     }
 
-    return { treeData: root, grandTotals: calculatedGrandTotals };
-  }, [rawItems, reportType, groupingLevels, searchQuery]);
+    return { treeData: root, grandTotals: calculatedGrandTotals, filteredFlatItems: filtered };
+  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));
   };
 
   return {
-    reportType,
-    setReportType,
-    searchQuery,
-    setSearchQuery,
+    reportType: effectiveReportType,
+    setReportType: setInternalReportType,
+    searchQuery: effectiveSearchQuery,
+    setSearchQuery: setInternalSearchQuery,
     paymentModeFilter,
     setPaymentModeFilter,
     fbrOnlyFilter,
@@ -286,5 +303,6 @@ export function useNetSalesSummaryData(reportData: NetSalesSummaryReportData | n
     handleToggleLevel,
     treeData,
     grandTotals,
+    filteredFlatItems,
   };
 }

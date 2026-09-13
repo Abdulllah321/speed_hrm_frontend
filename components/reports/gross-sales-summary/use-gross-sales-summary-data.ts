@@ -4,6 +4,7 @@ import {
   GrossSalesSummaryTotals,
   GroupingLevels,
   GrossSalesSummaryTreeNode,
+  GrossSalesSummaryFlatRecord,
 } from "./types";
 
 function createEmptyTotals(): GrossSalesSummaryTotals {
@@ -28,11 +29,33 @@ function addTotals(target: GrossSalesSummaryTotals, source: GrossSalesSummaryTot
   target.taxAmount += source.taxAmount;
 }
 
-export function useGrossSalesSummaryData(reportData: GrossSalesSummaryReportData | null) {
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
-  const [searchQuery, setSearchQuery] = useState("");
+export interface UseGrossSalesSummaryDataOptions {
+  reportType?: "merged" | "separate";
+  selectedLocationIds?: string[];
+  selectedCashierId?: string;
+  subDateRange?: { from?: Date; to?: Date };
+  searchQuery?: string;
+}
+
+export function useGrossSalesSummaryData(
+  reportData: GrossSalesSummaryReportData | null,
+  options?: UseGrossSalesSummaryDataOptions,
+) {
+  const {
+    reportType: optionReportType,
+    selectedLocationIds = [],
+    selectedCashierId,
+    subDateRange,
+    searchQuery: optionSearchQuery,
+  } = options || {};
+
+  const [internalReportType, setInternalReportType] = useState<"merged" | "separate">("merged");
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [paymentModeFilter, setPaymentModeFilter] = useState("all");
   const [fbrOnlyFilter, setFbrOnlyFilter] = useState(false);
+
+  const effectiveReportType = optionReportType ?? internalReportType;
+  const effectiveSearchQuery = optionSearchQuery ?? internalSearchQuery;
 
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
     brand: true,
@@ -52,33 +75,58 @@ export function useGrossSalesSummaryData(reportData: GrossSalesSummaryReportData
 
   useEffect(() => {
     if (reportData?.reportType) {
-      setReportType(reportData.reportType);
+      setInternalReportType(reportData.reportType);
     }
   }, [reportData?.reportType]);
 
   const rawItems = reportData?.flatItems || [];
 
-  const { treeData, grandTotals } = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
+  const { treeData, grandTotals, filteredFlatItems } = useMemo(() => {
+    const q = effectiveSearchQuery.toLowerCase().trim();
 
-    // 1. Filter flat items
-    const filteredFlatItems = rawItems.filter((item) => {
-      if (!q) return true;
-      return (
-        item.locationName.toLowerCase().includes(q) ||
-        (item.brandName && item.brandName.toLowerCase().includes(q)) ||
-        (item.divisionName && item.divisionName.toLowerCase().includes(q)) ||
-        (item.categoryName && item.categoryName.toLowerCase().includes(q)) ||
-        (item.genderName && item.genderName.toLowerCase().includes(q)) ||
-        (item.silhouetteName && item.silhouetteName.toLowerCase().includes(q)) ||
-        item.sku.toLowerCase().includes(q) ||
-        item.barCode.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q)
-      );
+    // 1. In-Memory Client Slicing across all filters (0ms, zero backend calls)
+    const filtered = rawItems.filter((item) => {
+      // Outlet / Location filter
+      if (selectedLocationIds.length > 0) {
+        const matchesLoc =
+          (item.locationId && selectedLocationIds.includes(item.locationId)) ||
+          selectedLocationIds.some((id) => item.locationName?.toLowerCase().includes(id.toLowerCase()));
+        if (!matchesLoc) return false;
+      }
+
+      // Cashier filter
+      if (selectedCashierId && item.cashierUserId && item.cashierUserId !== selectedCashierId) {
+        return false;
+      }
+
+      // Sub-date filter within loaded period
+      if (subDateRange?.from && subDateRange?.to && item.createdAt) {
+        const itemDate = new Date(item.createdAt).getTime();
+        const fromTime = new Date(subDateRange.from).setHours(0, 0, 0, 0);
+        const toTime = new Date(subDateRange.to).setHours(23, 59, 59, 999);
+        if (itemDate < fromTime || itemDate > toTime) return false;
+      }
+
+      // Search keyword filter
+      if (q) {
+        const matchesQuery =
+          item.locationName.toLowerCase().includes(q) ||
+          (item.brandName && item.brandName.toLowerCase().includes(q)) ||
+          (item.divisionName && item.divisionName.toLowerCase().includes(q)) ||
+          (item.categoryName && item.categoryName.toLowerCase().includes(q)) ||
+          (item.genderName && item.genderName.toLowerCase().includes(q)) ||
+          (item.silhouetteName && item.silhouetteName.toLowerCase().includes(q)) ||
+          item.sku.toLowerCase().includes(q) ||
+          item.barCode.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q);
+        if (!matchesQuery) return false;
+      }
+
+      return true;
     });
 
     // 2. Build level sequence
-    const isSeparate = reportType === "separate";
+    const isSeparate = effectiveReportType === "separate";
     const levels: string[] = [];
 
     if (isSeparate && groupingLevels.location) levels.push("location");
@@ -96,7 +144,7 @@ export function useGrossSalesSummaryData(reportData: GrossSalesSummaryReportData
 
     const root: GrossSalesSummaryTreeNode[] = [];
 
-    for (const item of filteredFlatItems) {
+    for (const item of filtered) {
       if (item.quantity <= 0) continue;
 
       const grossAmt = item.quantity * item.unitPrice;
@@ -174,18 +222,18 @@ export function useGrossSalesSummaryData(reportData: GrossSalesSummaryReportData
       addTotals(calculatedGrandTotals, node.totals);
     }
 
-    return { treeData: root, grandTotals: calculatedGrandTotals };
-  }, [rawItems, reportType, groupingLevels, searchQuery]);
+    return { treeData: root, grandTotals: calculatedGrandTotals, filteredFlatItems: filtered };
+  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));
   };
 
   return {
-    reportType,
-    setReportType,
-    searchQuery,
-    setSearchQuery,
+    reportType: effectiveReportType,
+    setReportType: setInternalReportType,
+    searchQuery: effectiveSearchQuery,
+    setSearchQuery: setInternalSearchQuery,
     paymentModeFilter,
     setPaymentModeFilter,
     fbrOnlyFilter,
@@ -195,5 +243,6 @@ export function useGrossSalesSummaryData(reportData: GrossSalesSummaryReportData
     handleToggleLevel,
     treeData,
     grandTotals,
+    filteredFlatItems,
   };
 }

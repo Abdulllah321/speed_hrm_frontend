@@ -108,7 +108,13 @@ export function useSalesListData(
 
   // Check whether any in-memory filter is actually applied by the user
   const hasSubDateFilter = useMemo(() => {
-    if (!subDateRange?.from || !subDateRange?.to || !reportData?.dateRange) return false;
+    if (
+      !subDateRange?.from ||
+      !subDateRange?.to ||
+      !reportData?.dateRange?.startDate ||
+      !reportData?.dateRange?.endDate
+    )
+      return false;
     const repFrom = new Date(reportData.dateRange.startDate).getTime();
     const repTo = new Date(reportData.dateRange.endDate).getTime();
     const subFrom = new Date(subDateRange.from).getTime();

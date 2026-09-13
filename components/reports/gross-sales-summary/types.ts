@@ -29,6 +29,9 @@ export interface GrossSalesSummaryLineItem {
 }
 
 export interface GrossSalesSummaryFlatRecord {
+  locationId?: string;
+  cashierUserId?: string;
+  createdAt?: string | Date;
   locationName: string;
   categoryName: string;
   brandName: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useTransition, useRef } from "react";
+import React, { useState, useEffect, useTransition, useRef, useMemo, useCallback } from "react";
 import {
   GrossSalesSummaryReportData,
 } from "./types";
@@ -26,6 +26,50 @@ import { getLocations } from "@/lib/actions/location";
 import { getUsers } from "@/lib/actions/users";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getApiBaseUrl } from "@/lib/utils";
+
+// Helper: Calculate standard dates for Fiscal Years (Pakistan July 1 - June 30) & Calendar Years
+const getPresetPeriodInfo = (
+  preset: string,
+): { from: Date; to: Date; fiscalYear?: string; year?: number } => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0 = Jan, 6 = July
+  const fyStartYear = currentMonth >= 6 ? currentYear : currentYear - 1;
+
+  if (preset === "fy-current") {
+    return {
+      from: new Date(fyStartYear, 6, 1),
+      to: new Date(fyStartYear + 1, 5, 30, 23, 59, 59, 999),
+      fiscalYear: "current",
+    };
+  }
+  if (preset === "fy-previous") {
+    return {
+      from: new Date(fyStartYear - 1, 6, 1),
+      to: new Date(fyStartYear, 5, 30, 23, 59, 59, 999),
+      fiscalYear: "previous",
+    };
+  }
+  if (preset === "year-current") {
+    return {
+      from: new Date(currentYear, 0, 1),
+      to: new Date(currentYear, 11, 31, 23, 59, 59, 999),
+      year: currentYear,
+    };
+  }
+  if (preset === "year-previous") {
+    return {
+      from: new Date(currentYear - 1, 0, 1),
+      to: new Date(currentYear - 1, 11, 31, 23, 59, 59, 999),
+      year: currentYear - 1,
+    };
+  }
+  // default / custom
+  return {
+    from: new Date(fyStartYear, 6, 1),
+    to: new Date(fyStartYear + 1, 5, 30, 23, 59, 59, 999),
+  };
+};
 
 interface GrossSalesSummaryViewProps {
   initialReportData?: GrossSalesSummaryReportData | null;
@@ -68,11 +112,12 @@ export function GrossSalesSummaryView({
           const [locRes, cashierRes] = await Promise.all([getLocations(), getUsers()]);
           const locData = Array.isArray(locRes) ? locRes : (locRes as any)?.data || [];
           const userList = Array.isArray(cashierRes) ? cashierRes : (cashierRes as any)?.data || [];
-          if (locations.length === 0) setLocations(locData);
-          if (cashiers.length === 0) setCashiers(userList);
+
+          if (Array.isArray(locData) && locData.length > 0) setLocations(locData);
+          if (Array.isArray(userList) && userList.length > 0) setCashiers(userList);
         }
       } catch (err) {
-        console.error("Failed to load filter options", err);
+        console.error("Failed to load options:", err);
       }
     }
     loadOptions();
@@ -86,6 +131,14 @@ export function GrossSalesSummaryView({
   );
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Period / Base Date Selection (Default: Current Fiscal Year)
+  const [periodPreset, setPeriodPreset] = useState<string>("fy-current");
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const init = getPresetPeriodInfo("fy-current");
+    return { from: init.from, to: init.to };
+  });
 
   // Enforce POS terminal location when on POS level
   useEffect(() => {
@@ -93,17 +146,6 @@ export function GrossSalesSummaryView({
       setSelectedLocationIds([posLocationId]);
     }
   }, [isPosLevel, posLocationId]);
-
-  const getDefaultFiscalDateRange = (): DateRange => {
-    const now = new Date();
-    const year = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear();
-    return {
-      from: new Date(year, 6, 1),
-      to: now,
-    };
-  };
-
-  const [dateRange, setDateRange] = useState<DateRange>(getDefaultFiscalDateRange);
 
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);
   const [isQueueingJob, setIsQueueingJob] = useState(false);
@@ -141,50 +183,91 @@ export function GrossSalesSummaryView({
 
   const [isPending, startTransition] = useTransition();
   const streamAbortControllerRef = useRef<AbortController | null>(null);
+  const hasStreamedJobIdRef = useRef<string | null>(null);
 
   const sseState = useReportSse(previewJobId, "gross-sales-summary");
 
-  const activeSelectionNames = React.useMemo(() => {
-    if (selectedLocationIds.length === 0) return "All Outlets";
+  const activeSelectionNames = useMemo(() => {
+    if (isPosLevel) return posLocationName;
+    if (selectedLocationIds.length === 0) return "All Outlets (Stores)";
     const selected = locations.filter((loc) => selectedLocationIds.includes(loc.id));
     return selected.map((loc) => loc.name).join(", ");
-  }, [selectedLocationIds, locations]);
+  }, [isPosLevel, posLocationName, selectedLocationIds, locations]);
 
-  const handleFetchReport = () => {
-    setIsQueueingJob(true);
-    setPreviewJobId(null);
+  // Backend Preview Fetcher: ONLY triggered on Fiscal Year / Base Period change or explicit Refresh
+  const handleFetchReport = useCallback(
+    (targetPreset?: string, targetRange?: DateRange) => {
+      const activePreset = targetPreset || periodPreset;
+      const activeRange = targetRange || dateRange;
+      const periodInfo = getPresetPeriodInfo(activePreset);
 
-    startTransition(async () => {
-      try {
-        const startStr = dateRange.from ? dateRange.from.toISOString() : undefined;
-        const endStr = dateRange.to ? dateRange.to.toISOString() : undefined;
+      setIsQueueingJob(true);
+      setPreviewJobId(null);
+      hasStreamedJobIdRef.current = null;
 
-        const res = await queueGrossSalesSummaryPreview({
-          locationId: selectedLocationIds.join(","),
-          cashierUserId: selectedCashierId,
-          startDate: startStr,
-          endDate: endStr,
-          reportType,
-        });
+      startTransition(async () => {
+        try {
+          let startDate: string | undefined;
+          let endDate: string | undefined;
 
-        const jobId = res.data?.jobId;
-        if (res.status && jobId) {
-          setPreviewJobId(jobId);
-          toast.success("Queued preview calculation in background...");
-        } else {
-          toast.error(res.message || "Failed to queue summary report preview.");
+          if (activePreset === "fy-current" || activePreset === "fy-previous" || activePreset === "year-current" || activePreset === "year-previous") {
+            startDate = periodInfo.from.toISOString();
+            endDate = periodInfo.to.toISOString();
+          } else {
+            startDate = activeRange.from?.toISOString();
+            endDate = activeRange.to?.toISOString();
+          }
+
+          // Pos level restricts to single location; ERP report loads all locations for instant client slicing
+          const locationId = isPosLevel && posLocationId ? posLocationId : undefined;
+
+          const res = await queueGrossSalesSummaryPreview({
+            locationId,
+            startDate,
+            endDate,
+            reportType,
+          });
+
+          const jobId = res.data?.jobId;
+          if (res.status && jobId) {
+            setPreviewJobId(jobId);
+          } else {
+            toast.error(res.message || "Failed to queue summary report preview.");
+          }
+        } catch (err: any) {
+          toast.error("Error launching summary calculation");
+        } finally {
+          setIsQueueingJob(false);
         }
-      } catch (err: any) {
-        toast.error("Error launching summary calculation");
-      } finally {
-        setIsQueueingJob(false);
-      }
-    });
+      });
+    },
+    [periodPreset, dateRange, reportType, isPosLevel, posLocationId]
+  );
+
+  // Initial fetch on mount for default Current Fiscal Year (ONLY ONCE)
+  useEffect(() => {
+    handleFetchReport("fy-current");
+  }, []);
+
+  // When Fiscal Year / Year preset changes: update dates and re-fetch that year once
+  const handlePeriodPresetChange = (newPreset: string) => {
+    setPeriodPreset(newPreset);
+    if (newPreset !== "custom") {
+      const info = getPresetPeriodInfo(newPreset);
+      const newRange = { from: info.from, to: info.to };
+      setDateRange(newRange);
+      handleFetchReport(newPreset, newRange);
+    }
   };
 
-  useEffect(() => {
-    handleFetchReport();
-  }, [selectedLocationIds, selectedCashierId, reportType, dateRange.from, dateRange.to]);
+  // When DateRange changes:
+  // If in custom mode, fetch custom range; otherwise, slices client-side within loaded year!
+  const handleDateRangeChange = (range: DateRange) => {
+    setDateRange(range);
+    if (periodPreset === "custom") {
+      handleFetchReport("custom", range);
+    }
+  };
 
   // Progressive NDJSON Stream Ingestion upon SSE Completion
   useEffect(() => {
@@ -192,6 +275,11 @@ export function GrossSalesSummaryView({
       (sseState.status === "completed" || sseState.progressPercent === 100) &&
       previewJobId
     ) {
+      if (hasStreamedJobIdRef.current === previewJobId) {
+        return;
+      }
+      hasStreamedJobIdRef.current = previewJobId;
+
       streamAbortControllerRef.current?.abort();
       const abortController = new AbortController();
       streamAbortControllerRef.current = abortController;
@@ -273,6 +361,11 @@ export function GrossSalesSummaryView({
             }));
           },
           onError: (err) => {
+            if (err?.name === "AbortError") {
+              setIsFetchingResult(false);
+              setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
+              return;
+            }
             console.error("[GrossSalesSummary Stream Error]", err);
             getGrossSalesSummaryResult(previewJobId)
               .then((res) => {
@@ -291,14 +384,20 @@ export function GrossSalesSummaryView({
     }
   }, [sseState.status, sseState.progressPercent, previewJobId]);
 
+  // Client-Side In-Memory Slicing & Grouping (Instant 0ms, Zero Backend Hits)
   const {
-    searchQuery,
-    setSearchQuery,
     groupingLevels,
     handleToggleLevel,
     grandTotals,
     treeData,
-  } = useGrossSalesSummaryData(reportData);
+    filteredFlatItems,
+  } = useGrossSalesSummaryData(reportData, {
+    reportType,
+    selectedLocationIds,
+    selectedCashierId,
+    subDateRange: dateRange,
+    searchQuery,
+  });
 
   // Intelligent Export Handler: Instant Client (<2,500) vs Background Bull Queue (>2,500)
   const handleExportExcel = async (type: "flat" | "hierarchical") => {
@@ -312,7 +411,7 @@ export function GrossSalesSummaryView({
       message: "Initializing Excel export...",
     });
 
-    const totalCount = reportData.flatItems?.length || 0;
+    const totalCount = filteredFlatItems.length;
 
     // Instant On-The-Fly Server Filtered Streaming Export
     // Zero browser CPU lag, zero database re-querying, preserving current search & outlet filters.
@@ -403,73 +502,58 @@ export function GrossSalesSummaryView({
                   const apiOrigin = getApiBaseUrl().replace(/\/api\/?$/, "");
                   const dateStr = new Date().toISOString().slice(0, 10);
                   const fileName = `gross-sales-summary-report-${dateStr}.xlsx`;
-                  const downloadUrl = `${apiOrigin}/api/pos-sales/reports/gross-sales-export/${jobId}/download/${encodeURIComponent(fileName)}`;
+                  const downloadUrl = `${apiOrigin}/api/pos-sales/reports/gross-sales-summary/export/${jobId}/download/${encodeURIComponent(fileName)}`;
                   window.open(downloadUrl, "_blank");
-                  toast.success("Excel summary report exported successfully!");
+
+                  toast.success("Excel report downloaded successfully!");
                   resolve();
                 } else if (state === "failed") {
                   clearInterval(pollInterval);
-                  reject(new Error("Background export task failed on server."));
+                  reject(new Error(message || "Export processing failed on server"));
                 }
               }
             } catch (pollErr) {
-              console.error("[GrossSalesSummary export poll error]", pollErr);
+              clearInterval(pollInterval);
+              reject(pollErr);
             }
           }, 2000);
         });
       } catch (err: any) {
-        console.error("Export error:", err);
-        toast.error(err.message || "Failed to generate Excel export");
+        toast.error(err.message || "Background export job failed");
       } finally {
         setIsExportingExcel(false);
         setTimeout(() => {
           setExportProgressState((prev) => ({ ...prev, isExporting: false }));
-        }, 1500);
+        }, 1200);
       }
       return;
     }
 
-    // Fast instant generation for small datasets
+    // Instant browser export for small datasets
     try {
-      const { excelBuffer, fileName } = await generateGrossSalesSummaryExcel({
+      await generateGrossSalesSummaryExcel({
         exportType: type,
         treeData,
-        flatItems: reportData.flatItems || [],
+        flatItems: filteredFlatItems,
         grandTotals,
         dateRange,
         locationNames: activeSelectionNames,
-        onProgress: (percent) => {
+        onProgress: (percent: number) => {
           setExportProgressState((prev) => ({
             ...prev,
             progress: percent,
+            message: `Rendering Excel (${percent}%)...`,
           }));
         },
       });
-
-      const blob = new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Excel summary report generated successfully");
+      toast.success("Excel exported successfully!");
     } catch (err: any) {
-      toast.error("Failed to generate Excel export");
+      toast.error("Failed to generate Excel file");
     } finally {
       setIsExportingExcel(false);
-      setExportProgressState((prev) => ({
-        ...prev,
-        progress: 100,
-        message: "Download started!",
-      }));
       setTimeout(() => {
         setExportProgressState((prev) => ({ ...prev, isExporting: false }));
-      }, 800);
+      }, 1000);
     }
   };
 
@@ -486,7 +570,7 @@ export function GrossSalesSummaryView({
 
     try {
       await generateGrossSalesSummaryPdf({
-        flatItems: reportData.flatItems || [],
+        flatItems: filteredFlatItems,
         grandTotals,
         dateRange,
         locationNames: activeSelectionNames,
@@ -558,8 +642,10 @@ export function GrossSalesSummaryView({
         posLocationName={posLocationName}
         reportType={reportType}
         onReportTypeChange={setReportType}
+        periodPreset={periodPreset}
+        onPeriodPresetChange={handlePeriodPresetChange}
         dateRange={dateRange}
-        onDateRangeChange={setDateRange}
+        onDateRangeChange={handleDateRangeChange}
         locations={locations}
         cashiers={cashiers}
         selectedLocationIds={selectedLocationIds}
@@ -570,7 +656,7 @@ export function GrossSalesSummaryView({
         onSearchQueryChange={setSearchQuery}
         groupingLevels={groupingLevels}
         onToggleLevel={handleToggleLevel}
-        onRefresh={handleFetchReport}
+        onRefresh={() => handleFetchReport()}
         isPending={isPending}
         previewJobId={previewJobId}
         sseState={sseState}

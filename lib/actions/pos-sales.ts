@@ -187,6 +187,7 @@ export async function getNetSalesSummaryReport(filters: {
 
 export async function queueNetSalesSummaryReportExport(filters: {
     locationId?: string;
+    locationIds?: string[];
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
@@ -228,6 +229,8 @@ export async function getNetSalesSummaryReportExportStatus(jobId: string) {
         return { status: false, message: "Failed to connect to server" };
     }
 }
+export const getNetSalesSummaryExportJobStatus = getNetSalesSummaryReportExportStatus;
+
 
 export async function queuePosSalesActivityExport(filters?: {
     search?: string;
@@ -834,7 +837,4 @@ export async function registerClientNetSalesSummaryExport(opts: {
         return { status: false, message: err.message || "Network error registering net sales summary export file" };
     }
 }
-
-
-
 
