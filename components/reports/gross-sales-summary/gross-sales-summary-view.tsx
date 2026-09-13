@@ -324,7 +324,7 @@ export function GrossSalesSummaryView({
           message: "Streaming filtered Excel directly from server...",
         }));
 
-        const baseUrl = getApiBaseUrl();
+        const apiOrigin = getApiBaseUrl().replace(/\/api\/?$/, "");
         const params = new URLSearchParams();
         params.append("exportType", type);
         if (searchQuery) params.append("search", searchQuery);
@@ -332,7 +332,7 @@ export function GrossSalesSummaryView({
 
         const dateStr = new Date().toISOString().slice(0, 10);
         const fileName = `gross-sales-summary-${type}-${dateStr}.xlsx`;
-        const downloadUrl = `${baseUrl}/api/pos-sales/reports/gross-sales-summary/stream-preview-excel/${previewJobId}/${encodeURIComponent(fileName)}?${params.toString()}`;
+        const downloadUrl = `${apiOrigin}/api/pos-sales/reports/gross-sales-summary/stream-preview-excel/${previewJobId}/${encodeURIComponent(fileName)}?${params.toString()}`;
         window.open(downloadUrl, "_blank");
         toast.success("Filtered Excel stream started! Download will begin shortly.");
 
@@ -400,10 +400,10 @@ export function GrossSalesSummaryView({
                   }));
 
                   // CORS-safe download via window.open (Workspace Rule AGENTS.md)
-                  const baseUrl = getApiBaseUrl();
+                  const apiOrigin = getApiBaseUrl().replace(/\/api\/?$/, "");
                   const dateStr = new Date().toISOString().slice(0, 10);
                   const fileName = `gross-sales-summary-report-${dateStr}.xlsx`;
-                  const downloadUrl = `${baseUrl}/api/pos-sales/reports/gross-sales-export/${jobId}/download/${encodeURIComponent(fileName)}`;
+                  const downloadUrl = `${apiOrigin}/api/pos-sales/reports/gross-sales-export/${jobId}/download/${encodeURIComponent(fileName)}`;
                   window.open(downloadUrl, "_blank");
                   toast.success("Excel summary report exported successfully!");
                   resolve();

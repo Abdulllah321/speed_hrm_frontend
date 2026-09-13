@@ -414,7 +414,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
           message: "Streaming filtered Excel directly from server...",
         }));
 
-        const baseUrl = getApiBaseUrl();
+        const apiOrigin = getApiBaseUrl().replace(/\/api\/?$/, "");
         const params = new URLSearchParams();
         params.append("exportType", type);
         if (searchQuery) params.append("search", searchQuery);
@@ -425,7 +425,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
 
         const dateStr = new Date().toISOString().slice(0, 10);
         const fileName = `sales-list-${type}-${dateStr}.xlsx`;
-        const downloadUrl = `${baseUrl}/api/pos-sales/reports/sales-list/stream-preview-excel/${previewJobId}/${encodeURIComponent(fileName)}?${params.toString()}`;
+        const downloadUrl = `${apiOrigin}/api/pos-sales/reports/sales-list/stream-preview-excel/${previewJobId}/${encodeURIComponent(fileName)}?${params.toString()}`;
         window.open(downloadUrl, "_blank");
         toast.success("Filtered Excel stream started! Download will begin shortly.");
 
@@ -499,10 +499,10 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
                   // "Trigger file downloads using window.open(url, "_blank") rather than fetch.
                   // Navigating directly via browser navigation routes around cross-origin CORS limitations on S3/CDN 302 redirects,
                   // and sends cookies automatically to authenticate the download."
-                  const baseUrl = getApiBaseUrl();
+                  const apiOrigin = getApiBaseUrl().replace(/\/api\/?$/, "");
                   const dateStr = new Date().toISOString().slice(0, 10);
                   const fileName = `sales-list-report-${dateStr}.xlsx`;
-                  const downloadUrl = `${baseUrl}/api/pos-sales/reports/sales-list/export/${jobId}/download/${encodeURIComponent(fileName)}`;
+                  const downloadUrl = `${apiOrigin}/api/pos-sales/reports/sales-list/export/${jobId}/download/${encodeURIComponent(fileName)}`;
                   window.open(downloadUrl, "_blank");
                   toast.success("Excel report exported successfully!");
                   resolve();
