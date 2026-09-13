@@ -194,9 +194,7 @@ export function useGrossSalesSummaryData(
           extraFields.sku = item.sku;
         }
 
-        let existingNode = currentLevelNodes.find(
-          (n) => n.level === levelName && n.value === nodeVal
-        );
+        let existingNode = (currentLevelNodes as any)._childMap?.get(nodeVal);
 
         if (!existingNode) {
           existingNode = {
@@ -206,6 +204,10 @@ export function useGrossSalesSummaryData(
             ...extraFields,
             children: [],
           };
+          if (!(currentLevelNodes as any)._childMap) {
+            (currentLevelNodes as any)._childMap = new Map<string, GrossSalesSummaryTreeNode>();
+          }
+          (currentLevelNodes as any)._childMap.set(nodeVal, existingNode);
           currentLevelNodes.push(existingNode);
         }
 

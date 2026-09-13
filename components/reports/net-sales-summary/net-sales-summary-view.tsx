@@ -346,16 +346,9 @@ export function NetSalesSummaryView({
               return;
             }
             console.error("[NetSalesSummary Stream Error]", err);
-            getNetSalesSummaryResult(previewJobId)
-              .then((res) => {
-                if (res?.status && res.data) {
-                  setReportData(res.data);
-                }
-              })
-              .finally(() => {
-                setIsFetchingResult(false);
-                setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
-              });
+            toast.error("Data stream interrupted. Please click Refresh to reload.");
+            setIsFetchingResult(false);
+            setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
           },
         },
         abortController.signal

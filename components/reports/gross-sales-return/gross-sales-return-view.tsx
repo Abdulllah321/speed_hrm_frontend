@@ -257,17 +257,15 @@ export function GrossSalesReturnView({
             }));
           },
           onError: (err) => {
+            if (err?.name === "AbortError") {
+              setIsFetchingResult(false);
+              setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
+              return;
+            }
             console.error("[GrossSalesReturn Stream Error]", err);
-            getGrossSalesReturnResult(previewJobId)
-              .then((res) => {
-                if (res?.status && res.data) {
-                  setReportData(res.data);
-                }
-              })
-              .finally(() => {
-                setIsFetchingResult(false);
-                setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
-              });
+            toast.error("Data stream interrupted. Please click Refresh to reload.");
+            setIsFetchingResult(false);
+            setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
           },
         },
         abortController.signal
