@@ -111,7 +111,9 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
   const [isFetchingResult, setIsFetchingResult] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Progressive NDJSON streaming state
+  // Mount & Stream tracking refs
+  const initialFetchDoneRef = useRef(false);
+  const hasStreamedJobIdRef = useRef<string | null>(null);
   const streamAbortControllerRef = useRef<AbortController | null>(null);
   const [streamProgress, setStreamProgress] = useState<{
     isStreaming: boolean;
@@ -179,6 +181,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
 
       setIsQueueingJob(true);
       setPreviewJobId(null);
+      hasStreamedJobIdRef.current = null;
 
       startTransition(async () => {
         try {
