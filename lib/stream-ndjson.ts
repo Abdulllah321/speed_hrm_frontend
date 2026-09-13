@@ -58,8 +58,8 @@ export async function streamNdjson(
       // Keep the last partial line in the buffer
       buffer = lines.pop() || "";
 
-      for (const line of lines) {
-        const trimmed = line.trim();
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
         if (!trimmed) continue;
         try {
           const parsed = JSON.parse(trimmed);
@@ -67,7 +67,13 @@ export async function streamNdjson(
         } catch (parseErr) {
           console.warn("[streamNdjson] Skipping malformed line:", trimmed, parseErr);
         }
+        // Yield to browser event loop every 2 lines to allow Chrome to paint, drain network buffers, and prevent TCP zero-window timeouts
+        if (i % 2 === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
       }
+      // Micro-yield after each chunk read from network
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
     // Process any remaining bytes in buffer

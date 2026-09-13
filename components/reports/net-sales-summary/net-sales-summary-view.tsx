@@ -217,8 +217,12 @@ export function NetSalesSummaryView({
             endDate = activeRange.to?.toISOString();
           }
 
-          // Pos level restricts to single location; ERP report loads all locations for instant client slicing
-          const locationId = isPosLevel && posLocationId ? posLocationId : undefined;
+          // Pos level restricts to single location; ERP mode restricts to selected location(s) if picked, or all locations
+          const locationId = isPosLevel
+            ? posLocationId
+            : selectedLocationIds.length > 0
+            ? selectedLocationIds.join(",")
+            : undefined;
 
           const res = await queueNetSalesSummaryPreview({
             locationId,
@@ -240,13 +244,25 @@ export function NetSalesSummaryView({
         }
       });
     },
-    [periodPreset, dateRange, reportType, isPosLevel, posLocationId]
+    [periodPreset, dateRange, reportType, isPosLevel, posLocationId, selectedLocationIds]
   );
 
-  // Initial fetch on mount for default Current Fiscal Year (ONLY ONCE)
+  const initialFetchDoneRef = useRef(false);
+
+  // Initial fetch on mount: wait for posLocationId if on POS level
   useEffect(() => {
-    handleFetchReport("fy-current");
-  }, []);
+    if (isPosLevel) {
+      if (posLocationId && !initialFetchDoneRef.current) {
+        initialFetchDoneRef.current = true;
+        handleFetchReport("fy-current");
+      }
+    } else {
+      if (!initialFetchDoneRef.current) {
+        initialFetchDoneRef.current = true;
+        handleFetchReport("fy-current");
+      }
+    }
+  }, [isPosLevel, posLocationId, handleFetchReport]);
 
   // When Fiscal Year / Year preset changes: update dates and re-fetch that year once
   const handlePeriodPresetChange = (newPreset: string) => {
@@ -294,6 +310,7 @@ export function NetSalesSummaryView({
       const accumulatedFlatItems: any[] = [];
       const accumulatedCategories: any[] = [];
       let initialMeta: any = null;
+      let lastProgressUpdate = 0;
 
       streamNetSalesSummaryResult(
         previewJobId,
@@ -311,14 +328,19 @@ export function NetSalesSummaryView({
           onFlatItemsBatch: (newFlatItems) => {
             accumulatedFlatItems.push(...newFlatItems);
             const count = accumulatedFlatItems.length;
-            setStreamProgress((prev) => {
-              const total = prev.totalRecords || count;
-              return {
-                ...prev,
-                loadedRecords: count,
-                percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
-              };
-            });
+            const now = Date.now();
+            // Throttle React state updates to at most once every 120ms to prevent main-thread stutter
+            if (now - lastProgressUpdate > 120) {
+              lastProgressUpdate = now;
+              setStreamProgress((prev) => {
+                const total = prev.totalRecords || count;
+                return {
+                  ...prev,
+                  loadedRecords: count,
+                  percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
+                };
+              });
+            }
           },
           onComplete: (totals, totalRecords) => {
             setReportData({

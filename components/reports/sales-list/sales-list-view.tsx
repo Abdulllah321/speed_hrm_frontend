@@ -182,9 +182,14 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
 
       startTransition(async () => {
         try {
+          const locationId = isPosLevel
+            ? posLocationId
+            : selectedLocationIds.length > 0
+            ? selectedLocationIds.join(",")
+            : undefined;
+
           const payload: any = {
-            // Pos level restricts to single location; ERP report loads all locations for instant client slicing
-            locationId: isPosLevel && posLocationId ? posLocationId : undefined,
+            locationId,
           };
 
           if (activePreset === "fy-current" || activePreset === "fy-previous") {
@@ -215,13 +220,23 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
         }
       });
     },
-    [periodPreset, dateRange, isPosLevel, posLocationId],
+    [periodPreset, dateRange, isPosLevel, posLocationId, selectedLocationIds],
   );
 
-  // Initial fetch on mount for default Current Fiscal Year
+  // Initial fetch on mount for default Current Fiscal Year: wait for posLocationId if on POS level
   useEffect(() => {
-    handleFetchReport("fy-current");
-  }, []); // Only once on mount!
+    if (isPosLevel) {
+      if (posLocationId && !initialFetchDoneRef.current) {
+        initialFetchDoneRef.current = true;
+        handleFetchReport("fy-current");
+      }
+    } else {
+      if (!initialFetchDoneRef.current) {
+        initialFetchDoneRef.current = true;
+        handleFetchReport("fy-current");
+      }
+    }
+  }, [isPosLevel, posLocationId, handleFetchReport]);
 
   // When Fiscal Year / Year preset changes: update dates and re-fetch that year once
   const handlePeriodPresetChange = (newPreset: string) => {
@@ -249,6 +264,11 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
       (sseState.status === "completed" || sseState.progressPercent === 100) &&
       previewJobId
     ) {
+      if (hasStreamedJobIdRef.current === previewJobId) {
+        return;
+      }
+      hasStreamedJobIdRef.current = previewJobId;
+
       // Cancel previous stream if one was active
       streamAbortControllerRef.current?.abort();
       const abortController = new AbortController();
@@ -262,7 +282,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
         percent: 0,
       });
 
-      const emptyTotals = {
+      const emptyTotals: SalesListTotals = {
         orderCount: 0,
         totalItems: 0,
         grossAmount: 0,
@@ -288,10 +308,15 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
         onCreditAmount: 0,
       };
 
+      let initialMeta: any = null;
+      const accumulatedInvoices: any[] = [];
+      let lastProgressUpdate = 0;
+
       streamSalesListResult(
         previewJobId,
         {
           onMeta: (meta) => {
+            initialMeta = meta;
             // First chunk: instantly set up layout and headers (~50ms)
             setReportData({
               reportType: meta.reportType,
@@ -308,38 +333,37 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
             }));
           },
           onBatch: (newInvoices) => {
-            // Progressive chunks: append new invoices directly to the table
-            setReportData((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                invoices: [...prev.invoices, ...newInvoices],
-              };
-            });
-            setStreamProgress((prev) => {
-              const newCount = prev.loadedInvoices + newInvoices.length;
-              const total = prev.totalInvoices || newCount;
-              return {
-                ...prev,
-                loadedInvoices: newCount,
-                percent: total > 0 ? Math.min(100, Math.round((newCount / total) * 100)) : 100,
-              };
-            });
+            accumulatedInvoices.push(...newInvoices);
+            const count = accumulatedInvoices.length;
+            const now = Date.now();
+            if (now - lastProgressUpdate > 120) {
+              lastProgressUpdate = now;
+              setStreamProgress((prev) => {
+                const total = prev.totalInvoices || count;
+                return {
+                  ...prev,
+                  loadedInvoices: count,
+                  percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
+                };
+              });
+            }
           },
           onComplete: (totals, totalInvoices) => {
-            // Final chunk: lock in verified Grand Totals
-            setReportData((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                grandTotals: totals,
-              };
+            // Final chunk: lock in verified Grand Totals & dataset
+            setReportData({
+              reportType: initialMeta?.reportType || "merged",
+              dateRange: initialMeta?.dateRange || {},
+              locationNames: initialMeta?.locationNames || "",
+              locations: initialMeta?.locations || [],
+              invoices: accumulatedInvoices,
+              flatItems: [],
+              grandTotals: totals,
             });
             setIsFetchingResult(false);
             setStreamProgress((prev) => ({
               ...prev,
               isStreaming: false,
-              loadedInvoices: totalInvoices || prev.loadedInvoices,
+              loadedInvoices: totalInvoices || accumulatedInvoices.length,
               percent: 100,
             }));
           },

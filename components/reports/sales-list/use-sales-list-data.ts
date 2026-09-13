@@ -87,7 +87,7 @@ export function useSalesListData(
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
     location: true,
     invoice: true,
-    item: true,
+    item: false,
   });
 
   // Collapsed nodes state

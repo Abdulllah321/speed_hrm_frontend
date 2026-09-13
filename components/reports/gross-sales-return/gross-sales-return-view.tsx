@@ -144,21 +144,23 @@ export function GrossSalesReturnView({
   }, []);
 
   const locationParam = useMemo(
-    () => (selectedLocationIds.length > 0 ? selectedLocationIds.join(",") : undefined),
-    [selectedLocationIds],
+    () => (isPosLevel && posLocationId ? posLocationId : selectedLocationIds.length > 0 ? selectedLocationIds.join(",") : undefined),
+    [isPosLevel, posLocationId, selectedLocationIds],
   );
 
   const activeSelectionNames = useMemo(() => {
+    if (isPosLevel && posLocationName) return posLocationName;
     if (selectedLocationIds.length === 0) return "All Outlets (Stores)";
     return locations
       .filter((l) => selectedLocationIds.includes(l.id))
       .map((l) => l.name)
       .join(", ");
-  }, [selectedLocationIds, locations]);
+  }, [isPosLevel, posLocationName, selectedLocationIds, locations]);
 
   // Queue preview calculation
   const handleFetchReport = useCallback(() => {
     if (!dateRange.from || !dateRange.to) return;
+    if (isPosLevel && !posLocationId) return;
 
     setIsQueueingJob(true);
     setPreviewJobId(null);
@@ -184,12 +186,13 @@ export function GrossSalesReturnView({
         setIsQueueingJob(false);
       }
     });
-  }, [locationParam, dateRange, selectedCashierId, reportType]);
+  }, [locationParam, dateRange, selectedCashierId, reportType, isPosLevel, posLocationId]);
 
-  // Initial fetch on mount or parameters change
+  // Initial fetch on mount or parameters change (wait for posLocationId if on POS level)
   useEffect(() => {
+    if (isPosLevel && !posLocationId) return;
     handleFetchReport();
-  }, [locationParam, dateRange, selectedCashierId, reportType]);
+  }, [locationParam, dateRange, selectedCashierId, reportType, isPosLevel, posLocationId]);
 
   // Progressive NDJSON Stream Ingestion upon SSE Completion
   useEffect(() => {
@@ -212,6 +215,7 @@ export function GrossSalesReturnView({
       const accumulatedFlatItems: any[] = [];
       const accumulatedReturns: any[] = [];
       let initialMeta: any = null;
+      let lastProgressUpdate = 0;
 
       streamGrossSalesReturnResult(
         previewJobId,
@@ -229,14 +233,18 @@ export function GrossSalesReturnView({
           onFlatItemsBatch: (newFlatItems) => {
             accumulatedFlatItems.push(...newFlatItems);
             const count = accumulatedFlatItems.length;
-            setStreamProgress((prev) => {
-              const total = prev.totalRecords || count;
-              return {
-                ...prev,
-                loadedRecords: count,
-                percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
-              };
-            });
+            const now = Date.now();
+            if (now - lastProgressUpdate > 120) {
+              lastProgressUpdate = now;
+              setStreamProgress((prev) => {
+                const total = prev.totalRecords || count;
+                return {
+                  ...prev,
+                  loadedRecords: count,
+                  percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
+                };
+              });
+            }
           },
           onComplete: (totals, totalRecords) => {
             setReportData({
