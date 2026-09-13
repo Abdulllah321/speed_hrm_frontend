@@ -207,3 +207,43 @@ export async function streamGrossSalesReturnResult(
     onError: callbacks.onError,
   });
 }
+
+// ─── Net Sales Summary Progressive Streamer ──────────────────────────────
+export interface NetSalesSummaryStreamCallbacks {
+  onMeta: (meta: {
+    reportType: "merged" | "separate";
+    dateRange: { startDate?: string; endDate?: string };
+    locationNames: string;
+    locations?: any[];
+    totalRecords: number;
+  }) => void;
+  onBatch: (categories: any[], startIndex?: number, count?: number) => void;
+  onFlatItemsBatch?: (flatItems: any[], startIndex?: number, count?: number) => void;
+  onComplete: (grandTotals: any, totalRecords: number) => void;
+  onError?: (err: any) => void;
+}
+
+export async function streamNetSalesSummaryResult(
+  jobId: string,
+  callbacks: NetSalesSummaryStreamCallbacks,
+  signal?: AbortSignal
+): Promise<void> {
+  let receivedCount = 0;
+
+  await streamNdjson(`/pos-sales/reports/net-sales-summary/result/${jobId}?format=ndjson`, {
+    signal,
+    onLine: (msg) => {
+      if (msg.type === "meta") {
+        callbacks.onMeta(msg);
+      } else if (msg.type === "categories" && Array.isArray(msg.categories)) {
+        receivedCount += msg.categories.length;
+        callbacks.onBatch(msg.categories, msg.startIndex, msg.count);
+      } else if (msg.type === "flatItems" && Array.isArray(msg.flatItems)) {
+        callbacks.onFlatItemsBatch?.(msg.flatItems, msg.startIndex, msg.count);
+      } else if (msg.type === "totals") {
+        callbacks.onComplete(msg.grandTotals, msg.totalRecords || receivedCount);
+      }
+    },
+    onError: callbacks.onError,
+  });
+}

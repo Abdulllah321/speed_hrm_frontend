@@ -90,6 +90,8 @@ export interface NetSalesSummaryFlatRecord {
 
 export interface NetSalesSummaryReportData {
   reportType: "merged" | "separate";
+  locations?: any[];
+  categories?: any[];
   flatItems: NetSalesSummaryFlatRecord[];
   grandTotals: NetSalesSummaryTotals;
   dateRange: { startDate?: string; endDate?: string };

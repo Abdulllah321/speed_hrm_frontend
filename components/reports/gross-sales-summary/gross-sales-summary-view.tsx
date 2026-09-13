@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useTransition, useRef, useMemo, useCallback } from "react";
 import {
   GrossSalesSummaryReportData,
+  GrossSalesSummaryFlatRecord,
 } from "./types";
 import { GrossSalesSummaryHeader } from "./gross-sales-summary-header";
 import { GrossSalesSummaryFilters } from "./gross-sales-summary-filters";
@@ -292,73 +293,52 @@ export function GrossSalesSummaryView({
         percent: 0,
       });
 
+      const accumulatedFlatItems: GrossSalesSummaryFlatRecord[] = [];
+      const accumulatedCategories: any[] = [];
+      let initialMeta: any = null;
+
       streamGrossSalesSummaryResult(
         previewJobId,
         {
           onMeta: (meta) => {
-            setReportData({
-              reportType: meta.reportType || "merged",
-              dateRange: meta.dateRange || {},
-              locationNames: meta.locationNames || "",
-              categories: [],
-              flatItems: [],
-              grandTotals: {
-                orderCount: 0,
-                totalItems: 0,
-                grossAmount: 0,
-                wostAmount: 0,
-                discountAmount: 0,
-                netAmount: 0,
-                taxAmount: 0,
-              },
-            });
+            initialMeta = meta;
             setStreamProgress((prev) => ({
               ...prev,
               totalRecords: meta.totalRecords || 0,
             }));
           },
           onBatch: (newCategories) => {
-            setReportData((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                categories: [...(prev.categories || []), ...newCategories],
-              };
-            });
+            accumulatedCategories.push(...newCategories);
           },
           onFlatItemsBatch: (newFlatItems) => {
-            setReportData((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                flatItems: [...(prev.flatItems || []), ...newFlatItems],
-              };
-            });
+            accumulatedFlatItems.push(...newFlatItems);
+            const count = accumulatedFlatItems.length;
             setStreamProgress((prev) => {
-              const newCount = prev.loadedRecords + newFlatItems.length;
-              const total = prev.totalRecords || newCount;
+              const total = prev.totalRecords || count;
               return {
                 ...prev,
-                loadedRecords: newCount,
-                percent: total > 0 ? Math.min(100, Math.round((newCount / total) * 100)) : 100,
+                loadedRecords: count,
+                percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
               };
             });
           },
           onComplete: (totals, totalRecords) => {
-            setReportData((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                grandTotals: totals,
-              };
+            setReportData({
+              reportType: initialMeta?.reportType || "merged",
+              dateRange: initialMeta?.dateRange || {},
+              locationNames: initialMeta?.locationNames || "",
+              categories: accumulatedCategories,
+              flatItems: accumulatedFlatItems,
+              grandTotals: totals,
             });
             setIsFetchingResult(false);
             setStreamProgress((prev) => ({
               ...prev,
               isStreaming: false,
-              loadedRecords: totalRecords || prev.loadedRecords,
+              loadedRecords: totalRecords || accumulatedFlatItems.length,
               percent: 100,
             }));
+            toast.success("Gross sales summary updated");
           },
           onError: (err) => {
             if (err?.name === "AbortError") {

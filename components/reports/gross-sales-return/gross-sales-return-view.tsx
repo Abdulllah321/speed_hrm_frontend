@@ -209,75 +209,50 @@ export function GrossSalesReturnView({
         percent: 0,
       });
 
+      const accumulatedFlatItems: any[] = [];
+      const accumulatedReturns: any[] = [];
+      let initialMeta: any = null;
+
       streamGrossSalesReturnResult(
         previewJobId,
         {
           onMeta: (meta) => {
-            setReportData({
-              reportType: meta.reportType || "merged",
-              dateRange: meta.dateRange || {},
-              locationNames: meta.locationNames || "",
-              locations: meta.locations || [],
-              returns: [],
-              flatItems: [],
-              grandTotals: {
-                returnCount: 0,
-                totalItems: 0,
-                grossAmount: 0,
-                wostAmount: 0,
-                discountAmount: 0,
-                netAmount: 0,
-                taxAmount: 0,
-                cashAmount: 0,
-                cardAmount: 0,
-                voucherAmount: 0,
-              },
-            });
+            initialMeta = meta;
             setStreamProgress((prev) => ({
               ...prev,
               totalRecords: meta.totalRecords || 0,
             }));
           },
           onBatch: (newReturns) => {
-            setReportData((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                returns: [...(prev.returns || []), ...newReturns],
-              };
-            });
+            accumulatedReturns.push(...newReturns);
           },
           onFlatItemsBatch: (newFlatItems) => {
-            setReportData((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                flatItems: [...(prev.flatItems || []), ...newFlatItems],
-              };
-            });
+            accumulatedFlatItems.push(...newFlatItems);
+            const count = accumulatedFlatItems.length;
             setStreamProgress((prev) => {
-              const newCount = prev.loadedRecords + newFlatItems.length;
-              const total = prev.totalRecords || newCount;
+              const total = prev.totalRecords || count;
               return {
                 ...prev,
-                loadedRecords: newCount,
-                percent: total > 0 ? Math.min(100, Math.round((newCount / total) * 100)) : 100,
+                loadedRecords: count,
+                percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
               };
             });
           },
           onComplete: (totals, totalRecords) => {
-            setReportData((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                grandTotals: totals,
-              };
+            setReportData({
+              reportType: initialMeta?.reportType || "merged",
+              dateRange: initialMeta?.dateRange || {},
+              locationNames: initialMeta?.locationNames || "",
+              locations: initialMeta?.locations || [],
+              returns: accumulatedReturns,
+              flatItems: accumulatedFlatItems,
+              grandTotals: totals,
             });
             setIsFetchingResult(false);
             setStreamProgress((prev) => ({
               ...prev,
               isStreaming: false,
-              loadedRecords: totalRecords || prev.loadedRecords,
+              loadedRecords: totalRecords || accumulatedFlatItems.length,
               percent: 100,
             }));
           },
