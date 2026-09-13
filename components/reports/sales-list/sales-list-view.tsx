@@ -423,7 +423,9 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
         if (selectedLocationIds.length > 0) params.append("locationId", selectedLocationIds.join(","));
         if (selectedCashierId && selectedCashierId !== "all") params.append("cashierId", selectedCashierId);
 
-        const downloadUrl = `${baseUrl}/pos-sales/reports/sales-list/stream-preview-excel/${previewJobId}?${params.toString()}`;
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const fileName = `sales-list-${type}-${dateStr}.xlsx`;
+        const downloadUrl = `${baseUrl}/api/pos-sales/reports/sales-list/stream-preview-excel/${previewJobId}/${encodeURIComponent(fileName)}?${params.toString()}`;
         window.open(downloadUrl, "_blank");
         toast.success("Filtered Excel stream started! Download will begin shortly.");
 
@@ -497,7 +499,10 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
                   // "Trigger file downloads using window.open(url, "_blank") rather than fetch.
                   // Navigating directly via browser navigation routes around cross-origin CORS limitations on S3/CDN 302 redirects,
                   // and sends cookies automatically to authenticate the download."
-                  const downloadUrl = `/api/pos-sales/reports/sales-list/export/${jobId}/download`;
+                  const baseUrl = getApiBaseUrl();
+                  const dateStr = new Date().toISOString().slice(0, 10);
+                  const fileName = `sales-list-report-${dateStr}.xlsx`;
+                  const downloadUrl = `${baseUrl}/api/pos-sales/reports/sales-list/export/${jobId}/download/${encodeURIComponent(fileName)}`;
                   window.open(downloadUrl, "_blank");
                   toast.success("Excel report exported successfully!");
                   resolve();

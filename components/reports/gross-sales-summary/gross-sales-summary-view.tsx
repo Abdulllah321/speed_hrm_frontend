@@ -330,7 +330,9 @@ export function GrossSalesSummaryView({
         if (searchQuery) params.append("search", searchQuery);
         if (selectedLocationIds.length > 0) params.append("locationId", selectedLocationIds.join(","));
 
-        const downloadUrl = `${baseUrl}/pos-sales/reports/gross-sales-summary/stream-preview-excel/${previewJobId}?${params.toString()}`;
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const fileName = `gross-sales-summary-${type}-${dateStr}.xlsx`;
+        const downloadUrl = `${baseUrl}/api/pos-sales/reports/gross-sales-summary/stream-preview-excel/${previewJobId}/${encodeURIComponent(fileName)}?${params.toString()}`;
         window.open(downloadUrl, "_blank");
         toast.success("Filtered Excel stream started! Download will begin shortly.");
 
@@ -398,7 +400,10 @@ export function GrossSalesSummaryView({
                   }));
 
                   // CORS-safe download via window.open (Workspace Rule AGENTS.md)
-                  const downloadUrl = `/api/pos-sales/reports/gross-sales-export/${jobId}/download`;
+                  const baseUrl = getApiBaseUrl();
+                  const dateStr = new Date().toISOString().slice(0, 10);
+                  const fileName = `gross-sales-summary-report-${dateStr}.xlsx`;
+                  const downloadUrl = `${baseUrl}/api/pos-sales/reports/gross-sales-export/${jobId}/download/${encodeURIComponent(fileName)}`;
                   window.open(downloadUrl, "_blank");
                   toast.success("Excel summary report exported successfully!");
                   resolve();
