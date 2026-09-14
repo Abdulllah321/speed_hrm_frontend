@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function StockLedgerPage() {
     try {
-        const result = await getStockLedger({ page: 1, limit: 50 });
+        const result = await getStockLedger({ page: 1, limit: 25 });
 
         if (!result || result.status === false) {
             return (
