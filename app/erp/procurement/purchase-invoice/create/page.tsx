@@ -236,7 +236,7 @@ export default function CreatePurchaseInvoicePage() {
         landedCostItemId: item.id,
         description: item.description || "",
         quantity: item.availableQty,
-        unitPrice: Math.round(Number(item.unitCostPKR || 0)),
+        unitPrice: Number(item.unitCostPKR || 0),
         taxRate: (item as any).item?.taxRate1 || 0,
         discountRate: 0,
         sku: (item as any).item?.sku || "",
@@ -557,8 +557,8 @@ export default function CreatePurchaseInvoicePage() {
                       <Label>Unit Price</Label>
                       <Input
                         type="number"
-                        step="0.01"
-                        value={Math.round(Number(item.unitPrice || 0))}
+                        step="any"
+                        value={item.unitPrice ?? ""}
                         onChange={(e) =>
                           updateItem(
                             index,
