@@ -18,6 +18,14 @@ import {
 import { salesOrderApi, SalesOrder } from "@/lib/api";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 function formatNumber(n: number) {
   if (n === undefined || n === null || isNaN(n)) return '0';
@@ -146,6 +154,8 @@ export default function SalesOrderViewPage() {
   const router = useRouter();
   const [order, setOrder] = useState<SalesOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -160,8 +170,8 @@ export default function SalesOrderViewPage() {
       const orderData = response.data || response;
       setOrder(orderData);
     } catch (error) {
-      console.error('Error loading order:', error);
       toast.error("Failed to load sales order");
+      console.error(error);
       router.push("/erp/sales/orders");
     } finally {
       setLoading(false);
@@ -172,12 +182,16 @@ export default function SalesOrderViewPage() {
     if (!order) return;
     
     try {
+      setConfirming(true);
       await salesOrderApi.confirm(order.id);
       toast.success("Sales order confirmed successfully");
+      setIsConfirmDialogOpen(false);
       loadOrder(order.id);
     } catch (error) {
       toast.error("Failed to confirm sales order");
       console.error(error);
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -283,11 +297,13 @@ export default function SalesOrderViewPage() {
 
             {order.status === "DRAFT" && (
               <>
-                <Button variant="outline" size="sm">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/erp/sales/orders/${order.id}/edit`}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Link>
                 </Button>
-                <Button size="sm" onClick={handleConfirm}>
+                <Button size="sm" onClick={() => setIsConfirmDialogOpen(true)}>
                   <FileText className="h-4 w-4 mr-2" />
                   Confirm Order
                 </Button>
@@ -389,9 +405,8 @@ export default function SalesOrderViewPage() {
                     <TableRow>
                       <TableHead>Item</TableHead>
                       <TableHead>SKU</TableHead>
-                      <TableHead className="text-right">Sale Price</TableHead>
+                      <TableHead className="text-right">Retail Price</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Discount</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -407,13 +422,10 @@ export default function SalesOrderViewPage() {
                         <TableCell className="text-right">
                           {formatCurrency(item.salePrice)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right font-medium">
                           {item.quantity}
                         </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(item.discount || 0)}
-                        </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right font-semibold">
                           {formatCurrency(item.total)}
                         </TableCell>
                       </TableRow>
@@ -427,42 +439,22 @@ export default function SalesOrderViewPage() {
           {/* Order Summary */}
           <Card>
             <CardHeader>
-              <CardTitle>Order Summary & Margins</CardTitle>
+              <CardTitle>Order Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Gross Total:</span>
-                  <span>{formatCurrency((Number(order.subtotal) || 0) + (Number(order.baseMarginAmount) || 0) + (Number(order.cashMarginAmount) || 0))}</span>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Total Items:</span>
+                  <span className="font-semibold text-foreground">{order.items.length}</span>
                 </div>
-                {(Number(order.baseMarginAmount) > 0 || Number(order.baseMargin) > 0) && (
-                  <div className="flex justify-between text-emerald-600 font-medium">
-                    <span>Base Margin ({Number(order.baseMargin || 0)}% Cut):</span>
-                    <span>-{formatCurrency(Number(order.baseMarginAmount || 0))}</span>
-                  </div>
-                )}
-                {(Number(order.cashMarginAmount) > 0 || Number(order.cashMargin) > 0) && (
-                  <div className="flex justify-between text-blue-600 font-medium">
-                    <span>Cash Margin ({Number(order.cashMargin || 0)}% Cut):</span>
-                    <span>-{formatCurrency(Number(order.cashMarginAmount || 0))}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-semibold border-t border-b py-1">
-                  <span>Net Subtotal:</span>
-                  <span>{formatCurrency(order.subtotal)}</span>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Total Quantity:</span>
+                  <span className="font-semibold text-foreground">
+                    {order.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Tax ({order.taxRate}%):</span>
-                  <span>{formatCurrency(order.taxAmount)}</span>
-                </div>
-                {Number(order.discount) > 0 && (
-                  <div className="flex justify-between text-amber-600">
-                    <span>Discount:</span>
-                    <span>-{formatCurrency(order.discount || 0)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold text-xl border-t pt-2 text-primary">
-                  <span>Grand Total:</span>
+                <div className="flex justify-between font-bold text-lg border-t pt-3 text-primary">
+                  <span>Total Amount:</span>
                   <span>{formatCurrency(order.grandTotal)}</span>
                 </div>
               </div>
@@ -619,6 +611,46 @@ export default function SalesOrderViewPage() {
           </table>
         </div>
       </div>
+
+      {/* Confirmation Dialog with Edit First Option */}
+      <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Sales Order</DialogTitle>
+            <DialogDescription className="pt-2 text-sm">
+              Are you sure you want to confirm Sales Order <strong className="text-foreground">{order?.orderNo}</strong>?
+              <br />
+              Once confirmed, prices and quantities cannot be edited.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsConfirmDialogOpen(false)}
+              disabled={confirming}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              className="text-primary border-primary/30 hover:bg-primary/5"
+              asChild
+              disabled={confirming}
+            >
+              <Link href={`/erp/sales/orders/${order?.id}/edit`} onClick={() => setIsConfirmDialogOpen(false)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit First
+              </Link>
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={confirming}
+            >
+              {confirming ? "Confirming..." : "Confirm Order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
