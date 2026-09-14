@@ -312,6 +312,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
       };
 
       let initialMeta: any = null;
+      let hasRenderedFirstBatch = false;
       const accumulatedInvoices: any[] = [];
       let lastProgressUpdate = 0;
 
@@ -339,6 +340,15 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
             accumulatedInvoices.push(...newInvoices);
             const count = accumulatedInvoices.length;
             const now = Date.now();
+
+            // Render first batch immediately (~250-500 invoices) so rows are instantly visible and interactive
+            if (!hasRenderedFirstBatch && count > 0) {
+              hasRenderedFirstBatch = true;
+              setReportData((prev) =>
+                prev ? { ...prev, invoices: [...accumulatedInvoices] } : null
+              );
+            }
+
             if (now - lastProgressUpdate > 120) {
               lastProgressUpdate = now;
               setStreamProgress((prev) => {

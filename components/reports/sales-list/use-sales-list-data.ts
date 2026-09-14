@@ -87,24 +87,32 @@ export function useSalesListData(
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
     location: true,
     invoice: true,
-    item: false,
+    item: true,
   });
 
-  // Collapsed nodes state
-  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
+  // Expanded invoice nodes state (invoices start collapsed by default for performance and clean view)
+  const [expandedInvoiceIds, setExpandedInvoiceIds] = useState<Set<string>>(new Set());
+  // Collapsed locations state (locations start expanded by default)
+  const [collapsedLocationIds, setCollapsedLocationIds] = useState<Set<string>>(new Set());
 
   const toggleNode = useCallback((nodeId: string) => {
-    setCollapsedNodes((prev) => {
-      const next = new Set(prev);
-      if (next.has(nodeId)) next.delete(nodeId);
-      else next.add(nodeId);
-      return next;
-    });
+    if (nodeId.includes("-inv-")) {
+      setExpandedInvoiceIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(nodeId)) next.delete(nodeId);
+        else next.add(nodeId);
+        return next;
+      });
+    } else {
+      setCollapsedLocationIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(nodeId)) next.delete(nodeId);
+        else next.add(nodeId);
+        return next;
+      });
+    }
   }, []);
 
-  const expandAll = useCallback(() => {
-    setCollapsedNodes(new Set());
-  }, []);
 
   // Check whether any in-memory filter is actually applied by the user
   const hasSubDateFilter = useMemo(() => {
@@ -263,10 +271,44 @@ export function useSalesListData(
     return Array.from(map.values());
   }, [filteredInvoices]);
 
+  // Expand all locations and all invoices
+  const expandAll = useCallback(() => {
+    setCollapsedLocationIds(new Set());
+    const allInvIds = new Set<string>();
+    if (reportType === "separate") {
+      for (const loc of locationGroups) {
+        for (const inv of loc.invoices) {
+          allInvIds.add(`${loc.locationKey}-inv-${inv.id}`);
+          allInvIds.add(inv.id);
+        }
+      }
+    } else {
+      for (const inv of filteredInvoices) {
+        allInvIds.add(`merged-inv-${inv.id}`);
+        allInvIds.add(inv.id);
+      }
+    }
+    setExpandedInvoiceIds(allInvIds);
+  }, [reportType, locationGroups, filteredInvoices]);
+
+  // Collapse all invoices and locations
+  const collapseAll = useCallback(() => {
+    setExpandedInvoiceIds(new Set());
+    const locSet = new Set<string>();
+    if (reportType === "separate") {
+      for (const loc of locationGroups) {
+        locSet.add(`loc-${loc.locationKey}`);
+      }
+    }
+    setCollapsedLocationIds(locSet);
+  }, [reportType, locationGroups]);
+
   // 4. Flatten hierarchy into table rows respecting collapse state & search
   const flatRows = useMemo<SalesListTableRow[]>(() => {
     const rows: SalesListTableRow[] = [];
     if (!reportData || filteredInvoices.length === 0) return rows;
+
+    const q = searchQuery.toLowerCase().trim();
 
     const flattenInvoices = (
       invoicesList: SalesListInvoiceNode[],
@@ -275,8 +317,22 @@ export function useSalesListData(
     ) => {
       for (const inv of invoicesList) {
         const invNodeId = `${prefix}-inv-${inv.id}`;
-        const isInvCollapsed = collapsedNodes.has(invNodeId);
         const hasItems = inv.items.length > 0;
+        const matchesItemSearch = Boolean(
+          q &&
+            inv.items.some(
+              (i) =>
+                i.sku.toLowerCase().includes(q) ||
+                i.barCode.toLowerCase().includes(q) ||
+                i.description.toLowerCase().includes(q)
+            )
+        );
+        const isInvExpanded =
+          Boolean(
+            expandedInvoiceIds.has(invNodeId) ||
+              expandedInvoiceIds.has(inv.id) ||
+              matchesItemSearch
+          ) && groupingLevels.item;
 
         if (groupingLevels.invoice) {
           rows.push({
@@ -295,13 +351,25 @@ export function useSalesListData(
             totals: inv.totals,
             tenderDetails: inv.tenderDetails,
             depth: depthOffset,
-            hasChildren: hasItems,
-            isExpanded: !isInvCollapsed,
+            hasChildren: hasItems && groupingLevels.item,
+            isExpanded: isInvExpanded,
           });
         }
 
-        if (!isInvCollapsed && groupingLevels.item) {
+        const shouldRenderItems =
+          groupingLevels.item && (!groupingLevels.invoice || isInvExpanded);
+
+        if (shouldRenderItems) {
           for (const line of inv.items) {
+            const lineSubTotal = line.subTotal || 0;
+            const proratedTax =
+              inv.totals.taxAmount > 0 && inv.totals.netAmount > 0
+                ? (lineSubTotal / inv.totals.netAmount) * inv.totals.taxAmount
+                : 0;
+            const lineGross = line.unitPrice
+              ? line.unitPrice * line.quantity
+              : lineSubTotal + (line.discountAmount || 0);
+
             rows.push({
               type: "item",
               id: `${prefix}-item-${line.id}`,
@@ -319,78 +387,78 @@ export function useSalesListData(
               totals: {
                 orderCount: 0,
                 totalItems: line.quantity,
-                grossAmount: line.unitPrice * line.quantity,
+                grossAmount: lineGross,
                 discountAmount: line.discountAmount,
                 netAmount: line.subTotal,
-                taxAmount: 0,
+                taxAmount: proratedTax,
                 paidAmount: line.subTotal,
                 cashAmount:
                   inv.totals.cashAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.cashAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.cashAmount
                     : inv.totals.cashSale > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.cashSale
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.cashSale
                     : 0,
                 cardAmount:
                   inv.totals.cardAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.cardAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.cardAmount
                     : inv.totals.cardSale > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.cardSale
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.cardSale
                     : 0,
                 walletAmount:
                   inv.totals.walletAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.walletAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.walletAmount
                     : 0,
                 creditAmount:
                   inv.totals.creditAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.creditAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.creditAmount
                     : 0,
                 cashSale:
                   inv.totals.cashSale > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.cashSale
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.cashSale
                     : 0,
                 cashReturn:
                   inv.totals.cashReturn > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.cashReturn
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.cashReturn
                     : 0,
                 cardSale:
                   inv.totals.cardSale > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.cardSale
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.cardSale
                     : 0,
                 creditSale:
                   inv.totals.creditSale > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.creditSale
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.creditSale
                     : 0,
                 giftVoucherAmount:
                   inv.totals.giftVoucherAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.giftVoucherAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.giftVoucherAmount
                     : 0,
                 creditVoucherAmount:
                   inv.totals.creditVoucherAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.creditVoucherAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.creditVoucherAmount
                     : 0,
                 exchangeVoucherAmount:
                   inv.totals.exchangeVoucherAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.exchangeVoucherAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.exchangeVoucherAmount
                     : 0,
                 claimVoucherAmount:
                   inv.totals.claimVoucherAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.claimVoucherAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.claimVoucherAmount
                     : 0,
                 giftVoucherCorporate:
                   inv.totals.giftVoucherCorporate > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.giftVoucherCorporate
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.giftVoucherCorporate
                     : 0,
                 creditVoucherIssuedAmount:
                   inv.totals.creditVoucherIssuedAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.creditVoucherIssuedAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.creditVoucherIssuedAmount
                     : 0,
                 rewardVoucherAmount:
                   inv.totals.rewardVoucherAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.rewardVoucherAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.rewardVoucherAmount
                     : 0,
                 onCreditAmount:
                   inv.totals.onCreditAmount > 0 && inv.totals.netAmount > 0
-                    ? (line.subTotal / inv.totals.netAmount) * inv.totals.onCreditAmount
+                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.onCreditAmount
                     : 0,
               },
               tenderDetails: inv.tenderDetails,
@@ -406,7 +474,7 @@ export function useSalesListData(
     if (reportType === "separate" && locationGroups.length > 0) {
       for (const loc of locationGroups) {
         const locId = `loc-${loc.locationKey}`;
-        const isLocCollapsed = collapsedNodes.has(locId);
+        const isLocCollapsed = collapsedLocationIds.has(locId);
         const hasInvoices = loc.invoices.length > 0;
 
         if (groupingLevels.location) {
@@ -431,21 +499,16 @@ export function useSalesListData(
     }
 
     return rows;
-  }, [reportData, filteredInvoices, locationGroups, reportType, groupingLevels, collapsedNodes]);
-
-  const collapseAll = useCallback(() => {
-    const allNodeIds = new Set<string>();
-    for (const loc of locationGroups) {
-      allNodeIds.add(`loc-${loc.locationKey}`);
-    }
-    for (const inv of filteredInvoices) {
-      allNodeIds.add(`merged-inv-${inv.id}`);
-      if (inv.locationId) {
-        allNodeIds.add(`loc:${inv.locationId}-inv-${inv.id}`);
-      }
-    }
-    setCollapsedNodes(allNodeIds);
-  }, [locationGroups, filteredInvoices]);
+  }, [
+    reportData,
+    filteredInvoices,
+    locationGroups,
+    reportType,
+    groupingLevels,
+    expandedInvoiceIds,
+    collapsedLocationIds,
+    searchQuery,
+  ]);
 
   // 5. Filtered Flat Items for Client-Side Excel Export
   const filteredFlatItems = useMemo<SalesListFlatRecord[]>(() => {
