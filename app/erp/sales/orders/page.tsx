@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Eye, FileText, Truck, Filter, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, FileText, Truck, Filter, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -70,6 +71,8 @@ export default function SalesOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [confirmingOrder, setConfirmingOrder] = useState<SalesOrder | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // Create Order Form State
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
@@ -294,12 +297,16 @@ export default function SalesOrdersPage() {
 
   const handleConfirm = async (id: string) => {
     try {
+      setIsConfirming(true);
       await salesOrderApi.confirm(id);
       toast.success("Sales order confirmed successfully");
+      setConfirmingOrder(null);
       loadOrders();
     } catch (error) {
       toast.error("Failed to confirm sales order");
       console.error(error);
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -503,16 +510,28 @@ export default function SalesOrdersPage() {
                           </Link>
                         </Button>
                         {order.status === "DRAFT" && (
-                          <PermissionGuard permissions="erp.sales.order.approve" fallback={null}>
+                          <>
                             <Button
                               variant="ghost"
                               size="sm"
-                              title="Confirm Order"
-                              onClick={() => handleConfirm(order.id)}
+                              title="Edit Order"
+                              asChild
                             >
-                              <FileText className="h-4 w-4" />
+                              <Link href={`/erp/sales/orders/${order.id}/edit`}>
+                                <Edit className="h-4 w-4 text-blue-600 hover:text-blue-700" />
+                              </Link>
                             </Button>
-                          </PermissionGuard>
+                            <PermissionGuard permissions="erp.sales.order.approve" fallback={null}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Confirm Order"
+                                onClick={() => setConfirmingOrder(order)}
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </PermissionGuard>
+                          </>
                         )}
                         {order.status === "WAREHOUSE_VERIFIED" && (
                           <PermissionGuard permissions="erp.sales.dc.create" fallback={null}>
@@ -537,6 +556,46 @@ export default function SalesOrdersPage() {
           </Table>
         </div>
       </div>
+
+      {/* Confirm Order Modal with Edit Option */}
+      <Dialog open={!!confirmingOrder} onOpenChange={(open) => !open && setConfirmingOrder(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Sales Order</DialogTitle>
+            <DialogDescription className="pt-2 text-sm">
+              Are you sure you want to confirm Sales Order <strong className="text-foreground">{confirmingOrder?.orderNo}</strong>?
+              <br />
+              Once confirmed, it cannot be edited and will proceed to warehouse verification.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmingOrder(null)}
+              disabled={isConfirming}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              className="text-primary border-primary/30 hover:bg-primary/5"
+              asChild
+              disabled={isConfirming}
+            >
+              <Link href={`/erp/sales/orders/${confirmingOrder?.id}/edit`} onClick={() => setConfirmingOrder(null)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit First
+              </Link>
+            </Button>
+            <Button
+              onClick={() => confirmingOrder && handleConfirm(confirmingOrder.id)}
+              disabled={isConfirming}
+            >
+              {isConfirming ? "Confirming..." : "Confirm Order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PermissionGuard>
   );
 }

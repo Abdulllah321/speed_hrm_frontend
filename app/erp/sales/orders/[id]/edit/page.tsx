@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Search, Filter, Trash2, Package, Info, FileSpreadsheet } from "lucide-react";
 import { SalesOrderBulkItemUploadModal } from "@/components/sales/sales-order-bulk-item-upload-modal";
@@ -38,7 +38,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { salesOrderApi, customerApi, warehouseApi, inventoryApi, brandApi, categoryApi, Customer } from "@/lib/api";
+import { salesOrderApi, customerApi, warehouseApi, inventoryApi, brandApi, categoryApi, Customer, SalesOrder } from "@/lib/api";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 
@@ -55,22 +55,23 @@ interface SelectedItem {
   taxRate: number;
 }
 
-export default function CreateSalesOrderPage() {
+export default function EditSalesOrderPage() {
+  const params = useParams();
   const router = useRouter();
+  const orderId = params.id as string;
+
+  const [order, setOrder] = useState<SalesOrder | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // Create Order Form State
+  // Form State
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
-
-  const handleCustomerChange = (customerId: string) => {
-    setSelectedCustomerId(customerId);
-  };
-
-  // Item Selection State
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+
+  // Item Search State
   const [itemOptions, setItemOptions] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -88,7 +89,76 @@ export default function CreateSalesOrderPage() {
   // Bulk upload state
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
-  // Handle bulk import
+  // Load existing order & dropdown options
+  useEffect(() => {
+    async function init() {
+      try {
+        setInitialLoading(true);
+        const [orderRes, customersRes, warehousesRes, brandsRes, catsRes] = await Promise.all([
+          salesOrderApi.getById(orderId),
+          customerApi.getAll(),
+          warehouseApi.getAll(),
+          brandApi.getAll().catch(() => null),
+          categoryApi.getAll().catch(() => null),
+        ]);
+
+        const orderData = (orderRes as any).data || orderRes;
+        if (!orderData) {
+          toast.error("Sales order not found");
+          router.push("/erp/sales/orders");
+          return;
+        }
+
+        if (orderData.status !== "DRAFT") {
+          toast.error("Only draft sales orders can be edited");
+          router.push(`/erp/sales/orders/${orderId}`);
+          return;
+        }
+
+        setOrder(orderData);
+        setSelectedCustomerId(orderData.customerId || orderData.customer?.id || "");
+        setSelectedWarehouseId(orderData.warehouseId || orderData.warehouse?.id || "");
+
+        // Pre-populate items
+        const existingItems: SelectedItem[] = (orderData.items || []).map((soItem: any) => {
+          const itemObj = soItem.item || {};
+          const retailPrice = Number(soItem.salePrice || 0);
+          const quantity = Number(soItem.quantity || 1);
+          return {
+            id: itemObj.id || soItem.itemId,
+            sku: itemObj.sku || soItem.sku || "N/A",
+            description: itemObj.description || soItem.description || "N/A",
+            costPrice: Number(soItem.costPrice || itemObj.unitCost || 0),
+            salePrice: retailPrice,
+            quantity,
+            discount: 0,
+            total: retailPrice * quantity,
+            availableStock: Number(itemObj.totalQuantity ?? 999),
+            taxRate: Number(itemObj.taxRate1 || 0),
+          };
+        });
+        setSelectedItems(existingItems);
+
+        setCustomers(customersRes?.data || (Array.isArray(customersRes) ? customersRes : []));
+        setWarehouses(Array.isArray(warehousesRes) ? warehousesRes : warehousesRes?.data || []);
+
+        if (brandsRes?.status && brandsRes.data) setBrands(brandsRes.data);
+        if (catsRes?.status && catsRes.data) setCategories(catsRes.data);
+      } catch (error) {
+        console.error("Failed to load order:", error);
+        toast.error("Failed to load sales order details");
+        router.push("/erp/sales/orders");
+      } finally {
+        setInitialLoading(false);
+      }
+    }
+
+    if (orderId) {
+      init();
+    }
+  }, [orderId]);
+
+  // Bulk import complete
   const handleBulkImportComplete = (importedItems: any[]) => {
     let addedCount = 0;
     let skippedCount = 0;
@@ -106,7 +176,7 @@ export default function CreateSalesOrderPage() {
         salePrice: importItem.salePrice || 0,
         quantity: importItem.quantity,
         discount: 0,
-        total: importItem.salePrice * importItem.quantity || 0,
+        total: (importItem.salePrice || 0) * importItem.quantity,
         availableStock: importItem.availableStock,
         taxRate: importItem.taxRate || 0,
       };
@@ -114,50 +184,7 @@ export default function CreateSalesOrderPage() {
       addedCount++;
     });
     if (skippedCount > 0) {
-      toast.info(addedCount + ' item(s) added. ' + skippedCount + ' duplicate(s) skipped.');
-    }
-  };
-
-  // Load data
-  useEffect(() => {
-    loadCustomers();
-    loadWarehouses();
-    loadFilterData();
-  }, []);
-
-  const loadCustomers = async () => {
-    try {
-      const response = await customerApi.getAll();
-      setCustomers(response.data);
-    } catch (error) {
-      console.error("Failed to load customers:", error);
-    }
-  };
-
-  const loadWarehouses = async () => {
-    try {
-      const response = await warehouseApi.getAll();
-      setWarehouses(response);
-    } catch (error) {
-      console.error("Failed to load warehouses:", error);
-    }
-  };
-
-  const loadFilterData = async () => {
-    try {
-      const [brandsRes, catsRes] = await Promise.allSettled([
-        brandApi.getAll(),
-        categoryApi.getAll(),
-      ]);
-
-      if (brandsRes.status === 'fulfilled' && brandsRes.value.status) {
-        setBrands(brandsRes.value.data);
-      }
-      if (catsRes.status === 'fulfilled' && catsRes.value.status) {
-        setCategories(catsRes.value.data);
-      }
-    } catch (error) {
-      console.error("Failed to load filter data:", error);
+      toast.info(`${addedCount} item(s) added. ${skippedCount} duplicate(s) skipped.`);
     }
   };
 
@@ -197,11 +224,18 @@ export default function CreateSalesOrderPage() {
     }
   };
 
-  // Add item to order
+  // Debounced search
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      searchItems(itemSearchQuery);
+    }, 300);
+    return () => clearTimeout(debounce);
+  }, [itemSearchQuery, selectedWarehouseId, appliedFilters]);
+
+  // Add item
   const addItem = (itemData: any) => {
     const isSelected = selectedItems.find(i => i.id === itemData.id);
     if (isSelected) {
-      // If already selected, don't add again but show message
       toast.warning("Item already added to order");
       return;
     }
@@ -220,9 +254,6 @@ export default function CreateSalesOrderPage() {
     };
 
     setSelectedItems(prev => [...prev, newItem]);
-    // Don't close popover to allow multiple selections
-    // setItemSearchQuery("");
-    // setIsPopoverOpen(false);
   };
 
   // Update item
@@ -240,19 +271,12 @@ export default function CreateSalesOrderPage() {
     setSelectedItems(prev => prev.filter(item => item.id !== id));
   };
 
-  // Calculate simple order totals (Retail Price * Quantity)
+  // Totals
   const totalQuantity = selectedItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
   const totalAmount = selectedItems.reduce((sum, item) => sum + ((Number(item.salePrice) || 0) * (Number(item.quantity) || 0)), 0);
 
-  // Item search
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      searchItems(itemSearchQuery);
-    }, 300);
-    return () => clearTimeout(debounce);
-  }, [itemSearchQuery, selectedWarehouseId, appliedFilters]);
-
-  const handleCreateOrder = async () => {
+  // Save changes
+  const handleUpdateOrder = async () => {
     if (!selectedCustomerId || !selectedWarehouseId || selectedItems.length === 0) {
       toast.error("Please fill all required fields and add at least one item");
       return;
@@ -260,7 +284,7 @@ export default function CreateSalesOrderPage() {
 
     try {
       setLoading(true);
-      const orderData = {
+      const updatePayload = {
         customerId: selectedCustomerId,
         warehouseId: selectedWarehouseId,
         items: selectedItems.map(item => ({
@@ -271,16 +295,26 @@ export default function CreateSalesOrderPage() {
         })),
       };
 
-      await salesOrderApi.create(orderData);
-      toast.success("Sales order created successfully");
-      router.push("/erp/sales/orders");
-    } catch (error) {
-      toast.error("Failed to create sales order");
-      console.error(error);
+      await salesOrderApi.update(orderId, updatePayload);
+      toast.success("Sales order updated successfully");
+      router.push(`/erp/sales/orders/${orderId}`);
+    } catch (error: any) {
+      console.error("Failed to update sales order:", error);
+      const msg = error.response?.data?.message || error.message || "Failed to update sales order";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <p className="mt-2 text-sm text-muted-foreground">Loading sales order for editing...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -292,27 +326,32 @@ export default function CreateSalesOrderPage() {
             size="sm"
             asChild
           >
-            <Link href="/erp/sales/orders" transitionTypes={["nav-back"]}>
+            <Link href={`/erp/sales/orders/${orderId}`} transitionTypes={["nav-back"]}>
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Orders
+              Back to Order
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Create Sales Order</h1>
-            <p className="text-muted-foreground">
-              Create a new sales order for a customer
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">
+                Edit Sales Order {order?.orderNo}
+              </h1>
+              <Badge variant="secondary">DRAFT</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Modify customer, warehouse, items, retail prices, and quantities
             </p>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
-            <Link href="/erp/sales/orders" transitionTypes={["nav-back"]}>
+            <Link href={`/erp/sales/orders/${orderId}`} transitionTypes={["nav-back"]}>
               Cancel
             </Link>
           </Button>
-          <Button onClick={handleCreateOrder} disabled={selectedItems.length === 0 || loading}>
-            {loading ? "Creating..." : "Create Order"}
+          <Button onClick={handleUpdateOrder} disabled={selectedItems.length === 0 || loading}>
+            {loading ? "Saving Changes..." : "Save Changes"}
           </Button>
         </div>
       </div>
@@ -324,10 +363,10 @@ export default function CreateSalesOrderPage() {
             <CardTitle>Order Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Customer *</Label>
-                <Select value={selectedCustomerId} onValueChange={handleCustomerChange}>
+                <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select customer" />
                   </SelectTrigger>
@@ -531,7 +570,8 @@ export default function CreateSalesOrderPage() {
             </div>
           </CardContent>
         </Card>
-        {/* Selected Items */}
+
+        {/* Selected Items Table */}
         {selectedItems.length > 0 && (
           <Card>
             <CardHeader>
@@ -579,7 +619,6 @@ export default function CreateSalesOrderPage() {
                               onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
                               className="w-20 h-8 text-xs font-medium"
                               min="1"
-                              max={item.availableStock}
                             />
                           </TableCell>
                           <TableCell className="text-right font-mono font-semibold text-sm">
@@ -604,8 +643,6 @@ export default function CreateSalesOrderPage() {
             </CardContent>
           </Card>
         )}
-
-
 
         {/* Order Summary */}
         {selectedItems.length > 0 && (
