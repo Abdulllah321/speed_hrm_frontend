@@ -10,7 +10,6 @@ import {
   queueSalesListReportExport,
   getSalesListReportExportStatus,
 } from "@/lib/actions/pos-sales";
-import { streamSalesListResult } from "@/lib/stream-ndjson";
 import { useReportSse } from "@/hooks/use-report-sse";
 import { SalesListReportData } from "./types";
 import { useSalesListData } from "./use-sales-list-data";
@@ -21,7 +20,7 @@ import { generateSalesListExcel } from "./excel-export";
 import { generateSalesListPdf } from "./pdf-export";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Progress } from "@/components/ui/progress";
-import { FileSpreadsheet, Printer, Zap } from "lucide-react";
+import { FileSpreadsheet, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { getApiBaseUrl } from "@/lib/utils";
 
@@ -111,21 +110,9 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
   const [isFetchingResult, setIsFetchingResult] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Mount & Stream tracking refs
+  // Mount tracking refs
   const initialFetchDoneRef = useRef(false);
-  const hasStreamedJobIdRef = useRef<string | null>(null);
-  const streamAbortControllerRef = useRef<AbortController | null>(null);
-  const [streamProgress, setStreamProgress] = useState<{
-    isStreaming: boolean;
-    loadedInvoices: number;
-    totalInvoices: number;
-    percent: number;
-  }>({
-    isStreaming: false,
-    loadedInvoices: 0,
-    totalInvoices: 0,
-    percent: 0,
-  });
+  const hasFetchedJobIdRef = useRef<string | null>(null);
 
   // Client export state with progress tracking
   const [isExportingExcel, setIsExportingExcel] = useState(false);
@@ -181,7 +168,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
 
       setIsQueueingJob(true);
       setPreviewJobId(null);
-      hasStreamedJobIdRef.current = null;
+      hasFetchedJobIdRef.current = null;
 
       startTransition(async () => {
         try {
@@ -261,154 +248,37 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
     }
   };
 
-  // Fetch result with real-time progressive NDJSON streaming when calculation completes
+  // Single API Fetch when Bull calculation completes via SSE (<100ms)
   useEffect(() => {
     if (
       (sseState.status === "completed" || sseState.progressPercent === 100) &&
-      previewJobId
+      previewJobId &&
+      hasFetchedJobIdRef.current !== previewJobId
     ) {
-      if (hasStreamedJobIdRef.current === previewJobId) {
-        return;
-      }
-      hasStreamedJobIdRef.current = previewJobId;
-
-      // Cancel previous stream if one was active
-      streamAbortControllerRef.current?.abort();
-      const abortController = new AbortController();
-      streamAbortControllerRef.current = abortController;
-
+      hasFetchedJobIdRef.current = previewJobId;
       setIsFetchingResult(true);
-      setStreamProgress({
-        isStreaming: true,
-        loadedInvoices: 0,
-        totalInvoices: 0,
-        percent: 0,
-      });
 
-      const emptyTotals: SalesListTotals = {
-        orderCount: 0,
-        totalItems: 0,
-        grossAmount: 0,
-        discountAmount: 0,
-        netAmount: 0,
-        taxAmount: 0,
-        paidAmount: 0,
-        cashAmount: 0,
-        cardAmount: 0,
-        walletAmount: 0,
-        creditAmount: 0,
-        cashSale: 0,
-        cashReturn: 0,
-        cardSale: 0,
-        creditSale: 0,
-        giftVoucherAmount: 0,
-        creditVoucherAmount: 0,
-        exchangeVoucherAmount: 0,
-        claimVoucherAmount: 0,
-        giftVoucherCorporate: 0,
-        creditVoucherIssuedAmount: 0,
-        rewardVoucherAmount: 0,
-        onCreditAmount: 0,
-      };
-
-      let initialMeta: any = null;
-      let hasRenderedFirstBatch = false;
-      const accumulatedInvoices: any[] = [];
-      let lastProgressUpdate = 0;
-
-      streamSalesListResult(
-        previewJobId,
-        {
-          onMeta: (meta) => {
-            initialMeta = meta;
-            // First chunk: instantly set up layout and headers (~50ms)
-            setReportData({
-              reportType: meta.reportType,
-              dateRange: meta.dateRange,
-              locationNames: meta.locationNames,
-              locations: meta.locations,
-              grandTotals: emptyTotals,
-              invoices: [],
-              flatItems: [],
-            });
-            setStreamProgress((prev) => ({
-              ...prev,
-              totalInvoices: meta.totalInvoices || 0,
-            }));
-          },
-          onBatch: (newInvoices) => {
-            accumulatedInvoices.push(...newInvoices);
-            const count = accumulatedInvoices.length;
-            const now = Date.now();
-
-            // Render first batch immediately (~250-500 invoices) so rows are instantly visible and interactive
-            if (!hasRenderedFirstBatch && count > 0) {
-              hasRenderedFirstBatch = true;
-              setReportData((prev) =>
-                prev ? { ...prev, invoices: [...accumulatedInvoices] } : null
-              );
-            }
-
-            if (now - lastProgressUpdate > 120) {
-              lastProgressUpdate = now;
-              setStreamProgress((prev) => {
-                const total = prev.totalInvoices || count;
-                return {
-                  ...prev,
-                  loadedInvoices: count,
-                  percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
-                };
-              });
-            }
-          },
-          onComplete: (totals, totalInvoices) => {
-            // Final chunk: lock in verified Grand Totals & dataset
-            setReportData({
-              reportType: initialMeta?.reportType || "merged",
-              dateRange: initialMeta?.dateRange || {},
-              locationNames: initialMeta?.locationNames || "",
-              locations: initialMeta?.locations || [],
-              invoices: accumulatedInvoices,
-              flatItems: [],
-              grandTotals: totals,
-            });
-            setIsFetchingResult(false);
-            setStreamProgress((prev) => ({
-              ...prev,
-              isStreaming: false,
-              loadedInvoices: totalInvoices || accumulatedInvoices.length,
-              percent: 100,
-            }));
-          },
-          onError: (err) => {
-            console.error("[SalesList Stream Error]", err);
-            // Fallback to monolithic fetch if stream interrupted
-            getSalesListResult(previewJobId)
-              .then((res) => {
-                if (res && res.status && res.data) {
-                  setReportData(res.data);
-                } else {
-                  toast.error("Failed to load completed sales list dataset");
-                }
-              })
-              .catch(() => {
-                toast.error("Error retrieving completed sales list preview");
-              })
-              .finally(() => {
-                setIsFetchingResult(false);
-                setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
-              });
-          },
-        },
-        abortController.signal
-      );
+      getSalesListResult(previewJobId)
+        .then((res) => {
+          if (res && res.status && res.data) {
+            setReportData(res.data);
+          } else {
+            toast.error("Failed to load completed sales list dataset");
+          }
+        })
+        .catch(() => {
+          toast.error("Error retrieving completed sales list preview");
+        })
+        .finally(() => {
+          setIsFetchingResult(false);
+        });
     }
   }, [sseState.status, sseState.progressPercent, previewJobId]);
 
   // Client-Side In-Memory Slicing & Grouping (Instant 0ms, Zero Backend Hits)
   const {
     filteredInvoices,
-    filteredFlatItems,
+    getFilteredFlatItems,
     grandTotals,
     flatRows,
     groupingLevels,
@@ -438,7 +308,8 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
       message: "Initializing Excel export...",
     });
 
-    const totalCount = type === "flat" ? filteredFlatItems.length : filteredInvoices.length;
+    const flatItemsToExport = type === "flat" ? getFilteredFlatItems() : [];
+    const totalCount = type === "flat" ? flatItemsToExport.length : filteredInvoices.length;
 
     // Instant On-The-Fly Server Filtered Streaming Export
     // Avoids freezing browser main thread with SheetJS, zero database re-querying,
@@ -570,7 +441,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
       const { excelBuffer, fileName } = await generateSalesListExcel({
         exportType: type,
         invoices: filteredInvoices,
-        flatItems: filteredFlatItems,
+        flatItems: flatItemsToExport,
         grandTotals,
         dateRange,
         locationNames: activeSelectionNames,
@@ -720,7 +591,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
         previewJobId={previewJobId}
         sseState={sseState}
         isQueueingJob={isQueueingJob}
-        isFetchingResult={isFetchingResult && !streamProgress.isStreaming}
+        isFetchingResult={isFetchingResult}
         onExportExcelFlat={() => handleExportExcel("flat")}
         onExportExcelHierarchy={() => handleExportExcel("hierarchical")}
         onExportPdf={handleExportPdf}
@@ -729,40 +600,6 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
         exportProgress={exportProgressState.isExporting ? exportProgressState.progress : undefined}
         exportStatusMessage={exportProgressState.isExporting ? exportProgressState.message : undefined}
       />
-
-      {/* AI-Style Progressive Real-Time Streaming Progress Banner */}
-      {streamProgress.isStreaming && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-indigo-200/80 dark:border-indigo-900/60 bg-gradient-to-r from-indigo-50/90 via-sky-50/80 to-purple-50/90 dark:from-indigo-950/30 dark:via-sky-950/20 dark:to-purple-950/30 shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs animate-pulse shrink-0">
-              <Zap className="h-4 w-4" />
-            </div>
-            <div className="space-y-0.5">
-              <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <span>⚡ Live Streaming Invoices</span>
-                <span className="font-mono text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800 text-[11px]">
-                  {streamProgress.loadedInvoices.toLocaleString()}
-                  {streamProgress.totalInvoices > 0 ? ` / ${streamProgress.totalInvoices.toLocaleString()}` : ""} invoices ({streamProgress.percent}%)
-                </span>
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Table rows are interactive in real-time as data streams from the server
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-36 sm:w-56 bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-indigo-500 to-sky-500 h-full transition-all duration-150 rounded-full"
-                style={{ width: `${streamProgress.percent}%` }}
-              />
-            </div>
-            <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 w-10 text-right">
-              {streamProgress.percent}%
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Virtualized Minimal Light Theme Matrix Table */}
       <SalesListTable

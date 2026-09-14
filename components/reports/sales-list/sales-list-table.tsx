@@ -440,6 +440,11 @@ export function SalesListTable({
       <div className="flex items-center justify-between px-1 no-print">
         <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
           Showing <span className="font-bold text-slate-900 dark:text-slate-100">{rows.length.toLocaleString()}</span> sales hierarchy rows
+          {grandTotals.orderCount > rows.length && (
+            <span className="text-[11px] text-slate-500 font-normal">
+              (Preview Sample &bull; Grand Totals include all {grandTotals.orderCount.toLocaleString()} orders)
+            </span>
+          )}
         </span>
         <div className="flex items-center gap-2">
           {onExpandAll && (

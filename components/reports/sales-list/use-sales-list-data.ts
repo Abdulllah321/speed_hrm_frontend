@@ -510,8 +510,8 @@ export function useSalesListData(
     searchQuery,
   ]);
 
-  // 5. Filtered Flat Items for Client-Side Excel Export
-  const filteredFlatItems = useMemo<SalesListFlatRecord[]>(() => {
+  // 5. Lazy On-Demand Flat Items for Client-Side Excel Export (computed only when export is clicked)
+  const getFilteredFlatItems = useCallback((): SalesListFlatRecord[] => {
     const records: SalesListFlatRecord[] = [];
     for (const inv of filteredInvoices) {
       for (const line of inv.items) {
@@ -563,7 +563,8 @@ export function useSalesListData(
 
   return {
     filteredInvoices,
-    filteredFlatItems,
+    filteredFlatItems: [] as SalesListFlatRecord[],
+    getFilteredFlatItems,
     locationGroups,
     grandTotals,
     flatRows,
