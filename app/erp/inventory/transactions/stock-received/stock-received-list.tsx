@@ -125,6 +125,19 @@ export const columns: ColumnDef<StockLedgerEntry>[] = [
         ),
     },
     {
+        accessorKey: "barCode",
+        header: "Barcode",
+        accessorFn: (row) => row.item?.barCode ?? "-",
+        cell: ({ row }) =>
+            row.original.item?.barCode ? (
+                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded whitespace-nowrap">
+                    {row.original.item.barCode}
+                </span>
+            ) : (
+                <span className="text-muted-foreground">—</span>
+            ),
+    },
+    {
         accessorKey: "warehouse",
         header: "Warehouse / Location",
         accessorFn: (row) => row.warehouse?.name ?? row.warehouseId,
