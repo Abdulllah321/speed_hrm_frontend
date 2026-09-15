@@ -1187,22 +1187,30 @@ export default function DataTable<TData extends DataTableRow>({
                 className="text-muted-foreground text-sm whitespace-nowrap"
                 aria-live="polite"
               >
-                <span className="text-foreground">
-                  {table.getState().pagination.pageIndex *
-                    table.getState().pagination.pageSize +
-                    1}
-                  -
-                  {Math.min(
-                    table.getState().pagination.pageIndex *
-                      table.getState().pagination.pageSize +
-                      table.getState().pagination.pageSize,
-                    table.getRowCount(),
-                  )}
-                </span>{" "}
-                of{" "}
-                <span className="text-foreground">
-                  {table.getRowCount().toString()}
-                </span>
+                {table.getRowCount() === 0 ? (
+                  <span>0 of 0</span>
+                ) : (
+                  <>
+                    <span className="text-foreground font-medium">
+                      {(
+                        table.getState().pagination.pageIndex *
+                          table.getState().pagination.pageSize +
+                        1
+                      ).toLocaleString()}
+                      -
+                      {Math.min(
+                        table.getState().pagination.pageIndex *
+                          table.getState().pagination.pageSize +
+                          table.getState().pagination.pageSize,
+                        table.getRowCount(),
+                      ).toLocaleString()}
+                    </span>{" "}
+                    of{" "}
+                    <span className="text-foreground font-medium">
+                      {table.getRowCount().toLocaleString()}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
 

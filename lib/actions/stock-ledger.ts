@@ -13,6 +13,8 @@ export async function getStockLedger(filters?: {
     page?: number;
     limit?: number;
     search?: string;
+    startDate?: string;
+    endDate?: string;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -24,6 +26,8 @@ export async function getStockLedger(filters?: {
         if (filters?.page) queryParams.append("page", String(filters.page));
         if (filters?.limit) queryParams.append("limit", String(filters.limit));
         if (filters?.search) queryParams.append("search", filters.search);
+        if (filters?.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters?.endDate) queryParams.append("endDate", filters.endDate);
 
         const queryString = queryParams.toString();
         const url = `/stock-ledger${queryString ? `?${queryString}` : ""}`;
@@ -49,6 +53,8 @@ export async function queueStockLedgerExport(filters?: {
     itemId?: string;
     referenceType?: string;
     search?: string;
+    startDate?: string;
+    endDate?: string;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const queryParams = new URLSearchParams();
@@ -58,6 +64,8 @@ export async function queueStockLedgerExport(filters?: {
         if (filters?.itemId) queryParams.append("itemId", filters.itemId);
         if (filters?.referenceType) queryParams.append("referenceType", filters.referenceType);
         if (filters?.search) queryParams.append("search", filters.search);
+        if (filters?.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters?.endDate) queryParams.append("endDate", filters.endDate);
 
         const queryString = queryParams.toString();
         const url = `/stock-ledger/export${queryString ? `?${queryString}` : ""}`;

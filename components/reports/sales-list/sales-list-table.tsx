@@ -440,6 +440,11 @@ export function SalesListTable({
       <div className="flex items-center justify-between px-1 no-print">
         <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
           Showing <span className="font-bold text-slate-900 dark:text-slate-100">{rows.length.toLocaleString()}</span> sales hierarchy rows
+          {grandTotals.orderCount > rows.length && (
+            <span className="text-[11px] text-slate-500 font-normal">
+              (Preview Sample &bull; Grand Totals include all {grandTotals.orderCount.toLocaleString()} orders)
+            </span>
+          )}
         </span>
         <div className="flex items-center gap-2">
           {onExpandAll && (
@@ -660,6 +665,7 @@ export function SalesListTable({
                   const t = item.totals;
 
                   const depthIndentClass =
+                    isItem ? (item.depth === 2 ? "pl-11 text-slate-700 dark:text-slate-300" : "pl-8 text-slate-700 dark:text-slate-300") :
                     item.depth === 1 ? "pl-6 font-semibold" :
                     item.depth === 2 ? "pl-10 text-muted-foreground text-[11px]" :
                     "font-bold text-slate-800 dark:text-slate-200";
@@ -676,8 +682,8 @@ export function SalesListTable({
                         "border-b border-slate-100 dark:border-slate-800/60 transition-colors text-xs select-none",
                         item.hasChildren && "cursor-pointer",
                         isLocation ? "bg-slate-100/80 dark:bg-slate-800/80 font-bold hover:bg-slate-200/60 dark:hover:bg-slate-800" :
-                        isInvoice ? "bg-slate-50/50 dark:bg-slate-900/40 font-semibold hover:bg-slate-100/60 dark:hover:bg-slate-800/40" :
-                        "hover:bg-indigo-50/20 dark:hover:bg-indigo-950/10 text-slate-600 dark:text-slate-400"
+                        isInvoice ? "bg-slate-50/70 dark:bg-slate-900/40 font-semibold hover:bg-slate-100/60 dark:hover:bg-slate-800/40" :
+                        "bg-white/60 dark:bg-slate-950/20 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 text-slate-600 dark:text-slate-400 text-[11px]"
                       )}
                     >
                       {/* Label with Expand / Collapse Chevron */}
@@ -708,7 +714,12 @@ export function SalesListTable({
                               <span>{item.orderNumber}</span>
                             </div>
                           ) : isItem ? (
-                            <span className="truncate">{item.description}</span>
+                            <div className="flex items-center gap-1.5 overflow-hidden">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500 shrink-0" />
+                              <span className="truncate font-medium text-slate-800 dark:text-slate-200" title={item.description}>
+                                {item.description}
+                              </span>
+                            </div>
                           ) : (
                             <span className="truncate font-extrabold">{item.label}</span>
                           )}
@@ -756,7 +767,14 @@ export function SalesListTable({
 
                       {/* SKU / Barcode */}
                       <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 font-mono text-[11px]">
-                        {isItem ? item.barCode || item.sku || "-" : "-"}
+                        {isItem ? (
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{item.barCode || item.sku || "-"}</span>
+                            {item.sku && item.barCode && item.sku !== item.barCode && (
+                              <span className="text-[10px] text-slate-400 font-mono">{item.sku}</span>
+                            )}
+                          </div>
+                        ) : "-"}
                       </td>
 
                       {/* Size */}

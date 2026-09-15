@@ -21,11 +21,13 @@ import {
     Upload,
     Loader2,
     Download,
+    X,
 } from "lucide-react";
 import { cn, getApiBaseUrl } from "@/lib/utils";
 import Link from "next/link";
 import { StockBulkUploadModal } from "@/components/inventory/stock-bulk-upload-modal";
 import { useUploadProgress } from "@/hooks/use-upload-progress";
+import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 
 // ─── Reference type → navigable route ────────────────────────────────
 function getReferenceHref(referenceType: string, referenceId: string): string | null {
@@ -37,6 +39,8 @@ function getReferenceHref(referenceType: string, referenceId: string): string | 
         case "PURCHASE_RETURN_GRN":
             return `/erp/procurement/purchase-returns/${referenceId}`;
         case "TRANSFER_REQUEST":
+        case "TRANSFER_IN":
+        case "TRANSFER_OUT":
         case "RETURN_REQUEST":
         case "OUTLET_TRANSFER_IN":
         case "OUTLET_TRANSFER_OUT":
@@ -301,30 +305,35 @@ export const columns: ColumnDef<StockLedgerEntry>[] = [
         },
     },
     {
-        accessorKey: "referenceId",
+        accessorKey: "referenceNumber",
         header: "Reference",
         cell: ({ row }) => {
-            const { referenceType, referenceId } = row.original;
+            const { referenceType, referenceId, referenceNumber, referenceSecondaryNumber } = row.original as any;
             const href = getReferenceHref(referenceType, referenceId);
-            const shortId = `#${referenceId.slice(0, 8)}`;
-
-            if (href) {
-                return (
-                    <Link
-                        href={href}
-                        className="inline-flex items-center gap-1 font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                        title={`View ${referenceType}: ${referenceId}`}
-                    >
-                        {shortId}
-                        <ExternalLink className="h-3 w-3 shrink-0" />
-                    </Link>
-                );
-            }
+            const displayText = referenceNumber || (referenceId && referenceId.length === 36 ? `#${referenceId.slice(0, 8)}` : (referenceId || "—"));
 
             return (
-                <span className="font-mono text-xs text-muted-foreground" title={referenceId}>
-                    {shortId}
-                </span>
+                <div className="flex flex-col gap-0.5 min-w-[130px]">
+                    {href ? (
+                        <Link
+                            href={href}
+                            className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            title={`View ${referenceType}: ${referenceId}`}
+                        >
+                            <span>{displayText}</span>
+                            <ExternalLink className="h-3 w-3 shrink-0 opacity-70" />
+                        </Link>
+                    ) : (
+                        <span className="font-mono text-xs font-semibold text-foreground" title={referenceId}>
+                            {displayText}
+                        </span>
+                    )}
+                    {referenceSecondaryNumber && (
+                        <span className="text-[11px] font-mono text-muted-foreground font-medium">
+                            {referenceSecondaryNumber}
+                        </span>
+                    )}
+                </div>
             );
         },
     },
@@ -340,11 +349,13 @@ const MOVEMENT_FILTER_OPTIONS = [
 ];
 
 const REFERENCE_TYPE_OPTIONS = [
+    { label: "Transfer In", value: "TRANSFER_IN" },
+    { label: "Transfer Out", value: "TRANSFER_OUT" },
+    { label: "Transfer Request", value: "TRANSFER_REQUEST" },
     { label: "GRN", value: "GRN" },
     { label: "POS Sale", value: "POS_SALE" },
     { label: "POS Return", value: "POS_RETURN" },
     { label: "POS Void", value: "POS_VOID" },
-    { label: "Transfer", value: "TRANSFER_REQUEST" },
     { label: "Adjustment", value: "ADJUSTMENT" },
     { label: "Landed Cost", value: "LANDED_COST" },
     { label: "Opening Balance", value: "OPENING_BALANCE" },
@@ -384,6 +395,7 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
     const [activeMovementType, setActiveMovementType] = useState<string>("");
     const [activeReferenceType, setActiveReferenceType] = useState<string>("");
     const [activeLocationId, setActiveLocationId] = useState<string>("");
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [locations, setLocations] = useState<{ label: string; value: string }[]>([]);
     const [search, setSearch] = useState("");
     const [isExporting, setIsExporting] = useState(false);
@@ -402,11 +414,16 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
         if (isExporting) return;
         setIsExporting(true);
         try {
+            const startDate = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : undefined;
+            const endDate = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined;
+
             const filters = {
                 movementType: activeMovementType && activeMovementType !== "all" ? (activeMovementType as any) : undefined,
                 referenceType: activeReferenceType && activeReferenceType !== "all" ? activeReferenceType : undefined,
                 locationId: activeLocationId && activeLocationId !== "all" ? activeLocationId : undefined,
                 search: search || undefined,
+                startDate,
+                endDate,
             };
             const result = await queueStockLedgerExport(filters);
             if (result.status) {
@@ -453,8 +470,18 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
 
     // ── Ledger fetch ──────────────────────────────────────────────────
     const fetchPage = useCallback(
-        (pagination: PaginationState, movementType?: string, referenceType?: string, locationId?: string, searchStr?: string) => {
+        (
+            pagination: PaginationState,
+            movementType?: string,
+            referenceType?: string,
+            locationId?: string,
+            searchStr?: string,
+            range?: DateRange,
+        ) => {
             startTransition(async () => {
+                const startDate = range?.from ? format(range.from, "yyyy-MM-dd") : undefined;
+                const endDate = range?.to ? format(range.to, "yyyy-MM-dd") : undefined;
+
                 const result = await getStockLedger({
                     page: pagination.pageIndex + 1,
                     limit: pagination.pageSize,
@@ -467,22 +494,25 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
                     locationId:
                         locationId && locationId !== "all" ? locationId : undefined,
                     search: searchStr || undefined,
+                    startDate,
+                    endDate,
                 });
                 if (result?.status !== false) {
                     setEntries(result.data ?? []);
-                    setMeta(result.meta ?? meta);
+                    if (result.meta) {
+                        setMeta(result.meta);
+                    }
                 }
             });
         },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         []
     );
 
     const handlePaginationChange = useCallback(
         (pagination: PaginationState) => {
-            fetchPage(pagination, activeMovementType, activeReferenceType, activeLocationId, search);
+            fetchPage(pagination, activeMovementType, activeReferenceType, activeLocationId, search, dateRange);
         },
-        [activeMovementType, activeReferenceType, activeLocationId, search, fetchPage]
+        [activeMovementType, activeReferenceType, activeLocationId, search, dateRange, fetchPage]
     );
 
     const handleFilterChange = useCallback(
@@ -495,22 +525,84 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
             if (key === "referenceType") setActiveReferenceType(value);
             if (key === "locationId") setActiveLocationId(value);
 
-            fetchPage({ pageIndex: 0, pageSize: meta.limit }, newMovement, newRefType, newLocation, search);
+            fetchPage({ pageIndex: 0, pageSize: meta.limit }, newMovement, newRefType, newLocation, search, dateRange);
         },
-        [activeMovementType, activeReferenceType, activeLocationId, meta.limit, search, fetchPage]
+        [activeMovementType, activeReferenceType, activeLocationId, meta.limit, search, dateRange, fetchPage]
     );
 
     const handleSearchChange = useCallback(
         (value: string) => {
             setSearch(value);
-            fetchPage({ pageIndex: 0, pageSize: meta.limit }, activeMovementType, activeReferenceType, activeLocationId, value);
+            fetchPage({ pageIndex: 0, pageSize: meta.limit }, activeMovementType, activeReferenceType, activeLocationId, value, dateRange);
         },
-        [activeMovementType, activeReferenceType, activeLocationId, meta.limit, fetchPage]
+        [activeMovementType, activeReferenceType, activeLocationId, meta.limit, dateRange, fetchPage]
+    );
+
+    const handleDateRangeChange = useCallback(
+        (newRange: DateRange | undefined) => {
+            setDateRange(newRange);
+            fetchPage(
+                { pageIndex: 0, pageSize: meta.limit },
+                activeMovementType,
+                activeReferenceType,
+                activeLocationId,
+                search,
+                newRange
+            );
+        },
+        [activeMovementType, activeReferenceType, activeLocationId, search, meta.limit, fetchPage]
     );
 
     // ── Toolbar slot injected into DataTable ──────────────────────────
     const toolbarSlot = (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
+            {/* Date Range Picker */}
+            <div className="flex items-center gap-1">
+                <DateRangePicker
+                    initialDateFrom={dateRange?.from}
+                    initialDateTo={dateRange?.to}
+                    onUpdate={({ range }: { range: DateRange }) => {
+                        handleDateRangeChange(range);
+                    }}
+                />
+                {dateRange?.from && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                        onClick={() => handleDateRangeChange(undefined)}
+                        title="Clear date filter"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+            </div>
+
+            {/* Export button */}
+            <Button
+                variant="outline"
+                onClick={handleExport}
+                disabled={isExporting || entries.length === 0}
+                className="border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 gap-2 h-9"
+            >
+                {isExporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    <Download className="h-4 w-4" />
+                )}
+                {isExporting ? "Queuing…" : "Export"}
+            </Button>
+
+            {/* Primary bulk upload button */}
+            <Button
+                variant="outline"
+                onClick={() => setIsBulkUploadOpen(true)}
+                className="gap-2 font-semibold border-primary/30 text-primary hover:bg-primary/5 h-9"
+            >
+                <Upload className="h-4 w-4" />
+                Bulk Upload Stock
+            </Button>
+
             {/* Background progress pill — visible when modal is closed but job is running */}
             {activeUploadId && !isBulkUploadOpen && (
                 <Button
@@ -522,7 +614,7 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
                             : "outline"
                     }
                     className={cn(
-                        "relative overflow-hidden min-w-47.5",
+                        "relative overflow-hidden min-w-47.5 h-9",
                         uploadProgress?.status !== "failed" &&
                         uploadProgress?.status !== "completed" &&
                         "border-primary text-primary"
@@ -542,36 +634,11 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
                     </div>
                 </Button>
             )}
-
-            {/* Export button */}
-            <Button
-                variant="outline"
-                onClick={handleExport}
-                disabled={isExporting || entries.length === 0}
-                className="border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 gap-2"
-            >
-                {isExporting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                    <Download className="h-4 w-4" />
-                )}
-                {isExporting ? "Queuing…" : "Export"}
-            </Button>
-
-            {/* Primary bulk upload button */}
-            <Button
-                variant="outline"
-                onClick={() => setIsBulkUploadOpen(true)}
-                className="gap-2 font-semibold border-primary/30 text-primary hover:bg-primary/5"
-            >
-                <Upload className="h-4 w-4" />
-                Bulk Upload Stock
-            </Button>
         </div>
     );
 
     const flattenedEntries = useMemo(() => {
-        return entries.map((entry) => {
+        return entries.map((entry: any) => {
             const dateStr = entry.createdAt
                 ? format(new Date(entry.createdAt), "dd MMM yyyy HH:mm")
                 : "";
@@ -581,7 +648,7 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
                 itemDescription: entry.item?.description || "",
                 warehouseName: entry.warehouse?.name || entry.warehouseId || "",
                 locationName: entry.location?.name || "",
-                referenceIdStr: entry.referenceId || "",
+                referenceIdStr: entry.referenceNumber || entry.referenceId || "",
                 referenceTypeStr: entry.referenceType || "",
                 dateStr,
             };
