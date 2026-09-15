@@ -10,7 +10,6 @@ import {
   queueGrossSalesReturnReportExport,
   getGrossSalesExportStatus,
 } from "@/lib/actions/pos-sales";
-import { streamGrossSalesReturnResult } from "@/lib/stream-ndjson";
 import { useReportSse } from "@/hooks/use-report-sse";
 import { GrossSalesReturnReportData } from "./types";
 import { useGrossSalesReturnData } from "./use-gross-sales-return-data";
@@ -21,7 +20,7 @@ import { generateGrossSalesReturnExcel } from "./excel-export";
 import { generateGrossSalesReturnPdf } from "./pdf-export";
 import { useAuth } from "@/components/providers/auth-provider";
 import { toast } from "sonner";
-import { FileSpreadsheet, Printer, Zap } from "lucide-react";
+import { FileSpreadsheet, Printer } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/utils";
 
 interface GrossSalesReturnViewProps {
@@ -91,19 +90,6 @@ export function GrossSalesReturnView({
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  // Progressive NDJSON streaming progress state
-  const [streamProgress, setStreamProgress] = useState<{
-    isStreaming: boolean;
-    loadedRecords: number;
-    totalRecords: number;
-    percent: number;
-  }>({
-    isStreaming: false,
-    loadedRecords: 0,
-    totalRecords: 0,
-    percent: 0,
-  });
-
   // Floating background export progress state
   const [exportProgressState, setExportProgressState] = useState<{
     isExporting: boolean;
@@ -119,7 +105,7 @@ export function GrossSalesReturnView({
     message: "",
   });
 
-  const streamAbortControllerRef = useRef<AbortController | null>(null);
+  const hasFetchedJobIdRef = useRef<string | null>(null);
 
   // SSE Stream Monitoring
   const sseState = useReportSse(previewJobId, "gross-sales-return");
@@ -164,6 +150,7 @@ export function GrossSalesReturnView({
 
     setIsQueueingJob(true);
     setPreviewJobId(null);
+    hasFetchedJobIdRef.current = null;
 
     startTransition(async () => {
       try {
@@ -194,90 +181,30 @@ export function GrossSalesReturnView({
     handleFetchReport();
   }, [locationParam, dateRange, selectedCashierId, reportType, isPosLevel, posLocationId]);
 
-  // Progressive NDJSON Stream Ingestion upon SSE Completion
+  // Single API Fetch when Bull calculation completes via SSE (<100ms)
   useEffect(() => {
     if (
       (sseState.status === "completed" || sseState.progressPercent === 100) &&
-      previewJobId
+      previewJobId &&
+      hasFetchedJobIdRef.current !== previewJobId
     ) {
-      streamAbortControllerRef.current?.abort();
-      const abortController = new AbortController();
-      streamAbortControllerRef.current = abortController;
-
+      hasFetchedJobIdRef.current = previewJobId;
       setIsFetchingResult(true);
-      setStreamProgress({
-        isStreaming: true,
-        loadedRecords: 0,
-        totalRecords: 0,
-        percent: 0,
-      });
 
-      const accumulatedFlatItems: any[] = [];
-      const accumulatedReturns: any[] = [];
-      let initialMeta: any = null;
-      let lastProgressUpdate = 0;
-
-      streamGrossSalesReturnResult(
-        previewJobId,
-        {
-          onMeta: (meta) => {
-            initialMeta = meta;
-            setStreamProgress((prev) => ({
-              ...prev,
-              totalRecords: meta.totalRecords || 0,
-            }));
-          },
-          onBatch: (newReturns) => {
-            accumulatedReturns.push(...newReturns);
-          },
-          onFlatItemsBatch: (newFlatItems) => {
-            accumulatedFlatItems.push(...newFlatItems);
-            const count = accumulatedFlatItems.length;
-            const now = Date.now();
-            if (now - lastProgressUpdate > 120) {
-              lastProgressUpdate = now;
-              setStreamProgress((prev) => {
-                const total = prev.totalRecords || count;
-                return {
-                  ...prev,
-                  loadedRecords: count,
-                  percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
-                };
-              });
-            }
-          },
-          onComplete: (totals, totalRecords) => {
-            setReportData({
-              reportType: initialMeta?.reportType || "merged",
-              dateRange: initialMeta?.dateRange || {},
-              locationNames: initialMeta?.locationNames || "",
-              locations: initialMeta?.locations || [],
-              returns: accumulatedReturns,
-              flatItems: accumulatedFlatItems,
-              grandTotals: totals,
-            });
-            setIsFetchingResult(false);
-            setStreamProgress((prev) => ({
-              ...prev,
-              isStreaming: false,
-              loadedRecords: totalRecords || accumulatedFlatItems.length,
-              percent: 100,
-            }));
-          },
-          onError: (err) => {
-            if (err?.name === "AbortError") {
-              setIsFetchingResult(false);
-              setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
-              return;
-            }
-            console.error("[GrossSalesReturn Stream Error]", err);
-            toast.error("Data stream interrupted. Please click Refresh to reload.");
-            setIsFetchingResult(false);
-            setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
-          },
-        },
-        abortController.signal
-      );
+      getGrossSalesReturnResult(previewJobId)
+        .then((res) => {
+          if (res && res.status && res.data) {
+            setReportData(res.data);
+          } else {
+            toast.error("Failed to load completed sales return dataset");
+          }
+        })
+        .catch(() => {
+          toast.error("Error retrieving completed sales return preview");
+        })
+        .finally(() => {
+          setIsFetchingResult(false);
+        });
     }
   }, [sseState.status, sseState.progressPercent, previewJobId]);
 
@@ -583,44 +510,13 @@ export function GrossSalesReturnView({
         previewJobId={previewJobId}
         sseState={sseState}
         isQueueingJob={isQueueingJob}
-        isFetchingResult={isFetchingResult && !streamProgress.isStreaming}
+        isFetchingResult={isFetchingResult}
         onExportExcelFlat={() => handleExportExcel("flat")}
         onExportExcelHierarchy={() => handleExportExcel("hierarchical")}
         onExportPdf={handleExportPdf}
         isExportingExcel={isExportingExcel}
         isExportingPdf={isExportingPdf}
       />
-
-      {/* AI-Style Progressive Real-Time Streaming Progress Banner */}
-      {streamProgress.isStreaming && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-indigo-200/80 dark:border-indigo-900/60 bg-gradient-to-r from-indigo-50/90 via-sky-50/80 to-purple-50/90 dark:from-indigo-950/30 dark:via-sky-950/20 dark:to-purple-950/30 shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs animate-pulse shrink-0">
-              <Zap className="h-4 w-4" />
-            </div>
-            <div className="space-y-0.5">
-              <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <span>⚡ Live Streaming Sales Return Register</span>
-                <span className="font-mono text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800 text-[11px]">
-                  {streamProgress.loadedRecords.toLocaleString()}
-                  {streamProgress.totalRecords > 0 ? ` / ${streamProgress.totalRecords.toLocaleString()}` : ""} items ({streamProgress.percent}%)
-                </span>
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Returns and refund line items are updating in real-time as data streams from the server
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-36 sm:w-56 bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-indigo-500 to-sky-500 h-full transition-all duration-150 rounded-full"
-                style={{ width: `${streamProgress.percent}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Virtualized Minimal Light Theme Matrix Table */}
       <GrossSalesReturnTable
