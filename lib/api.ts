@@ -962,6 +962,7 @@ export const creditNoteApi = {
 
 export const warehouseApi = {
   getAll: () => fetchApi<Warehouse[]>('/warehouse'),
+  getLogisticWarehouse: () => fetchApi<Warehouse>('/warehouse/logistic/default'),
   getById: (id: string) => fetchApi<Warehouse>(`/warehouse/${id}`),
   create: (data: Partial<Warehouse>) => fetchApi<Warehouse>('/warehouse', {
     method: 'POST',

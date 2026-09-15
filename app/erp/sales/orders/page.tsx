@@ -133,6 +133,14 @@ export default function SalesOrdersPage() {
     try {
       const response = await warehouseApi.getAll();
       setWarehouses(response);
+      if (response && response.length > 0) {
+        const logisticWh = response.find((w: any) =>
+          w.name?.toLowerCase().includes('logistic') ||
+          w.code?.toLowerCase().includes('logistic') ||
+          w.code === 'C40001'
+        );
+        setSelectedWarehouseId(logisticWh ? logisticWh.id : response[0].id);
+      }
     } catch (error) {
       console.error("Failed to load warehouses:", error);
     }

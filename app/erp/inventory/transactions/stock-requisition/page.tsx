@@ -290,7 +290,8 @@ export default function StockRequisitionPage() {
       if (whs.length > 0) {
         const logisticWH = whs.find((w: any) =>
           w.name?.toLowerCase().includes('logistic') ||
-          w.code?.toLowerCase().includes('logistic')
+          w.code?.toLowerCase().includes('logistic') ||
+          w.code === 'C40001'
         );
         setSelectedWarehouseId(logisticWH ? logisticWH.id : whs[0].id);
       }
@@ -1051,14 +1052,18 @@ export default function StockRequisitionPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Source Warehouse (From)</Label>
-                  <Autocomplete
-                    options={warehouseOptions}
-                    value={selectedWarehouseId}
-                    onValueChange={setSelectedWarehouseId}
-                    placeholder="Search & select warehouse..."
-                    searchPlaceholder="Search warehouse..."
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label>Source Warehouse (From)</Label>
+                    <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                      Fixed: Logistic Area
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2.5 bg-muted/60 border rounded-md text-sm font-semibold text-gray-800">
+                    <WarehouseIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                    <span>
+                      {warehouses.find((w) => w.id === selectedWarehouseId)?.name || 'LOGISTIC AREA'} ({warehouses.find((w) => w.id === selectedWarehouseId)?.code || 'C40001'})
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

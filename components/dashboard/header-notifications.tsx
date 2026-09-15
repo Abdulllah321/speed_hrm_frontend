@@ -157,6 +157,12 @@ export function HeaderNotifications() {
   }, [isAuthenticated]);
 
   const getActionRoute = useCallback((n: NotificationItem) => {
+    if (n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string" ? JSON.parse(n.actionPayload) : n.actionPayload;
+        if (payload?.url) return payload.url;
+      } catch {}
+    }
     if (!n.actionType) return null;
     if (n.actionType.startsWith("leave-application.")) return "/hr/leaves/requests";
     return null;

@@ -549,8 +549,14 @@ function StockTransferContent() {
             const data = await warehouseApi.getAll();
             setWarehouses(data);
             if (data.length > 0 && !requisitionId) {
-                setSelectedWarehouseId(data[0].id);
-                loadLocations(data[0].id);
+                const logisticWh = data.find(w =>
+                    w.name?.toLowerCase().includes('logistic') ||
+                    w.code?.toLowerCase().includes('logistic') ||
+                    w.code === 'C40001'
+                );
+                const targetWh = logisticWh || data[0];
+                setSelectedWarehouseId(targetWh.id);
+                loadLocations(targetWh.id);
             }
         } catch (error) {
             toast.error('Failed to load warehouses');

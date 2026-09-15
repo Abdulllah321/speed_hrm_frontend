@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Search, Filter, Trash2, Package, Info, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, Plus, Search, Filter, Trash2, Package, Info, FileSpreadsheet, Warehouse as WarehouseIcon } from "lucide-react";
 import { SalesOrderBulkItemUploadModal } from "@/components/sales/sales-order-bulk-item-upload-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -138,6 +138,14 @@ export default function CreateSalesOrderPage() {
     try {
       const response = await warehouseApi.getAll();
       setWarehouses(response);
+      if (response && response.length > 0) {
+        const logisticWh = response.find((w: any) =>
+          w.name?.toLowerCase().includes('logistic') ||
+          w.code?.toLowerCase().includes('logistic') ||
+          w.code === 'C40001'
+        );
+        setSelectedWarehouseId(logisticWh ? logisticWh.id : response[0].id);
+      }
     } catch (error) {
       console.error("Failed to load warehouses:", error);
     }
@@ -342,19 +350,18 @@ export default function CreateSalesOrderPage() {
               </div>
               
               <div className="space-y-2">
-                <Label>Warehouse *</Label>
-                <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select warehouse" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {warehouses.map((warehouse) => (
-                      <SelectItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between">
+                  <Label>Warehouse *</Label>
+                  <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                    Fixed: Logistic Area
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 p-2.5 bg-muted/60 border rounded-md text-sm font-semibold text-gray-800">
+                  <WarehouseIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                  <span>
+                    {warehouses.find((w) => w.id === selectedWarehouseId)?.name || 'LOGISTIC AREA'} ({warehouses.find((w) => w.id === selectedWarehouseId)?.code || 'C40001'})
+                  </span>
+                </div>
               </div>
             </div>
           </CardContent>

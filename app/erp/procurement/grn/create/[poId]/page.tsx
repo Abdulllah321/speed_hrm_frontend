@@ -46,7 +46,12 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
             setReceivedQtys(initialQtys);
 
             if (warehouseData.length > 0) {
-                setSelectedWarehouse(warehouseData[0].id);
+                const logisticWh = warehouseData.find(w =>
+                    w.name?.toLowerCase().includes('logistic') ||
+                    w.code?.toLowerCase().includes('logistic') ||
+                    w.code === 'C40001'
+                );
+                setSelectedWarehouse(logisticWh ? logisticWh.id : warehouseData[0].id);
             }
         } catch (error) {
             console.error('Failed to load data:', error);
@@ -186,19 +191,18 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Select Warehouse</label>
-                            <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select warehouse" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {warehouses.map(w => (
-                                        <SelectItem key={w.id} value={w.id}>
-                                            {w.name} ({w.code})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium">Warehouse</label>
+                                <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                                    Fixed: Logistic Area
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 p-2.5 bg-muted/60 border rounded-md text-sm font-semibold text-gray-800">
+                                <WarehouseIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                                <span>
+                                    {warehouses.find(w => w.id === selectedWarehouse)?.name || 'LOGISTIC AREA'} ({warehouses.find(w => w.id === selectedWarehouse)?.code || 'C40001'})
+                                </span>
+                            </div>
                         </div>
 
                         {order.orderType && (
