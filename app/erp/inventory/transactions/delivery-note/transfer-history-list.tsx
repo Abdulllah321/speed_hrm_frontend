@@ -490,6 +490,23 @@ export function StockTransferHistoryList({
             ),
         },
         {
+            id: "fromLocation",
+            header: "From Location",
+            cell: ({ row }) => {
+                const transfer = row.original;
+                let name: string;
+                if (transfer.transferType === "OUTLET_TO_WAREHOUSE" || transfer.transferType === "OUTLET_TO_OUTLET") {
+                    name = transfer.fromLocation?.name || "Outlet";
+                } else {
+                    // WAREHOUSE_TO_OUTLET or others
+                    name = transfer.fromWarehouse?.name || transfer.fromLocation?.name || "—";
+                }
+                return (
+                    <span className="text-sm font-medium">{name}</span>
+                );
+            },
+        },
+        {
             id: "path",
             header: "Transfer Path",
             cell: ({ row }) => {
