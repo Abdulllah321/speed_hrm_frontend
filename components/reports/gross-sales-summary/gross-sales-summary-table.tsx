@@ -130,6 +130,11 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
       <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
         <div>
           Showing <span className="font-bold text-foreground">{flatVisibleRows.length.toLocaleString()}</span> matrix rows
+          {grandTotals.totalItems > 0 && grandTotals.totalItems > flatVisibleRows.length && (
+            <span className="text-[11px] text-muted-foreground ml-1 font-normal">
+              (Preview Sample &bull; Grand Totals include all {grandTotals.totalItems.toLocaleString()} items)
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button

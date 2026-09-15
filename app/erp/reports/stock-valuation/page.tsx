@@ -171,6 +171,156 @@ function AutocompleteMultiSelect({
     );
 }
 
+// ─── Breakdown Tooltip ─────────────────────────────────────────────────────────
+type BreakdownEntry = {
+    docNumber: string;
+    docType: string;
+    qty: number;
+    unitCost: number;
+    totalValue: number;
+    date: string | Date;
+};
+
+const DOC_TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+    LC:          { bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-700 dark:text-emerald-300', label: 'LC' },
+    GRN:         { bg: 'bg-blue-100 dark:bg-blue-900/40',     text: 'text-blue-700 dark:text-blue-300',     label: 'GRN' },
+    SALE:        { bg: 'bg-violet-100 dark:bg-violet-900/40', text: 'text-violet-700 dark:text-violet-300', label: 'POS' },
+    SALE_RETURN: { bg: 'bg-rose-100 dark:bg-rose-900/40',     text: 'text-rose-700 dark:text-rose-300',     label: 'RET' },
+};
+
+function BreakdownTooltip({
+    entries,
+    children,
+    title,
+    emptyLabel = 'No breakdown available',
+    colorScheme = 'emerald',
+}: {
+    entries: BreakdownEntry[];
+    children: React.ReactNode;
+    title: string;
+    emptyLabel?: string;
+    colorScheme?: 'emerald' | 'violet';
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const show = () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setOpen(true);
+    };
+    const hide = () => {
+        timerRef.current = setTimeout(() => setOpen(false), 120);
+    };
+
+    // Deduplicate by docNumber — sum qty and totalValue for same doc
+    const consolidated = useMemo(() => {
+        if (!entries || entries.length === 0) return [];
+        const map = new Map<string, BreakdownEntry & { count: number }>();
+        for (const e of entries) {
+            const key = `${e.docType}__${e.docNumber}`;
+            if (map.has(key)) {
+                const ex = map.get(key)!;
+                ex.qty += e.qty;
+                ex.totalValue += e.totalValue;
+                // keep latest date
+                if (new Date(e.date) > new Date(ex.date)) ex.date = e.date;
+                ex.count += 1;
+            } else {
+                map.set(key, { ...e, count: 1 });
+            }
+        }
+        return [...map.values()].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [entries]);
+
+    const borderColor = colorScheme === 'emerald' ? 'border-emerald-200 dark:border-emerald-800' : 'border-violet-200 dark:border-violet-800';
+    const headerBg   = colorScheme === 'emerald' ? 'bg-emerald-950 text-emerald-100' : 'bg-violet-950 text-violet-100';
+
+    return (
+        <div
+            ref={ref}
+            className="relative inline-flex items-center"
+            onMouseEnter={show}
+            onMouseLeave={hide}
+            onFocus={show}
+            onBlur={hide}
+        >
+            {children}
+            {open && (
+                <div
+                    onMouseEnter={show}
+                    onMouseLeave={hide}
+                    className={cn(
+                        "absolute z-[9999] bottom-full mb-2 left-1/2 -translate-x-1/2",
+                        "min-w-[320px] max-w-[480px] w-max",
+                        "bg-white dark:bg-slate-900 border rounded-xl shadow-2xl overflow-hidden",
+                        borderColor,
+                    )}
+                    style={{ pointerEvents: 'all' }}
+                >
+                    {/* Header */}
+                    <div className={cn("px-3 py-2 text-[10px] font-bold uppercase tracking-wider", headerBg)}>
+                        {title}
+                        <span className="ml-2 font-normal opacity-70">({consolidated.length} document{consolidated.length !== 1 ? 's' : ''})</span>
+                    </div>
+
+                    {consolidated.length === 0 ? (
+                        <div className="px-4 py-3 text-xs text-muted-foreground italic">{emptyLabel}</div>
+                    ) : (
+                        <>
+                            {/* Column headers */}
+                            <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-x-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/60 text-[9px] font-bold uppercase text-muted-foreground border-b border-border">
+                                <span>Type</span>
+                                <span>Document #</span>
+                                <span className="text-right">Qty</span>
+                                <span className="text-right">Unit Cost</span>
+                                <span className="text-right">Value</span>
+                            </div>
+                            {/* Rows */}
+                            <div className="max-h-[260px] overflow-y-auto divide-y divide-border/50">
+                                {consolidated.map((e, i) => {
+                                    const ds = DOC_TYPE_STYLES[e.docType] ?? { bg: 'bg-slate-100', text: 'text-slate-600', label: e.docType };
+                                    return (
+                                        <div key={i} className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-x-2 items-center px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                            <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded", ds.bg, ds.text)}>
+                                                {ds.label}
+                                            </span>
+                                            <span className="text-[11px] font-mono font-semibold text-slate-700 dark:text-slate-200 truncate">
+                                                {e.docNumber}
+                                            </span>
+                                            <span className="text-[11px] text-right font-semibold text-slate-700 dark:text-slate-200">
+                                                {Math.abs(e.qty) < 0.005 ? '—' : Math.abs(e.qty).toLocaleString()}
+                                                {e.qty < 0 && <span className="text-rose-500 ml-0.5 text-[9px]">▼</span>}
+                                            </span>
+                                            <span className="text-[11px] text-right text-muted-foreground">
+                                                {e.unitCost === 0 ? '—' : e.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                            <span className="text-[11px] text-right font-bold text-slate-800 dark:text-slate-100">
+                                                {e.totalValue === 0 ? '—' : e.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {/* Footer totals */}
+                            <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-x-2 items-center px-3 py-2 bg-slate-100 dark:bg-slate-800 border-t border-border">
+                                <span className="text-[9px] font-black text-muted-foreground col-span-2">TOTAL</span>
+                                <span className="text-[11px] text-right font-black text-slate-800 dark:text-slate-100">
+                                    {consolidated.reduce((s, e) => s + Math.abs(e.qty), 0).toLocaleString()}
+                                </span>
+                                <span />
+                                <span className="text-[11px] text-right font-black text-slate-800 dark:text-slate-100">
+                                    {consolidated.reduce((s, e) => s + e.totalValue, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function PosStockValuationReportPage() {
     const { user } = useAuth();
 
@@ -773,6 +923,8 @@ export default function PosStockValuationReportPage() {
                     label: node.articleName,
                     sku: node.sku,
                     totals: node.totals,
+                    purchaseBreakdown: node.purchaseBreakdown || [],
+                    saleBreakdown: node.saleBreakdown || [],
                     brand, division, gender, silhouette, category,
                 });
             } else if (node.level === 'variant') {
@@ -784,6 +936,8 @@ export default function PosStockValuationReportPage() {
                     barCode: node.barCode,
                     sku: node.sku,
                     totals: node.totals,
+                    purchaseBreakdown: node.purchaseBreakdown || [],
+                    saleBreakdown: node.saleBreakdown || [],
                     brand, division, gender, silhouette, category,
                 });
             } else {
@@ -832,6 +986,8 @@ export default function PosStockValuationReportPage() {
                     label: node.articleName,
                     sku: node.sku,
                     totals: node.totals,
+                    purchaseBreakdown: node.purchaseBreakdown || [],
+                    saleBreakdown: node.saleBreakdown || [],
                     brand, division, gender, silhouette, category,
                     _highlight: searchTokens,
                 });
@@ -844,6 +1000,8 @@ export default function PosStockValuationReportPage() {
                     barCode: node.barCode,
                     sku: node.sku,
                     totals: node.totals,
+                    purchaseBreakdown: node.purchaseBreakdown || [],
+                    saleBreakdown: node.saleBreakdown || [],
                     brand, division, gender, silhouette, category,
                     _highlight: searchTokens,
                 });
@@ -1527,6 +1685,8 @@ export default function PosStockValuationReportPage() {
                                         adjQty: 0, adjCost: 0, adjValue: 0,
                                         closingQty: 0, closingCost: 0, closingValue: 0,
                                     };
+                                    const purchaseBreakdown: BreakdownEntry[] = (isArticle || isVariant) ? (row.purchaseBreakdown || []) : [];
+                                    const saleBreakdown: BreakdownEntry[] = (isArticle || isVariant) ? (row.saleBreakdown || []) : [];
 
                                     return (
                                         <tr key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={style.className}>
@@ -1564,7 +1724,19 @@ export default function PosStockValuationReportPage() {
                                             <td className={cn("p-2 border-r text-right font-semibold", isGroup ? "text-slate-100" : "")}>{formatValue(totals.openingValue)}</td>
 
                                             {/* Purchases */}
-                                            <td className={cn("p-2 text-right", !isGroup && "bg-emerald-500/5")}>{formatQty(totals.purchaseQty)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-emerald-500/5")}>
+                                                {(isArticle || isVariant) && purchaseBreakdown.length > 0 ? (
+                                                    <BreakdownTooltip
+                                                        entries={purchaseBreakdown}
+                                                        title="Purchase Breakdown"
+                                                        colorScheme="emerald"
+                                                    >
+                                                        <span className="cursor-help underline underline-offset-2 decoration-dotted decoration-emerald-500">
+                                                            {formatQty(totals.purchaseQty)}
+                                                        </span>
+                                                    </BreakdownTooltip>
+                                                ) : formatQty(totals.purchaseQty)}
+                                            </td>
                                             <td className={cn("p-2 text-right", !isGroup && "bg-emerald-500/5", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.purchaseCost)}</td>
                                             <td className={cn("p-2 border-r text-right font-semibold", !isGroup && "bg-emerald-500/5", isGroup ? "text-emerald-300 font-bold" : "text-emerald-600")}>{formatValue(totals.purchaseValue)}</td>
 
@@ -1579,7 +1751,19 @@ export default function PosStockValuationReportPage() {
                                             <td className={cn("p-2 border-r text-right font-bold", !isGroup && "bg-blue-500/5", isGroup ? "text-blue-300 font-black" : "text-blue-600")}>{formatValue(totals.availableValue)}</td>
 
                                             {/* Net Sale (COGS) */}
-                                            <td className={cn("p-2 text-right", !isGroup && "bg-violet-500/5")}>{formatQty(totals.salesQty)}</td>
+                                            <td className={cn("p-2 text-right", !isGroup && "bg-violet-500/5")}>
+                                                {(isArticle || isVariant) && saleBreakdown.length > 0 ? (
+                                                    <BreakdownTooltip
+                                                        entries={saleBreakdown}
+                                                        title="Sales Breakdown"
+                                                        colorScheme="violet"
+                                                    >
+                                                        <span className="cursor-help underline underline-offset-2 decoration-dotted decoration-violet-500">
+                                                            {formatQty(totals.salesQty)}
+                                                        </span>
+                                                    </BreakdownTooltip>
+                                                ) : formatQty(totals.salesQty)}
+                                            </td>
                                             <td className={cn("p-2 text-right", !isGroup && "bg-violet-500/5", isGroup ? "text-slate-350" : "text-muted-foreground")}>{formatCost(totals.salesCost)}</td>
                                             <td className={cn("p-2 border-r text-right font-semibold", !isGroup && "bg-violet-500/5", isGroup ? "text-violet-300 font-bold" : "text-violet-600")}>{formatValue(totals.salesValue)}</td>
 
