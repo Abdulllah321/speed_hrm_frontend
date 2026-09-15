@@ -717,6 +717,8 @@ export async function queueGrossSalesReturnPreview(opts: {
     minAmount?: number;
     maxAmount?: number;
     fbrOnly?: boolean;
+    fiscalYear?: string;
+    year?: number;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const res = await authFetch("/pos-sales/reports/gross-sales-return/queue", {
@@ -756,6 +758,8 @@ export async function queueGrossSalesSummaryPreview(opts: {
     minAmount?: number;
     maxAmount?: number;
     fbrOnly?: boolean;
+    fiscalYear?: string;
+    year?: number;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const res = await authFetch("/pos-sales/reports/gross-sales-summary/queue", {

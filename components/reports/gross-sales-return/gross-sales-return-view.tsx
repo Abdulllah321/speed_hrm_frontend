@@ -22,6 +22,51 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { toast } from "sonner";
 import { FileSpreadsheet, Printer } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/utils";
+import { format } from "date-fns";
+
+// Helper: Calculate standard dates for Fiscal Years (Pakistan July 1 - June 30) & Calendar Years
+const getPresetPeriodInfo = (
+  preset: string,
+): { from: Date; to: Date; fiscalYear?: string; year?: number } => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0 = Jan, 6 = July
+  const fyStartYear = currentMonth >= 6 ? currentYear : currentYear - 1;
+
+  if (preset === "fy-current") {
+    return {
+      from: new Date(fyStartYear, 6, 1),
+      to: new Date(fyStartYear + 1, 5, 30, 23, 59, 59, 999),
+      fiscalYear: "current",
+    };
+  }
+  if (preset === "fy-previous") {
+    return {
+      from: new Date(fyStartYear - 1, 6, 1),
+      to: new Date(fyStartYear, 5, 30, 23, 59, 59, 999),
+      fiscalYear: "previous",
+    };
+  }
+  if (preset === "year-current") {
+    return {
+      from: new Date(currentYear, 0, 1),
+      to: new Date(currentYear, 11, 31, 23, 59, 59, 999),
+      year: currentYear,
+    };
+  }
+  if (preset === "year-previous") {
+    return {
+      from: new Date(currentYear - 1, 0, 1),
+      to: new Date(currentYear - 1, 11, 31, 23, 59, 59, 999),
+      year: currentYear - 1,
+    };
+  }
+  // default / custom
+  return {
+    from: new Date(fyStartYear, 6, 1),
+    to: new Date(fyStartYear + 1, 5, 30, 23, 59, 59, 999),
+  };
+};
 
 interface GrossSalesReturnViewProps {
   initialReportData?: GrossSalesReturnReportData | null;
@@ -69,16 +114,13 @@ export function GrossSalesReturnView({
   const [reportType, setReportType] = useState<"merged" | "separate">(
     initialReportData?.reportType || "merged"
   );
-  const getDefaultFiscalDateRange = (): DateRange => {
-    const now = new Date();
-    const year = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear();
-    return {
-      from: new Date(year, 6, 1),
-      to: now,
-    };
-  };
 
-  const [dateRange, setDateRange] = useState<DateRange>(getDefaultFiscalDateRange);
+  // Period / Base Date Selection (Default: Current Fiscal Year)
+  const [periodPreset, setPeriodPreset] = useState<string>("fy-current");
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const init = getPresetPeriodInfo("fy-current");
+    return { from: init.from, to: init.to };
+  });
 
   const [reportData, setReportData] = useState<GrossSalesReturnReportData | null>(initialReportData);
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);
@@ -144,42 +186,98 @@ export function GrossSalesReturnView({
   }, [isPosLevel, posLocationName, selectedLocationIds, locations]);
 
   // Queue preview calculation
-  const handleFetchReport = useCallback(() => {
-    if (!dateRange.from || !dateRange.to) return;
-    if (isPosLevel && !posLocationId) return;
+  const handleFetchReport = useCallback(
+    (presetOverride?: string, rangeOverride?: DateRange) => {
+      const activePreset = presetOverride || periodPreset;
+      const activeRange = rangeOverride || dateRange;
+      const periodInfo = getPresetPeriodInfo(activePreset);
 
-    setIsQueueingJob(true);
-    setPreviewJobId(null);
-    hasFetchedJobIdRef.current = null;
+      if (!activeRange.from || !activeRange.to) return;
+      if (isPosLevel && !posLocationId) return;
 
-    startTransition(async () => {
-      try {
-        const res = await queueGrossSalesReturnPreview({
-          locationId: locationParam,
-          startDate: dateRange.from?.toISOString(),
-          endDate: dateRange.to?.toISOString(),
-          cashierUserId: selectedCashierId,
-          reportType,
-        });
+      setIsQueueingJob(true);
+      setPreviewJobId(null);
+      hasFetchedJobIdRef.current = null;
 
-        if (res && res.status && res.data?.jobId) {
-          setPreviewJobId(res.data.jobId);
-        } else {
-          toast.error(res?.message || "Failed to queue sales return calculation");
+      startTransition(async () => {
+        try {
+          let startDate: string | undefined;
+          let endDate: string | undefined;
+          let fiscalYear: string | undefined;
+          let year: number | undefined;
+
+          if (activePreset === "fy-current" || activePreset === "fy-previous") {
+            fiscalYear = periodInfo.fiscalYear;
+            startDate = periodInfo.from.toISOString();
+            endDate = periodInfo.to.toISOString();
+          } else if (activePreset === "year-current" || activePreset === "year-previous") {
+            year = periodInfo.year;
+            startDate = periodInfo.from.toISOString();
+            endDate = periodInfo.to.toISOString();
+          } else {
+            startDate = activeRange.from ? format(activeRange.from, "yyyy-MM-dd") : undefined;
+            endDate = activeRange.to ? format(activeRange.to, "yyyy-MM-dd") : undefined;
+          }
+
+          const res = await queueGrossSalesReturnPreview({
+            locationId: locationParam,
+            startDate,
+            endDate,
+            cashierUserId: selectedCashierId,
+            reportType,
+            fiscalYear,
+            year,
+          });
+
+          if (res && res.status && res.data?.jobId) {
+            setPreviewJobId(res.data.jobId);
+          } else {
+            toast.error(res?.message || "Failed to queue sales return calculation");
+          }
+        } catch (err: any) {
+          toast.error("Error queueing sales return calculation job");
+        } finally {
+          setIsQueueingJob(false);
         }
-      } catch (err: any) {
-        toast.error("Error queueing sales return calculation job");
-      } finally {
-        setIsQueueingJob(false);
-      }
-    });
-  }, [locationParam, dateRange, selectedCashierId, reportType, isPosLevel, posLocationId]);
+      });
+    },
+    [locationParam, periodPreset, dateRange, selectedCashierId, reportType, isPosLevel, posLocationId]
+  );
 
-  // Initial fetch on mount or parameters change (wait for posLocationId if on POS level)
+  const initialFetchDoneRef = useRef(false);
+
+  // Initial fetch on mount: wait for posLocationId if on POS level
   useEffect(() => {
-    if (isPosLevel && !posLocationId) return;
-    handleFetchReport();
-  }, [locationParam, dateRange, selectedCashierId, reportType, isPosLevel, posLocationId]);
+    if (isPosLevel) {
+      if (posLocationId && !initialFetchDoneRef.current) {
+        initialFetchDoneRef.current = true;
+        handleFetchReport("fy-current");
+      }
+    } else {
+      if (!initialFetchDoneRef.current) {
+        initialFetchDoneRef.current = true;
+        handleFetchReport("fy-current");
+      }
+    }
+  }, [isPosLevel, posLocationId, handleFetchReport]);
+
+  const handlePeriodPresetChange = (newPreset: string) => {
+    setPeriodPreset(newPreset);
+    if (newPreset !== "custom") {
+      const info = getPresetPeriodInfo(newPreset);
+      const newRange: DateRange = { from: info.from, to: info.to };
+      setDateRange(newRange);
+      handleFetchReport(newPreset, newRange);
+    }
+  };
+
+  const handleCustomDateRangeChange = (range: DateRange) => {
+    setPeriodPreset("custom");
+    setDateRange(range);
+    if (range.from && range.to) {
+      handleFetchReport("custom", range);
+    }
+  };
 
   // Single API Fetch when Bull calculation completes via SSE (<100ms)
   useEffect(() => {
@@ -490,7 +588,9 @@ export function GrossSalesReturnView({
         reportType={reportType}
         onReportTypeChange={setReportType}
         dateRange={dateRange}
-        onDateRangeChange={setDateRange}
+        onDateRangeChange={handleCustomDateRangeChange}
+        periodPreset={periodPreset}
+        onPeriodPresetChange={handlePeriodPresetChange}
         locations={locations}
         cashiers={cashiers}
         selectedLocationIds={selectedLocationIds}

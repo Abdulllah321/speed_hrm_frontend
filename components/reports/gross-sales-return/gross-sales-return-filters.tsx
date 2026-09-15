@@ -33,6 +33,7 @@ import {
   Loader2,
   AlertCircle,
   Store,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,9 @@ interface GrossSalesReturnFiltersProps {
   onFbrOnlyChange: (v: boolean) => void;
   groupingLevels: GroupingLevels;
   onToggleLevel: (level: keyof GroupingLevels, checked: boolean) => void;
+
+  periodPreset?: string;
+  onPeriodPresetChange?: (preset: string) => void;
 
   onRefresh: () => void;
   isPending: boolean;
@@ -96,6 +100,8 @@ export function GrossSalesReturnFilters({
   onFbrOnlyChange,
   groupingLevels,
   onToggleLevel,
+  periodPreset,
+  onPeriodPresetChange,
   onRefresh,
   isPending,
   previewJobId,
@@ -110,6 +116,19 @@ export function GrossSalesReturnFilters({
 }: GrossSalesReturnFiltersProps) {
   const [showLevelPanel, setShowLevelPanel] = useState(false);
   const [showFormulaInfo, setShowFormulaInfo] = useState(true);
+
+  // Compute fiscal year labels dynamically
+  const { currentFyLabel, previousFyLabel } = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed, 6 is July
+    const fyStartYear = currentMonth >= 6 ? currentYear : currentYear - 1;
+    const nextYear = fyStartYear + 1;
+    return {
+      currentFyLabel: `Current Fiscal Year (FY ${String(fyStartYear).slice(-2)}-${String(nextYear).slice(-2)})`,
+      previousFyLabel: `Previous Fiscal Year (FY ${String(fyStartYear - 1).slice(-2)}-${String(fyStartYear).slice(-2)})`,
+    };
+  }, []);
 
   const locationOptions: MultiSelectOption[] = useMemo(() => {
     return locations.map((loc) => ({
@@ -230,6 +249,37 @@ export function GrossSalesReturnFilters({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Fiscal Year / Calendar Year Preset Selector */}
+          {periodPreset && onPeriodPresetChange && (
+            <div className="w-44 sm:w-48">
+              <Select value={periodPreset} onValueChange={onPeriodPresetChange}>
+                <SelectTrigger className="h-9 rounded-xl text-xs font-semibold bg-background border-rose-300/80 dark:border-rose-800 text-rose-950 dark:text-rose-300">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Calendar className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                    <SelectValue placeholder="Select Period" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fy-current" className="text-xs font-medium">
+                    {currentFyLabel}
+                  </SelectItem>
+                  <SelectItem value="fy-previous" className="text-xs font-medium">
+                    {previousFyLabel}
+                  </SelectItem>
+                  <SelectItem value="year-current" className="text-xs font-medium">
+                    {new Date().getFullYear()} (Calendar Year)
+                  </SelectItem>
+                  <SelectItem value="year-previous" className="text-xs font-medium">
+                    {new Date().getFullYear() - 1} (Calendar Year)
+                  </SelectItem>
+                  <SelectItem value="custom" className="text-xs font-medium">
+                    Custom Period
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Date Range Picker */}
           <DateRangePicker

@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { DateRange } from "@/components/ui/date-range-picker";
 import { FileSpreadsheet, Printer } from "lucide-react";
+import { format } from "date-fns";
 
 import { getLocations } from "@/lib/actions/location";
 import { getUsers } from "@/lib/actions/users";
@@ -195,13 +196,20 @@ export function GrossSalesSummaryView({
         try {
           let startDate: string | undefined;
           let endDate: string | undefined;
+          let fiscalYear: string | undefined;
+          let year: number | undefined;
 
-          if (activePreset === "fy-current" || activePreset === "fy-previous" || activePreset === "year-current" || activePreset === "year-previous") {
+          if (activePreset === "fy-current" || activePreset === "fy-previous") {
+            fiscalYear = periodInfo.fiscalYear;
+            startDate = periodInfo.from.toISOString();
+            endDate = periodInfo.to.toISOString();
+          } else if (activePreset === "year-current" || activePreset === "year-previous") {
+            year = periodInfo.year;
             startDate = periodInfo.from.toISOString();
             endDate = periodInfo.to.toISOString();
           } else {
-            startDate = activeRange.from?.toISOString();
-            endDate = activeRange.to?.toISOString();
+            startDate = activeRange.from ? format(activeRange.from, "yyyy-MM-dd") : undefined;
+            endDate = activeRange.to ? format(activeRange.to, "yyyy-MM-dd") : undefined;
           }
 
           // Pos level restricts to single location; ERP mode restricts to selected location(s) if picked, or all locations
@@ -216,6 +224,8 @@ export function GrossSalesSummaryView({
             startDate,
             endDate,
             reportType,
+            fiscalYear,
+            year,
           });
 
           const jobId = res.data?.jobId;

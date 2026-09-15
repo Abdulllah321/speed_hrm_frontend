@@ -81,6 +81,35 @@ export function useGrossSalesSummaryData(
 
   const rawItems = reportData?.flatItems || [];
 
+  const hasSubDateFilter = useMemo(() => {
+    if (
+      !subDateRange?.from ||
+      !subDateRange?.to ||
+      !reportData?.dateRange?.startDate ||
+      !reportData?.dateRange?.endDate
+    )
+      return false;
+    const repFrom = new Date(reportData.dateRange.startDate).getTime();
+    const repTo = new Date(reportData.dateRange.endDate).getTime();
+    const subFrom = new Date(subDateRange.from).getTime();
+    const subTo = new Date(subDateRange.to).getTime();
+    return subFrom - repFrom > 86400000 || repTo - subTo > 86400000;
+  }, [subDateRange?.from, subDateRange?.to, reportData?.dateRange]);
+
+  const hasActiveFilters = useMemo(() => {
+    return Boolean(
+      effectiveSearchQuery.trim() ||
+      (selectedLocationIds && selectedLocationIds.length > 0) ||
+      (selectedCashierId && selectedCashierId !== "all") ||
+      hasSubDateFilter
+    );
+  }, [
+    effectiveSearchQuery,
+    selectedLocationIds,
+    selectedCashierId,
+    hasSubDateFilter,
+  ]);
+
   const { treeData, grandTotals, filteredFlatItems } = useMemo(() => {
     const q = effectiveSearchQuery.toLowerCase().trim();
 
@@ -147,7 +176,7 @@ export function useGrossSalesSummaryData(
     for (const item of filtered) {
       if (item.quantity <= 0) continue;
 
-      const grossAmt = item.quantity * item.unitPrice;
+      const grossAmt = item.wostAmount || (item.quantity * item.unitPrice);
       const wostAmt = item.wostAmount || Math.round((grossAmt / 1.18) * 100) / 100;
 
       const itemTotals: GrossSalesSummaryTotals = {
@@ -219,13 +248,18 @@ export function useGrossSalesSummaryData(
       }
     }
 
-    const calculatedGrandTotals = createEmptyTotals();
-    for (const node of root) {
-      addTotals(calculatedGrandTotals, node.totals);
-    }
+    const calculatedGrandTotals = (!hasActiveFilters && reportData?.grandTotals)
+      ? reportData.grandTotals
+      : (() => {
+          const totals = createEmptyTotals();
+          for (const node of root) {
+            addTotals(totals, node.totals);
+          }
+          return totals;
+        })();
 
     return { treeData: root, grandTotals: calculatedGrandTotals, filteredFlatItems: filtered };
-  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange]);
+  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange, hasActiveFilters, reportData?.grandTotals]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));
