@@ -2,15 +2,18 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Eye, CreditCard, RefreshCcw, Loader2, Plus } from "lucide-react";
+import { Search, Eye, CreditCard, RefreshCcw, Loader2, Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getSalesInvoices } from "@/lib/actions/receipt-voucher";
+import { queueSalesInvoicesExport } from "@/lib/actions/sales-invoices";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { formatCurrency } from "@/lib/utils";
+import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, string> = {
     PENDING: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
@@ -24,8 +27,10 @@ export default function SalesInvoicesPage() {
     const router = useRouter();
     const [invoices, setInvoices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [selected, setSelected] = useState<string[]>([]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -35,6 +40,39 @@ export default function SalesInvoicesPage() {
     }, [search, statusFilter]);
 
     useEffect(() => { load(); }, [load]);
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelected(invoices.map(inv => inv.id));
+        } else {
+            setSelected([]);
+        }
+    };
+
+    const handleSelect = (id: string, checked: boolean) => {
+        if (checked) {
+            setSelected(prev => [...prev, id]);
+        } else {
+            setSelected(prev => prev.filter(item => item !== id));
+        }
+    };
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const res = await queueSalesInvoicesExport(selected);
+            if (res.status) {
+                toast.success('Export started! You will receive a notification when it is ready.');
+                setSelected([]);
+            } else {
+                toast.error(res.message || 'Failed to start export');
+            }
+        } catch (error) {
+            toast.error('An error occurred while starting the export');
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     const totals = loading ? { total: 0, paid: 0, outstanding: 0 } : (invoices || []).reduce(
         (acc, inv) => ({
@@ -54,12 +92,17 @@ export default function SalesInvoicesPage() {
                         <p className="text-muted-foreground">Manage customer invoices and collections</p>
                     </div>
                     <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
+                            {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                            {selected.length > 0 ? `Export Selected (${selected.length})` : 'Export All to Excel'}
+                        </Button>
                         <PermissionGuard permissions="erp.sales.invoice.create" fallback={null}>
                             <Button onClick={() => router.push('/erp/sales/invoices/create')}>
                                 <Plus className="h-4 w-4 mr-2" />
                                 Create Invoice
                             </Button>
                         </PermissionGuard>
+
                         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
                             <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                             Refresh
@@ -109,10 +152,17 @@ export default function SalesInvoicesPage() {
                 </div>
 
                 {/* Table */}
-                <div className="rounded-md border">
+                <div className="rounded-md border bg-card">
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-12">
+                                    <Checkbox 
+                                        checked={invoices.length > 0 && selected.length === invoices.length}
+                                        onCheckedChange={handleSelectAll}
+                                        aria-label="Select all"
+                                    />
+                                </TableHead>
                                 <TableHead>Invoice No</TableHead>
                                 <TableHead>Customer</TableHead>
                                 <TableHead>Date</TableHead>
@@ -127,18 +177,25 @@ export default function SalesInvoicesPage() {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-12">
+                                    <TableCell colSpan={10} className="text-center py-12">
                                         <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                                     </TableCell>
                                 </TableRow>
                             ) : invoices.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
                                         No invoices found
                                     </TableCell>
                                 </TableRow>
                             ) : invoices.map(inv => (
                                 <TableRow key={inv.id}>
+                                    <TableCell>
+                                        <Checkbox 
+                                            checked={selected.includes(inv.id)}
+                                            onCheckedChange={(checked) => handleSelect(inv.id, checked as boolean)}
+                                            aria-label={`Select invoice ${inv.invoiceNo}`}
+                                        />
+                                    </TableCell>
                                     <TableCell className="font-medium">{inv.invoiceNo}</TableCell>
                                     <TableCell>{inv.customer?.name ?? "—"}</TableCell>
                                     <TableCell>{new Date(inv.invoiceDate).toLocaleDateString()}</TableCell>

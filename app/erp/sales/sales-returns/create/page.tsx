@@ -81,6 +81,7 @@ export default function CreateSalesReturnPage() {
     sourceType: 'INVOICE',
     customerId: '',
     warehouseId: '',
+    finalWarehouseId: '',
     returnType: 'DEFECTIVE',
     reason: '',
     notes: '',
@@ -207,6 +208,7 @@ export default function CreateSalesReturnPage() {
 
       await salesReturnApi.create({
         ...formData,
+        finalWarehouseId: formData.finalWarehouseId || undefined,
         items: apiItems,
       });
       router.push('/erp/sales/sales-returns');
@@ -283,13 +285,13 @@ export default function CreateSalesReturnPage() {
                   </div>
 
                   <div>
-                    <Label>Select Warehouse</Label>
+                    <Label>Return Warehouse <span className="text-red-500">*</span></Label>
                     <Select 
                       value={formData.warehouseId}
                       onValueChange={(val) => setFormData({ ...formData, warehouseId: val })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select Warehouse" />
+                        <SelectValue placeholder="Select Return Warehouse" />
                       </SelectTrigger>
                       <SelectContent>
                         {warehouses.map((wh) => (
@@ -299,6 +301,29 @@ export default function CreateSalesReturnPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-gray-400 mt-1">Goods physically received here (e.g. C40001 Logistic Area)</p>
+                  </div>
+
+                  <div>
+                    <Label>Final Destination Warehouse <span className="text-gray-400 text-xs font-normal">(optional — e.g. PLM)</span></Label>
+                    <Select 
+                      value={formData.finalWarehouseId || ''}
+                      onValueChange={(val) => setFormData({ ...formData, finalWarehouseId: val || '' })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Same as return warehouse" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {warehouses
+                          .filter((wh) => wh.id !== formData.warehouseId)
+                          .map((wh) => (
+                            <SelectItem key={wh.id} value={wh.id}>
+                              {wh.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-400 mt-1">If selected, stock auto-transfers here on approval (3 ledger entries)</p>
                   </div>
                 </div>
               </CardContent>

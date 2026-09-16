@@ -197,6 +197,26 @@ export function HeaderNotifications() {
     };
 
     // item-export.ready
+    if (n.actionType === "sales-invoice-export.ready") {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId || n.actionId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/sales-invoices/export/download/${jobId}`,
+            `sales-invoices-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Sales invoice export download failed:", e);
+      }
+      return;
+    }
+
+    // item-export.ready
     if (n.actionType === "item-export.ready" && n.actionPayload) {
       try {
         const payload = typeof n.actionPayload === "string"

@@ -126,10 +126,6 @@ export default function SalesReturnDetailPage({ params }: { params: Promise<{ id
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer className="w-4 h-4 mr-1" /> Print
-              </Button>
-
               {salesReturn.status === 'DRAFT' && (
                 <>
                   <Link href={`/erp/sales/sales-returns/${salesReturn.id}/edit`} transitionTypes={["nav-forward"]}>
@@ -207,9 +203,19 @@ export default function SalesReturnDetailPage({ params }: { params: Promise<{ id
                   <span>{salesReturn.customer?.name || 'Unknown'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Warehouse:</span>
+                  <span className="text-gray-600">Return Warehouse:</span>
                   <span>{salesReturn.warehouse?.name || 'N/A'}</span>
                 </div>
+                {(salesReturn as any).finalWarehouse && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Final Destination:</span>
+                    <span className="flex items-center gap-1 text-green-700 font-semibold">
+                      <span className="text-gray-400 text-xs">→</span>
+                      {(salesReturn as any).finalWarehouse.name}
+                      <span className="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Auto-transfer</span>
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Return Type:</span>
                   <Badge variant="outline">{salesReturn.returnType}</Badge>

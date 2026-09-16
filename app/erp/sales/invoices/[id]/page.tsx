@@ -646,6 +646,8 @@ export default function SalesInvoiceViewPage() {
             {/* Top Left Logo & Info */}
             <div className="w-[28%] text-xs space-y-0.5">
               <img src="/image.png" alt="Speed Logo" className="h-10 object-contain mb-1" />
+              <div><span className="font-bold">GST No. :</span> 12-01-9999-663-46</div>
+              <div><span className="font-bold">NTN :</span> 1208373-9</div>
             </div>
 
             {/* Center Title */}
