@@ -358,9 +358,6 @@ export default function CreditNoteDetailPage({ params }: { params: Promise<{ id:
               <div><span className="font-bold inline-block w-32">Credit Note No :</span> {creditNote.creditNoteNo}</div>
               <div><span className="font-bold inline-block w-32">Credit Note Date :</span> {formatDateDisplay(creditNote.createdAt || creditNote.date)}</div>
               <div><span className="font-bold inline-block w-32">Customer Name :</span> {creditNote.customer?.name || 'N/A'}</div>
-              {creditNote.customer?.traderId && (
-                <div><span className="font-bold inline-block w-32">Trader ID :</span> {creditNote.customer.traderId}{creditNote.customer?.subCode ? ` (Sub: ${creditNote.customer.subCode})` : ''}</div>
-              )}
               <div><span className="font-bold inline-block w-32">Address :</span> {creditNote.customer?.deliveryAddress || creditNote.customer?.address || 'N/A'}</div>
               <div><span className="font-bold inline-block w-32">Remarks :</span> {creditNote.salesReturn?.reason || creditNote.salesReturn?.notes || '—'}</div>
             </div>

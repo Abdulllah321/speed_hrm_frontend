@@ -81,6 +81,35 @@ export function useGrossSalesSummaryData(
 
   const rawItems = reportData?.flatItems || [];
 
+  const hasSubDateFilter = useMemo(() => {
+    if (
+      !subDateRange?.from ||
+      !subDateRange?.to ||
+      !reportData?.dateRange?.startDate ||
+      !reportData?.dateRange?.endDate
+    )
+      return false;
+    const repFrom = new Date(reportData.dateRange.startDate).getTime();
+    const repTo = new Date(reportData.dateRange.endDate).getTime();
+    const subFrom = new Date(subDateRange.from).getTime();
+    const subTo = new Date(subDateRange.to).getTime();
+    return subFrom - repFrom > 86400000 || repTo - subTo > 86400000;
+  }, [subDateRange?.from, subDateRange?.to, reportData?.dateRange]);
+
+  const hasActiveFilters = useMemo(() => {
+    return Boolean(
+      effectiveSearchQuery.trim() ||
+      (selectedLocationIds && selectedLocationIds.length > 0) ||
+      (selectedCashierId && selectedCashierId !== "all") ||
+      hasSubDateFilter
+    );
+  }, [
+    effectiveSearchQuery,
+    selectedLocationIds,
+    selectedCashierId,
+    hasSubDateFilter,
+  ]);
+
   const { treeData, grandTotals, filteredFlatItems } = useMemo(() => {
     const q = effectiveSearchQuery.toLowerCase().trim();
 
@@ -100,7 +129,7 @@ export function useGrossSalesSummaryData(
       }
 
       // Sub-date filter within loaded period
-      if (subDateRange?.from && subDateRange?.to && item.createdAt) {
+      if (hasSubDateFilter && subDateRange?.from && subDateRange?.to && item.createdAt) {
         const itemDate = new Date(item.createdAt).getTime();
         const fromTime = new Date(subDateRange.from).setHours(0, 0, 0, 0);
         const toTime = new Date(subDateRange.to).setHours(23, 59, 59, 999);
@@ -224,8 +253,12 @@ export function useGrossSalesSummaryData(
       addTotals(calculatedGrandTotals, node.totals);
     }
 
-    return { treeData: root, grandTotals: calculatedGrandTotals, filteredFlatItems: filtered };
-  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange]);
+    const finalGrandTotals = (!hasActiveFilters && reportData?.grandTotals)
+      ? reportData.grandTotals
+      : calculatedGrandTotals;
+
+    return { treeData: root, grandTotals: finalGrandTotals, filteredFlatItems: filtered };
+  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange, hasActiveFilters, hasSubDateFilter, reportData?.grandTotals]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));

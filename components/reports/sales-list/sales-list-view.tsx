@@ -240,12 +240,12 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
   };
 
   // When DateRange changes:
-  // If in custom mode, fetch custom range; otherwise, slices client-side within loaded year!
+  // Automatically switch to "custom" mode and fetch the custom range directly from the backend
+  // to avoid client-side slicing issues on large datasets that are truncated to 5,000 preview items.
   const handleDateRangeChange = (range: DateRange) => {
     setDateRange(range);
-    if (periodPreset === "custom") {
-      handleFetchReport("custom", range);
-    }
+    setPeriodPreset("custom");
+    handleFetchReport("custom", range);
   };
 
   // Single API Fetch when Bull calculation completes via SSE (<100ms)
