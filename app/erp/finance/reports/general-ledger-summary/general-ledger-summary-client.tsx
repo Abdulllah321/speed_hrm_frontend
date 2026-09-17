@@ -58,13 +58,13 @@ export function GeneralLedgerSummaryClient({
 }: {
   accounts: ChartOfAccount[];
 }) {
-  const [parentAccountId, setParentAccountId] = React.useState("");
+  const [parentAccountIds, setParentAccountIds] = React.useState<string[]>([]);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
     new Date(new Date().getFullYear(), 0, 1),
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
-  const [data, setData] = React.useState<GeneralLedgerSummaryResult | undefined>();
+  const [data, setData] = React.useState<GeneralLedgerSummaryResult[] | undefined>();
   const [isPending, startTransition] = React.useTransition();
 
   // Selection states
@@ -79,27 +79,23 @@ export function GeneralLedgerSummaryClient({
   const [focusedIndex, setFocusedIndex] = React.useState<number>(-1);
 
   // Find selected parent account in the tree to check for sub-accounts
-  const selectedParentInTree = React.useMemo(() => {
-    if (!parentAccountId || accounts.length === 0) return null;
-    const findInTree = (
-      nodes: ChartOfAccount[],
-      id: string,
-    ): ChartOfAccount | undefined => {
+  const subAccounts = React.useMemo(() => {
+    if (parentAccountIds.length === 0 || accounts.length === 0) return [];
+
+    const findInTree = (nodes: ChartOfAccount[], targetIds: string[]): ChartOfAccount[] => {
+      const results: ChartOfAccount[] = [];
       for (const node of nodes) {
-        if (node.id === id) return node;
-        if (node.children?.length) {
-          const found = findInTree(node.children, id);
-          if (found) return found;
+        if (targetIds.includes(node.id)) {
+          if (node.children) results.push(...node.children);
+        } else if (node.children) {
+          results.push(...findInTree(node.children, targetIds));
         }
       }
-      return undefined;
+      return results;
     };
-    return findInTree(accounts, parentAccountId);
-  }, [parentAccountId, accounts]);
 
-  const subAccounts = React.useMemo(() => {
-    return selectedParentInTree?.children ?? [];
-  }, [selectedParentInTree]);
+    return findInTree(accounts, parentAccountIds);
+  }, [parentAccountIds, accounts]);
 
   // Filtered subaccounts based on search input
   const filteredSubAccounts = React.useMemo(() => {
@@ -217,7 +213,7 @@ export function GeneralLedgerSummaryClient({
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [filteredSubAccounts, focusedIndex, parentAccountId, selectedIds]);
+  }, [filteredSubAccounts, focusedIndex, parentAccountIds, selectedIds]);
 
   // Set Range Selection when From & To Accounts are chosen
   React.useEffect(() => {
@@ -271,18 +267,18 @@ export function GeneralLedgerSummaryClient({
   };
 
   const loadLedgerSummary = () => {
-    if (!parentAccountId) {
-      toast.error("Please select a Chart of Account head.");
+    if (parentAccountIds.length === 0) {
+      toast.error("Please select at least one parent account");
       return;
     }
     if (selectedIds.size === 0) {
-      toast.error("Please select at least one sub-account.");
+      toast.error("Please select at least one sub-account");
       return;
     }
 
     startTransition(async () => {
       const res = await getGeneralLedgerSummary(
-        parentAccountId,
+        parentAccountIds,
         Array.from(selectedIds),
         fromDate ? getLocalStartOfDayISO(fromDate) : undefined,
         toDate ? getLocalEndOfDayISO(toDate) : undefined,
@@ -296,9 +292,20 @@ export function GeneralLedgerSummaryClient({
     });
   };
 
+  const getFilteredRows = React.useCallback((rows: any[]) => {
+    if (!rows) return [];
+    return rows.filter(
+      (r) =>
+        Number(r.openingBalance) !== 0 ||
+        Number(r.closingBalance) !== 0 ||
+        Number(r.debit) !== 0 ||
+        Number(r.credit) !== 0
+    );
+  }, []);
+
   // CSV Export
   const exportToCSV = () => {
-    if (!data) return;
+    if (!data || data.length === 0) return;
     const headers = [
       "Account Code",
       "Account Title",
@@ -308,32 +315,40 @@ export function GeneralLedgerSummaryClient({
       "Closing Balance",
     ];
 
-    const rows = data.rows.map((r) => [
-      `${data.parentAccount.code} ${r.code}`,
-      r.name,
-      r.openingBalance.toFixed(2),
-      r.debit.toFixed(2),
-      r.credit.toFixed(2),
-      r.closingBalance.toFixed(2),
-    ]);
+    const csvContent: string[][] = [];
+    data.forEach((summary) => {
+      const filtered = getFilteredRows(summary.rows);
+      const rows = filtered.map((r) => [
+        `${summary.parentAccount.code} ${r.code}`,
+        r.name,
+        r.openingBalance.toFixed(2),
+        r.debit.toFixed(2),
+        r.credit.toFixed(2),
+        r.closingBalance.toFixed(2),
+      ]);
 
-    const csvContent = [
-      [`General Ledger Subaccount Summary - ${data.parentAccount.code} - ${data.parentAccount.name}`],
-      [
-        `Period: ${fromDate ? format(fromDate, "dd-MMM-yyyy") : "Beginning"} to ${toDate ? format(toDate, "dd-MMM-yyyy") : "Present"}`,
-      ],
-      [],
-      headers,
-      ...rows,
-      [
-        "Grand Total",
-        "",
-        data.totals.openingBalance.toFixed(2),
-        data.totals.debit.toFixed(2),
-        data.totals.credit.toFixed(2),
-        data.totals.closingBalance.toFixed(2),
-      ],
-    ]
+      csvContent.push(
+        [`General Ledger Subaccount Summary - ${summary.parentAccount.code} - ${summary.parentAccount.name}`],
+        [
+          `Period: ${fromDate ? format(fromDate, "dd-MMM-yyyy") : "Beginning"} to ${toDate ? format(toDate, "dd-MMM-yyyy") : "Present"}`,
+        ],
+        [],
+        headers,
+        ...rows,
+        [
+          "Grand Total",
+          "",
+          summary.totals.openingBalance.toFixed(2),
+          summary.totals.debit.toFixed(2),
+          summary.totals.credit.toFixed(2),
+          summary.totals.closingBalance.toFixed(2),
+        ],
+        [], // spacing between summaries
+        []
+      );
+    });
+
+    const csvStr = csvContent
       .map((row) =>
         row
           .map((val) => {
@@ -344,13 +359,13 @@ export function GeneralLedgerSummaryClient({
       )
       .join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `gl-subaccount-summary-${data.parentAccount.code}-${format(new Date(), "yyyyMMdd")}.csv`,
+      `gl-subaccount-summary-${format(new Date(), "yyyyMMdd")}.csv`,
     );
     document.body.appendChild(link);
     link.click();
@@ -388,7 +403,7 @@ export function GeneralLedgerSummaryClient({
                 variant="outline"
                 size="sm"
                 onClick={() => window.print()}
-                disabled={!data || data.rows.length === 0}
+                disabled={!data || filteredRows.length === 0}
                 className="h-9 hover:bg-accent text-xs"
               >
                 <Printer className="h-3.5 w-3.5 mr-2 text-muted-foreground" />{" "}
@@ -398,7 +413,7 @@ export function GeneralLedgerSummaryClient({
                 variant="outline"
                 size="sm"
                 onClick={exportToCSV}
-                disabled={!data || data.rows.length === 0}
+                disabled={!data || filteredRows.length === 0}
                 className="h-9 hover:bg-accent text-xs"
               >
                 <Download className="h-3.5 w-3.5 mr-2 text-muted-foreground" />{" "}
@@ -418,11 +433,12 @@ export function GeneralLedgerSummaryClient({
                     </Label>
                     <ChartOfAccountSelect
                       accounts={accounts}
-                      value={parentAccountId}
-                      onValueChange={(val) => setParentAccountId(val)}
-                      placeholder="Select parent account..."
-                      allowGroups={true}
+                      value={parentAccountIds}
+                      onValueChange={(val: string[]) => setParentAccountIds(val)}
+                      placeholder="Select parent account(s)..."
+                      allowGroups={false}
                       excludeTags
+                      multiple={true}
                       className="h-10 text-sm shadow-sm"
                     />
                   </div>
@@ -684,7 +700,7 @@ export function GeneralLedgerSummaryClient({
                   <div className="sm:col-span-6">
                     <Button
                       onClick={loadLedgerSummary}
-                      disabled={isPending || !parentAccountId || selectedIds.size === 0}
+                      disabled={isPending || parentAccountIds.length === 0 || selectedIds.size === 0}
                       className="h-10 w-full font-medium text-sm shadow-md transition-all hover:translate-y-[-1px] active:translate-y-[0px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-600/95"
                     >
                       <RefreshCw className={cn("h-4 w-4 mr-2", isPending && "animate-spin")} />
@@ -703,141 +719,148 @@ export function GeneralLedgerSummaryClient({
                   </div>
                 )}
 
-                {data && (
-                  <div className="overflow-x-auto rounded-xl border shadow-sm bg-card">
-                    <table className="w-full text-xs border-collapse">
-                      <thead>
-                        {/* Row 1 Headers */}
-                        <tr className="bg-muted/30 border-b text-muted-foreground/80 font-medium border-border/80">
-                          <th
-                            rowSpan={2}
-                            className="text-left px-4 py-3 font-bold uppercase text-[9px] tracking-wider border-r border-border/80"
-                          >
-                            Account Code & Title
-                          </th>
-                          <th
-                            rowSpan={2}
-                            className="text-right px-4 py-3 font-bold uppercase text-[9px] tracking-wider border-r border-border/80 w-32"
-                          >
-                            Opening
-                          </th>
-                          <th
-                            colSpan={2}
-                            className="text-center py-2 font-bold uppercase text-[9px] tracking-wider border-r border-border/80 border-b border-border/50"
-                          >
-                            Activity
-                          </th>
-                          <th
-                            rowSpan={2}
-                            className="text-right px-4 py-3 font-bold uppercase text-[9px] tracking-wider w-32"
-                          >
-                            Closing
-                          </th>
-                        </tr>
-                        {/* Row 2 Activity Subheaders */}
-                        <tr className="bg-muted/20 border-b text-muted-foreground/80 font-medium border-border/80">
-                          <th className="text-right px-4 py-2 font-semibold uppercase text-[9px] tracking-wider border-r border-border/50 w-28">
-                            Debit
-                          </th>
-                          <th className="text-right px-4 py-2 font-semibold uppercase text-[9px] tracking-wider border-r border-border/80 w-28">
-                            Credit
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.rows.length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={5}
-                              className="px-4 py-12 text-center text-muted-foreground font-medium bg-muted/5 border-b"
-                            >
-                              No sub-account rows generated in this selection.
-                            </td>
-                          </tr>
-                        )}
-
-                        {data.rows.map((row, i) => (
-                          <tr
-                            key={row.id}
-                            className={cn(
-                              "border-b border-border/50 hover:bg-accent/40 transition-colors",
-                              i % 2 === 1 && "bg-muted/5",
-                            )}
-                          >
-                            {/* Code and Title */}
-                            <td className="px-4 py-3 border-r font-mono text-[10px] leading-tight text-foreground flex justify-between gap-4">
-                              <span>
-                                {data.parentAccount.code} {row.code}
-                              </span>
-                              <span className="font-sans text-muted-foreground text-[10px] truncate max-w-[280px]">
-                                {row.name}
-                              </span>
-                            </td>
-
-                            {/* Opening */}
-                            <td
-                              className={cn(
-                                "px-4 py-3 text-right border-r font-mono font-medium",
-                                row.openingBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground",
+                {data && data.length > 0 && (
+                  <div className="space-y-8">
+                    {data.map((summary) => {
+                      const filteredRows = getFilteredRows(summary.rows);
+                      return (
+                        <div key={summary.parentAccount.id} className="overflow-x-auto rounded-xl border shadow-sm bg-card">
+                          <table className="w-full text-xs border-collapse">
+                            <thead>
+                              {/* Row 1 Headers */}
+                              <tr className="bg-muted/30 border-b text-muted-foreground/80 font-medium border-border/80">
+                                <th
+                                  rowSpan={2}
+                                  className="text-left px-4 py-3 font-bold uppercase text-[9px] tracking-wider border-r border-border/80"
+                                >
+                                  Account Code & Title
+                                </th>
+                                <th
+                                  rowSpan={2}
+                                  className="text-right px-4 py-3 font-bold uppercase text-[9px] tracking-wider border-r border-border/80 w-32"
+                                >
+                                  Opening
+                                </th>
+                                <th
+                                  colSpan={2}
+                                  className="text-center py-2 font-bold uppercase text-[9px] tracking-wider border-r border-border/80 border-b border-border/50"
+                                >
+                                  Activity
+                                </th>
+                                <th
+                                  rowSpan={2}
+                                  className="text-right px-4 py-3 font-bold uppercase text-[9px] tracking-wider w-32"
+                                >
+                                  Closing
+                                </th>
+                              </tr>
+                              {/* Row 2 Activity Subheaders */}
+                              <tr className="bg-muted/20 border-b text-muted-foreground/80 font-medium border-border/80">
+                                <th className="text-right px-4 py-2 font-semibold uppercase text-[9px] tracking-wider border-r border-border/50 w-28">
+                                  Debit
+                                </th>
+                                <th className="text-right px-4 py-2 font-semibold uppercase text-[9px] tracking-wider border-r border-border/80 w-28">
+                                  Credit
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredRows.length === 0 && (
+                                <tr>
+                                  <td
+                                    colSpan={5}
+                                    className="px-4 py-12 text-center text-muted-foreground font-medium bg-muted/5 border-b"
+                                  >
+                                    No sub-account rows generated in this selection.
+                                  </td>
+                                </tr>
                               )}
-                            >
-                              {fmt(row.openingBalance)}
-                            </td>
 
-                            {/* Debit Activity */}
-                            <td className="px-4 py-3 text-right border-r border-border/50 font-mono text-muted-foreground">
-                              {row.debit > 0 ? fmt(row.debit) : "—"}
-                            </td>
+                              {filteredRows.map((row, i) => (
+                                <tr
+                                  key={row.id}
+                                  className={cn(
+                                    "border-b border-border/50 hover:bg-accent/40 transition-colors",
+                                    i % 2 === 1 && "bg-muted/5",
+                                  )}
+                                >
+                                  {/* Code and Title */}
+                                  <td className="px-4 py-3 border-r font-mono text-[10px] leading-tight text-foreground flex justify-between gap-4">
+                                    <span>
+                                      {summary.parentAccount.code} {row.code}
+                                    </span>
+                                    <span className="font-sans text-muted-foreground text-[10px] truncate max-w-[280px]">
+                                      {row.name}
+                                    </span>
+                                  </td>
 
-                            {/* Credit Activity */}
-                            <td className="px-4 py-3 text-right border-r font-mono text-muted-foreground">
-                              {row.credit > 0 ? fmt(row.credit) : "—"}
-                            </td>
+                                  {/* Opening */}
+                                  <td
+                                    className={cn(
+                                      "px-4 py-3 text-right border-r font-mono font-medium",
+                                      row.openingBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground",
+                                    )}
+                                  >
+                                    {fmt(row.openingBalance)}
+                                  </td>
 
-                            {/* Closing */}
-                            <td
-                              className={cn(
-                                "px-4 py-3 text-right font-mono font-bold",
-                                row.closingBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground",
-                              )}
-                            >
-                              {fmt(row.closingBalance)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
+                                  {/* Debit Activity */}
+                                  <td className="px-4 py-3 text-right border-r border-border/50 font-mono text-muted-foreground">
+                                    {row.debit > 0 ? fmt(row.debit) : "—"}
+                                  </td>
 
-                      {/* Grand Total Footer */}
-                      <tfoot>
-                        <tr className="bg-muted/30 border-t-2 border-border font-bold text-foreground">
-                          <td className="px-4 py-3.5 text-left border-r uppercase tracking-wider font-extrabold text-[10px] text-muted-foreground">
-                            Grand Total
-                          </td>
-                          <td
-                            className={cn(
-                              "px-4 py-3.5 text-right border-r font-mono",
-                              data.totals.openingBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground",
-                            )}
-                          >
-                            {fmt(data.totals.openingBalance)}
-                          </td>
-                          <td className="px-4 py-3.5 text-right border-r border-border/50 font-mono text-indigo-600">
-                            {fmt(data.totals.debit)}
-                          </td>
-                          <td className="px-4 py-3.5 text-right border-r font-mono text-rose-600">
-                            {fmt(data.totals.credit)}
-                          </td>
-                          <td
-                            className={cn(
-                              "px-4 py-3.5 text-right font-mono font-extrabold",
-                              data.totals.closingBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground",
-                            )}
-                          >
-                            {fmt(data.totals.closingBalance)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                                  {/* Credit Activity */}
+                                  <td className="px-4 py-3 text-right border-r font-mono text-muted-foreground">
+                                    {row.credit > 0 ? fmt(row.credit) : "—"}
+                                  </td>
+
+                                  {/* Closing */}
+                                  <td
+                                    className={cn(
+                                      "px-4 py-3 text-right font-mono font-bold",
+                                      row.closingBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground",
+                                    )}
+                                  >
+                                    {fmt(row.closingBalance)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+
+                            {/* Grand Total Footer */}
+                            <tfoot>
+                              <tr className="bg-muted/30 border-t-2 border-border font-bold text-foreground">
+                                <td className="px-4 py-3.5 text-left border-r uppercase tracking-wider font-extrabold text-[10px] text-muted-foreground">
+                                  Grand Total
+                                </td>
+                                <td
+                                  className={cn(
+                                    "px-4 py-3.5 text-right border-r font-mono",
+                                    summary.totals.openingBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground",
+                                  )}
+                                >
+                                  {fmt(summary.totals.openingBalance)}
+                                </td>
+                                <td className="px-4 py-3.5 text-right border-r border-border/50 font-mono text-indigo-600">
+                                  {fmt(summary.totals.debit)}
+                                </td>
+                                <td className="px-4 py-3.5 text-right border-r font-mono text-rose-600">
+                                  {fmt(summary.totals.credit)}
+                                </td>
+                                <td
+                                  className={cn(
+                                    "px-4 py-3.5 text-right font-mono font-extrabold",
+                                    summary.totals.closingBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground",
+                                  )}
+                                >
+                                  {fmt(summary.totals.closingBalance)}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -847,7 +870,7 @@ export function GeneralLedgerSummaryClient({
       </div>
 
       {/* PRINT LAYOUT SECTION (HIDDEN ON SCREEN, SHOWN ON PRINT) */}
-      {data && (
+      {data && data.length > 0 && (
         <div
           id="general-ledger-summary-print-section"
           className="hidden print:block font-sans text-black p-4 bg-white min-h-screen leading-normal w-full max-w-[1000px] mx-auto box-border"
@@ -877,130 +900,140 @@ export function GeneralLedgerSummaryClient({
             }}
           />
 
-          {/* Heading block */}
-          <div className="flex justify-between items-start border-b border-black pb-1 mb-2">
-            <div>
-              <h1 className="text-md font-bold uppercase tracking-wide">
-                General Ledger (Subaccount Summary)
-              </h1>
-            </div>
-            <div className="text-right">
-              <p className="text-[8px] mt-0.5">
-                Form {fromDate ? format(fromDate, "dd/MM/yyyy") : "Beginning"} To{" "}
-                {toDate ? format(toDate, "dd/MM/yyyy") : "Present"}
-              </p>
-            </div>
-          </div>
+          {data.map((summary) => {
+            const filteredRows = getFilteredRows(summary.rows);
+            return (
+              <div key={summary.parentAccount.id} className="mb-8 page-break-inside-avoid">
+                {/* Heading block */}
+                <div className="flex justify-between items-start border-b border-black pb-1 mb-2">
+                  <div>
+                    <h1 className="text-md font-bold uppercase tracking-wide">
+                      General Ledger (Subaccount Summary)
+                    </h1>
+                    <p className="text-[10px] font-bold text-gray-700 mt-1">
+                      Parent Account: {summary.parentAccount.code} — {summary.parentAccount.name}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[8px] mt-0.5">
+                      Form {fromDate ? format(fromDate, "dd/MM/yyyy") : "Beginning"} To{" "}
+                      {toDate ? format(toDate, "dd/MM/yyyy") : "Present"}
+                    </p>
+                  </div>
+                </div>
 
-          {/* Table */}
-          <table className="w-full text-[8px] mb-2 border-collapse table-fixed">
-            <thead>
-              {/* Row 1 Headers */}
-              <tr className="border-t border-b border-black font-bold text-left bg-gray-50">
-                <th className="py-1.5 pr-1 w-[46%] text-left">
-                  Account Code And Title
-                </th>
-                <th className="py-1.5 pr-1 text-right w-[18%]">
-                  Opening
-                </th>
-                <th
-                  colSpan={2}
-                  className="py-1 pr-1 text-center w-[24%] border-b border-gray-300"
-                >
-                  Activity
-                </th>
-                <th className="py-1.5 text-right w-[18%]">
-                  Closing
-                </th>
-              </tr>
-              {/* Row 2 Headers */}
-              <tr className="border-b border-black font-bold text-right bg-gray-50">
-                <th colSpan={2} /> {/* Skip columns 1 & 2 */}
-                <th className="py-1 pr-1 text-right w-[12%]">Debit</th>
-                <th className="py-1 pr-1 text-right w-[12%] border-r border-black/10">Credit</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {data.rows.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="py-4 text-center text-gray-500 border-b border-gray-300"
-                  >
-                    No sub-accounts selected.
-                  </td>
-                </tr>
-              )}
+                {/* Table */}
+                <table className="w-full text-[8px] mb-2 border-collapse table-fixed">
+                  <thead>
+                    {/* Row 1 Headers */}
+                    <tr className="border-t border-b border-black font-bold text-left bg-gray-50">
+                      <th className="py-1.5 pr-1 w-[46%] text-left">
+                        Account Code And Title
+                      </th>
+                      <th className="py-1.5 pr-1 text-right w-[18%]">
+                        Opening
+                      </th>
+                      <th
+                        colSpan={2}
+                        className="py-1 pr-1 text-center w-[24%] border-b border-gray-300"
+                      >
+                        Activity
+                      </th>
+                      <th className="py-1.5 text-right w-[18%]">
+                        Closing
+                      </th>
+                    </tr>
+                    {/* Row 2 Headers */}
+                    <tr className="border-b border-black font-bold text-right bg-gray-50">
+                      <th colSpan={2} /> {/* Skip columns 1 & 2 */}
+                      <th className="py-1 pr-1 text-right w-[12%]">Debit</th>
+                      <th className="py-1 pr-1 text-right w-[12%] border-r border-black/10">Credit</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="py-4 text-center text-gray-500 border-b border-gray-300"
+                        >
+                          No sub-accounts selected.
+                        </td>
+                      </tr>
+                    )}
 
-              {data.rows.map((row) => (
-                <tr key={row.id} className="border-b border-gray-200 align-top">
-                  {/* Account Code & Title */}
-                  <td className="py-1 pr-1 font-mono text-[8px] text-left">
-                    <div className="flex justify-between pr-4">
-                      <span>
-                        {data.parentAccount.code} {row.code}
-                      </span>
-                      <span className="font-sans text-gray-800 text-[8px] truncate max-w-[200px]">
-                        {row.name}
-                      </span>
-                    </div>
-                  </td>
+                    {filteredRows.map((row) => (
+                      <tr key={row.id} className="border-b border-gray-200 align-top">
+                        {/* Account Code & Title */}
+                        <td className="py-1 pr-1 font-mono text-[8px] text-left">
+                          <div className="flex justify-start gap-4 pr-4">
+                            <span className="shrink-0 whitespace-nowrap min-w-[70px]">
+                              {summary.parentAccount.code} {row.code}
+                            </span>
+                            <span className="font-sans text-gray-800 text-[8px] truncate">
+                              {row.name}
+                            </span>
+                          </div>
+                        </td>
 
-                  {/* Opening */}
-                  <td className="py-1 pr-1 text-right font-mono text-[8px]">
-                    {fmt(row.openingBalance)}
-                  </td>
+                        {/* Opening */}
+                        <td className="py-1 pr-1 text-right font-mono text-[8px]">
+                          {fmt(row.openingBalance)}
+                        </td>
 
-                  {/* Debit */}
-                  <td className="py-1 pr-1 text-right font-mono text-[8px] text-gray-700">
-                    {row.debit > 0 ? fmt(row.debit) : "0"}
-                  </td>
+                        {/* Debit */}
+                        <td className="py-1 pr-1 text-right font-mono text-[8px] text-gray-700">
+                          {row.debit > 0 ? fmt(row.debit) : "0"}
+                        </td>
 
-                  {/* Credit */}
-                  <td className="py-1 pr-1 text-right font-mono text-[8px] text-gray-700">
-                    {row.credit > 0 ? fmt(row.credit) : "0"}
-                  </td>
+                        {/* Credit */}
+                        <td className="py-1 pr-1 text-right font-mono text-[8px] text-gray-700">
+                          {row.credit > 0 ? fmt(row.credit) : "0"}
+                        </td>
 
-                  {/* Closing */}
-                  <td className="py-1 text-right font-mono font-bold text-[8px]">
-                    {fmt(row.closingBalance)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+                        {/* Closing */}
+                        <td className="py-1 text-right font-mono font-bold text-[8px]">
+                          {fmt(row.closingBalance)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
 
-            <tfoot>
-              {/* Grand Total Row */}
-              <tr className="border-t border-black font-bold">
-                <td className="py-2 text-left text-[9px]">Grand Total</td>
-                <td
-                  className="py-2 pr-1 text-right font-mono text-[8px]"
-                  style={{ borderBottom: "2px double black" }}
-                >
-                  {fmt(data.totals.openingBalance)}
-                </td>
-                <td
-                  className="py-2 pr-1 text-right font-mono text-[8px]"
-                  style={{ borderBottom: "2px double black" }}
-                >
-                  {fmt(data.totals.debit)}
-                </td>
-                <td
-                  className="py-2 pr-1 text-right font-mono text-[8px]"
-                  style={{ borderBottom: "2px double black" }}
-                >
-                  {fmt(data.totals.credit)}
-                </td>
-                <td
-                  className="py-2 text-right font-mono font-bold text-[8px]"
-                  style={{ borderBottom: "2px double black" }}
-                >
-                  {fmt(data.totals.closingBalance)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+                  <tfoot>
+                    {/* Grand Total Row */}
+                    <tr className="border-t border-black font-bold">
+                      <td className="py-2 text-left text-[9px]">Grand Total</td>
+                      <td
+                        className="py-2 pr-1 text-right font-mono text-[8px]"
+                        style={{ borderBottom: "2px double black" }}
+                      >
+                        {fmt(summary.totals.openingBalance)}
+                      </td>
+                      <td
+                        className="py-2 pr-1 text-right font-mono text-[8px]"
+                        style={{ borderBottom: "2px double black" }}
+                      >
+                        {fmt(summary.totals.debit)}
+                      </td>
+                      <td
+                        className="py-2 pr-1 text-right font-mono text-[8px]"
+                        style={{ borderBottom: "2px double black" }}
+                      >
+                        {fmt(summary.totals.credit)}
+                      </td>
+                      <td
+                        className="py-2 text-right font-mono font-bold text-[8px]"
+                        style={{ borderBottom: "2px double black" }}
+                      >
+                        {fmt(summary.totals.closingBalance)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            );
+          })}
         </div>
       )}
     </>
