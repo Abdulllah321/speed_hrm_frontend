@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useTransition, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useTransition, useCallback, useMemo, useRef } from "react";
 import { DateRange } from "@/components/ui/date-range-picker";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { getLocations, Location } from "@/lib/actions/location";
@@ -53,6 +53,10 @@ export function SalesRegisterView({ isPosLevel = false }: SalesRegisterViewProps
   const [isFetchingResult, setIsFetchingResult] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Mount tracking refs — prevents double-fetch and race conditions (same pattern as sales-list-view)
+  const initialFetchDoneRef = useRef(false);
+  const hasFetchedJobIdRef = useRef<string | null>(null);
+
   // Client export state
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -90,17 +94,24 @@ export function SalesRegisterView({ isPosLevel = false }: SalesRegisterViewProps
       .join(", ");
   }, [selectedLocationIds, locations]);
 
-  // Queue preview calculation
+  // Queue preview calculation — only triggered explicitly (mount or user-triggered refresh)
   const handleFetchReport = useCallback(() => {
     if (!dateRange.from || !dateRange.to) return;
 
     setIsQueueingJob(true);
     setPreviewJobId(null);
+    hasFetchedJobIdRef.current = null;
 
     startTransition(async () => {
       try {
+        const locationId = isPosLevel
+          ? posLocationId
+          : selectedLocationIds.length > 0
+          ? selectedLocationIds.join(",")
+          : undefined;
+
         const res = await queueSalesRegisterPreview({
-          locationId: locationParam,
+          locationId,
           startDate: dateRange.from?.toISOString(),
           endDate: dateRange.to?.toISOString(),
           cashierUserId: selectedCashierId,
@@ -118,34 +129,62 @@ export function SalesRegisterView({ isPosLevel = false }: SalesRegisterViewProps
         setIsQueueingJob(false);
       }
     });
-  }, [locationParam, dateRange, selectedCashierId, reportType]);
+  }, [locationParam, dateRange, selectedCashierId, reportType, isPosLevel, posLocationId, selectedLocationIds]);
 
-  // Initial fetch on mount or parameters change
+  // Initial fetch on mount — wait for posLocationId if on POS level; fire once only
   useEffect(() => {
-    handleFetchReport();
-  }, [locationParam, dateRange, selectedCashierId, reportType]);
+    if (isPosLevel) {
+      if (posLocationId && !initialFetchDoneRef.current) {
+        initialFetchDoneRef.current = true;
+        handleFetchReport();
+      }
+    } else {
+      if (!initialFetchDoneRef.current) {
+        initialFetchDoneRef.current = true;
+        handleFetchReport();
+      }
+    }
+  }, [isPosLevel, posLocationId, handleFetchReport]);
 
-  // Fetch result when SSE completes
+  // Fetch result when SSE completes — useRef guard prevents fetching same jobId twice
+  // 800ms delay guards against the race where Bull emits progress=100 before the gz file is flushed
   useEffect(() => {
     if (
       (sseState.status === "completed" || sseState.progressPercent === 100) &&
-      previewJobId
+      previewJobId &&
+      hasFetchedJobIdRef.current !== previewJobId
     ) {
+      hasFetchedJobIdRef.current = previewJobId;
       setIsFetchingResult(true);
-      getSalesRegisterResult(previewJobId)
-        .then((res) => {
+
+      const fetchWithRetry = async (attemptsLeft: number): Promise<void> => {
+        await new Promise((r) => setTimeout(r, 800));
+        try {
+          const res = await getSalesRegisterResult(previewJobId);
           if (res && res.status && res.data) {
             setReportData(res.data);
+            setIsFetchingResult(false);
+          } else if (attemptsLeft > 0) {
+            // Result not ready yet — retry once more after another 1.5s
+            await new Promise((r) => setTimeout(r, 1500));
+            const retry = await getSalesRegisterResult(previewJobId);
+            if (retry && retry.status && retry.data) {
+              setReportData(retry.data);
+            } else {
+              toast.error("Failed to load completed sales register dataset");
+            }
+            setIsFetchingResult(false);
           } else {
             toast.error("Failed to load completed sales register dataset");
+            setIsFetchingResult(false);
           }
-        })
-        .catch((err) => {
+        } catch {
           toast.error("Error retrieving completed sales register preview");
-        })
-        .finally(() => {
           setIsFetchingResult(false);
-        });
+        }
+      };
+
+      fetchWithRetry(1);
     }
   }, [sseState.status, sseState.progressPercent, previewJobId]);
 
@@ -269,3 +308,4 @@ export function SalesRegisterView({ isPosLevel = false }: SalesRegisterViewProps
     </div>
   );
 }
+

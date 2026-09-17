@@ -110,15 +110,15 @@ export function useGrossSalesSummaryData(
       // Search keyword filter
       if (q) {
         const matchesQuery =
-          item.locationName.toLowerCase().includes(q) ||
+          (item.locationName || "").toLowerCase().includes(q) ||
           (item.brandName && item.brandName.toLowerCase().includes(q)) ||
           (item.divisionName && item.divisionName.toLowerCase().includes(q)) ||
           (item.categoryName && item.categoryName.toLowerCase().includes(q)) ||
           (item.genderName && item.genderName.toLowerCase().includes(q)) ||
           (item.silhouetteName && item.silhouetteName.toLowerCase().includes(q)) ||
-          item.sku.toLowerCase().includes(q) ||
-          item.barCode.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q);
+          (item.sku || "").toLowerCase().includes(q) ||
+          (item.barCode || "").toLowerCase().includes(q) ||
+          (item.description || "").toLowerCase().includes(q);
         if (!matchesQuery) return false;
       }
 

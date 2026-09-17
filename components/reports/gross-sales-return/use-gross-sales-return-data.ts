@@ -85,18 +85,18 @@ export function useGrossSalesReturnData(reportData: GrossSalesReturnReportData |
 
       if (!q) return true;
 
-      const matchesReturnNo = ret.returnNumber.toLowerCase().includes(q);
-      const matchesOrderNo = ret.orderNumber.toLowerCase().includes(q);
-      const matchesCustomer = ret.customerName.toLowerCase().includes(q) || ret.customerPhone.includes(q);
-      const matchesCashier = ret.cashierName.toLowerCase().includes(q);
-      const matchesFbr = ret.fbrInvoiceNumber.toLowerCase().includes(q);
-      const matchesItem = ret.items.some(
+      const matchesReturnNo = (ret.returnNumber || "").toLowerCase().includes(q);
+      const matchesOrderNo = (ret.orderNumber || "").toLowerCase().includes(q);
+      const matchesCustomer = (ret.customerName || "").toLowerCase().includes(q) || (ret.customerPhone || "").includes(q);
+      const matchesCashier = (ret.cashierName || "").toLowerCase().includes(q);
+      const matchesFbr = (ret.fbrInvoiceNumber || "").toLowerCase().includes(q);
+      const matchesItem = (ret.items || []).some(
         (i) =>
-          i.sku.toLowerCase().includes(q) ||
-          i.barCode.toLowerCase().includes(q) ||
-          i.description.toLowerCase().includes(q) ||
-          i.categoryName.toLowerCase().includes(q) ||
-          i.brandName.toLowerCase().includes(q),
+          (i.sku || "").toLowerCase().includes(q) ||
+          (i.barCode || "").toLowerCase().includes(q) ||
+          (i.description || "").toLowerCase().includes(q) ||
+          (i.categoryName || "").toLowerCase().includes(q) ||
+          (i.brandName || "").toLowerCase().includes(q),
       );
 
       return matchesReturnNo || matchesOrderNo || matchesCustomer || matchesCashier || matchesFbr || matchesItem;
