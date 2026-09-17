@@ -680,9 +680,11 @@ export function GeneralLedgerClient({
     if (selectedTagAccountIds.length > 0) {
       return selectedTagAccountIds.join(",");
     }
+    if (activeSubAccounts.length > 0) {
+      return activeSubAccounts.map((a) => a.id).join(",");
+    }
     if (selectedAccountIds.length > 0) {
-      const ids = [...selectedAccountIds, ...activeSubAccounts.map((a) => a.id)];
-      return Array.from(new Set(ids)).join(",");
+      return selectedAccountIds.join(",");
     }
     return "";
   }, [selectedTagAccountIds, selectedAccountIds, activeSubAccounts]);
@@ -736,11 +738,22 @@ export function GeneralLedgerClient({
   // ─── 5. Hierarchical Data Grouping (Heads & Ledgers) ───────────────────────
   const groupedHeads: GeneralLedgerHeadGroup[] = React.useMemo(() => {
     if (!data) return [];
-    if (data.heads && data.heads.length > 0) return data.heads;
+
+    const isLedgerEmpty = (lg: SingleAccountLedger) =>
+      lg.openingBalance === 0 && lg.rangeClosingBalance === 0 && lg.rows.length === 0;
+
+    if (data.heads && data.heads.length > 0) {
+      return data.heads
+        .map((hg) => ({
+          ...hg,
+          ledgers: hg.ledgers.filter((lg) => !isLedgerEmpty(lg)),
+        }))
+        .filter((hg) => hg.ledgers.length > 0);
+    }
 
     const ledgersList: SingleAccountLedger[] =
       data.ledgers && data.ledgers.length > 0
-        ? data.ledgers
+        ? data.ledgers.filter((lg) => !isLedgerEmpty(lg))
         : [
             {
               account: data.account,
@@ -752,7 +765,7 @@ export function GeneralLedgerClient({
               rangeClosingBalance: data.rangeClosingBalance,
               pagination: data.pagination,
             },
-          ];
+          ].filter((lg) => !isLedgerEmpty(lg));
 
     const map = new Map<string, GeneralLedgerHeadGroup>();
     for (const lg of ledgersList) {
@@ -800,21 +813,69 @@ export function GeneralLedgerClient({
     Math.min(activeLedgerIdx, Math.max(0, allLedgers.length - 1))
   ] ?? allLedgers[0];
 
-  // Consolidated ledger combining all accounts
-  const consolidatedLedger: SingleAccountLedger | null = React.useMemo(() => {
-    if (!data || allLedgers.length <= 1) return null;
-    return {
-      account: data.account,
-      openingBalance: data.openingBalance,
-      rows: data.rows,
-      closingBalance: data.closingBalance,
-      rangeTotalDebit: data.rangeTotalDebit,
-      rangeTotalCredit: data.rangeTotalCredit,
-      rangeClosingBalance: data.rangeClosingBalance,
-      pagination: data.pagination,
-      head: { id: "consolidated", code: "ALL", name: `${allLedgers.length} Accounts Consolidated` },
-    };
-  }, [data, allLedgers]);
+  // Consolidated ledgers (one per head) combining accounts within that head
+  const consolidatedLedgers: SingleAccountLedger[] = React.useMemo(() => {
+    if (!data || groupedHeads.length === 0) return [];
+    
+    const activeGroups = activeHeadFilter === "all" 
+      ? groupedHeads 
+      : groupedHeads.filter(g => g.head.id === activeHeadFilter);
+
+    return activeGroups.map(hGroup => {
+      if (hGroup.ledgers.length === 1) {
+        return {
+          ...hGroup.ledgers[0],
+          account: {
+            ...hGroup.ledgers[0].account,
+            name: `${hGroup.ledgers[0].account.name} (Consolidated)`,
+          }
+        };
+      }
+
+      const allRows = hGroup.ledgers.flatMap(l => l.rows);
+      allRows.sort((a, b) => {
+        const tA = new Date(a.transactionDate).getTime();
+        const tB = new Date(b.transactionDate).getTime();
+        if (tA !== tB) return tA - tB;
+        return (a.id || '').localeCompare(b.id || '');
+      });
+
+      let runningBal = hGroup.openingBalance;
+      const combinedRows = allRows.map((r) => {
+        runningBal += Number(r.debit) - Number(r.credit);
+        return { ...r, runningBalance: runningBal };
+      });
+
+      return {
+        account: {
+          id: hGroup.head.id,
+          code: hGroup.head.code,
+          name: `${hGroup.ledgers.length} Accounts Consolidated`,
+          type: hGroup.ledgers[0]?.account.type || "UNKNOWN",
+          balance: hGroup.ledgers.reduce((sum, l) => sum + Number(l.account.balance), 0),
+        },
+        head: hGroup.head,
+        openingBalance: hGroup.openingBalance,
+        rows: combinedRows,
+        closingBalance: combinedRows.length > 0 
+          ? combinedRows[combinedRows.length - 1].runningBalance 
+          : hGroup.openingBalance,
+        rangeTotalDebit: hGroup.rangeTotalDebit,
+        rangeTotalCredit: hGroup.rangeTotalCredit,
+        rangeClosingBalance: hGroup.rangeClosingBalance,
+        pagination: hGroup.ledgers[0]?.pagination,
+      };
+    });
+  }, [data, groupedHeads, activeHeadFilter]);
+
+  // Determine which ledgers to render on screen and in print based on view mode
+  const ledgersToRender = React.useMemo(() => {
+    return viewMode === "consolidated"
+      ? consolidatedLedgers
+      : viewMode === "single"
+        ? (safeActiveLedger ? [safeActiveLedger] : [])
+        : allLedgers;
+  }, [viewMode, consolidatedLedgers, allLedgers, safeActiveLedger]);
 
   // ─── 6. Multi-Account CSV Export ───────────────────────────────────────────
   const exportToCSV = () => {
@@ -834,7 +895,13 @@ export function GeneralLedgerClient({
     ];
 
     const csvLines: string[][] = [
-      ["GENERAL LEDGER REPORT — MULTI-ACCOUNT & SUB-ACCOUNT STATEMENT"],
+      [
+        viewMode === "consolidated"
+          ? "GENERAL LEDGER REPORT"
+          : activeSubAccounts.length > 0
+            ? "GENERAL LEDGER SUBACCOUNT REPORT"
+            : "GENERAL LEDGER REPORT",
+      ],
       [
         `Period: ${fromDate ? format(fromDate, "dd-MMM-yyyy") : "Beginning"} to ${toDate ? format(toDate, "dd-MMM-yyyy") : "Present"}`,
       ],
@@ -974,7 +1041,12 @@ export function GeneralLedgerClient({
           <CardHeader className="border-b dark:border-border/50 flex flex-row items-center justify-between flex-wrap gap-4 py-5 bg-muted/20">
             <div>
               <CardTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" /> General Ledger
+                <BookOpen className="h-5 w-5 text-primary" />{" "}
+                {viewMode === "consolidated"
+                  ? "General Ledger Report"
+                  : activeSubAccounts.length > 0
+                    ? "General Ledger Subaccount Report"
+                    : "General Ledger Report"}
               </CardTitle>
               {data && (
                 <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground flex-wrap">
@@ -1065,7 +1137,7 @@ export function GeneralLedgerClient({
                     setSelectedTagAccountIds([]);
                   }}
                   placeholder="Select Account Head(s)..."
-                  allowGroups={true}
+                  allowGroups={false}
                   excludeTags={true}
                   multiple={true}
                   mode="popover"
@@ -1186,13 +1258,6 @@ export function GeneralLedgerClient({
 
             {/* Render Data with Hierarchical Navigation */}
             {data && (() => {
-              const ledgersToRender =
-                viewMode === "consolidated"
-                  ? (consolidatedLedger ? [consolidatedLedger] : allLedgers)
-                  : viewMode === "single"
-                    ? (safeActiveLedger ? [safeActiveLedger] : [])
-                    : allLedgers;
-
               return (
                 <div className="space-y-6">
                   {/* Master Hierarchy Navigation Bar */}
@@ -1729,7 +1794,7 @@ export function GeneralLedgerClient({
           `,
             }}
           />
-          {allLedgers.map((ledgerItem, pIdx) => (
+          {ledgersToRender.map((ledgerItem, pIdx) => (
             <div key={ledgerItem.account.id || pIdx} className="print-ledger-block mb-8">
               {/* Header */}
               <div className="flex justify-between mb-3 gap-4 items-start border-b pb-2 border-gray-300">
@@ -1743,7 +1808,11 @@ export function GeneralLedgerClient({
 
                 <div className="w-[55%] flex flex-col justify-center text-center">
                   <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 text-md font-bold print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact] uppercase tracking-wider rounded">
-                    General Ledger Report
+                    {viewMode === "consolidated"
+                      ? "General Ledger Report"
+                      : activeSubAccounts.length > 0
+                        ? "General Ledger Subaccount Report"
+                        : "General Ledger Report"}
                   </div>
                   <p className="text-[10px] font-bold text-gray-700 mt-1">
                     Account: {ledgerItem.account.code} — {ledgerItem.account.name}
