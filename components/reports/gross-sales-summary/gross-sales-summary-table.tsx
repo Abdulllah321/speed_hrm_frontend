@@ -158,19 +158,19 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
       {/* Main Virtualized Container */}
       <div className="border border-border/60 rounded-2xl overflow-hidden bg-background shadow-sm">
         <div ref={parentRef} className="max-h-[640px] overflow-auto relative">
-          <div className="min-w-[1330px]">
+          <div className="min-w-[1600px]">
             {/* Sticky Table Header */}
             <div className="sticky top-0 z-10 flex items-center bg-slate-900 dark:bg-slate-950 text-slate-100 text-[11px] font-mono font-semibold uppercase tracking-wider h-11 border-b border-border/80 shadow-md">
-              <div className="flex-1 min-w-[340px] px-4">Product Hierarchy / Description</div>
-              <div className="w-32 px-2 text-center">SKU / Barcode</div>
-              <div className="w-20 px-2 text-center">Size</div>
-              <div className="w-32 px-2 text-center">Color</div>
-              <div className="w-28 px-2 text-right">Sold Qty</div>
-              <div className="w-36 px-2 text-right">Gross Sales</div>
-              <div className="w-36 px-2 text-right">WOST Sales</div>
-              <div className="w-32 px-2 text-right">Discounts</div>
-              <div className="w-28 px-2 text-right">Taxes</div>
-              <div className="w-36 px-4 text-right">SubTotal Revenue</div>
+              <div className="flex-1 min-w-[340px] px-4 shrink-0">Product Hierarchy / Description</div>
+              <div className="w-32 px-2 text-center shrink-0">SKU / Barcode</div>
+              <div className="w-20 px-2 text-center shrink-0">Size</div>
+              <div className="w-32 px-2 text-center shrink-0">Color</div>
+              <div className="w-28 px-2 text-right shrink-0">Sold Qty</div>
+              <div className="w-36 px-2 text-right shrink-0">Gross Sales</div>
+              <div className="w-36 px-2 text-right shrink-0">WOST Sales</div>
+              <div className="w-32 px-2 text-right shrink-0">Discounts</div>
+              <div className="w-28 px-2 text-right shrink-0">Taxes</div>
+              <div className="w-44 px-4 text-right shrink-0">SubTotal Revenue</div>
             </div>
 
             {/* Virtualized Body */}
@@ -319,7 +319,7 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
                       </div>
 
                       {/* Column 9: SubTotal Revenue */}
-                      <div className="w-36 px-4 text-right shrink-0 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <div className="w-44 px-4 text-right shrink-0 font-mono font-bold text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(node.totals.netAmount)}
                       </div>
                     </div>
@@ -330,16 +330,16 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
 
             {/* Sticky Table Footer */}
             <div className="sticky bottom-0 z-10 flex items-center bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase text-[11px] font-mono font-bold h-11 border-t-2 border-slate-300 dark:border-slate-700 shadow-md">
-              <div className="flex-1 min-w-[340px] px-4">Grand Total Summary</div>
-              <div className="w-32 px-2 text-center">-</div>
-              <div className="w-20 px-2 text-center">-</div>
-              <div className="w-32 px-2 text-center">-</div>
-              <div className="w-28 px-2 text-right font-black">{grandTotals.totalItems.toLocaleString()}</div>
-              <div className="w-36 px-2 text-right">{formatCurrency(grandTotals.grossAmount)}</div>
-              <div className="w-36 px-2 text-right">{formatCurrency(grandTotals.wostAmount)}</div>
-              <div className="w-32 px-2 text-right text-amber-600 dark:text-amber-400">{formatCurrency(grandTotals.discountAmount)}</div>
-              <div className="w-28 px-2 text-right">{formatCurrency(grandTotals.taxAmount)}</div>
-              <div className="w-36 px-4 text-right text-emerald-600 dark:text-emerald-400 font-black">{formatCurrency(grandTotals.netAmount)}</div>
+              <div className="flex-1 min-w-[340px] px-4 shrink-0">Grand Total Summary</div>
+              <div className="w-32 px-2 text-center shrink-0">-</div>
+              <div className="w-20 px-2 text-center shrink-0">-</div>
+              <div className="w-32 px-2 text-center shrink-0">-</div>
+              <div className="w-28 px-2 text-right font-black shrink-0">{grandTotals.totalItems.toLocaleString()}</div>
+              <div className="w-36 px-2 text-right shrink-0">{formatCurrency(grandTotals.grossAmount)}</div>
+              <div className="w-36 px-2 text-right shrink-0">{formatCurrency(grandTotals.wostAmount)}</div>
+              <div className="w-32 px-2 text-right text-amber-600 dark:text-amber-400 shrink-0">{formatCurrency(grandTotals.discountAmount)}</div>
+              <div className="w-28 px-2 text-right shrink-0">{formatCurrency(grandTotals.taxAmount)}</div>
+              <div className="w-44 px-4 text-right text-emerald-600 dark:text-emerald-400 font-black shrink-0">{formatCurrency(grandTotals.netAmount)}</div>
             </div>
           </div>
         </div>
