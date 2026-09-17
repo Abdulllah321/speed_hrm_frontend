@@ -832,7 +832,17 @@ export function ProfitLossClient({
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={includeTagAccounts}
-                    onCheckedChange={setIncludeTagAccounts}
+                    onCheckedChange={(checked) => {
+                      setIncludeTagAccounts(checked);
+                      loadData(
+                        fromDate,
+                        toDate,
+                        enableCompare ? compareFromDate : undefined,
+                        enableCompare ? compareToDate : undefined,
+                        checked,
+                        showZeroBalances
+                      );
+                    }}
                     id="tag-switch"
                   />
                   <Label htmlFor="tag-switch" className="text-xs cursor-pointer">
@@ -843,7 +853,17 @@ export function ProfitLossClient({
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={showZeroBalances}
-                    onCheckedChange={setShowZeroBalances}
+                    onCheckedChange={(checked) => {
+                      setShowZeroBalances(checked);
+                      loadData(
+                        fromDate,
+                        toDate,
+                        enableCompare ? compareFromDate : undefined,
+                        enableCompare ? compareToDate : undefined,
+                        includeTagAccounts,
+                        checked
+                      );
+                    }}
                     id="zero-switch"
                   />
                   <Label htmlFor="zero-switch" className="text-xs cursor-pointer">
