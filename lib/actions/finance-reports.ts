@@ -352,17 +352,16 @@ export interface GeneralLedgerSummaryResult {
 }
 
 export async function getGeneralLedgerSummary(
-  parentAccountId: string,
-  subAccountIds: string[],
+  parentAccountIds: string[],
+  subAccountIds?: string[],
   from?: string,
   to?: string
-): Promise<{ status: boolean; data?: GeneralLedgerSummaryResult; message?: string }> {
+): Promise<{ status: boolean; data?: GeneralLedgerSummaryResult[]; message?: string }> {
   try {
-    const idsParam = subAccountIds && subAccountIds.length > 0 ? subAccountIds.join(',') : undefined;
     const res = await authFetch(
       `/finance/reports/general-ledger-summary${buildQuery({
-        parentAccountId,
-        subAccountIds: idsParam,
+        parentAccountIds: parentAccountIds.join(","),
+        subAccountIds: subAccountIds?.join(","),
         from,
         to,
       })}`,
