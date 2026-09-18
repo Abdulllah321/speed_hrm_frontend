@@ -474,13 +474,8 @@ export default function CreditNoteDetailPage({ params }: { params: Promise<{ id:
               </table>
             )}
 
-            <div className="flex justify-end pt-2 border-t-2 border-black">
-              <div className="w-[40%] flex justify-between items-center text-lg font-bold">
-                <span>TOTAL CREDIT AMOUNT:</span>
-                <span className="text-xl tabular-nums" style={{ borderBottom: '3px double black' }}>
-                  Rs. {fmtInt(Number(creditNote.amount))}
-                </span>
-              </div>
+            <div className="mt-8 pt-3 border-t border-black/20 text-center text-xs font-bold uppercase tracking-wider text-gray-700">
+              THIS IS SYSTEM GENERATE INVOICE
             </div>
           </div>
         </div>
