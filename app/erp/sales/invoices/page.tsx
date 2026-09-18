@@ -60,19 +60,47 @@ export default function SalesInvoicesPage() {
     const handleExport = async () => {
         setIsExporting(true);
         try {
-            const res = await queueSalesInvoicesExport(selected);
-            if (res.status) {
-                toast.success('Export started! You will receive a notification when it is ready.');
-                setSelected([]);
-            } else {
-                toast.error(res.message || 'Failed to start export');
+            const { getApiBaseUrl } = await import("@/lib/utils");
+            const { getAccessToken } = await import("@/lib/auth");
+            
+            const accessToken = await getAccessToken();
+            const url = `${getApiBaseUrl()}/sales-invoices/export/sync`;
+            
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                },
+                body: JSON.stringify({ invoiceIds: selected }),
+                credentials: "include",
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Failed to download export');
             }
-        } catch (error) {
-            toast.error('An error occurred while starting the export');
+
+            const blob = await res.blob();
+            const downloadUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.download = `sales-invoices-detailed-${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(downloadUrl);
+            
+            toast.success("Detailed Excel downloaded successfully!");
+            setSelected([]);
+        } catch (error: any) {
+            toast.error(error.message || 'An error occurred during detailed export');
         } finally {
             setIsExporting(false);
         }
     };
+
+
 
     const totals = loading ? { total: 0, paid: 0, outstanding: 0 } : (invoices || []).reduce(
         (acc, inv) => ({
@@ -93,8 +121,8 @@ export default function SalesInvoicesPage() {
                     </div>
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
-                            {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-                            {selected.length > 0 ? `Export Selected (${selected.length})` : 'Export All to Excel'}
+                            {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCcw className="h-4 w-4 mr-2" />}
+                            {selected.length > 0 ? `Export Detailed Excel (${selected.length})` : 'Export Detailed Excel'}
                         </Button>
                         <PermissionGuard permissions="erp.sales.invoice.create" fallback={null}>
                             <Button onClick={() => router.push('/erp/sales/invoices/create')}>

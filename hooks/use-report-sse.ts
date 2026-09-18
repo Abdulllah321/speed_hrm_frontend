@@ -15,7 +15,7 @@ export interface ReportSseState {
 
 export function useReportSse(
   jobId: string | null,
-  reportType: "available" | "valuation" | "stock-activity" | "overall-reserved" | "transaction-detail" | "cost-of-sales" | "sales-list" | "sales-register" | "gross-sales-return" | "gross-sales-summary" | "net-sales-summary" | "inventory-aging" = "available"
+  reportType: "available" | "valuation" | "stock-activity" | "overall-reserved" | "transaction-detail" | "cost-of-sales" | "sales-list" | "sales-register" | "gross-sales-return" | "gross-sales-summary" | "net-sales-summary" | "inventory-aging" | "wholesale-invoice-register" | "wholesale-return-register" = "available"
 ): ReportSseState {
   const [state, setState] = useState<ReportSseState>({
     status: "idle",
@@ -74,6 +74,10 @@ export function useReportSse(
         ? `/api/pos-sales/reports/gross-sales-summary/stream/${jobId}`
         : reportType === "net-sales-summary"
         ? `/api/pos-sales/reports/net-sales-summary/stream/${jobId}`
+        : reportType === "wholesale-invoice-register"
+        ? `/api/sales/reports/wholesale-invoice-register/stream/${jobId}`
+        : reportType === "wholesale-return-register"
+        ? `/api/sales/reports/wholesale-return-register/stream/${jobId}`
         : `/api/stock-ledger/available-stock-summary/stream/${jobId}`;
     const streamUrl = `${baseUrl}${endpoint}`;
 

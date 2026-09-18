@@ -246,8 +246,8 @@ export default function CreditNoteDetailPage({ params }: { params: Promise<{ id:
               visibility: visible;
             }
             @page {
-              margin: 0;
               size: auto;
+              margin: 8mm;
             }
             header, nav, footer, aside, .banner {
               display: none !important;

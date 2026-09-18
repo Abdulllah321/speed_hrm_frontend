@@ -10,7 +10,7 @@ export function getApiBaseUrl(): string {
 
   // Server-side: prefer internal API_URL (direct Docker/localhost connection, no nginx hop)
   if (isServer) {
-    return process.env.API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+    return process.env.API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
   }
 
   // Client-side: use NEXT_PUBLIC_API_BASE_URL if set (set this to https://auth.spl.inplsoftwares.com in prod)
@@ -21,10 +21,10 @@ export function getApiBaseUrl(): string {
   // Client-side dev: localtest.me subdomain support
   const hostname = window.location.hostname;
   if (hostname.includes("localtest.me")) {
-    return "http://api.localtest.me:5000";
+    return "http://api.localtest.me:5000/api";
   }
 
-  return "http://localhost:5000";
+  return "http://localhost:5000/api";
 }
 
 // Helper to get cookie domain

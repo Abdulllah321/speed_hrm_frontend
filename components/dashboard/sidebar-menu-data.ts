@@ -1096,14 +1096,22 @@ export const menuData: MenuItem[] = [
       {
         title: "Reports",
         children: [
-          { title: "Sales Summary", href: "/erp/sales/reports/summary" },
+          // { title: "Sales Summary", href: "/erp/sales/reports/summary" },
+          // {
+          //   title: "Customer Ledger",
+          //   href: "/erp/sales/reports/customer-ledger",
+          // },
+          // {
+          //   title: "Outstanding Invoices",
+          //   href: "/erp/sales/reports/outstanding",
+          // },
           {
-            title: "Customer Ledger",
-            href: "/erp/sales/reports/customer-ledger",
+            title: "Wholesale Invoice Register",
+            href: "/erp/sales/reports/wholesale-invoice-register",
           },
           {
-            title: "Outstanding Invoices",
-            href: "/erp/sales/reports/outstanding",
+            title: "Wholesale Return Register",
+            href: "/erp/sales/reports/wholesale-return-register",
           },
         ],
       },
@@ -1904,7 +1912,7 @@ export const menuData: MenuItem[] = [
     ],
   },
 
-   {
+  {
     title: "Reports",
     icon: TrendingUp,
     environment: "ERP",
@@ -1993,6 +2001,16 @@ export const menuData: MenuItem[] = [
           {
             title: "Alliance Register",
             href: "/erp/reports/pos/alliance-register",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Wholesale Invoice Register",
+            href: "/erp/sales/reports/wholesale-invoice-register",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Wholesale Return Register",
+            href: "/erp/sales/reports/wholesale-return-register",
             permissions: ["erp.report.view"],
           },
         ],
@@ -2234,3 +2252,4 @@ export function filterMenuByPermissions(
 
   return filterItems(items);
 }
+

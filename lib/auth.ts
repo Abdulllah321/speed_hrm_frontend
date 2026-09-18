@@ -269,12 +269,14 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
   } else {
     // Client-side
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    const accessToken = await getAccessToken();
 
     try {
       const response = await fetch(fullUrl, {
         method: options.method || 'GET',
         headers: {
           ...(options.body && !isFormData ? { "Content-Type": "application/json" } : {}),
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           ...options.headers,
         },
         body: options.body ? (isFormData || typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,

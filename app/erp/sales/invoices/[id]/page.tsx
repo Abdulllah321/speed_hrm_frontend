@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { salesInvoiceApi } from "@/lib/api";
+import { getSalesInvoiceById, postSalesInvoice, cancelSalesInvoice } from "@/lib/actions/sales-invoices";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 
@@ -276,13 +276,15 @@ export default function SalesInvoiceViewPage() {
   const loadInvoice = async (id: string) => {
     try {
       setLoading(true);
-      const response = await salesInvoiceApi.getById(id);
-      const invoiceData = response.data || response;
-      setInvoice(invoiceData);
-    } catch (error) {
+      const res = await getSalesInvoiceById(id);
+      if (res.status && res.data) {
+        setInvoice(res.data);
+      } else {
+        toast.error(res.message || "Failed to load sales invoice");
+      }
+    } catch (error: any) {
       console.error('Error loading invoice:', error);
-      toast.error("Failed to load sales invoice");
-      router.push("/erp/sales/invoices");
+      toast.error(error?.message || "Failed to load sales invoice");
     } finally {
       setLoading(false);
     }
@@ -292,11 +294,15 @@ export default function SalesInvoiceViewPage() {
     if (!invoice) return;
     
     try {
-      await salesInvoiceApi.post(invoice.id);
-      toast.success("Sales invoice posted successfully");
-      loadInvoice(invoice.id);
-    } catch (error) {
-      toast.error("Failed to post invoice");
+      const res = await postSalesInvoice(invoice.id);
+      if (res.status) {
+        toast.success("Sales invoice posted successfully");
+        loadInvoice(invoice.id);
+      } else {
+        toast.error(res.message || "Failed to post invoice");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to post invoice");
       console.error(error);
     }
   };
@@ -309,11 +315,15 @@ export default function SalesInvoiceViewPage() {
     }
     
     try {
-      await salesInvoiceApi.cancel(invoice.id);
-      toast.success("Sales invoice cancelled successfully");
-      loadInvoice(invoice.id);
-    } catch (error) {
-      toast.error("Failed to cancel invoice");
+      const res = await cancelSalesInvoice(invoice.id);
+      if (res.status) {
+        toast.success("Sales invoice cancelled successfully");
+        loadInvoice(invoice.id);
+      } else {
+        toast.error(res.message || "Failed to cancel invoice");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to cancel invoice");
       console.error(error);
     }
   };
@@ -351,8 +361,21 @@ export default function SalesInvoiceViewPage() {
   if (!invoice) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Sales invoice not found</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/erp/sales/invoices")}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Invoices
+          </Button>
+        </div>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground text-lg">Sales invoice not found</p>
+          <Button className="mt-4" onClick={() => router.push("/erp/sales/invoices")}>
+            Return to Invoices List
+          </Button>
         </div>
       </div>
     );
