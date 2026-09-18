@@ -67,22 +67,19 @@ export async function streamNdjson(
         } catch (parseErr) {
           console.warn("[streamNdjson] Skipping malformed line:", trimmed, parseErr);
         }
-        // Yield to browser event loop every 2 lines to allow Chrome to paint, drain network buffers, and prevent TCP zero-window timeouts
-        if (i % 2 === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 0));
-        }
       }
-      // Micro-yield after each chunk read from network
-      await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
-    // Process any remaining bytes in buffer
+    // Flush any remaining characters from the decoder
+    buffer += decoder.decode();
+
+    // Process any remaining complete line in buffer
     if (buffer.trim()) {
       try {
         const parsed = JSON.parse(buffer.trim());
         onLine(parsed);
       } catch (parseErr) {
-        console.warn("[streamNdjson] Skipping trailing malformed line:", buffer, parseErr);
+        console.warn("[streamNdjson] Skipping trailing incomplete line:", parseErr);
       }
     }
 
@@ -115,6 +112,7 @@ export async function streamSalesListResult(
   signal?: AbortSignal
 ): Promise<void> {
   let receivedInvoicesCount = 0;
+  let hasCompleted = false;
 
   await streamNdjson(`/pos-sales/reports/sales-list/result/${jobId}?format=ndjson`, {
     signal,
@@ -125,7 +123,13 @@ export async function streamSalesListResult(
         receivedInvoicesCount += msg.invoices.length;
         callbacks.onBatch(msg.invoices, msg.startIndex, msg.count);
       } else if (msg.type === "totals") {
+        hasCompleted = true;
         callbacks.onComplete(msg.grandTotals, msg.totalInvoices || receivedInvoicesCount);
+      }
+    },
+    onDone: () => {
+      if (!hasCompleted) {
+        callbacks.onComplete({}, receivedInvoicesCount);
       }
     },
     onError: callbacks.onError,
@@ -154,6 +158,7 @@ export async function streamGrossSalesSummaryResult(
   signal?: AbortSignal
 ): Promise<void> {
   let receivedCount = 0;
+  let hasCompleted = false;
 
   await streamNdjson(`/pos-sales/reports/gross-sales-summary/result/${jobId}?format=ndjson`, {
     signal,
@@ -166,7 +171,13 @@ export async function streamGrossSalesSummaryResult(
       } else if (msg.type === "flatItems" && Array.isArray(msg.flatItems)) {
         callbacks.onFlatItemsBatch?.(msg.flatItems, msg.startIndex, msg.count);
       } else if (msg.type === "totals") {
+        hasCompleted = true;
         callbacks.onComplete(msg.grandTotals, msg.totalRecords || receivedCount);
+      }
+    },
+    onDone: () => {
+      if (!hasCompleted) {
+        callbacks.onComplete({}, receivedCount);
       }
     },
     onError: callbacks.onError,
@@ -195,6 +206,7 @@ export async function streamGrossSalesReturnResult(
   signal?: AbortSignal
 ): Promise<void> {
   let receivedCount = 0;
+  let hasCompleted = false;
 
   await streamNdjson(`/pos-sales/reports/gross-sales-return/result/${jobId}?format=ndjson`, {
     signal,
@@ -207,7 +219,13 @@ export async function streamGrossSalesReturnResult(
       } else if (msg.type === "flatItems" && Array.isArray(msg.flatItems)) {
         callbacks.onFlatItemsBatch?.(msg.flatItems, msg.startIndex, msg.count);
       } else if (msg.type === "totals") {
+        hasCompleted = true;
         callbacks.onComplete(msg.grandTotals, msg.totalRecords || receivedCount);
+      }
+    },
+    onDone: () => {
+      if (!hasCompleted) {
+        callbacks.onComplete({}, receivedCount);
       }
     },
     onError: callbacks.onError,
@@ -235,6 +253,7 @@ export async function streamNetSalesSummaryResult(
   signal?: AbortSignal
 ): Promise<void> {
   let receivedCount = 0;
+  let hasCompleted = false;
 
   await streamNdjson(`/pos-sales/reports/net-sales-summary/result/${jobId}?format=ndjson`, {
     signal,
@@ -242,14 +261,21 @@ export async function streamNetSalesSummaryResult(
       if (msg.type === "meta") {
         callbacks.onMeta(msg);
       } else if (msg.type === "categories" && Array.isArray(msg.categories)) {
-        receivedCount += msg.categories.length;
         callbacks.onBatch(msg.categories, msg.startIndex, msg.count);
       } else if (msg.type === "flatItems" && Array.isArray(msg.flatItems)) {
+        receivedCount += msg.flatItems.length;
         callbacks.onFlatItemsBatch?.(msg.flatItems, msg.startIndex, msg.count);
       } else if (msg.type === "totals") {
+        hasCompleted = true;
         callbacks.onComplete(msg.grandTotals, msg.totalRecords || receivedCount);
+      }
+    },
+    onDone: () => {
+      if (!hasCompleted) {
+        callbacks.onComplete({}, receivedCount);
       }
     },
     onError: callbacks.onError,
   });
 }
+

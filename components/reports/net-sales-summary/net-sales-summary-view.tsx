@@ -350,7 +350,7 @@ export function NetSalesSummaryView({
               locations: initialMeta?.locations || [],
               categories: accumulatedCategories,
               flatItems: accumulatedFlatItems,
-              grandTotals: totals,
+              grandTotals: totals || {},
             });
             setIsFetchingResult(false);
             setStreamProgress((prev) => ({
@@ -361,13 +361,64 @@ export function NetSalesSummaryView({
             }));
             toast.success("Net sales summary updated");
           },
-          onError: (err) => {
+          onError: async (err) => {
             if (err?.name === "AbortError") {
               setIsFetchingResult(false);
               setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
               return;
             }
-            console.error("[NetSalesSummary Stream Error]", err);
+            console.warn("[NetSalesSummary Stream Fallback] Stream interrupted, attempting fallback fetch...", err);
+            
+            // If we already received items before interruption, render them safely
+            if (accumulatedFlatItems.length > 0) {
+              setReportData({
+                reportType: initialMeta?.reportType || "merged",
+                dateRange: initialMeta?.dateRange || {},
+                locationNames: initialMeta?.locationNames || "",
+                locations: initialMeta?.locations || [],
+                categories: accumulatedCategories,
+                flatItems: accumulatedFlatItems,
+                grandTotals: {},
+              });
+              setIsFetchingResult(false);
+              setStreamProgress((prev) => ({
+                ...prev,
+                isStreaming: false,
+                loadedRecords: accumulatedFlatItems.length,
+                percent: 100,
+              }));
+              toast.success("Net sales summary loaded");
+              return;
+            }
+
+            // Otherwise, attempt direct standard JSON fallback from server
+            try {
+              const res = await getNetSalesSummaryResult(previewJobId);
+              if (res?.status && res?.data) {
+                const data = res.data;
+                setReportData({
+                  reportType: data.reportType || "merged",
+                  dateRange: data.dateRange || {},
+                  locationNames: data.locationNames || "",
+                  locations: data.locations || [],
+                  categories: data.categories || [],
+                  flatItems: data.flatItems || [],
+                  grandTotals: data.grandTotals || {},
+                });
+                setIsFetchingResult(false);
+                setStreamProgress((prev) => ({
+                  ...prev,
+                  isStreaming: false,
+                  loadedRecords: data.flatItems?.length || 0,
+                  percent: 100,
+                }));
+                toast.success("Net sales summary loaded (fallback)");
+                return;
+              }
+            } catch (fallbackErr) {
+              console.error("[NetSalesSummary Fallback Error]", fallbackErr);
+            }
+
             toast.error("Data stream interrupted. Please click Refresh to reload.");
             setIsFetchingResult(false);
             setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
