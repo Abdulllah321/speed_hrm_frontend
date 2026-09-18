@@ -359,13 +359,16 @@ export async function getGeneralLedgerSummary(
 ): Promise<{ status: boolean; data?: GeneralLedgerSummaryResult[]; message?: string }> {
   try {
     const res = await authFetch(
-      `/finance/reports/general-ledger-summary${buildQuery({
-        parentAccountIds: parentAccountIds.join(","),
-        subAccountIds: subAccountIds?.join(","),
-        from,
-        to,
-      })}`,
-      {}
+      `/finance/reports/general-ledger-summary`,
+      {
+        method: "POST",
+        body: {
+          parentAccountIds,
+          subAccountIds,
+          from,
+          to,
+        },
+      }
     );
     return res.data;
   } catch (e: any) {

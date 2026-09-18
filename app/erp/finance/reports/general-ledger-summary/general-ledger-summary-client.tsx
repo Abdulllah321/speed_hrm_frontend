@@ -12,8 +12,12 @@ import {
   Keyboard,
   CheckSquare,
   Square,
+  SquareMinus,
   Check,
   Search,
+  ChevronDown,
+  ChevronRight,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -53,6 +57,23 @@ const getLocalEndOfDayISO = (d: Date) => {
   return end.toISOString();
 };
 
+export interface SubAccountItem extends ChartOfAccount {
+  parentAccount: {
+    id: string;
+    code: string;
+    name: string;
+  };
+}
+
+export interface ParentAccountGroup {
+  parentAccount: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  subAccounts: SubAccountItem[];
+}
+
 export function GeneralLedgerSummaryClient({
   accounts,
 }: {
@@ -75,44 +96,138 @@ export function GeneralLedgerSummaryClient({
   const [fromAccountId, setFromAccountId] = React.useState<string | null>(null);
   const [toAccountId, setToAccountId] = React.useState<string | null>(null);
 
+  // Group collapse state
+  const [collapsedGroupIds, setCollapsedGroupIds] = React.useState<Set<string>>(new Set());
+
   // Keyboard navigation on list
   const [focusedIndex, setFocusedIndex] = React.useState<number>(-1);
 
-  // Find selected parent account in the tree to check for sub-accounts
-  const subAccounts = React.useMemo(() => {
+  // Find selected parent accounts in the tree and organize sub-accounts into groups
+  const parentGroups = React.useMemo<ParentAccountGroup[]>(() => {
     if (parentAccountIds.length === 0 || accounts.length === 0) return [];
 
-    const findInTree = (nodes: ChartOfAccount[], targetIds: string[]): ChartOfAccount[] => {
-      const results: ChartOfAccount[] = [];
+    const findNodeById = (nodes: ChartOfAccount[], targetId: string): ChartOfAccount | null => {
       for (const node of nodes) {
-        if (targetIds.includes(node.id)) {
-          if (node.children) results.push(...node.children);
-        } else if (node.children) {
-          results.push(...findInTree(node.children, targetIds));
+        if (node.id === targetId) return node;
+        if (node.children && node.children.length > 0) {
+          const found = findNodeById(node.children, targetId);
+          if (found) return found;
         }
       }
-      return results;
+      return null;
     };
 
-    return findInTree(accounts, parentAccountIds);
+    const getLeaves = (node: ChartOfAccount, parentInfo: { id: string; code: string; name: string }): SubAccountItem[] => {
+      if (!node.children || node.children.length === 0) {
+        return [{ ...node, parentAccount: parentInfo }];
+      }
+      const res: SubAccountItem[] = [];
+      const walk = (items: ChartOfAccount[]) => {
+        for (const item of items) {
+          if (item.children && item.children.length > 0) {
+            walk(item.children);
+          } else {
+            res.push({ ...item, parentAccount: parentInfo });
+          }
+        }
+      };
+      walk(node.children);
+      return res;
+    };
+
+    const groups: ParentAccountGroup[] = [];
+    for (const pid of parentAccountIds) {
+      const node = findNodeById(accounts, pid);
+      if (node) {
+        const parentInfo = { id: node.id, code: node.code, name: node.name };
+        const subs: SubAccountItem[] = [];
+        if (node.children && node.children.length > 0) {
+          for (const child of node.children) {
+            if (child.children && child.children.length > 0) {
+              subs.push(...getLeaves(child, parentInfo));
+            } else {
+              subs.push({ ...child, parentAccount: parentInfo });
+            }
+          }
+        }
+        groups.push({
+          parentAccount: parentInfo,
+          subAccounts: subs,
+        });
+      }
+    }
+    return groups;
   }, [parentAccountIds, accounts]);
 
-  // Filtered subaccounts based on search input
+  // Flattened list of all sub-accounts across all selected parent accounts
+  const subAccounts: SubAccountItem[] = React.useMemo(() => {
+    return parentGroups.flatMap((g) => g.subAccounts);
+  }, [parentGroups]);
+
+  // Filtered subaccounts based on search input (matches code, name, or parent account)
   const filteredSubAccounts = React.useMemo(() => {
     if (!searchQuery.trim()) return subAccounts;
     const q = searchQuery.toLowerCase();
     return subAccounts.filter(
       (sa) =>
         sa.code.toLowerCase().includes(q) ||
-        sa.name.toLowerCase().includes(q)
+        sa.name.toLowerCase().includes(q) ||
+        sa.parentAccount.code.toLowerCase().includes(q) ||
+        sa.parentAccount.name.toLowerCase().includes(q)
     );
   }, [subAccounts, searchQuery]);
 
-  // Autocomplete options mapped from sub-accounts list
+  // Filtered groups retaining only subaccounts matching the search query
+  const filteredGroups = React.useMemo(() => {
+    return parentGroups
+      .map((group) => {
+        const groupSubs = group.subAccounts.filter((sa) =>
+          filteredSubAccounts.some((f) => f.id === sa.id)
+        );
+        return {
+          ...group,
+          subAccounts: groupSubs,
+        };
+      })
+      .filter((group) => group.subAccounts.length > 0);
+  }, [parentGroups, filteredSubAccounts]);
+
+  const toggleGroupCollapse = (groupId: string) => {
+    setCollapsedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
+
+  const collapseAllGroups = () => {
+    setCollapsedGroupIds(new Set(parentGroups.map((g) => g.parentAccount.id)));
+  };
+
+  const expandAllGroups = () => {
+    setCollapsedGroupIds(new Set());
+  };
+
+  const toggleGroupSelect = (group: ParentAccountGroup) => {
+    const groupIds = group.subAccounts.map((sa) => sa.id);
+    const allSelected = groupIds.length > 0 && groupIds.every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        groupIds.forEach((id) => next.delete(id));
+      } else {
+        groupIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  // Autocomplete options mapped from sub-accounts list with parent account tag
   const autocompleteOptions = React.useMemo(() => {
     return subAccounts.map((sa) => ({
       value: sa.id,
-      label: `${sa.code} — ${sa.name}`,
+      label: `${sa.code} — ${sa.name} [${sa.parentAccount.code}]`,
     }));
   }, [subAccounts]);
 
@@ -234,17 +349,24 @@ export function GeneralLedgerSummaryClient({
     }
   }, [fromAccountId, toAccountId]);
 
-  // Scroll active/focused element into view automatically
+  // Scroll active/focused element into view automatically and auto-expand group if collapsed
   React.useEffect(() => {
     if (focusedIndex >= 0 && filteredSubAccounts[focusedIndex]) {
-      const activeId = filteredSubAccounts[focusedIndex].id;
+      const activeItem = filteredSubAccounts[focusedIndex];
+      if (activeItem.parentAccount?.id && collapsedGroupIds.has(activeItem.parentAccount.id)) {
+        setCollapsedGroupIds((prev) => {
+          const next = new Set(prev);
+          next.delete(activeItem.parentAccount.id);
+          return next;
+        });
+      }
       const container = document.getElementById("subaccounts-list-container");
-      const item = document.getElementById(`subaccount-item-${activeId}`);
+      const item = document.getElementById(`subaccount-item-${activeItem.id}`);
       if (container && item) {
         item.scrollIntoView({ block: "nearest", behavior: "auto" });
       }
     }
-  }, [focusedIndex, filteredSubAccounts]);
+  }, [focusedIndex, filteredSubAccounts, collapsedGroupIds]);
 
   const applySerialRange = () => {
     const fromVal = parseInt(fromSerial, 10);
@@ -277,9 +399,10 @@ export function GeneralLedgerSummaryClient({
     }
 
     startTransition(async () => {
+      const isAllSelected = selectedIds.size === subAccounts.length;
       const res = await getGeneralLedgerSummary(
         parentAccountIds,
-        Array.from(selectedIds),
+        isAllSelected ? undefined : Array.from(selectedIds),
         fromDate ? getLocalStartOfDayISO(fromDate) : undefined,
         toDate ? getLocalEndOfDayISO(toDate) : undefined,
       );
@@ -319,7 +442,7 @@ export function GeneralLedgerSummaryClient({
     data.forEach((summary) => {
       const filtered = getFilteredRows(summary.rows);
       const rows = filtered.map((r) => [
-        `${summary.parentAccount.code} ${r.code}`,
+        `${summary.parentAccount?.code ?? ""} ${r.code}`,
         r.name,
         r.openingBalance.toFixed(2),
         r.debit.toFixed(2),
@@ -328,7 +451,7 @@ export function GeneralLedgerSummaryClient({
       ]);
 
       csvContent.push(
-        [`General Ledger Subaccount Summary - ${summary.parentAccount.code} - ${summary.parentAccount.name}`],
+        [`General Ledger Subaccount Summary - ${summary.parentAccount?.code ?? ""} - ${summary.parentAccount?.name ?? ""}`],
         [
           `Period: ${fromDate ? format(fromDate, "dd-MMM-yyyy") : "Beginning"} to ${toDate ? format(toDate, "dd-MMM-yyyy") : "Present"}`,
         ],
@@ -382,10 +505,12 @@ export function GeneralLedgerSummaryClient({
               <CardTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
                 GL Subaccount Summary
               </CardTitle>
-              {data && (
+              {data && data.length > 0 && (
                 <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
                   <span className="font-semibold px-2 py-0.5 bg-muted rounded-full border">
-                    {data.parentAccount.code} — {data.parentAccount.name}
+                    {data.length === 1
+                      ? `${data[0]?.parentAccount?.code ?? ""} — ${data[0]?.parentAccount?.name ?? ""}`
+                      : `${data.length} Accounts Selected`}
                   </span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
@@ -403,7 +528,7 @@ export function GeneralLedgerSummaryClient({
                 variant="outline"
                 size="sm"
                 onClick={() => window.print()}
-                disabled={!data || filteredRows.length === 0}
+                disabled={!data || data.length === 0}
                 className="h-9 hover:bg-accent text-xs"
               >
                 <Printer className="h-3.5 w-3.5 mr-2 text-muted-foreground" />{" "}
@@ -413,7 +538,7 @@ export function GeneralLedgerSummaryClient({
                 variant="outline"
                 size="sm"
                 onClick={exportToCSV}
-                disabled={!data || filteredRows.length === 0}
+                disabled={!data || data.length === 0}
                 className="h-9 hover:bg-accent text-xs"
               >
                 <Download className="h-3.5 w-3.5 mr-2 text-muted-foreground" />{" "}
@@ -526,21 +651,40 @@ export function GeneralLedgerSummaryClient({
                   <div className="flex-1 flex flex-col min-h-0 border rounded-lg bg-background">
                     {/* Header bar of checklist */}
                     <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/20 text-xs font-bold flex-shrink-0">
-                      <span>Sub-accounts ({filteredSubAccounts.length})</span>
-                      <button
-                        type="button"
-                        onClick={toggleSelectAllFiltered}
-                        className="text-primary hover:underline font-semibold"
-                      >
-                        {filteredSubAccounts.every((sa) => selectedIds.has(sa.id)) ? "Deselect Filtered" : "Select Filtered"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <span>Sub-accounts ({filteredSubAccounts.length})</span>
+                        {parentGroups.length > 1 && (
+                          <span className="text-[10px] text-muted-foreground font-normal">
+                            ({parentGroups.length} groups)
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {parentGroups.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={collapsedGroupIds.size > 0 ? expandAllGroups : collapseAllGroups}
+                            className="text-[10px] text-muted-foreground hover:text-foreground font-medium transition-colors"
+                          >
+                            {collapsedGroupIds.size > 0 ? "Expand All" : "Collapse All"}
+                          </button>
+                        )}
+                        {parentGroups.length > 1 && <span className="text-muted-foreground/30">•</span>}
+                        <button
+                          type="button"
+                          onClick={toggleSelectAllFiltered}
+                          className="text-primary hover:underline font-semibold"
+                        >
+                          {filteredSubAccounts.every((sa) => selectedIds.has(sa.id)) ? "Deselect Filtered" : "Select Filtered"}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Search Bar for Subaccounts */}
                     <div className="p-2 border-b bg-muted/5 flex-shrink-0">
                       <div className="relative">
                         <Input
-                          placeholder="Search sub-accounts by code/name..."
+                          placeholder="Search sub-accounts by code/name/parent..."
                           value={searchQuery}
                           onChange={(e) => {
                             setSearchQuery(e.target.value);
@@ -561,104 +705,181 @@ export function GeneralLedgerSummaryClient({
                       </div>
                     </div>
 
-                    {/* Scrollable list with focused row visual indicator */}
+                    {/* Scrollable list grouped by parent account */}
                     <div
                       id="subaccounts-list-container"
-                      className="flex-1 overflow-y-auto p-1 divide-y divide-border/40 select-none scroll-smooth"
+                      className="flex-1 overflow-y-auto p-1.5 select-none scroll-smooth space-y-2"
                     >
-                      {filteredSubAccounts.map((child, idx) => {
-                        const serial = subAccounts.findIndex((sa) => sa.id === child.id) + 1;
-                        const isSelected = selectedIds.has(child.id);
-                        const isFocused = focusedIndex === idx;
+                      {filteredGroups.map((group) => {
+                        const isCollapsed = collapsedGroupIds.has(group.parentAccount.id);
+                        const groupSubs = group.subAccounts;
+                        const groupSubIds = groupSubs.map((sa) => sa.id);
+                        const selectedInGroupCount = groupSubIds.filter((id) => selectedIds.has(id)).length;
+                        const allGroupSelected = groupSubIds.length > 0 && selectedInGroupCount === groupSubIds.length;
+                        const someGroupSelected = selectedInGroupCount > 0 && !allGroupSelected;
 
                         return (
                           <div
-                            key={child.id}
-                            id={`subaccount-item-${child.id}`}
-                            onClick={() => {
-                              setSelectedIds((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(child.id)) next.delete(child.id);
-                                else next.add(child.id);
-                                return next;
-                              });
-                              setFocusedIndex(idx);
-                            }}
-                            className={cn(
-                              "flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer transition-colors rounded group justify-between",
-                              isFocused
-                                ? "bg-accent text-accent-foreground border-l-2 border-primary"
-                                : "hover:bg-accent/40",
-                            )}
+                            key={group.parentAccount.id}
+                            className="border border-border/70 rounded-lg overflow-hidden bg-card/60 shadow-xs"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-mono text-[9px] text-muted-foreground w-6 text-right shrink-0">
-                                {serial}.
-                              </span>
-                              {isSelected ? (
-                                <CheckSquare className="h-3.5 w-3.5 text-primary shrink-0" />
-                              ) : (
-                                <Square className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
-                              )}
-                              <div className="min-w-0 leading-tight">
-                                <p className="font-mono text-[10px] font-semibold text-foreground truncate">
-                                  {child.code}
-                                </p>
-                                <p className="text-muted-foreground text-[10px] truncate">
-                                  {child.name}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Range set buttons & indicators */}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {fromAccountId === child.id && (
-                                <span className="text-[7px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1 rounded font-extrabold uppercase scale-90">
-                                  From
-                                </span>
-                              )}
-                              {toAccountId === child.id && (
-                                <span className="text-[7px] bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-1 rounded font-extrabold uppercase scale-90">
-                                  To
-                                </span>
-                              )}
-
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Group Header */}
+                            <div
+                              onClick={() => toggleGroupCollapse(group.parentAccount.id)}
+                              className="flex items-center justify-between px-2.5 py-2 bg-muted/40 hover:bg-muted/70 cursor-pointer transition-colors border-b border-border/50 text-xs select-none"
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                {isCollapsed ? (
+                                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                ) : (
+                                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                )}
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setFromAccountId(child.id);
-                                    toast.success(`Set start account: ${child.name}`);
+                                    toggleGroupSelect(group);
                                   }}
+                                  className="p-0.5 hover:opacity-80 shrink-0"
+                                  title={allGroupSelected ? "Deselect Group" : "Select All in Group"}
+                                >
+                                  {allGroupSelected ? (
+                                    <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                                  ) : someGroupSelected ? (
+                                    <SquareMinus className="h-3.5 w-3.5 text-primary" />
+                                  ) : (
+                                    <Square className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                  )}
+                                </button>
+                                <div className="min-w-0 flex items-center gap-1.5 truncate">
+                                  <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 bg-primary/10 text-primary rounded border border-primary/20 shrink-0">
+                                    {group.parentAccount.code}
+                                  </span>
+                                  <span className="text-[11px] font-bold text-foreground truncate">
+                                    {group.parentAccount.name}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                <span
                                   className={cn(
-                                    "px-1 py-0.5 rounded text-[8px] font-extrabold border bg-background hover:bg-accent shadow-sm",
-                                    fromAccountId === child.id && "bg-emerald-50 border-emerald-300 text-emerald-700"
+                                    "text-[9px] font-mono px-1.5 py-0.5 rounded-full font-bold border",
+                                    allGroupSelected
+                                      ? "bg-primary/10 text-primary border-primary/20"
+                                      : someGroupSelected
+                                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                      : "bg-muted text-muted-foreground border-border"
                                   )}
                                 >
-                                  From
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setToAccountId(child.id);
-                                    toast.success(`Set end account: ${child.name}`);
-                                  }}
-                                  className={cn(
-                                    "px-1 py-0.5 rounded text-[8px] font-extrabold border bg-background hover:bg-accent shadow-sm",
-                                    toAccountId === child.id && "bg-indigo-50 border-indigo-300 text-indigo-700"
-                                  )}
-                                >
-                                  To
-                                </button>
+                                  {selectedInGroupCount}/{groupSubs.length}
+                                </span>
                               </div>
                             </div>
+
+                            {/* Subaccounts within group */}
+                            {!isCollapsed && (
+                              <div className="divide-y divide-border/40 bg-background/50">
+                                {groupSubs.map((child) => {
+                                  const serial = subAccounts.findIndex((sa) => sa.id === child.id) + 1;
+                                  const isSelected = selectedIds.has(child.id);
+                                  const flatIdx = filteredSubAccounts.findIndex((sa) => sa.id === child.id);
+                                  const isFocused = focusedIndex === flatIdx;
+
+                                  return (
+                                    <div
+                                      key={child.id}
+                                      id={`subaccount-item-${child.id}`}
+                                      onClick={() => {
+                                        setSelectedIds((prev) => {
+                                          const next = new Set(prev);
+                                          if (next.has(child.id)) next.delete(child.id);
+                                          else next.add(child.id);
+                                          return next;
+                                        });
+                                        if (flatIdx !== -1) setFocusedIndex(flatIdx);
+                                      }}
+                                      className={cn(
+                                        "flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer transition-colors group justify-between",
+                                        isFocused
+                                          ? "bg-accent text-accent-foreground border-l-2 border-primary"
+                                          : "hover:bg-accent/40",
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="font-mono text-[9px] text-muted-foreground w-6 text-right shrink-0">
+                                          {serial}.
+                                        </span>
+                                        {isSelected ? (
+                                          <CheckSquare className="h-3.5 w-3.5 text-primary shrink-0" />
+                                        ) : (
+                                          <Square className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                                        )}
+                                        <div className="min-w-0 leading-tight">
+                                          <p className="font-mono text-[10px] font-semibold text-foreground truncate">
+                                            {child.code}
+                                          </p>
+                                          <p className="text-muted-foreground text-[10px] truncate max-w-[200px]">
+                                            {child.name}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      {/* Range set buttons & indicators */}
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        {fromAccountId === child.id && (
+                                          <span className="text-[7px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1 rounded font-extrabold uppercase scale-90">
+                                            From
+                                          </span>
+                                        )}
+                                        {toAccountId === child.id && (
+                                          <span className="text-[7px] bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-1 rounded font-extrabold uppercase scale-90">
+                                            To
+                                          </span>
+                                        )}
+
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setFromAccountId(child.id);
+                                              toast.success(`Set start account: ${child.name}`);
+                                            }}
+                                            className={cn(
+                                              "px-1 py-0.5 rounded text-[8px] font-extrabold border bg-background hover:bg-accent shadow-xs",
+                                              fromAccountId === child.id && "bg-emerald-50 border-emerald-300 text-emerald-700"
+                                            )}
+                                          >
+                                            From
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setToAccountId(child.id);
+                                              toast.success(`Set end account: ${child.name}`);
+                                            }}
+                                            className={cn(
+                                              "px-1 py-0.5 rounded text-[8px] font-extrabold border bg-background hover:bg-accent shadow-xs",
+                                              toAccountId === child.id && "bg-indigo-50 border-indigo-300 text-indigo-700"
+                                            )}
+                                          >
+                                            To
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
-                      {filteredSubAccounts.length === 0 && (
-                        <div className="p-4 text-center text-muted-foreground text-xs">
+
+                      {filteredGroups.length === 0 && (
+                        <div className="p-6 text-center text-muted-foreground text-xs">
                           No sub-accounts match the search query.
                         </div>
                       )}
@@ -721,11 +942,48 @@ export function GeneralLedgerSummaryClient({
 
                 {data && data.length > 0 && (
                   <div className="space-y-8">
-                    {data.map((summary) => {
+                    {data.map((summary, idx) => {
                       const filteredRows = getFilteredRows(summary.rows);
                       return (
-                        <div key={summary.parentAccount.id} className="overflow-x-auto rounded-xl border shadow-sm bg-card">
-                          <table className="w-full text-xs border-collapse">
+                        <div key={summary.parentAccount?.id || idx} className="overflow-hidden rounded-xl border shadow-sm bg-card">
+                          {/* Parent Head Account Header Banner */}
+                          <div className="bg-gradient-to-r from-muted/70 via-muted/40 to-background px-4 py-3.5 border-b flex items-center justify-between flex-wrap gap-3">
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono text-xs font-bold px-2.5 py-1 bg-primary text-primary-foreground rounded-md shadow-xs">
+                                {summary.parentAccount?.code}
+                              </span>
+                              <div>
+                                <h3 className="text-sm font-bold text-foreground">
+                                  {summary.parentAccount?.name}
+                                </h3>
+                                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                  <Layers className="h-3 w-3 text-primary/70" />
+                                  <span>Head Account Group</span>
+                                  <span>•</span>
+                                  <span>{filteredRows.length} active sub-account{filteredRows.length !== 1 ? "s" : ""}</span>
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs">
+                              <span className="text-muted-foreground">
+                                Opening: <strong className="font-mono text-foreground font-semibold">{fmt(summary.totals.openingBalance)}</strong>
+                              </span>
+                              <span className="text-muted-foreground">
+                                Debit: <strong className="font-mono text-blue-600 dark:text-blue-400 font-semibold">{fmt(summary.totals.debit)}</strong>
+                              </span>
+                              <span className="text-muted-foreground">
+                                Credit: <strong className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{fmt(summary.totals.credit)}</strong>
+                              </span>
+                              <span className="text-muted-foreground">
+                                Closing: <strong className={cn("font-mono font-bold", summary.totals.closingBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>
+                                  {fmt(summary.totals.closingBalance)}
+                                </strong>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs border-collapse">
                             <thead>
                               {/* Row 1 Headers */}
                               <tr className="bg-muted/30 border-b text-muted-foreground/80 font-medium border-border/80">
@@ -787,7 +1045,7 @@ export function GeneralLedgerSummaryClient({
                                   {/* Code and Title */}
                                   <td className="px-4 py-3 border-r font-mono text-[10px] leading-tight text-foreground flex justify-between gap-4">
                                     <span>
-                                      {summary.parentAccount.code} {row.code}
+                                      {summary.parentAccount?.code} {row.code}
                                     </span>
                                     <span className="font-sans text-muted-foreground text-[10px] truncate max-w-[280px]">
                                       {row.name}
@@ -857,7 +1115,8 @@ export function GeneralLedgerSummaryClient({
                                 </td>
                               </tr>
                             </tfoot>
-                          </table>
+                            </table>
+                          </div>
                         </div>
                       );
                     })}
@@ -900,25 +1159,40 @@ export function GeneralLedgerSummaryClient({
             }}
           />
 
-          {data.map((summary) => {
+          {/* Main Report Header (Printed once at the top of the document) */}
+          <div className="flex justify-between items-start border-b-2 border-black pb-1.5 mb-4">
+            <div>
+              <h1 className="text-sm font-bold uppercase tracking-wide">
+                General Ledger (Subaccount Summary)
+              </h1>
+              <p className="text-[9px] text-gray-600 font-medium mt-0.5">
+                {data.length} Head Account{data.length !== 1 ? "s" : ""} Included
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[9px] font-semibold text-gray-800">
+                Period: {fromDate ? format(fromDate, "dd/MM/yyyy") : "Beginning"} To{" "}
+                {toDate ? format(toDate, "dd/MM/yyyy") : "Present"}
+              </p>
+            </div>
+          </div>
+
+          {data.map((summary, idx) => {
             const filteredRows = getFilteredRows(summary.rows);
             return (
-              <div key={summary.parentAccount.id} className="mb-8 page-break-inside-avoid">
-                {/* Heading block */}
-                <div className="flex justify-between items-start border-b border-black pb-1 mb-2">
-                  <div>
-                    <h1 className="text-md font-bold uppercase tracking-wide">
-                      General Ledger (Subaccount Summary)
-                    </h1>
-                    <p className="text-[10px] font-bold text-gray-700 mt-1">
-                      Parent Account: {summary.parentAccount.code} — {summary.parentAccount.name}
-                    </p>
+              <div key={summary.parentAccount?.id || idx} className="mb-6 page-break-inside-avoid">
+                {/* Parent Account Header */}
+                <div className="flex justify-between items-center bg-gray-100 px-2 py-1 border border-gray-300 mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[9px] font-bold bg-white px-1.5 py-0.5 border border-gray-400 rounded">
+                      {summary.parentAccount?.code ?? ""}
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-900">
+                      {summary.parentAccount?.name ?? ""}
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[8px] mt-0.5">
-                      Form {fromDate ? format(fromDate, "dd/MM/yyyy") : "Beginning"} To{" "}
-                      {toDate ? format(toDate, "dd/MM/yyyy") : "Present"}
-                    </p>
+                  <div className="text-[8px] text-gray-600 font-mono">
+                    Closing Balance: <span className="font-bold text-black">{fmt(summary.totals.closingBalance)}</span>
                   </div>
                 </div>
 
@@ -969,7 +1243,7 @@ export function GeneralLedgerSummaryClient({
                         <td className="py-1 pr-1 font-mono text-[8px] text-left">
                           <div className="flex justify-start gap-4 pr-4">
                             <span className="shrink-0 whitespace-nowrap min-w-[70px]">
-                              {summary.parentAccount.code} {row.code}
+                              {summary.parentAccount?.code} {row.code}
                             </span>
                             <span className="font-sans text-gray-800 text-[8px] truncate">
                               {row.name}
