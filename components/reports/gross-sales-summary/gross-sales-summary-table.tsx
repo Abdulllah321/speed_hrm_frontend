@@ -158,7 +158,7 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
       {/* Main Virtualized Container */}
       <div className="border border-border/60 rounded-2xl overflow-hidden bg-background shadow-sm">
         <div ref={parentRef} className="max-h-[640px] overflow-auto relative">
-          <div className="min-w-[1600px]">
+          <div className="min-w-max md:min-w-[1750px]">
             {/* Sticky Table Header */}
             <div className="sticky top-0 z-10 flex items-center bg-slate-900 dark:bg-slate-950 text-slate-100 text-[11px] font-mono font-semibold uppercase tracking-wider h-11 border-b border-border/80 shadow-md">
               <div className="flex-1 min-w-[340px] px-4 shrink-0">Product Hierarchy / Description</div>
@@ -169,6 +169,7 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
               <div className="w-36 px-2 text-right shrink-0">Gross Sales</div>
               <div className="w-36 px-2 text-right shrink-0">WOST Sales</div>
               <div className="w-32 px-2 text-right shrink-0">Discounts</div>
+              <div className="w-36 px-2 text-right shrink-0">After Disc Amt</div>
               <div className="w-28 px-2 text-right shrink-0">Taxes</div>
               <div className="w-44 px-4 text-right shrink-0">SubTotal Revenue</div>
             </div>
@@ -313,6 +314,11 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
                         {formatCurrency(node.totals.discountAmount)}
                       </div>
 
+                      {/* Column 7b: After Discount */}
+                      <div className="w-36 px-2 text-right shrink-0 font-mono font-medium text-blue-600 dark:text-blue-400">
+                        {formatCurrency((node.totals.wostAmount ?? (node.totals.grossAmount ? node.totals.grossAmount / 1.18 : 0)) - node.totals.discountAmount)}
+                      </div>
+
                       {/* Column 8: Taxes */}
                       <div className="w-28 px-2 text-right shrink-0 font-mono text-slate-600 dark:text-slate-400">
                         {formatCurrency(node.totals.taxAmount)}
@@ -338,6 +344,7 @@ export function GrossSalesSummaryTable({ treeData, grandTotals, searchQuery, isL
               <div className="w-36 px-2 text-right shrink-0">{formatCurrency(grandTotals.grossAmount)}</div>
               <div className="w-36 px-2 text-right shrink-0">{formatCurrency(grandTotals.wostAmount)}</div>
               <div className="w-32 px-2 text-right text-amber-600 dark:text-amber-400 shrink-0">{formatCurrency(grandTotals.discountAmount)}</div>
+              <div className="w-36 px-2 text-right text-blue-600 dark:text-blue-400 shrink-0">{formatCurrency(grandTotals.wostAmount - grandTotals.discountAmount)}</div>
               <div className="w-28 px-2 text-right shrink-0">{formatCurrency(grandTotals.taxAmount)}</div>
               <div className="w-44 px-4 text-right text-emerald-600 dark:text-emerald-400 font-black shrink-0">{formatCurrency(grandTotals.netAmount)}</div>
             </div>

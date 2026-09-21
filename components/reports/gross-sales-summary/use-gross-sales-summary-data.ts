@@ -164,6 +164,7 @@ export function useGrossSalesSummaryData(
     if (groupingLevels.category) levels.push("category");
     if (groupingLevels.gender) levels.push("gender");
     if (groupingLevels.silhouette) levels.push("silhouette");
+    if (groupingLevels.document) levels.push("document");
     if (groupingLevels.article) levels.push("article");
     if (groupingLevels.variant) levels.push("variant");
 
@@ -208,6 +209,9 @@ export function useGrossSalesSummaryData(
           nodeVal = item.genderName || "Default Gender";
         } else if (levelName === "silhouette") {
           nodeVal = item.silhouetteName || "Default Silhouette";
+        } else if (levelName === "document") {
+          nodeVal = item.orderNumber || "No Invoice";
+          extraFields.fbrInvoiceNumber = item.fbrInvoiceNumber;
         } else if (levelName === "article") {
           nodeVal = item.sku || item.description || "Article";
           extraFields.sku = item.sku;

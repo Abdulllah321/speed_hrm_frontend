@@ -32,6 +32,8 @@ export interface GrossSalesSummaryFlatRecord {
   locationId?: string;
   cashierUserId?: string;
   createdAt?: string | Date;
+  orderNumber?: string;
+  fbrInvoiceNumber?: string;
   locationName: string;
   categoryName: string;
   brandName: string;
@@ -80,6 +82,8 @@ export interface GrossSalesSummaryTreeNode {
   level: string; // "location" | "brand" | "division" | "category" | "gender" | "silhouette" | "article" | "variant"
   value: string;
   sku?: string;
+  orderNumber?: string;
+  fbrInvoiceNumber?: string;
   articleName?: string;
   color?: string;
   size?: string;
