@@ -40,6 +40,26 @@ function formatNumber(n: number) {
   return n.toLocaleString('en-US');
 }
 
+function AddressDisplay({ address, label, labelWidth }: { address: string | undefined | null, label: string, labelWidth: string }) {
+  if (!address) {
+    return <div className="flex"><span className={`font-bold shrink-0 ${labelWidth}`}>{label}</span> <span>N/A</span></div>;
+  }
+  const match = address.match(/(Contact\s*[:#])/i);
+  if (match) {
+    const splitIndex = match.index!;
+    const before = address.substring(0, splitIndex).trim();
+    const contactText = match[0];
+    const after = address.substring(splitIndex + contactText.length).trim();
+    return (
+      <>
+        <div className="flex mb-0.5"><span className={`font-bold shrink-0 ${labelWidth}`}>{label}</span> <span>{before}</span></div>
+        <div className="flex"><span className={`font-bold shrink-0 ${labelWidth}`}>{contactText}</span> <span>{after}</span></div>
+      </>
+    );
+  }
+  return <div className="flex"><span className={`font-bold shrink-0 ${labelWidth}`}>{label}</span> <span>{address}</span></div>;
+}
+
 interface CreditNoteLineItem {
   color: string;
   size: string;
@@ -118,14 +138,14 @@ function groupCreditNoteItems(items: any[]): CreditNoteCategoryGroup[] {
     const discount = discountPerUnit * qty;
 
     const wostUnitPrice = unitPrice / (1 + rate / 100);
-    const valueExclTax = wostUnitPrice * qty;
+    const wostTotal = wostUnitPrice * qty;
 
-    const taxableAmt = valueExclTax - discount;
-    const salesTax = (taxableAmt * rate) / 100;
+    const valueExclTax = Math.max(0, wostTotal - discount);
+    const salesTax = (valueExclTax * rate) / 100;
     const addTax = 0;
     const taxPayable = salesTax + addTax;
 
-    const valueInclTax = valueExclTax - discount + taxPayable;
+    const valueInclTax = valueExclTax + taxPayable;
 
     if (!categoryMap.has(catName)) {
       categoryMap.set(catName, {
@@ -354,11 +374,11 @@ export default function CreditNoteDetailPage({ params }: { params: Promise<{ id:
           {/* Sub-Header Metadata Grid */}
           <div className="grid grid-cols-2 gap-4 text-xs font-sans mb-3">
             {/* Left Side */}
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 whitespace-nowrap">
               <div><span className="font-bold inline-block w-32">Credit Note No :</span> {creditNote.creditNoteNo}</div>
               <div><span className="font-bold inline-block w-32">Credit Note Date :</span> {formatDateDisplay(creditNote.createdAt || creditNote.date)}</div>
               <div><span className="font-bold inline-block w-32">Customer Name :</span> {creditNote.customer?.name || 'N/A'}</div>
-              <div><span className="font-bold inline-block w-32">Address :</span> {creditNote.customer?.deliveryAddress || creditNote.customer?.address || 'N/A'}</div>
+              <AddressDisplay address={creditNote.customer?.deliveryAddress || creditNote.customer?.address} label="Address :" labelWidth="w-32" />
               <div><span className="font-bold inline-block w-32">Remarks :</span> {creditNote.salesReturn?.reason || creditNote.salesReturn?.notes || '—'}</div>
             </div>
 
@@ -474,8 +494,8 @@ export default function CreditNoteDetailPage({ params }: { params: Promise<{ id:
               </table>
             )}
 
-            <div className="mt-8 pt-3 border-t border-black/20 text-center text-xs font-bold uppercase tracking-wider text-gray-700">
-              THIS IS SYSTEM GENERATE INVOICE
+            <div className="mt-12 pt-4 text-center text-xs text-gray-600 print:fixed print:bottom-8 print:left-0 print:w-full">
+              Please note: This invoice is system-generated and does not require a signature or company stamp.
             </div>
           </div>
         </div>
