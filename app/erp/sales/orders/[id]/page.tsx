@@ -32,6 +32,26 @@ function formatNumber(n: number) {
   return n.toLocaleString('en-US');
 }
 
+function AddressDisplay({ address, label, labelWidth }: { address: string | undefined | null, label: string, labelWidth: string }) {
+  if (!address) {
+    return <div className="flex"><span className={`font-bold shrink-0 ${labelWidth}`}>{label}</span> <span>N/A</span></div>;
+  }
+  const match = address.match(/(Contact\s*[:#])/i);
+  if (match) {
+    const splitIndex = match.index!;
+    const before = address.substring(0, splitIndex).trim();
+    const contactText = match[0];
+    const after = address.substring(splitIndex + contactText.length).trim();
+    return (
+      <>
+        <div className="flex mb-0.5"><span className={`font-bold shrink-0 ${labelWidth}`}>{label}</span> <span>{before}</span></div>
+        <div className="flex"><span className={`font-bold shrink-0 ${labelWidth}`}>{contactText}</span> <span>{after}</span></div>
+      </>
+    );
+  }
+  return <div className="flex"><span className={`font-bold shrink-0 ${labelWidth}`}>{label}</span> <span>{address}</span></div>;
+}
+
 function formatDateDisplay(d: string | Date | undefined) {
   if (!d) return 'N/A';
   const date = new Date(d);
@@ -481,7 +501,7 @@ export default function SalesOrderViewPage() {
           {/* Header Title */}
           <div className="text-center mb-4">
             <h1 className="text-xl font-bold tracking-tight">Speed (Private) Limited</h1>
-            <h2 className="text-lg font-bold">Delivery Order Note</h2>
+            <h2 className="text-lg font-bold">Sales Order</h2>
             <div className="border-b-2 border-black my-2"></div>
             <div className="text-base font-bold tracking-widest py-1">NIKE</div>
             <div className="border-b-2 border-black my-2"></div>
@@ -495,20 +515,19 @@ export default function SalesOrderViewPage() {
               <div></div>
             </div>
 
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-1 gap-1 whitespace-nowrap">
               <div><span className="font-bold inline-block w-36">Stock Deliverd From :</span> {order.warehouse?.name || 'Warehouse'}</div>
               <div><span className="font-bold inline-block w-36">Customer Name :</span> {order.customer?.name || 'N/A'}</div>
-              <div><span className="font-bold inline-block w-36">Address :</span> {order.customer?.address || 'N/A'}</div>
-              <div><span className="font-bold inline-block w-36">Delivery Address :</span> {order.customer?.deliveryAddress || 'N/A'}</div>
+              <AddressDisplay address={order.customer?.address} label="Address :" labelWidth="w-36" />
+              <AddressDisplay address={order.customer?.deliveryAddress} label="Delivery Address :" labelWidth="w-36" />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <div><span className="font-bold inline-block w-36">D.O.N. No :</span> {order.orderNo}</div>
+              <div><span className="font-bold inline-block w-36">S.O.N. No :</span> {order.orderNo}</div>
               <div><span className="font-bold inline-block w-16">Date :</span> {formatDateDisplay(order.orderDate)}</div>
             </div>
 
             <div className="grid grid-cols-1 gap-1">
-              <div><span className="font-bold inline-block w-36">S.O.N. No :</span> 0</div>
               <div><span className="font-bold inline-block w-36">Employee :</span> Noman</div>
               <div><span className="font-bold inline-block w-36">Remarks :</span> {order.notes || 'SU-26 1ST SHIPMENT FW (BA)'}</div>
             </div>

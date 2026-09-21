@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Printer } from 'lucide-react';
+import { Trash2, Printer, Calendar } from 'lucide-react';
 import { salesReturnApi, CreateSalesReturnDto, warehouseApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PermissionGuard } from "@/components/auth/permission-guard";
@@ -35,6 +35,8 @@ interface SourceDocument {
       color?: { name: string };
     };
   }>;
+  invoiceDate?: string;
+  createdAt?: string;
 }
 
 export function numberToWords(amount: number): string {
@@ -76,6 +78,53 @@ export default function CreateSalesReturnPage() {
   const [selectedDoc, setSelectedDoc] = useState<SourceDocument | null>(null);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [nextReturnNumber, setNextReturnNumber] = useState<string>('');
+  const [periodPreset, setPeriodPreset] = useState<string>('fy-current');
+  
+  const currentFyLabel = (() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const m = now.getMonth();
+    const startY = m >= 6 ? year : year - 1;
+    return `FY ${startY}-${String(startY + 1).slice(2)} (Current)`;
+  })();
+
+  const previousFyLabel = (() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const m = now.getMonth();
+    const startY = (m >= 6 ? year : year - 1) - 1;
+    return `FY ${startY}-${String(startY + 1).slice(2)} (Previous)`;
+  })();
+
+  const filteredDocs = eligibleDocs.filter((doc) => {
+    if (!periodPreset || periodPreset === 'all') return true;
+    const docDate = new Date(doc.invoiceDate || doc.createdAt || new Date());
+    if (isNaN(docDate.getTime())) return true;
+    
+    const docYear = docDate.getFullYear();
+    const docMonth = docDate.getMonth();
+    const docFyStart = docMonth >= 6 ? docYear : docYear - 1;
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentFyStart = currentMonth >= 6 ? currentYear : currentYear - 1;
+
+    if (periodPreset === 'fy-current') {
+      return docFyStart === currentFyStart;
+    }
+    if (periodPreset === 'fy-previous') {
+      return docFyStart === currentFyStart - 1;
+    }
+    if (periodPreset === 'year-current') {
+      return docYear === currentYear;
+    }
+    if (periodPreset === 'year-previous') {
+      return docYear === currentYear - 1;
+    }
+    return true;
+  });
+
   
   const [formData, setFormData] = useState<CreateSalesReturnDto>({
     sourceType: 'INVOICE',
@@ -259,6 +308,28 @@ export default function CreateSalesReturnPage() {
               <h1 className="text-2xl font-bold">Create Sales Return</h1>
               <p className="text-gray-600">Return items from customer</p>
             </div>
+            
+            <div className="ml-auto w-48">
+              <Select value={periodPreset} onValueChange={(val) => {
+                setPeriodPreset(val);
+                setSelectedDoc(null);
+                setFormData({ ...formData, salesInvoiceId: '', items: [] });
+              }}>
+                <SelectTrigger className="h-9 text-xs font-semibold">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Calendar className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                    <SelectValue placeholder="Select Period" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs font-medium">All Time</SelectItem>
+                  <SelectItem value="fy-current" className="text-xs font-medium">{currentFyLabel}</SelectItem>
+                  <SelectItem value="fy-previous" className="text-xs font-medium">{previousFyLabel}</SelectItem>
+                  <SelectItem value="year-current" className="text-xs font-medium">{new Date().getFullYear()} (Calendar Year)</SelectItem>
+                  <SelectItem value="year-previous" className="text-xs font-medium">{new Date().getFullYear() - 1} (Calendar Year)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -275,7 +346,7 @@ export default function CreateSalesReturnPage() {
                         <SelectValue placeholder="Select Sales Invoice" />
                       </SelectTrigger>
                       <SelectContent>
-                        {eligibleDocs.map((doc) => (
+                        {filteredDocs.map((doc) => (
                           <SelectItem key={doc.id} value={doc.id}>
                             {doc.invoiceNo} - {doc.customer?.name || 'Unknown Customer'}
                           </SelectItem>
