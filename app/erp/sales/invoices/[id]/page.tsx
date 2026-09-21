@@ -150,24 +150,23 @@ function groupInvoiceItems(
 
     const sellingPrice = grossSellingPrice;
 
-    // 1. Value Excluding Sales Tax (WOST): Retail / (1 + TaxRate/100) * qty
+    // 1. Total Price W/O Tax (WOST): Retail / (1 + TaxRate/100) * qty
     const wostUnitPrice = grossSellingPrice / (1 + itemTaxRate / 100);
-    const wostTotal = wostUnitPrice * qty;
-    const valueExclTax = Math.round(wostTotal);
+    const wostTotal = Math.round(wostUnitPrice * qty);
 
     // 2. Discount: item.discount (stored in DB)
     const discount = Math.round(Number(item.discount || 0));
 
-    // 3. Tax Base
-    const taxableAmt = Math.max(0, valueExclTax - discount);
+    // 3. Tax Base (Value Excluding Sales Tax)
+    const valueExclTax = Math.max(0, wostTotal - discount);
 
     // 4. Sales Tax
-    const salesTax = Math.round(taxableAmt * (itemTaxRate / 100));
+    const salesTax = Math.round(valueExclTax * (itemTaxRate / 100));
     const addTax = Number(item.addTax || 0);
     const taxPayable = salesTax + addTax;
 
-    // 5. Value Including Sales Tax: item.total (stored in DB) or taxableAmt + taxPayable
-    const valueInclTax = item.total !== undefined ? Math.round(Number(item.total)) : (taxableAmt + taxPayable);
+    // 5. Value Including Sales Tax: item.total (stored in DB) or valueExclTax + taxPayable
+    const valueInclTax = item.total !== undefined ? Math.round(Number(item.total)) : (valueExclTax + taxPayable);
 
     if (!categoryMap.has(catName)) {
       categoryMap.set(catName, {
