@@ -354,7 +354,7 @@ export default function PurchaseReturnDetailPage() {
                             <tr>
                               <td colSpan={5} className="p-3 text-right">Total:</td>
                               <td className="p-3 text-right tabular-nums">{fmt(tQty)}</td>
-                              <td className="p-3 text-right tabular-nums">{fmt(tUnitCost)}</td>
+                              <td className="p-3"></td>
                               <td className="p-3 text-right tabular-nums">{fmt(tValExcl)}</td>
                               <td className="p-3"></td>
                               <td className="p-3 text-right tabular-nums">{fmt(tSalesTax)}</td>
@@ -715,7 +715,7 @@ export default function PurchaseReturnDetailPage() {
                           <tr>
                             <td colSpan={6} className="py-1 pr-1 text-right">Total:</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tQty)}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tUnitCost)}</td>
+                            <td className="py-1 pr-1"></td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tValExcl)}</td>
                             <td className="py-1 pr-1 text-right"></td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(tSalesTax)}</td>
@@ -751,16 +751,8 @@ export default function PurchaseReturnDetailPage() {
                 </div>
 
                 {/* Signatures */}
-                <div className="grid grid-cols-3 gap-3 mt-8">
-                    <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                        <span className="text-[10px] sm:text-[11px] font-bold text-center">PREPARED BY</span>
-                    </div>
-                    <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                        <span className="text-[10px] sm:text-[11px] font-bold text-center">CHECKED BY</span>
-                    </div>
-                    <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                        <span className="text-[10px] sm:text-[11px] font-bold text-center">APPROVED BY</span>
-                    </div>
+                <div className="text-center mt-8 text-xs text-gray-500 font-semibold italic">
+                    This is a system generated return.
                 </div>
             </div>
         </div>

@@ -789,7 +789,7 @@ export interface CreatePurchaseReturnDto {
 export interface UpdatePurchaseReturnDto extends Partial<CreatePurchaseReturnDto> { }
 
 export const purchaseReturnApi = {
-  list: (params?: { status?: string }) => {
+  list: (params?: { status?: string; search?: string }) => {
     const cleanParams: Record<string, string> = {};
     if (params) {
       Object.entries(params).forEach(([key, val]) => {

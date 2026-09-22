@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { purchaseReturnApi, PurchaseReturn } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -31,16 +32,22 @@ export default function PurchaseReturnsPage() {
   const [returns, setReturns] = useState<PurchaseReturn[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
 
+  // Debounce search term to prevent too many API calls
   useEffect(() => {
-    loadReturns();
-  }, [statusFilter]);
+    const timer = setTimeout(() => {
+      loadReturns();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [statusFilter, searchTerm]);
 
   const loadReturns = async () => {
     try {
       setLoading(true);
       const data = await purchaseReturnApi.list({ 
-        status: statusFilter === 'ALL' ? undefined : statusFilter 
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
+        ...(searchTerm.trim() && { search: searchTerm.trim() })
       });
       setReturns(data);
     } catch (error) {
@@ -102,20 +109,33 @@ export default function PurchaseReturnsPage() {
           </div>
         </div>
 
-        {/* Status Filter */}
+        {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex gap-2">
-              {['ALL', 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'].map((status) => (
-                <Button
-                  key={status}
-                  variant={statusFilter === status ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter(status)}
-                >
-                  {status}
-                </Button>
-              ))}
+            <div className="flex gap-4 items-center">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search by return #, invoice #, or supplier..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {['ALL', 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'].map((status) => (
+                  <Button
+                    key={status}
+                    variant={statusFilter === status ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setStatusFilter(status)}
+                  >
+                    {status}
+                  </Button>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

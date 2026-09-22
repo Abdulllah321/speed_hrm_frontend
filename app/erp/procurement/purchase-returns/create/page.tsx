@@ -15,6 +15,8 @@ import { purchaseReturnApi, CreatePurchaseReturnDto, warehouseApi } from '@/lib/
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { getSeasons, Season } from '@/lib/actions/season';
+import { getBrands, Brand } from '@/lib/actions/brand';
+import { Autocomplete } from "@/components/ui/autocomplete";
 
 interface SourceDocument {
   id: string;
@@ -91,6 +93,8 @@ export default function CreatePurchaseReturnPage() {
   const [selectedDoc, setSelectedDoc] = useState<SourceDocument | null>(null);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('ALL');
   const [nextReturnNumber, setNextReturnNumber] = useState<string>('');
   
   const [formData, setFormData] = useState<CreatePurchaseReturnDto>({
@@ -113,7 +117,19 @@ export default function CreatePurchaseReturnPage() {
     loadWarehouses();
     loadSeasons();
     fetchNextReturnNumber();
+    loadBrands();
   }, []);
+
+  const loadBrands = async () => {
+    try {
+      const res = await getBrands();
+      if (res && res.data) {
+        setBrands(res.data);
+      }
+    } catch (error) {
+      console.error('Error loading brands:', error);
+    }
+  };
 
   const loadSeasons = async () => {
     try {
@@ -333,7 +349,20 @@ export default function CreatePurchaseReturnPage() {
                 <CardTitle>Return Source</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Brand Filter</Label>
+                    <Autocomplete
+                      options={[
+                        { label: 'All Brands', value: 'ALL' },
+                        ...brands.map(b => ({ label: b.name, value: b.id }))
+                      ]}
+                      value={selectedBrandId || 'ALL'}
+                      onValueChange={(val) => setSelectedBrandId(val)}
+                      placeholder="Search Brand..."
+                    />
+                  </div>
+
                   <div>
                     <Label>Select Purchase Invoice</Label>
                     <Select onValueChange={handleDocumentSelect}>
@@ -341,7 +370,17 @@ export default function CreatePurchaseReturnPage() {
                         <SelectValue placeholder="Select Purchase Invoice" />
                       </SelectTrigger>
                       <SelectContent>
-                        {eligibleDocs.map((doc) => {
+                        {eligibleDocs
+                          .filter(doc => {
+                             if (!selectedBrandId || selectedBrandId === 'ALL') return true;
+                             return doc.items.some(item => {
+                               const bId = (item as any).brand?.id || (item as any).item?.brand?.id || (item as any).item?.brandId;
+                               const bName = (item as any).brand?.name || (item as any).item?.brand?.name || item.brand;
+                               const selName = brands.find(b => b.id === selectedBrandId)?.name;
+                               return bId === selectedBrandId || (selName && bName === selName);
+                             });
+                          })
+                          .map((doc) => {
                           const grnNo = doc.grn?.grnNumber || doc.landedCost?.grn?.grnNumber;
                           return (
                             <SelectItem key={doc.id} value={doc.id}>
