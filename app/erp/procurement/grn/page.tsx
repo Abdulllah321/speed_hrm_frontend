@@ -36,7 +36,15 @@ export default function GrnListPage() {
                 getPurchaseOrders()
             ]);
             setGrns(grnData);
-            setOrders(poData.filter(po => po.status === 'OPEN' || po.status === 'PARTIALLY_RECEIVED'));
+            
+            // Get all PO IDs that already have a GRN
+            const usedPoIds = new Set(grnData.map(g => g.purchaseOrderId));
+            
+            // Only show POs that haven't been used yet
+            setOrders(poData.filter(po => 
+                (po.status === 'OPEN' || po.status === 'PARTIALLY_RECEIVED') && 
+                !usedPoIds.has(po.id)
+            ));
         } catch (error) {
             console.error('Failed to load data:', error);
         } finally {

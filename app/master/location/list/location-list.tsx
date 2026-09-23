@@ -5,7 +5,6 @@ import {
   useState,
   useTransition,
   startTransition,
-  addTransitionType,
 } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -64,7 +63,6 @@ export function LocationList({
   const [editRows, setEditRows] = useState<BulkEditRow[]>([]);
   const [allBrands, setAllBrands] = useState<Brand[]>([]);
   const { hasPermission } = useAuth();
-  const showAddAction = hasPermission("master.location.create");
   const canBulkEdit = hasPermission("master.location.update");
   const canBulkDelete = hasPermission("master.location.delete");
   // Filter: 'all' | 'online' | 'offline'
@@ -93,13 +91,6 @@ export function LocationList({
     if (result.status && result.data) {
       setAllBrands(result.data);
     }
-  };
-
-  const handleToggle = () => {
-    startTransition(() => {
-      addTransitionType("nav-forward");
-      router.push("/master/location/add");
-    });
   };
 
   const handleMultiDelete = (ids: string[]) => {
@@ -251,8 +242,6 @@ export function LocationList({
       <DataTable<LocationRow>
         columns={columns}
         data={data}
-        actionText={showAddAction ? "Add Location" : undefined}
-        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[
           { key: "name", label: "Name" },
