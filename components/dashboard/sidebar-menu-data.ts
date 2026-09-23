@@ -1948,6 +1948,11 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.view"],
           },
           {
+            title: "Warehouse Stock Activity",
+            href: "/erp/reports/warehouse-stock-activity",
+            permissions: ["erp.report.view"],
+          },
+          {
             title: "POS Available Stock Summary",
             href: "/erp/reports/pos/available-stock-summary",
             permissions: ["erp.report.view"],

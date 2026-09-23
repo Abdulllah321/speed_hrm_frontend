@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useTransition } from "react";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { format } from "date-fns";
 import { toast } from "sonner";
-import { DateRange } from "@/components/ui/date-range-picker";
+import { DateRange, getFiscalYearInfo } from "@/components/ui/date-range-picker";
 import { useReportSse } from "@/hooks/use-report-sse";
 import { getLocations, Location } from "@/lib/actions/location";
 import { getWarehouses, Warehouse } from "@/lib/actions/warehouse";
@@ -26,9 +26,17 @@ import { useAuth } from "@/components/providers/auth-provider";
 
 interface StockActivityViewProps {
   isPosLevel?: boolean;
+  isWarehouseOnly?: boolean;
+  warehouseCode?: string;
+  title?: string;
 }
 
-export function StockActivityView({ isPosLevel = false }: StockActivityViewProps) {
+export function StockActivityView({
+  isPosLevel = false,
+  isWarehouseOnly = false,
+  warehouseCode = "C40001",
+  title,
+}: StockActivityViewProps) {
   const { user } = useAuth();
   const posLocationId = user?.terminal?.location?.id || user?.locationId || (user as any)?.location?.id;
   const posWarehouseId = (user as any)?.warehouseId || (user as any)?.warehouse?.id;
@@ -47,17 +55,35 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
     }
   }, [isPosLevel, posLocationId, posWarehouseId]);
 
+  // Enforce specific Warehouse (e.g. C40001) when in Warehouse-only mode
+  useEffect(() => {
+    if (isWarehouseOnly && warehouses.length > 0) {
+      const targetWh = warehouses.find(
+        (w) => w.code === warehouseCode || w.id === warehouseCode || w.code === "C40001",
+      ) || warehouses[0];
+      if (targetWh) {
+        setSelectedWarehouseIds([targetWh.id]);
+        setSelectedLocationIds([]);
+      }
+    }
+  }, [isWarehouseOnly, warehouseCode, warehouses]);
+
   const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+
+  // Default to current fiscal year (July 1 – June 30), not calendar year
+  const currentFY = getFiscalYearInfo();
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
+    from: currentFY.startDate,
+    to: currentFY.endDate,
   });
 
   const [reportData, setReportData] = useState<StockActivityReportData | null>(null);
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);
   const [isQueueingJob, setIsQueueingJob] = useState(false);
   const [isFetchingResult, setIsFetchingResult] = useState(false);
-  const [isPending, startTransition] = useTransition();
+
+  // Track active job ID in a ref so SSE completion handler never sees a stale value
+  const activeJobIdRef = useRef<string | null>(null);
 
   // Non-blocking Client Export state
   const [isExportingExcel, setIsExportingExcel] = useState(false);
@@ -96,10 +122,16 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
   const activeSelectionNames = useMemo(() => {
     const names: string[] = [];
     if (selectedLocationIds.length > 0) {
-      const locNames = locations
-        .filter((l) => selectedLocationIds.includes(l.id))
-        .map((l) => l.name);
-      names.push(...locNames);
+      for (const id of selectedLocationIds) {
+        if (id.startsWith("wh:")) {
+          const whId = id.replace("wh:", "");
+          const wh = warehouses.find((w) => w.id === whId);
+          if (wh) names.push(`${wh.name} (Warehouse)`);
+        } else {
+          const loc = locations.find((l) => l.id === id);
+          if (loc) names.push(loc.name);
+        }
+      }
     }
     if (selectedWarehouseIds.length > 0) {
       const whNames = warehouses
@@ -110,60 +142,71 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
     return names.length > 0 ? names.join(", ") : "All Outlets & Warehouses";
   }, [selectedLocationIds, selectedWarehouseIds, locations, warehouses]);
 
-  // Queue preview calculation
+  const effectiveReportType = isWarehouseOnly ? ("detailed" as const) : reportType;
+
+  // Queue preview calculation — plain async, no startTransition so the ref
+  // is set synchronously inside the promise chain before SSE can fire.
   const handleFetchReport = useCallback(() => {
     if (!dateRange.from || !dateRange.to) return;
 
     setIsQueueingJob(true);
     setPreviewJobId(null);
+    activeJobIdRef.current = null;
 
-    startTransition(async () => {
-      try {
-        const res = await queueStockActivityPreview({
-          locationId: locationParam,
-          warehouseId: warehouseParam,
-          startDate: dateRange.from?.toISOString(),
-          endDate: dateRange.to?.toISOString(),
-          reportType,
-        });
-
+    queueStockActivityPreview({
+      locationId: isWarehouseOnly ? undefined : locationParam,
+      warehouseId: isWarehouseOnly ? warehouseParam : undefined,
+      startDate: dateRange.from?.toISOString(),
+      endDate: dateRange.to?.toISOString(),
+      reportType: effectiveReportType,
+    })
+      .then((res) => {
         if (res && res.status && res.data?.jobId) {
-          setPreviewJobId(res.data.jobId);
+          const newJobId = res.data.jobId;
+          activeJobIdRef.current = newJobId;
+          setPreviewJobId(newJobId);
         } else {
           toast.error(res?.message || "Failed to queue stock activity calculation");
         }
-      } catch (err: any) {
+      })
+      .catch(() => {
         toast.error("Error queueing report calculation job");
-      } finally {
+      })
+      .finally(() => {
         setIsQueueingJob(false);
-      }
-    });
-  }, [locationParam, warehouseParam, dateRange, reportType]);
+      });
+  }, [locationParam, warehouseParam, dateRange, effectiveReportType, isWarehouseOnly]);
 
-  // Trigger initial report queue on mount or location/date/mode change
+  // Trigger report queue on mount or when filters change — debounced 300ms
+  // to avoid rapid-fire re-queues when multiple state values change together.
   useEffect(() => {
-    handleFetchReport();
-  }, [locationParam, warehouseParam, dateRange, reportType]);
+    const timer = setTimeout(() => {
+      handleFetchReport();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [locationParam, warehouseParam, dateRange, effectiveReportType, isWarehouseOnly]);
 
-  // Fetch gzipped preview result when SSE completes
+  // Fetch the gzipped preview result once SSE signals completion.
+  // Guard with activeJobIdRef so stale completions from superseded jobs are ignored.
   useEffect(() => {
-    if (
-      (sseState.status === "completed" || sseState.progressPercent === 100) &&
-      previewJobId
-    ) {
+    if (sseState.status === "completed" && previewJobId && activeJobIdRef.current === previewJobId) {
+      const jobIdToFetch = previewJobId;
       setIsFetchingResult(true);
-      getStockActivityResult(previewJobId)
+      getStockActivityResult(jobIdToFetch)
         .then((res) => {
+          // Only apply if this is still the active job
+          if (activeJobIdRef.current !== jobIdToFetch) return;
+
           if (res && res.status && res.data) {
-            setReportData(res.data);
+            setReportData(res.data as StockActivityReportData);
           } else {
-            toast.error("Failed to load completed report dataset");
+            toast.error(res?.message || "Failed to load completed report dataset");
           }
         })
         .catch(() => toast.error("Error downloading report calculation result"))
         .finally(() => setIsFetchingResult(false));
     }
-  }, [sseState.status, sseState.progressPercent, previewJobId]);
+  }, [sseState.status, previewJobId]);
 
   // Client-side filtration & matrix hook
   const {
@@ -194,6 +237,14 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
     collapseAll,
   } = useStockActivityData(reportData);
 
+  const activeWarehouseName = useMemo(() => {
+    if (warehouses.length === 0) return "Central Warehouse (C40001)";
+    const wh = warehouses.find(
+      (w) => w.code === warehouseCode || w.id === warehouseCode || w.code === "C40001",
+    );
+    return wh ? `${wh.name} (${wh.code})` : "Central Warehouse (C40001)";
+  }, [warehouses, warehouseCode]);
+
   // Client-side Excel Export Handler (Flat or Hierarchical)
   const handleExportExcel = async (type: "flat" | "hierarchical") => {
     if (!reportData) return;
@@ -202,11 +253,12 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
     try {
       const { excelBuffer, fileName, fileBase64 } = await generateStockActivityExcel({
         exportType: type,
+        reportType: effectiveReportType,
         brands: filteredBrands,
         flatItems: reportData.flatItems || [],
         grandTotals,
         dateRange,
-        locationNames: activeSelectionNames,
+        locationNames: isWarehouseOnly ? activeWarehouseName : (activeSelectionNames || "All Outlets"),
       });
 
       // Trigger browser download
@@ -248,7 +300,8 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
         brands: filteredBrands,
         grandTotals,
         dateRange,
-        locationNames: activeSelectionNames,
+        locationNames: isWarehouseOnly ? activeWarehouseName : (activeSelectionNames || "All Outlets"),
+        reportType: effectiveReportType,
       });
 
       const printWindow = window.open("", "_blank");
@@ -270,12 +323,14 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
   return (
     <div className="p-6 space-y-6 max-w-[1750px] mx-auto">
       {/* KPI Cards */}
-      <StockActivityHeader totals={grandTotals} />
+      <StockActivityHeader totals={grandTotals} reportType={effectiveReportType} />
 
       {/* Filter Bar, SSE Queue Progress & Attribute Popover Dropdowns */}
       <StockActivityFilters
         isPosLevel={isPosLevel}
         posLocationName={posLocationName}
+        isWarehouseOnly={isWarehouseOnly}
+        activeWarehouseName={activeWarehouseName}
         reportType={reportType}
         onReportTypeChange={setReportType}
         dateRange={dateRange}
@@ -306,7 +361,7 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
         filterColors={filterColors}
         setFilterColors={setFilterColors}
         onRefresh={handleFetchReport}
-        isPending={isPending || isQueueingJob || isFetchingResult}
+        isPending={isQueueingJob || isFetchingResult}
         previewJobId={previewJobId}
         sseState={sseState}
         isQueueingJob={isQueueingJob}
@@ -321,8 +376,12 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
       {/* Printable Header (Visible only when printing) */}
       <div className="hidden print:block mb-6 border-b pb-4 text-center">
         <h1 className="text-2xl font-bold text-slate-900">{COMPANY_NAME}</h1>
-        <h2 className="text-lg font-bold text-slate-700">Stock Activity Report</h2>
-        <p className="text-xs text-slate-600">Outlets & Warehouses: {activeSelectionNames}</p>
+        <h2 className="text-lg font-bold text-slate-700">
+          {isWarehouseOnly ? "Warehouse Stock Activity Report (C40001)" : "Stock Activity Report (POS Outlets)"}
+        </h2>
+        <p className="text-xs text-slate-600">
+          {isWarehouseOnly ? `Warehouse: ${activeWarehouseName}` : `Outlets: ${activeSelectionNames}`}
+        </p>
         <p className="text-xs text-slate-500">
           Period: {dateRange.from ? format(dateRange.from, "dd MMM yyyy") : "Start"} to{" "}
           {dateRange.to ? format(dateRange.to, "dd MMM yyyy") : "End"}
@@ -333,6 +392,7 @@ export function StockActivityView({ isPosLevel = false }: StockActivityViewProps
       <StockActivityTable
         rows={flatRows}
         grandTotals={grandTotals}
+        reportType={effectiveReportType}
         onToggleNode={toggleNode}
         onExpandAll={expandAll}
         onCollapseAll={collapseAll}

@@ -38,7 +38,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // ─── Attribute Filter Popover Component ─────────────────────────────────────
 function FilterDropdown({
@@ -54,6 +53,15 @@ function FilterDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const filtered = useMemo(
     () => options.filter((o) => o.toLowerCase().includes(search.toLowerCase())),
@@ -63,78 +71,78 @@ function FilterDropdown({
   const selectedCount = selected.size;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer",
-            selectedCount > 0
-              ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-              : "bg-background border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50 hover:text-foreground",
-          )}
-        >
-          <span>{label}</span>
-          {selectedCount > 0 && (
-            <span className="bg-white/20 text-inherit px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none">
-              {selectedCount}
-            </span>
-          )}
-          <svg
-            className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        sideOffset={6}
-        className="w-[240px] p-0 bg-background border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden z-50"
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all",
+          selectedCount > 0
+            ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+            : "bg-background border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-emerald-500/50 hover:text-foreground",
+        )}
       >
-        <div className="p-2 border-b border-slate-100 dark:border-slate-800">
-          <input
-            autoFocus
-            type="text"
-            placeholder={`Search ${label}...`}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 outline-none focus:border-emerald-500"
-          />
+        <span>{label}</span>
+        {selectedCount > 0 && (
+          <span className="bg-white/20 text-inherit px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none">
+            {selectedCount}
+          </span>
+        )}
+        <svg
+          className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full mt-1.5 left-0 min-w-[200px] max-w-[280px] bg-background border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+            <input
+              autoFocus
+              type="text"
+              placeholder={`Search ${label}...`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div className="max-h-56 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <p className="text-xs text-muted-foreground px-3 py-2 text-center">No results</p>
+            )}
+            {filtered.map((opt) => (
+              <label
+                key={opt}
+                className="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(opt)}
+                  onChange={() => onToggle(opt)}
+                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                />
+                <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                  {opt}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
-        <div className="max-h-56 overflow-y-auto py-1">
-          {filtered.length === 0 && (
-            <p className="text-xs text-muted-foreground px-3 py-2 text-center">No results</p>
-          )}
-          {filtered.map((opt) => (
-            <label
-              key={opt}
-              className="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-            >
-              <input
-                type="checkbox"
-                checked={selected.has(opt)}
-                onChange={() => onToggle(opt)}
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
-              />
-              <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
-                {opt}
-              </span>
-            </label>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }
 
 interface StockActivityFiltersProps {
   isPosLevel?: boolean;
   posLocationName?: string;
+  isWarehouseOnly?: boolean;
+  activeWarehouseName?: string;
   reportType: "merged" | "separate";
   onReportTypeChange: (type: "merged" | "separate") => void;
   dateRange: DateRange;
@@ -193,6 +201,8 @@ interface StockActivityFiltersProps {
 export function StockActivityFilters({
   isPosLevel = false,
   posLocationName = "Current Store",
+  isWarehouseOnly = false,
+  activeWarehouseName,
   reportType,
   onReportTypeChange,
   dateRange,
@@ -238,12 +248,24 @@ export function StockActivityFilters({
   const [showFormulaInfo, setShowFormulaInfo] = useState(true);
 
   const locationOptions: MultiSelectOption[] = useMemo(() => {
-    return locations.map((loc) => ({
-      value: loc.id,
-      label: loc.name,
-      description: loc.code ? `Code: ${loc.code}` : undefined,
-    }));
-  }, [locations]);
+    const storeLocs = locations
+      .filter((loc) => loc.code !== "C40001" && loc.code !== "WH-C40001" && !loc.name.includes("LOGISTIC AREA"))
+      .map((loc) => ({
+        value: loc.id,
+        label: loc.name,
+        description: loc.code ? `Code: ${loc.code}` : undefined,
+      }));
+
+    const nonC40001Whs = warehouses
+      .filter((wh) => wh.code !== "C40001")
+      .map((wh) => ({
+        value: `wh:${wh.id}`,
+        label: `${wh.name} (Warehouse)`,
+        description: wh.code ? `Code: ${wh.code}` : undefined,
+      }));
+
+    return [...storeLocs, ...nonC40001Whs];
+  }, [locations, warehouses]);
 
   const warehouseOptions: MultiSelectOption[] = useMemo(() => {
     return warehouses.map((wh) => ({
@@ -318,64 +340,58 @@ export function StockActivityFilters({
       {/* Top Toolbar Row */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Merged vs Separate Mode Selector */}
-          <div className="flex items-center p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => onReportTypeChange("merged")}
-              className={cn(
-                "px-3 py-1 rounded-lg transition-all text-xs font-bold",
-                reportType === "merged"
-                  ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-foreground",
-              )}
-            >
-              Merged (All)
-            </button>
-            <button
-              type="button"
-              onClick={() => onReportTypeChange("separate")}
-              className={cn(
-                "px-3 py-1 rounded-lg transition-all text-xs font-bold",
-                reportType === "separate"
-                  ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-foreground",
-              )}
-            >
-              Separate (By Location)
-            </button>
-          </div>
+          {/* Merged vs Separate Mode Selector (Hidden for Warehouse-only report) */}
+          {!isWarehouseOnly && (
+            <div className="flex items-center p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => onReportTypeChange("merged")}
+                className={cn(
+                  "px-3 py-1 rounded-lg transition-all text-xs font-bold",
+                  reportType === "merged"
+                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-foreground",
+                )}
+              >
+                Merged (All Stores)
+              </button>
+              <button
+                type="button"
+                onClick={() => onReportTypeChange("separate")}
+                className={cn(
+                  "px-3 py-1 rounded-lg transition-all text-xs font-bold",
+                  reportType === "separate"
+                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-foreground",
+                )}
+              >
+                Separate (By Store)
+              </button>
+            </div>
+          )}
 
-          {/* Outlets & Warehouses Selectors */}
-          {isPosLevel ? (
+          {/* Outlets / Warehouse Selectors */}
+          {isWarehouseOnly ? (
+            <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/70 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-200 text-xs font-bold shadow-2xs">
+              <Layers className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>Warehouse: {activeWarehouseName || "Central Logistics Warehouse (C40001)"}</span>
+            </div>
+          ) : isPosLevel ? (
             <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
               <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>Current Store: {posLocationName}</span>
             </div>
           ) : (
-            <>
-              {/* Outlets Multi-Select */}
-              <div className="w-44 sm:w-52">
-                <MultiSelect
-                  options={locationOptions}
-                  value={selectedLocationIds}
-                  onValueChange={onLocationChange}
-                  placeholder="All Outlets (Stores)"
-                  className="bg-background h-9 rounded-xl"
-                />
-              </div>
-
-              {/* Warehouses Multi-Select */}
-              <div className="w-44 sm:w-52">
-                <MultiSelect
-                  options={warehouseOptions}
-                  value={selectedWarehouseIds}
-                  onValueChange={onWarehouseChange}
-                  placeholder="All Warehouses"
-                  className="bg-background h-9 rounded-xl"
-                />
-              </div>
-            </>
+            /* Outlets Multi-Select (Retail Stores only) */
+            <div className="w-52 sm:w-60">
+              <MultiSelect
+                options={locationOptions}
+                value={selectedLocationIds}
+                onValueChange={onLocationChange}
+                placeholder="All Outlets (Stores)"
+                className="bg-background h-9 rounded-xl"
+              />
+            </div>
           )}
 
           {/* Date Range Picker */}

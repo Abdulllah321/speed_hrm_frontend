@@ -39,9 +39,11 @@ export function StockTransactionDetailView({
     const posLocationName = user?.terminal?.location?.name || (user as any)?.location?.name || (user as any)?.warehouse?.name || "Current Store";
 
     const now = new Date();
+    const currentMonth = now.getMonth();
+    const fyStartYear = currentMonth >= 6 ? now.getFullYear() : now.getFullYear() - 1;
     const [dateRange, setDateRange] = useState<DateRange>({
-        from: startOfMonth(now),
-        to: endOfMonth(now),
+        from: new Date(fyStartYear, 6, 1),
+        to: new Date(fyStartYear + 1, 5, 30, 23, 59, 59),
     });
 
     const [locations, setLocations] = useState<Location[]>([]);
@@ -128,6 +130,8 @@ export function StockTransactionDetailView({
                               inQty: Number(tx.inQty || 0),
                               outQty: Number(tx.outQty || 0),
                               isInTransit: !!tx.isInTransit,
+                              runningBalance: Number(tx.balance || 0),
+                              storeName: tx.storeName || "",
                           }))
                         : [];
 
@@ -143,11 +147,11 @@ export function StockTransactionDetailView({
                         barCode: node.barCode || node.totals?.barCode || "",
                         size: node.size || node.totals?.size || "Default",
                         color: node.color || node.totals?.color || "Default",
-                        openingBalance: Number(node.openingBalance || node.totals?.openingBalance || 0),
-                        inQty: Number(node.inQty || node.totals?.inQty || 0),
-                        outQty: Number(node.outQty || node.totals?.outQty || 0),
-                        inTransitQty: Number(node.inTransitQty || node.totals?.inTransitQty || 0),
-                        closingBalance: Number(node.closingBalance || node.totals?.closingBalance || 0),
+                        openingBalance: Number(node.totals?.openingBalance ?? node.openingBalance ?? 0),
+                        inQty: Number(node.totals?.inQty ?? node.inQty ?? 0),
+                        outQty: Number(node.totals?.outQty ?? node.outQty ?? 0),
+                        inTransitQty: Number(node.totals?.inTransitQty ?? node.inTransitQty ?? 0),
+                        closingBalance: Number(node.totals?.closingBalance ?? node.closingBalance ?? 0),
                         transactions: txs,
                     });
                 }

@@ -6,8 +6,47 @@ import { StockActivityBrandNode, StockActivityFlatRecord, StockActivityTotals } 
 
 const yieldToMain = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+function getMetricsData(t: StockActivityTotals, reportType: "merged" | "separate" | "detailed") {
+  if (reportType === "detailed") {
+    return [
+      t.purchases || 0,
+      t.purchaseReturn || 0,
+      t.fromOutlet || 0,
+      t.toOutlet || 0,
+      t.deliveryChallan || 0,
+      t.wholesaleReturn || 0,
+      t.adj || 0,
+      t.availableStock || 0,
+      t.reservedSO || 0,
+      t.reservedSRN || 0,
+      (t.reservedSO || 0) + (t.reservedSRN || 0),
+      (t.availableStock || 0) - ((t.reservedSO || 0) + (t.reservedSRN || 0)),
+      t.transitGRN || 0,
+      t.transit || 0,
+      t.balance || 0
+    ];
+  }
+  return [
+    t.fromWarehouse,
+    t.fromOutlet,
+    t.totalTrfIn,
+    t.toWarehouse,
+    t.toOutlet,
+    t.totalTrfOut,
+    t.exchg,
+    t.refund,
+    t.claim,
+    t.sales,
+    t.adj,
+    t.availableStock,
+    t.transit,
+    t.balance,
+  ];
+}
+
 export async function generateStockActivityExcel(opts: {
   exportType: "flat" | "hierarchical";
+  reportType?: "merged" | "separate" | "detailed";
   brands: StockActivityBrandNode[];
   flatItems: StockActivityFlatRecord[];
   grandTotals: StockActivityTotals;
@@ -17,6 +56,7 @@ export async function generateStockActivityExcel(opts: {
 }): Promise<{ excelBuffer: ArrayBuffer; fileName: string; fileBase64: string }> {
   const {
     exportType,
+    reportType = "merged",
     brands,
     flatItems,
     grandTotals,
@@ -47,21 +87,44 @@ export async function generateStockActivityExcel(opts: {
       "Size",
       "Barcode",
       "Opening B/F",
-      "Wh IN",
-      "Outlet IN",
-      "Total IN",
-      "Wh OUT",
-      "Outlet OUT",
-      "Total OUT",
-      "Exchg",
-      "Refund",
-      "Claim",
-      "Sales",
-      "Adj",
-      "Available",
-      "Transit",
-      "Balance",
     ];
+
+    if (reportType === "detailed") {
+      headers.push(
+        "Purchases",
+        "Purchase Ret",
+        "From Outlet",
+        "To Outlet",
+        "Delivery Challan",
+        "Wholesale Ret",
+        "Adj",
+        "Available",
+        "Reserved SO",
+        "Reserved SRN",
+        "Total Reserved",
+        "Stock After Res",
+        "Transit GRN",
+        "Transit",
+        "Balance"
+      );
+    } else {
+      headers.push(
+        "Wh IN",
+        "Outlet IN",
+        "Total IN",
+        "Wh OUT",
+        "Outlet OUT",
+        "Total OUT",
+        "Exchg",
+        "Refund",
+        "Claim",
+        "Sales",
+        "Adj",
+        "Available",
+        "Transit",
+        "Balance"
+      );
+    }
 
     const dataRows: any[][] = [headers];
 
@@ -69,7 +132,7 @@ export async function generateStockActivityExcel(opts: {
     for (let i = 0; i < totalCount; i++) {
       const item = flatItems[i];
       const t = item.totals;
-      dataRows.push([
+      const row = [
         ...(hasLocations ? [item.locationName || "N/A"] : []),
         item.brand,
         item.division,
@@ -82,21 +145,10 @@ export async function generateStockActivityExcel(opts: {
         item.size,
         item.barCode,
         t.bf,
-        t.fromWarehouse,
-        t.fromOutlet,
-        t.totalTrfIn,
-        t.toWarehouse,
-        t.toOutlet,
-        t.totalTrfOut,
-        t.exchg,
-        t.refund,
-        t.claim,
-        t.sales,
-        t.adj,
-        t.availableStock,
-        t.transit,
-        t.balance,
-      ]);
+        ...getMetricsData(t, reportType)
+      ];
+
+      dataRows.push(row);
 
       if (i % 500 === 0) {
         onProgress?.(Math.round((i / Math.max(1, totalCount)) * 70) + 10);
@@ -116,20 +168,7 @@ export async function generateStockActivityExcel(opts: {
       "",
       "",
       grandTotals.bf,
-      grandTotals.fromWarehouse,
-      grandTotals.fromOutlet,
-      grandTotals.totalTrfIn,
-      grandTotals.toWarehouse,
-      grandTotals.toOutlet,
-      grandTotals.totalTrfOut,
-      grandTotals.exchg,
-      grandTotals.refund,
-      grandTotals.claim,
-      grandTotals.sales,
-      grandTotals.adj,
-      grandTotals.availableStock,
-      grandTotals.transit,
-      grandTotals.balance,
+      ...getMetricsData(grandTotals, reportType)
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
@@ -149,21 +188,44 @@ export async function generateStockActivityExcel(opts: {
       "Size",
       "Color",
       "Opening B/F",
-      "Wh IN",
-      "Outlet IN",
-      "Total IN",
-      "Wh OUT",
-      "Outlet OUT",
-      "Total OUT",
-      "Exchg",
-      "Refund",
-      "Claim",
-      "Sales",
-      "Adj",
-      "Available",
-      "Transit",
-      "Balance",
     ];
+
+    if (reportType === "detailed") {
+      headers.push(
+        "Purchases",
+        "Purchase Ret",
+        "From Outlet",
+        "To Outlet",
+        "Delivery Challan",
+        "Wholesale Ret",
+        "Adj",
+        "Available",
+        "Reserved SO",
+        "Reserved SRN",
+        "Total Reserved",
+        "Stock After Res",
+        "Transit GRN",
+        "Transit",
+        "Balance"
+      );
+    } else {
+      headers.push(
+        "Wh IN",
+        "Outlet IN",
+        "Total IN",
+        "Wh OUT",
+        "Outlet OUT",
+        "Total OUT",
+        "Exchg",
+        "Refund",
+        "Claim",
+        "Sales",
+        "Adj",
+        "Available",
+        "Transit",
+        "Balance"
+      );
+    }
 
     const dataRows: any[][] = [headers];
 
@@ -176,20 +238,7 @@ export async function generateStockActivityExcel(opts: {
         "-",
         "-",
         bt.bf,
-        bt.fromWarehouse,
-        bt.fromOutlet,
-        bt.totalTrfIn,
-        bt.toWarehouse,
-        bt.toOutlet,
-        bt.totalTrfOut,
-        bt.exchg,
-        bt.refund,
-        bt.claim,
-        bt.sales,
-        bt.adj,
-        bt.availableStock,
-        bt.transit,
-        bt.balance,
+        ...getMetricsData(bt, reportType)
       ]);
 
       for (const div of brand.divisions) {
@@ -201,20 +250,7 @@ export async function generateStockActivityExcel(opts: {
           "-",
           "-",
           dt.bf,
-          dt.fromWarehouse,
-          dt.fromOutlet,
-          dt.totalTrfIn,
-          dt.toWarehouse,
-          dt.toOutlet,
-          dt.totalTrfOut,
-          dt.exchg,
-          dt.refund,
-          dt.claim,
-          dt.sales,
-          dt.adj,
-          dt.availableStock,
-          dt.transit,
-          dt.balance,
+          ...getMetricsData(dt, reportType)
         ]);
 
         for (const gender of div.genders) {
@@ -227,20 +263,7 @@ export async function generateStockActivityExcel(opts: {
               "-",
               "-",
               ct.bf,
-              ct.fromWarehouse,
-              ct.fromOutlet,
-              ct.totalTrfIn,
-              ct.toWarehouse,
-              ct.toOutlet,
-              ct.totalTrfOut,
-              ct.exchg,
-              ct.refund,
-              ct.claim,
-              ct.sales,
-              ct.adj,
-              ct.availableStock,
-              ct.transit,
-              ct.balance,
+              ...getMetricsData(ct, reportType)
             ]);
 
             for (const prod of cat.products) {
@@ -252,20 +275,7 @@ export async function generateStockActivityExcel(opts: {
                 "All Sizes",
                 "All Colors",
                 pt.bf,
-                pt.fromWarehouse,
-                pt.fromOutlet,
-                pt.totalTrfIn,
-                pt.toWarehouse,
-                pt.toOutlet,
-                pt.totalTrfOut,
-                pt.exchg,
-                pt.refund,
-                pt.claim,
-                pt.sales,
-                pt.adj,
-                pt.availableStock,
-                pt.transit,
-                pt.balance,
+                ...getMetricsData(pt, reportType)
               ]);
 
               for (const item of prod.sizes) {
@@ -277,20 +287,7 @@ export async function generateStockActivityExcel(opts: {
                   item.size,
                   item.color || "N/A",
                   st.bf,
-                  st.fromWarehouse,
-                  st.fromOutlet,
-                  st.totalTrfIn,
-                  st.toWarehouse,
-                  st.toOutlet,
-                  st.totalTrfOut,
-                  st.exchg,
-                  st.refund,
-                  st.claim,
-                  st.sales,
-                  st.adj,
-                  st.availableStock,
-                  st.transit,
-                  st.balance,
+                  ...getMetricsData(st, reportType)
                 ]);
               }
             }
@@ -306,20 +303,7 @@ export async function generateStockActivityExcel(opts: {
       "-",
       "-",
       grandTotals.bf,
-      grandTotals.fromWarehouse,
-      grandTotals.fromOutlet,
-      grandTotals.totalTrfIn,
-      grandTotals.toWarehouse,
-      grandTotals.toOutlet,
-      grandTotals.totalTrfOut,
-      grandTotals.exchg,
-      grandTotals.refund,
-      grandTotals.claim,
-      grandTotals.sales,
-      grandTotals.adj,
-      grandTotals.availableStock,
-      grandTotals.transit,
-      grandTotals.balance,
+      ...getMetricsData(grandTotals, reportType)
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);

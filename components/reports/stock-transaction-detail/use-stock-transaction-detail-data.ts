@@ -113,7 +113,7 @@ export function useStockTransactionDetailData({
                 inQty: sumIn,
                 outQty: sumOut,
                 inTransitQty: sumTransit,
-                closingBalance: running,
+                closingBalance: running + sumTransit,
                 transactions: enrichedTxs,
             };
         });

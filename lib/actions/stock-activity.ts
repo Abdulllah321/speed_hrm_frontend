@@ -18,6 +18,13 @@ export interface StockActivityTotals {
   availableStock: number;
   transit: number;
   balance: number;
+  purchases: number;
+  purchaseReturn: number;
+  deliveryChallan: number;
+  wholesaleReturn: number;
+  reservedSO: number;
+  reservedSRN: number;
+  transitGRN: number;
 }
 
 export interface StockActivityVariantItem {
@@ -91,7 +98,7 @@ export interface StockActivityFlatRecord {
 }
 
 export interface StockActivityReportData {
-  reportType: 'merged' | 'separate';
+  reportType: 'merged' | 'separate' | 'detailed';
   locations?: StockActivityLocationNode[];
   brands: StockActivityBrandNode[];
   flatItems: StockActivityFlatRecord[];
@@ -105,7 +112,7 @@ export async function queueStockActivityPreview(opts: {
   warehouseId?: string;
   startDate?: string;
   endDate?: string;
-  reportType?: 'merged' | 'separate';
+  reportType?: 'merged' | 'separate' | 'detailed';
   search?: string;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
   try {
@@ -114,7 +121,7 @@ export async function queueStockActivityPreview(opts: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(opts),
     });
-    return res.data || res;
+    return res.data;
   } catch (err: any) {
     return { status: false, message: err.message || "Network error while queueing report" };
   }
@@ -127,7 +134,7 @@ export async function getStockActivityResult(
     const res = await authFetch(`/stock-ledger/reports/stock-activity/result/${jobId}`, {
       method: "GET",
     });
-    return res.data || res;
+    return res.data;
   } catch (err: any) {
     return { status: false, message: err.message || "Network error while fetching report data" };
   }
@@ -144,7 +151,7 @@ export async function registerClientStockActivityExport(opts: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(opts),
     });
-    return res.data || res;
+    return res.data;
   } catch (err: any) {
     return { status: false, message: err.message || "Network error registering export history" };
   }

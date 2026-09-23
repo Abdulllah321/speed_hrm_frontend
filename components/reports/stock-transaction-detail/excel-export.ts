@@ -35,6 +35,7 @@ export async function exportStockTransactionDetailToExcel({
         "Size",
         "Color",
         "Barcode",
+        "Store/Location",
         "Doc Type / Ref #",
         "Date",
         "Opening (B/F)",
@@ -70,6 +71,7 @@ export async function exportStockTransactionDetailToExcel({
             item.size,
             item.color,
             item.barCode,
+            "-",
             "SUMMARY ITEM TOTAL",
             "-",
             item.openingBalance,
@@ -92,6 +94,7 @@ export async function exportStockTransactionDetailToExcel({
                     item.size,
                     item.color,
                     item.barCode,
+                    tx.storeName || "-",
                     `${tx.docType} (${tx.docRef})`,
                     tx.date ? new Date(tx.date).toLocaleDateString() : "-",
                     "-",
@@ -115,6 +118,7 @@ export async function exportStockTransactionDetailToExcel({
     dataRows.push([]);
     dataRows.push([
         "GRAND TOTAL",
+        "",
         "",
         "",
         "",

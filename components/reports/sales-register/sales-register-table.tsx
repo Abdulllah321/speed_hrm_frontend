@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 import { SalesRegisterTableRow, SalesRegisterTotals } from "./types";
-import { Barcode, ChevronRight, ChevronDown, UnfoldVertical, FoldVertical, Info, Receipt, UserCheck, ShieldCheck } from "lucide-react";
+import { Barcode, ChevronRight, ChevronDown, UnfoldVertical, FoldVertical, Info, Receipt, RotateCcw, UserCheck, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
@@ -251,12 +251,20 @@ export function SalesRegisterTable({
                           )}
 
                           {isInvoice ? (
-                            <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-indigo-950 dark:text-indigo-200">
-                              <Receipt className="h-3.5 w-3.5 text-indigo-600" />
-                              <span>{item.orderNumber}</span>
-                            </div>
+                            item.orderNumber?.startsWith("EXC-") || item.orderNumber?.startsWith("REF-") || item.orderNumber?.startsWith("RET-") || item.paymentMethod === "RETURN" ? (
+                              <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-rose-950 dark:text-rose-200">
+                                <RotateCcw className="h-3.5 w-3.5 text-rose-600" />
+                                <span>{item.orderNumber}</span>
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300">RETURN</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-indigo-950 dark:text-indigo-200">
+                                <Receipt className="h-3.5 w-3.5 text-indigo-600" />
+                                <span>{item.orderNumber}</span>
+                              </div>
+                            )
                           ) : isItem ? (
-                            <span className="truncate">{item.description}</span>
+                            <span className={cn("truncate", (item.quantity ?? 0) < 0 && "text-rose-700 dark:text-rose-300 font-medium")}>{item.description}</span>
                           ) : (
                             <span className="truncate font-extrabold">{item.label}</span>
                           )}
@@ -283,6 +291,7 @@ export function SalesRegisterTable({
                         {item.paymentMethod ? (
                           <span className={cn(
                             "px-2 py-0.5 rounded-full text-[10px]",
+                            item.paymentMethod === "RETURN" ? "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300" :
                             item.paymentMethod.includes("CASH") ? "bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300" :
                             item.paymentMethod.includes("CARD") ? "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300" :
                             "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300"
@@ -323,12 +332,18 @@ export function SalesRegisterTable({
                       </td>
 
                       {/* Qty */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-semibold">
+                      <td className={cn(
+                        "py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-semibold",
+                        (isItem ? (item.quantity ?? 0) < 0 : t.totalItems < 0) && "text-rose-600 dark:text-rose-400 font-bold"
+                      )}>
                         {isItem ? item.quantity : t.totalItems.toLocaleString()}
                       </td>
 
                       {/* Gross Amt */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                      <td className={cn(
+                        "py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300",
+                        t.grossAmount < 0 && "text-rose-600 dark:text-rose-400 font-semibold"
+                      )}>
                         {formatVal(t.grossAmount)}
                       </td>
 
@@ -343,7 +358,10 @@ export function SalesRegisterTable({
                       </td>
 
                       {/* Net Sales */}
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className={cn(
+                        "py-2.5 px-3.5 text-right font-mono font-bold",
+                        t.netAmount < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                      )}>
                         {formatVal(t.netAmount)}
                       </td>
                     </tr>

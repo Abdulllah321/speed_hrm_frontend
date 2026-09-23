@@ -9,6 +9,7 @@ export interface TransactionRecord {
     outQty: number;
     isInTransit?: boolean;
     runningBalance?: number;
+    storeName?: string;
 }
 
 export interface FlatItemRecord {

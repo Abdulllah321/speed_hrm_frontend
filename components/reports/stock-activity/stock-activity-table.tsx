@@ -12,6 +12,7 @@ interface StockActivityTableProps {
   onToggleNode?: (nodeId: string) => void;
   onExpandAll?: () => void;
   onCollapseAll?: () => void;
+  reportType?: "merged" | "separate" | "detailed";
 }
 
 export function StockActivityTable({
@@ -20,6 +21,7 @@ export function StockActivityTable({
   onToggleNode,
   onExpandAll,
   onCollapseAll,
+  reportType = "merged",
 }: StockActivityTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -36,8 +38,8 @@ export function StockActivityTable({
   const paddingBottom =
     virtualItems.length > 0 ? totalSize - virtualItems[virtualItems.length - 1].end : 0;
 
-  const formatVal = (val?: number) =>
-    val === undefined || val === 0 ? "-" : val.toLocaleString();
+  const formatVal = (val?: number | null) =>
+    val === undefined || val === null || val === 0 ? "-" : val.toLocaleString();
 
   return (
     <div className="space-y-2.5">
@@ -104,8 +106,34 @@ export function StockActivityTable({
                   </div>
                 </th>
 
-                {/* Wh IN */}
-                <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                {reportType === "detailed" ? (
+                  <>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                      Purchases
+                    </th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                      Purchase Ret
+                    </th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                      From Outlet
+                    </th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                      To Outlet
+                    </th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                      Delivery Challan
+                    </th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                      Wholesale Ret
+                    </th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
+                      Adj
+                    </th>
+                  </>
+                ) : (
+                  <>
+                    {/* Wh IN */}
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <span>Wh IN</span>
                     <Tooltip>
@@ -290,6 +318,8 @@ export function StockActivityTable({
                     </Tooltip>
                   </div>
                 </th>
+                  </>
+                )}
 
                 {/* Available */}
                 <th className="py-3 px-3 w-[105px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-teal-600 dark:text-teal-400">
@@ -307,6 +337,16 @@ export function StockActivityTable({
                     </Tooltip>
                   </div>
                 </th>
+
+                {reportType === "detailed" ? (
+                  <>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right text-rose-600">Reserved SO</th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right text-orange-600">Reserved SRN</th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-red-600">Total Reserved</th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-emerald-600">Stock After Res</th>
+                    <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right text-sky-600">Transit GRN</th>
+                  </>
+                ) : null}
 
                 {/* Transit */}
                 <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-amber-600 dark:text-amber-400">
@@ -427,10 +467,10 @@ export function StockActivityTable({
                           )}
 
                           {isVariant ? (
-                            <div className="flex items-center gap-1.5 text-[11px]">
-                              <Barcode className="h-3.5 w-3.5 opacity-60 text-emerald-600 dark:text-emerald-400 font-mono shrink-0" />
-                              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                                {item.label || (item.color && item.size ? `${item.color} - ${item.size}` : item.barCode || "N/A")}
+                            <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                              <Barcode className="h-3.5 w-3.5 opacity-60 text-emerald-600 dark:text-emerald-400" />
+                              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                {item.barCode || "N/A"}
                               </span>
                             </div>
                           ) : (
@@ -464,75 +504,129 @@ export function StockActivityTable({
                         {formatVal(t.bf)}
                       </td>
 
-                      {/* Wh IN */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.fromWarehouse)}
-                      </td>
-
-                      {/* Outlet IN */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.fromOutlet)}
-                      </td>
-
-                      {/* Total IN */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        {formatVal(t.totalTrfIn)}
-                      </td>
-
-                      {/* Wh OUT */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.toWarehouse)}
-                      </td>
-
-                      {/* Outlet OUT */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.toOutlet)}
-                      </td>
-
-                      {/* Total OUT */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
-                        {formatVal(t.totalTrfOut)}
-                      </td>
-
-                      {/* Exchg */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.exchg)}
-                      </td>
-
-                      {/* Refund */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.refund)}
-                      </td>
-
-                      {/* Claim */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.claim)}
-                      </td>
-
-                      {/* Sales */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                        {formatVal(t.sales)}
-                      </td>
-
-                      {/* Adj */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.adj)}
-                      </td>
-
-                      {/* Available */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-teal-600 dark:text-teal-400">
-                        {formatVal(t.availableStock)}
-                      </td>
-
-                      {/* Transit */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
-                        {formatVal(t.transit)}
-                      </td>
-
-                      {/* Balance */}
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400">
-                        {formatVal(t.balance)}
-                      </td>
+                      {reportType === "detailed" ? (
+                        <>
+                          {/* Purchases */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            {formatVal(t.purchases)}
+                          </td>
+                          {/* Purchase Ret */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-rose-600 dark:text-rose-400">
+                            {formatVal(t.purchaseReturn)}
+                          </td>
+                          {/* From Outlet */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.fromOutlet)}
+                          </td>
+                          {/* To Outlet */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-indigo-600 dark:text-indigo-400">
+                            {formatVal(t.toOutlet)}
+                          </td>
+                          {/* Delivery Challan */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-amber-600 dark:text-amber-400">
+                            {formatVal(t.deliveryChallan)}
+                          </td>
+                          {/* Wholesale Ret */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.wholesaleReturn)}
+                          </td>
+                          {/* Adj */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.adj)}
+                          </td>
+                          {/* Available */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-teal-600 dark:text-teal-400">
+                            {formatVal(t.availableStock)}
+                          </td>
+                          {/* Reserved SO */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-rose-600">
+                            {formatVal(t.reservedSO)}
+                          </td>
+                          {/* Reserved SRN */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-orange-600">
+                            {formatVal(t.reservedSRN)}
+                          </td>
+                          {/* Total Reserved */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-red-600">
+                            {formatVal((t.reservedSO || 0) + (t.reservedSRN || 0))}
+                          </td>
+                          {/* Stock After Res */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600">
+                            {formatVal((t.availableStock || 0) - ((t.reservedSO || 0) + (t.reservedSRN || 0)))}
+                          </td>
+                          {/* Transit GRN */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-sky-600">
+                            {formatVal(t.transitGRN)}
+                          </td>
+                          {/* Transit */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                            {formatVal(t.transit)}
+                          </td>
+                          {/* Balance */}
+                          <td className="py-2.5 px-3.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400">
+                            {formatVal(t.balance)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          {/* Wh IN */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.fromWarehouse)}
+                          </td>
+                          {/* Outlet IN */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.fromOutlet)}
+                          </td>
+                          {/* Total IN */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            {formatVal(t.totalTrfIn)}
+                          </td>
+                          {/* Wh OUT */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.toWarehouse)}
+                          </td>
+                          {/* Outlet OUT */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.toOutlet)}
+                          </td>
+                          {/* Total OUT */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                            {formatVal(t.totalTrfOut)}
+                          </td>
+                          {/* Exchg */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.exchg)}
+                          </td>
+                          {/* Refund */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.refund)}
+                          </td>
+                          {/* Claim */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.claim)}
+                          </td>
+                          {/* Sales */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                            {formatVal(t.sales)}
+                          </td>
+                          {/* Adj */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                            {formatVal(t.adj)}
+                          </td>
+                          {/* Available */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-teal-600 dark:text-teal-400">
+                            {formatVal(t.availableStock)}
+                          </td>
+                          {/* Transit */}
+                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                            {formatVal(t.transit)}
+                          </td>
+                          {/* Balance */}
+                          <td className="py-2.5 px-3.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400">
+                            {formatVal(t.balance)}
+                          </td>
+                        </>
+                      )}
                     </tr>
                   );
                 })
@@ -540,7 +634,7 @@ export function StockActivityTable({
 
               {paddingBottom > 0 && (
                 <tr>
-                  <td colSpan={20} style={{ height: `${paddingBottom}px` }} />
+                  <td colSpan={25} style={{ height: `${paddingBottom}px` }} />
                 </tr>
               )}
             </tbody>
@@ -549,53 +643,105 @@ export function StockActivityTable({
             <tfoot className="sticky bottom-0 z-20 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase text-[11px] font-mono font-bold shadow-sm border-t-2 border-slate-300 dark:border-slate-700">
               <tr>
                 <td className="py-3 px-3.5 border-r border-slate-200 dark:border-slate-700 font-bold" colSpan={5}>
-                  GRAND TOTAL (ALL SELECTED OUTLETS & WAREHOUSES)
+                  {reportType === "detailed" ? "GRAND TOTAL (CENTRAL WAREHOUSE C40001)" : "GRAND TOTAL (ALL OUTLETS)"}
                 </td>
                 <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-900 dark:text-slate-100">
                   {formatVal(grandTotals.bf)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.fromWarehouse)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.fromOutlet)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600 dark:text-emerald-400">
-                  {formatVal(grandTotals.totalTrfIn)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.toWarehouse)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.toOutlet)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600 dark:text-rose-400">
-                  {formatVal(grandTotals.totalTrfOut)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.exchg)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.refund)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.claim)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-indigo-600 dark:text-indigo-400">
-                  {formatVal(grandTotals.sales)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.adj)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-teal-600 dark:text-teal-400">
-                  {formatVal(grandTotals.availableStock)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
-                  {formatVal(grandTotals.transit)}
-                </td>
-                <td className="py-3 px-3.5 text-right font-mono text-sky-600 dark:text-sky-400">
-                  {formatVal(grandTotals.balance)}
-                </td>
+                {reportType === "detailed" ? (
+                  <>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                      {formatVal(grandTotals?.purchases)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600 dark:text-rose-400">
+                      {formatVal(grandTotals?.purchaseReturn)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals?.fromOutlet)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-indigo-600 dark:text-indigo-400">
+                      {formatVal(grandTotals?.toOutlet)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
+                      {formatVal(grandTotals?.deliveryChallan)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals?.wholesaleReturn)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals?.adj)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-teal-600 dark:text-teal-400">
+                      {formatVal(grandTotals?.availableStock)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600">
+                      {formatVal(grandTotals?.reservedSO)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-orange-600">
+                      {formatVal(grandTotals?.reservedSRN)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-red-600">
+                      {formatVal((grandTotals?.reservedSO || 0) + (grandTotals?.reservedSRN || 0))}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600">
+                      {formatVal((grandTotals?.availableStock || 0) - ((grandTotals?.reservedSO || 0) + (grandTotals?.reservedSRN || 0)))}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-sky-600">
+                      {formatVal(grandTotals?.transitGRN)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
+                      {formatVal(grandTotals?.transit)}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono text-sky-600 dark:text-sky-400">
+                      {formatVal(grandTotals?.balance)}
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals.fromWarehouse)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals.fromOutlet)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                      {formatVal(grandTotals.totalTrfIn)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals.toWarehouse)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals.toOutlet)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600 dark:text-rose-400">
+                      {formatVal(grandTotals.totalTrfOut)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals.exchg)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals.refund)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals.claim)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-indigo-600 dark:text-indigo-400">
+                      {formatVal(grandTotals.sales)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                      {formatVal(grandTotals.adj)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-teal-600 dark:text-teal-400">
+                      {formatVal(grandTotals.availableStock)}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
+                      {formatVal(grandTotals.transit)}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono text-sky-600 dark:text-sky-400">
+                      {formatVal(grandTotals.balance)}
+                    </td>
+                  </>
+                )}
               </tr>
             </tfoot>
           </table>

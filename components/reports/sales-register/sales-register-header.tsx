@@ -67,7 +67,7 @@ export function SalesRegisterHeader({ totals }: SalesRegisterHeaderProps) {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs text-[11px] font-medium bg-slate-900 text-slate-100">
-                  Count of total completed POS register invoices & line items.
+                  Count of completed POS register invoices & Net sales pcs (Gross Sales Pcs less Returns & Refunds).
                 </TooltipContent>
               </Tooltip>
             </div>

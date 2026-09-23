@@ -160,16 +160,16 @@ export function StockTransactionDetailTable({
                             const itemKey = item.itemId || `${item.sku}-${idx}`;
                             const isExpanded = expandedItemIds.has(itemKey);
                             const txCount = item.transactions?.length || 0;
-                            const bgStyle = idx % 2 === 0 ? "bg-background" : "bg-muted/15";
+                            const bgStyle = idx % 2 === 0 ? "bg-background" : "bg-muted";
 
                             return (
                                 <div
                                     key={virtualRow.key}
                                     data-index={virtualRow.index}
                                     ref={rowVirtualizer.measureElement}
-                                    className="absolute top-0 left-0 w-full flex flex-col border-b border-border/40"
+                                    className="absolute left-0 w-full flex flex-col border-b border-border/40"
                                     style={{
-                                        transform: `translateY(${virtualRow.start}px)`,
+                                        top: `${virtualRow.start}px`,
                                     }}
                                 >
                                     {/* Main Product Row */}
@@ -178,7 +178,7 @@ export function StockTransactionDetailTable({
                                         className={cn(
                                             "text-xs transition-colors hover:bg-muted/60 flex items-center px-3 py-2.5 whitespace-nowrap cursor-pointer select-none h-[44px]",
                                             bgStyle,
-                                            isExpanded && "bg-muted/70 font-medium"
+                                            isExpanded && "bg-muted/70 font-medium border-b border-border/60 shadow-sm"
                                         )}
                                     >
                                         {/* Expand Toggle */}
@@ -261,12 +261,14 @@ export function StockTransactionDetailTable({
                                                     No movement transactions recorded for this item in selected date range.
                                                 </p>
                                             ) : (
-                                                <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                                                    <table className="w-full text-xs text-left">
-                                                        <thead className="bg-muted/80 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
+                                                <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden flex flex-col max-h-[400px]">
+                                                    <div className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-border">
+                                                        <table className="w-full text-xs text-left">
+                                                            <thead className="bg-muted text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border sticky top-0 z-10 shadow-sm">
                                                             <tr>
                                                                 <th className="py-2 px-3">Date & Time</th>
                                                                 <th className="py-2 px-3">Doc Type</th>
+                                                                <th className="py-2 px-3">Store / Location</th>
                                                                 <th className="py-2 px-3">Doc Reference #</th>
                                                                 <th className="py-2 px-3">Remarks / Description</th>
                                                                 <th className="py-2 px-3 text-right">In (+)</th>
@@ -284,6 +286,9 @@ export function StockTransactionDetailTable({
                                                                         <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border", getDocBadgeClass(tx.docType))}>
                                                                             {tx.docType}
                                                                         </span>
+                                                                    </td>
+                                                                    <td className="py-1.5 px-3 text-foreground whitespace-nowrap truncate max-w-[250px]" title={tx.storeName || "-"}>
+                                                                        {tx.storeName || "-"}
                                                                     </td>
                                                                     <td className="py-1.5 px-3 font-bold text-foreground whitespace-nowrap">
                                                                         <div className="flex items-center gap-1.5">
@@ -319,7 +324,8 @@ export function StockTransactionDetailTable({
                                                                 </tr>
                                                             ))}
                                                         </tbody>
-                                                    </table>
+                                                        </table>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>

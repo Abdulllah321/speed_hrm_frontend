@@ -23,6 +23,13 @@ const createEmptyTotals = (): StockActivityTotals => ({
   availableStock: 0,
   transit: 0,
   balance: 0,
+  purchases: 0,
+  purchaseReturn: 0,
+  deliveryChallan: 0,
+  wholesaleReturn: 0,
+  reservedSO: 0,
+  reservedSRN: 0,
+  transitGRN: 0,
 });
 
 const addTotals = (target: StockActivityTotals, source: StockActivityTotals) => {
@@ -41,10 +48,17 @@ const addTotals = (target: StockActivityTotals, source: StockActivityTotals) => 
   target.availableStock += source.availableStock;
   target.transit += source.transit;
   target.balance += source.balance;
+  target.purchases += source.purchases ?? 0;
+  target.purchaseReturn += source.purchaseReturn ?? 0;
+  target.deliveryChallan += source.deliveryChallan ?? 0;
+  target.wholesaleReturn += source.wholesaleReturn ?? 0;
+  target.reservedSO += source.reservedSO ?? 0;
+  target.reservedSRN += source.reservedSRN ?? 0;
+  target.transitGRN += source.transitGRN ?? 0;
 };
 
 export function useStockActivityData(reportData: StockActivityReportData | null) {
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [reportType, setReportType] = useState<"merged" | "separate" | "detailed">("merged");
   const [searchQuery, setSearchQuery] = useState("");
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
     brand: true,
@@ -68,7 +82,7 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
 
   useEffect(() => {
     if (reportData?.reportType) {
-      setReportType(reportData.reportType);
+      setReportType(reportData.reportType as "merged" | "separate" | "detailed");
     }
   }, [reportData?.reportType]);
 
@@ -212,11 +226,47 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
     ],
   );
 
-  // Grand Totals Calculation
+  // Dynamic Grand Totals Calculation (respects active client-side filters)
   const grandTotals = useMemo<StockActivityTotals>(() => {
     if (!reportData) return createEmptyTotals();
-    return reportData.grandTotals || createEmptyTotals();
-  }, [reportData]);
+
+    const isFiltered =
+      searchQuery.trim() !== "" ||
+      filterBrands.size > 0 ||
+      filterDivisions.size > 0 ||
+      filterCategories.size > 0 ||
+      filterGenders.size > 0 ||
+      filterSilhouettes.size > 0 ||
+      filterSizes.size > 0 ||
+      filterColors.size > 0;
+
+    if (!isFiltered && reportData.grandTotals) {
+      return reportData.grandTotals;
+    }
+
+    const gt = createEmptyTotals();
+    if (reportData.reportType === "separate" && reportData.locations) {
+      for (const loc of reportData.locations) {
+        const filtered = filterBrandTree(loc.brands);
+        for (const b of filtered) addTotals(gt, b.totals);
+      }
+    } else if (reportData.brands) {
+      const filtered = filterBrandTree(reportData.brands);
+      for (const b of filtered) addTotals(gt, b.totals);
+    }
+    return gt;
+  }, [
+    reportData,
+    searchQuery,
+    filterBrands,
+    filterDivisions,
+    filterCategories,
+    filterGenders,
+    filterSilhouettes,
+    filterSizes,
+    filterColors,
+    filterBrandTree,
+  ]);
 
   // Collapse All Nodes
   const collapseAll = useCallback(() => {
@@ -334,15 +384,10 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
 
                         if (!isProdCollapsed && groupingLevels.variant) {
                           for (const item of prod.sizes) {
-                            const variantLabel = item.color && item.size
-                              ? `${item.color} - ${item.size}`
-                              : item.color || item.size || item.barCode || "Default Variant";
-
                             rows.push({
                               type: "variant",
                               id: `${prefix}-item-${item.id}`,
                               nodeId: `${prefix}-item-${item.id}`,
-                              label: variantLabel,
                               sku: prod.sku,
                               barCode: item.barCode,
                               size: item.size,
@@ -365,7 +410,11 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
       }
     };
 
-    if (reportData.reportType === "separate" && reportData.locations && reportData.locations.length > 0) {
+    if (
+      reportData.reportType === "separate" && 
+      reportData.locations && 
+      reportData.locations.length > 0
+    ) {
       for (const loc of reportData.locations) {
         const locId = `loc-${loc.locationKey}`;
         const isLocCollapsed = collapsedNodes.has(locId);
@@ -388,7 +437,7 @@ export function useStockActivityData(reportData: StockActivityReportData | null)
         }
       }
     } else if (reportData.brands) {
-      flattenBrands(reportData.brands, 0, "merged");
+      flattenBrands(reportData.brands, 0, reportData.reportType || "merged");
     }
 
     return rows;
