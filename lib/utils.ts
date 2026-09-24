@@ -66,16 +66,16 @@ export function getCookie(name: string): string | null {
     return match ? decodeURIComponent(match[1]) : null;
 }
 // Format currency
-export function formatCurrency(amount: number | string, currency = 'PKR'): string {
+export function formatCurrency(amount: number | string, currency = ''): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (isNaN(num)) return `${currency} 0`;
+  if (isNaN(num)) return currency ? `${currency} 0` : '0';
 
   const formatted = new Intl.NumberFormat('en-PK', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(Math.round(num));
 
-  return `${currency} ${formatted}`;
+  return currency ? `${currency} ${formatted}` : formatted;
 }
 
 // Format date
