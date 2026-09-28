@@ -162,6 +162,8 @@ export async function getEmployeesForDropdown(params?: {
   locationId?: string | string[];
   status?: string;
   isActive?: boolean;
+  employmentStatusName?: string;
+  excludeEmploymentStatusName?: string;
 }): Promise<{
   status: boolean;
   data?: EmployeeDropdownOption[];
@@ -188,6 +190,8 @@ export async function getEmployeesForDropdown(params?: {
     if (params?.eobi) searchParams.append('eobi', 'true');
     if (params?.status) searchParams.append('status', params.status);
     if (params?.isActive !== undefined) searchParams.append('isActive', params.isActive ? 'true' : 'false');
+    if (params?.employmentStatusName) searchParams.append('employmentStatusName', params.employmentStatusName);
+    if (params?.excludeEmploymentStatusName) searchParams.append('excludeEmploymentStatusName', params.excludeEmploymentStatusName);
 
     const url = `/employees/dropdown${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     const res = await authFetch(url, {});
@@ -212,6 +216,8 @@ export async function getAllEmployeesForDropdown(filters?: {
   search?: string;
   providentFund?: boolean;
   locationId?: string | string[];
+  employmentStatusName?: string;
+  excludeEmploymentStatusName?: string;
 }): Promise<{
   status: boolean;
   data?: EmployeeDropdownOption[];

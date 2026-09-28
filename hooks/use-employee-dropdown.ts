@@ -28,6 +28,8 @@ export interface UseEmployeeDropdownOptions {
   providentFundOnly?: boolean;
   status?: string;
   isActive?: boolean;
+  employmentStatusName?: string;
+  excludeEmploymentStatusName?: string;
 }
 
 export function useEmployeeDropdown({
@@ -39,6 +41,8 @@ export function useEmployeeDropdown({
   providentFundOnly = false,
   status,
   isActive,
+  employmentStatusName,
+  excludeEmploymentStatusName,
 }: UseEmployeeDropdownOptions = {}) {
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -58,10 +62,10 @@ export function useEmployeeDropdown({
     setPage(1);
     setSearchResults([]);
     setSearchInput("");
-  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, providentFundOnly, status, isActive]);
+  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, providentFundOnly, status, isActive, employmentStatusName, excludeEmploymentStatusName]);
 
   useEffect(() => {
-    const filterKey = `${normalizedDepartmentId}|${normalizedSubDepartmentId}|${normalizedLocationId}|${debouncedSearch}|${providentFundOnly}|${status}|${isActive}`;
+    const filterKey = `${normalizedDepartmentId}|${normalizedSubDepartmentId}|${normalizedLocationId}|${debouncedSearch}|${providentFundOnly}|${status}|${isActive}|${employmentStatusName}|${excludeEmploymentStatusName}`;
     const filtersChanged = filterKey !== filterKeyRef.current;
     filterKeyRef.current = filterKey;
 
@@ -84,6 +88,8 @@ export function useEmployeeDropdown({
           providentFund: providentFundOnly || undefined,
           status,
           isActive,
+          employmentStatusName,
+          excludeEmploymentStatusName,
         });
 
         if (result.status && result.data) {
@@ -117,7 +123,7 @@ export function useEmployeeDropdown({
     };
 
     fetchEmployees();
-  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, debouncedSearch, page, limit, providentFundOnly, status, isActive]);
+  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, debouncedSearch, page, limit, providentFundOnly, status, isActive, employmentStatusName, excludeEmploymentStatusName]);
 
   const displayEmployees = useMemo(() => {
     const map = new Map<string, EmployeeDropdownOption>();
