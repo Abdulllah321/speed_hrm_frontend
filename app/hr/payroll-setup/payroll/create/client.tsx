@@ -77,12 +77,15 @@ export function GeneratePayrollClient({
     const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
     const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
     const [loadingEmployeesForLocation, setLoadingEmployeesForLocation] = useState(false);
+    const [employmentType, setEmploymentType] = useState<"regular" | "internship" | "all">("regular");
 
     const { totalCount, isInitialLoading, multiSelectProps } = useEmployeeDropdown({
         departmentId: formData.department,
         subDepartmentId: formData.subDepartment,
         locationId: selectedLocationIds,
         selectedIds: selectedEmployeeIds,
+        employmentStatusName: employmentType === "internship" ? "Internship" : undefined,
+        excludeEmploymentStatusName: employmentType === "regular" ? "Internship" : undefined,
     });
 
     // Fetch sub-departments when department changes
@@ -122,6 +125,8 @@ export function GeneratePayrollClient({
                         locationId: selectedLocationIds,
                         departmentId: formData.department !== "all" ? formData.department : undefined,
                         subDepartmentId: formData.subDepartment !== "all" ? formData.subDepartment : undefined,
+                        employmentStatusName: employmentType === "internship" ? "Internship" : undefined,
+                        excludeEmploymentStatusName: employmentType === "regular" ? "Internship" : undefined,
                     });
                     if (result.status && result.data) {
                         const ids = result.data.map(emp => emp.id);
@@ -138,7 +143,7 @@ export function GeneratePayrollClient({
         };
 
         selectAllEmployeesForLocation();
-    }, [selectedLocationIds, formData.department, formData.subDepartment]);
+    }, [selectedLocationIds, formData.department, formData.subDepartment, employmentType]);
 
     // Initialize sandwich deduction state when preview data loads
     useEffect(() => {
@@ -174,6 +179,8 @@ export function GeneratePayrollClient({
                 locationId: selectedLocationIds.length > 0 ? selectedLocationIds : undefined,
                 departmentId: formData.department !== "all" ? formData.department : undefined,
                 subDepartmentId: formData.subDepartment !== "all" ? formData.subDepartment : undefined,
+                employmentStatusName: employmentType === "internship" ? "Internship" : undefined,
+                excludeEmploymentStatusName: employmentType === "regular" ? "Internship" : undefined,
             });
             idsPayload = allEmployeesResult.data?.map((e) => e.id) ?? [];
             if (idsPayload.length === 0) {
@@ -321,7 +328,6 @@ export function GeneratePayrollClient({
                         </CardHeader>
                         <CardContent className="space-y-6">
 
-                            {/* Month-Year */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="monthYear">
@@ -336,6 +342,23 @@ export function GeneratePayrollClient({
                                         disabled={isPending}
                                         placeholder="Select month and year"
                                     />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="employmentType">Employment Type</Label>
+                                    <Select
+                                        value={employmentType}
+                                        onValueChange={(val: any) => setEmploymentType(val)}
+                                        disabled={isPending}
+                                    >
+                                        <SelectTrigger id="employmentType">
+                                            <SelectValue placeholder="Select Employment Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="regular">Regular Employees (Exclude Interns)</SelectItem>
+                                            <SelectItem value="internship">Interns Only</SelectItem>
+                                            <SelectItem value="all">All Employees</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
 
