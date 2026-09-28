@@ -14,13 +14,16 @@ export function AllianceRegisterHeader({ totals }: HeaderProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 no-print">
       {/* Memos Count */}
-      <Card className="border-border/60 shadow-sm bg-card hover:border-border transition-colors">
+      <Card 
+        className="border-border/60 shadow-sm bg-card hover:border-border transition-colors cursor-default"
+        title={`Alliance Memos: ${totals.count.toLocaleString()}`}
+      >
         <CardContent className="p-4 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
               Alliance Memos
             </p>
-            <h3 className="text-2xl font-black text-foreground">
+            <h3 className="text-2xl font-black text-foreground truncate">
               {totals.count.toLocaleString()}
             </h3>
           </div>
@@ -31,13 +34,16 @@ export function AllianceRegisterHeader({ totals }: HeaderProps) {
       </Card>
 
       {/* Retail Price */}
-      <Card className="border-border/60 shadow-sm bg-card hover:border-border transition-colors">
+      <Card 
+        className="border-border/60 shadow-sm bg-card hover:border-border transition-colors cursor-default"
+        title={`Retail Price Value: ${formatCurrency(totals.retailPrice)}`}
+      >
         <CardContent className="p-4 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
               Retail Price Value
             </p>
-            <h3 className="text-2xl font-black text-foreground font-mono">
+            <h3 className="text-2xl font-black text-foreground font-mono truncate">
               {formatCurrency(totals.retailPrice)}
             </h3>
           </div>
@@ -48,13 +54,16 @@ export function AllianceRegisterHeader({ totals }: HeaderProps) {
       </Card>
 
       {/* Discount Availed */}
-      <Card className="border-border/60 shadow-sm bg-card hover:border-border transition-colors">
+      <Card 
+        className="border-border/60 shadow-sm bg-card hover:border-border transition-colors cursor-default"
+        title={`Discount Availed: ${formatCurrency(totals.discount)}`}
+      >
         <CardContent className="p-4 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
               Discount Availed
             </p>
-            <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 font-mono">
+            <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 font-mono truncate">
               {formatCurrency(totals.discount)}
             </h3>
           </div>
@@ -65,13 +74,16 @@ export function AllianceRegisterHeader({ totals }: HeaderProps) {
       </Card>
 
       {/* Net Sales */}
-      <Card className="border-border/60 shadow-sm bg-card hover:border-border transition-colors">
+      <Card 
+        className="border-border/60 shadow-sm bg-card hover:border-border transition-colors cursor-default"
+        title={`Net Sales Revenue: ${formatCurrency(totals.netSale)}`}
+      >
         <CardContent className="p-4 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
               Net Sales Revenue
             </p>
-            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono truncate">
               {formatCurrency(totals.netSale)}
             </h3>
           </div>

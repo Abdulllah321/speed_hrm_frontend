@@ -73,19 +73,19 @@ export function useNetSalesSummaryData(
   const effectiveSearchQuery = optionSearchQuery ?? internalSearchQuery;
 
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
-    month: true,
+    brand: true,
+    division: true,
+    category: true,
+    silhouette: true,
+    article: true,
+    variant: true,
+    gender: false,
+    location: true,
+    month: false,
     date: false,
     document: false,
     salesPerson: false,
     taxRate: false,
-    brand: true,
-    division: true,
-    category: true,
-    gender: true,
-    silhouette: true,
-    article: true,
-    variant: true,
-    location: true,
   });
 
   useEffect(() => {
@@ -166,7 +166,7 @@ export function useNetSalesSummaryData(
       return true;
     });
 
-    // 2. Build level sequence
+    // 2. Build level sequence: Location -> Month -> Date -> Document -> SalesPerson -> TaxRate -> Brand -> Division -> Category -> Silhouette -> Gender -> Article -> Variant
     const isSeparate = effectiveReportType === "separate";
     const levels: string[] = [];
 
@@ -179,8 +179,8 @@ export function useNetSalesSummaryData(
     if (groupingLevels.brand) levels.push("brand");
     if (groupingLevels.division) levels.push("division");
     if (groupingLevels.category) levels.push("category");
-    if (groupingLevels.gender) levels.push("gender");
     if (groupingLevels.silhouette) levels.push("silhouette");
+    if (groupingLevels.gender) levels.push("gender");
     if (groupingLevels.article) levels.push("article");
     if (groupingLevels.variant) levels.push("variant");
 
@@ -193,21 +193,34 @@ export function useNetSalesSummaryData(
     for (const item of filtered) {
       if (item.soldQty === 0 && item.returnQty === 0 && item.netQty === 0) continue;
 
+      const unitPrice = item.unitPrice || 0;
+      const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
+      const soldQty = item.soldQty || 0;
+      const returnQty = item.returnQty || 0;
+      const netQty = item.netQty !== undefined ? item.netQty : (soldQty - returnQty);
+      const retailSalesVal = item.retailSalesValue !== undefined ? item.retailSalesValue : (unitPrice * netQty);
+      const wostAmt = item.wostAmount !== undefined ? item.wostAmount : Math.round((netQty * priceWost) * 100) / 100;
+      const discAmt = item.discountAmount || 0;
+      const valExTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((wostAmt - discAmt) * 100) / 100;
+      const taxAmt = item.taxAmount || 0;
+      const valInclTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : Math.round((valExTax + taxAmt) * 100) / 100;
+
       const itemTotals: NetSalesSummaryTotals = {
         orderCount: 1,
-        unitPrice: item.unitPrice || 0,
-        totalItemsSold: item.soldQty,
-        totalItemsReturned: item.returnQty,
-        netItems: item.netQty,
-        retailSalesValue: item.retailSalesValue || 0,
-        wostAmount: item.wostAmount || 0,
-        discountAmount: item.discountAmount,
-        valueExSalesTax: item.valueExSalesTax || 0,
-        taxAmount: item.taxAmount,
-        valueInclSalesTax: item.valueInclSalesTax || 0,
+        unitPrice,
+        priceWost,
+        totalItemsSold: soldQty,
+        totalItemsReturned: returnQty,
+        netItems: netQty,
+        retailSalesValue: retailSalesVal,
+        wostAmount: wostAmt,
+        discountAmount: discAmt,
+        valueExSalesTax: valExTax,
+        taxAmount: taxAmt,
+        valueInclSalesTax: valInclTax,
         grossSalesAmount: item.grossAmount,
         returnAmount: item.returnAmount,
-        netSalesAmount: item.netAmount,
+        netSalesAmount: valInclTax,
       };
 
       let currentLevelNodes = root;
@@ -235,15 +248,16 @@ export function useNetSalesSummaryData(
           nodeVal = item.divisionName || "Default Division";
         } else if (levelName === "category") {
           nodeVal = item.categoryName || "Default Category";
-        } else if (levelName === "gender") {
-          nodeVal = item.genderName || "Default Gender";
         } else if (levelName === "silhouette") {
           nodeVal = item.silhouetteName || "Default Silhouette";
+        } else if (levelName === "gender") {
+          nodeVal = item.genderName || "Default Gender";
         } else if (levelName === "article") {
           nodeVal = item.sku || item.description || "Article";
           extraFields.sku = item.sku;
           extraFields.articleName = item.description || "Article";
           extraFields.barCode = item.barCode;
+          extraFields.unitPrice = unitPrice;
         } else if (levelName === "variant") {
           nodeVal = item.barCode
             ? `[${item.barCode}] ${item.colorName || "Default"}-${item.sizeName || "Default"}`
@@ -252,6 +266,7 @@ export function useNetSalesSummaryData(
           extraFields.size = item.sizeName || "Default";
           extraFields.barCode = item.barCode;
           extraFields.sku = item.sku;
+          extraFields.unitPrice = unitPrice;
         }
 
         let existingNode = (currentLevelNodes as any)._childMap?.get(nodeVal);

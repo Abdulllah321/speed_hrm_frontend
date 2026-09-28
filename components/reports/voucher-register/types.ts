@@ -56,6 +56,10 @@ export interface VoucherRegisterTotals {
       discount: number;
       settledAmount: number;
       outstandingAmount: number;
+      redeemedCount?: number;
+      outstandingCount?: number;
+      activeCount?: number;
+      expiredCount?: number;
     }
   >;
   statusBreakdown?: Record<string, number>;
@@ -63,6 +67,13 @@ export interface VoucherRegisterTotals {
 
 export interface VoucherRegisterReportData {
   items: VoucherRegisterItem[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
   kpis: {
     totalVouchers: number;
     totalAmount: number;
@@ -83,6 +94,10 @@ export interface VoucherRegisterReportData {
         discount: number;
         settledAmount: number;
         outstandingAmount: number;
+        redeemedCount?: number;
+        outstandingCount?: number;
+        activeCount?: number;
+        expiredCount?: number;
       }
     >;
     statusBreakdown?: Record<string, number>;
@@ -98,4 +113,22 @@ export type VoucherReportMode = "period" | "outstanding";
 export interface VoucherTabConfig {
   id: string;
   label: string;
+}
+
+/**
+ * Returns the current Fiscal Year date range (01-Jul to 30-Jun).
+ * In Pakistan / standard accounting FY, if month is July-Dec (months 6-11), FY starts July 1 of current year.
+ * If month is Jan-June (months 0-5), FY started July 1 of previous year.
+ */
+export function getCurrentFiscalYearRange(): { from: Date; to: Date } {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0 = Jan, 6 = Jul
+  const startYear = currentMonth >= 6 ? currentYear : currentYear - 1;
+  const endYear = startYear + 1;
+
+  return {
+    from: new Date(startYear, 6, 1, 0, 0, 0, 0), // July 1st 00:00:00
+    to: new Date(endYear, 5, 30, 23, 59, 59, 999), // June 30th 23:59:59
+  };
 }

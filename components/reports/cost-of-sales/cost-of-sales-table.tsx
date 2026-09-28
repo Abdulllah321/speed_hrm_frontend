@@ -213,27 +213,42 @@ export function CostOfSalesTable({
                       </td>
 
                       {/* Sold Qty */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono font-bold">
+                      <td
+                        className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono font-bold"
+                        title={q !== undefined && q !== 0 ? `Sold Qty: ${q.toLocaleString()} pcs` : undefined}
+                      >
                         {formatVal(q)}
                       </td>
 
                       {/* Unit Cost */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono">
+                      <td
+                        className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono"
+                        title={cost !== undefined && cost !== 0 ? `Unit Cost: ${formatCurrency(cost)}` : undefined}
+                      >
                         {formatPrice(cost)}
                       </td>
 
                       {/* Total Cost (COGS) */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                      <td
+                        className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono font-bold text-amber-600 dark:text-amber-400"
+                        title={totCost !== undefined && totCost !== 0 ? `Total Cost (COGS): ${formatCurrency(totCost)}` : undefined}
+                      >
                         {formatPrice(totCost)}
                       </td>
 
                       {/* Unit Price */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono">
+                      <td
+                        className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/50 text-right font-mono"
+                        title={price !== undefined && price !== 0 ? `Unit Price: ${formatCurrency(price)}` : undefined}
+                      >
                         {formatPrice(price)}
                       </td>
 
                       {/* Total Revenue */}
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <td
+                        className="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400"
+                        title={rev !== undefined && rev !== 0 ? `Total Revenue: ${formatCurrency(rev)}` : undefined}
+                      >
                         {formatPrice(rev)}
                       </td>
                     </tr>
@@ -254,17 +269,29 @@ export function CostOfSalesTable({
                 <td className="py-3 px-3.5 border-r border-slate-800 font-bold" colSpan={5}>
                   GRAND TOTAL (ALL SELECTED OUTLETS & WAREHOUSES)
                 </td>
-                <td className="py-3 px-3 border-r border-slate-800 text-right font-mono text-emerald-400">
+                <td
+                  className="py-3 px-3 border-r border-slate-800 text-right font-mono text-emerald-400"
+                  title={`Grand Total Sold Qty: ${grandTotals.quantity.toLocaleString()} pcs`}
+                >
                   {formatVal(grandTotals.quantity)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-800 text-right font-mono">
+                <td
+                  className="py-3 px-3 border-r border-slate-800 text-right font-mono"
+                  title={grandTotals.avgUnitCost ? `Grand Total Avg Unit Cost: ${formatCurrency(grandTotals.avgUnitCost)}` : undefined}
+                >
                   {formatPrice(grandTotals.avgUnitCost)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-800 text-right font-mono text-amber-400">
+                <td
+                  className="py-3 px-3 border-r border-slate-800 text-right font-mono text-amber-400"
+                  title={`Grand Total COGS: ${formatCurrency(grandTotals.totalCost)}`}
+                >
                   {formatPrice(grandTotals.totalCost)}
                 </td>
                 <td className="py-3 px-3 border-r border-slate-800 text-right font-mono">-</td>
-                <td className="py-3 px-3.5 text-right font-mono text-emerald-400">
+                <td
+                  className="py-3 px-3.5 text-right font-mono text-emerald-400"
+                  title={`Grand Total Revenue: ${formatCurrency(grandTotals.totalRevenue)}`}
+                >
                   {formatPrice(grandTotals.totalRevenue)}
                 </td>
               </tr>

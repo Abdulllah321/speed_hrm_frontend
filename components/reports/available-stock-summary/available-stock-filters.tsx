@@ -293,7 +293,13 @@ export function AvailableStockFilters({
                     )}
 
                     {/* Date Range Picker */}
-                    <DateRangePicker value={dateRange} onChange={setDateRange} />
+                    <DateRangePicker
+                        initialDateFrom={dateRange?.from}
+                        initialDateTo={dateRange?.to}
+                        onUpdate={({ range }) => {
+                            if (range) setDateRange(range);
+                        }}
+                    />
 
                     {/* Manual Refresh Button */}
                     <Button

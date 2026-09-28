@@ -21,7 +21,10 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
                 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-6"
                 : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-7"
         )}>
-            <Card className="bg-card border-border shadow-sm overflow-hidden">
+            <Card
+                className="bg-card border-border shadow-sm overflow-hidden"
+                title={`Total Items: ${totalItemsCount.toLocaleString()} SKUs`}
+            >
                 <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Total Items</span>
@@ -35,7 +38,10 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
                 </CardContent>
             </Card>
 
-            <Card className="bg-card border-border shadow-sm overflow-hidden">
+            <Card
+                className="bg-card border-border shadow-sm overflow-hidden"
+                title={`Available Qty: ${grandTotals.quantity.toLocaleString()} pcs`}
+            >
                 <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Available Qty</span>
@@ -49,7 +55,10 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
                 </CardContent>
             </Card>
 
-            <Card className="bg-card border-border shadow-sm overflow-hidden">
+            <Card
+                className="bg-card border-border shadow-sm overflow-hidden"
+                title={`In Transit: ${grandTotals.transit.toLocaleString()} pcs`}
+            >
                 <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">In Transit</span>
@@ -63,7 +72,10 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
                 </CardContent>
             </Card>
 
-            <Card className="bg-card border-border shadow-sm overflow-hidden">
+            <Card
+                className="bg-card border-border shadow-sm overflow-hidden"
+                title={`Reserved: ${grandTotals.reserved.toLocaleString()} pcs`}
+            >
                 <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Reserved</span>
@@ -77,7 +89,10 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
                 </CardContent>
             </Card>
 
-            <Card className="bg-card border-border shadow-sm overflow-hidden">
+            <Card
+                className="bg-card border-border shadow-sm overflow-hidden"
+                title={`Total Balance: ${grandTotals.total.toLocaleString()} pcs`}
+            >
                 <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Total Balance</span>
@@ -91,7 +106,10 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
                 </CardContent>
             </Card>
 
-            <Card className="bg-card border-border shadow-sm overflow-hidden">
+            <Card
+                className="bg-card border-border shadow-sm overflow-hidden"
+                title={`Selling Value: ${formatCurrency(grandTotals.value)}`}
+            >
                 <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Selling Value</span>
@@ -106,7 +124,10 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
             </Card>
 
             {!isPosLevel && (
-                <Card className="bg-card border-border shadow-sm overflow-hidden">
+                <Card
+                    className="bg-card border-border shadow-sm overflow-hidden"
+                    title={`Costing Value: ${formatCurrency(grandTotals.costingValue)}`}
+                >
                     <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Costing Value</span>

@@ -26,7 +26,10 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 no-print">
       {/* 1. Total Stock Units */}
-      <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-emerald-500/50 transition-all">
+      <div
+        className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-emerald-500/50 transition-all"
+        title={`Total Stock Units: ${totals.totalStockQty.toLocaleString()} (${totals.totalItems} SKUs)`}
+      >
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             Total Stock Units
@@ -46,7 +49,10 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
       </div>
 
       {/* 2. Total Valuation */}
-      <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-indigo-500/50 transition-all">
+      <div
+        className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-indigo-500/50 transition-all"
+        title={`${isPosLevel ? "Retail Stock Valuation" : "Cost Stock Valuation"}: ${totals.totalStockValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+      >
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             {isPosLevel ? "Retail Stock Valuation" : "Cost Stock Valuation"}
@@ -57,13 +63,16 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
         </div>
         <div className="mt-2">
           <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            Rs. {totals.totalStockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {totals.totalStockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
         </div>
       </div>
 
       {/* 3. Fresh Stock (0–6 Months) */}
-      <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-sky-500/50 transition-all">
+      <div
+        className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-sky-500/50 transition-all"
+        title={`Fresh (0–6M): ${freshValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${totals.totalBucket0to6mQty.toLocaleString()} pcs)`}
+      >
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
             Fresh (0–6M)
@@ -74,7 +83,7 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
         </div>
         <div className="mt-2 flex items-baseline justify-between">
           <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
-            Rs. {freshValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {freshValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <span className="text-xs font-bold text-sky-600 dark:text-sky-400">
             {totals.totalBucket0to6mQty.toLocaleString()} pcs
@@ -83,7 +92,10 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
       </div>
 
       {/* 4. Medium Aging (6–12 Months) */}
-      <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-amber-500/50 transition-all">
+      <div
+        className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-amber-500/50 transition-all"
+        title={`Regular (6–12M): ${regularValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${(totals.totalBucket6to9mQty + totals.totalBucket9to12mQty).toLocaleString()} pcs)`}
+      >
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
             Regular (6–12M)
@@ -94,7 +106,7 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
         </div>
         <div className="mt-2 flex items-baseline justify-between">
           <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
-            Rs. {regularValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {regularValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
             {(totals.totalBucket6to9mQty + totals.totalBucket9to12mQty).toLocaleString()} pcs
@@ -103,7 +115,10 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
       </div>
 
       {/* 5. Slow Moving (12–18 Months) */}
-      <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-orange-500/50 transition-all">
+      <div
+        className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden group hover:border-orange-500/50 transition-all"
+        title={`Slow (12–18M): ${slowValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${(totals.totalBucket12to15mQty + totals.totalBucket15to18mQty).toLocaleString()} pcs)`}
+      >
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
             Slow (12–18M)
@@ -114,7 +129,7 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
         </div>
         <div className="mt-2 flex items-baseline justify-between">
           <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
-            Rs. {slowValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {slowValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
             {(totals.totalBucket12to15mQty + totals.totalBucket15to18mQty).toLocaleString()} pcs
@@ -123,7 +138,10 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
       </div>
 
       {/* 6. Aged Stock (>18 Months) */}
-      <div className="p-4 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20 shadow-sm relative overflow-hidden group hover:border-rose-500 transition-all">
+      <div
+        className="p-4 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20 shadow-sm relative overflow-hidden group hover:border-rose-500 transition-all"
+        title={`Aged (>18M): ${agedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${agedRatio}%, ${totals.totalBucket18mPlusQty.toLocaleString()} pcs)`}
+      >
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
             Aged (&gt;18M)
@@ -134,7 +152,7 @@ export function InventoryAgingHeader({ totals, isPosLevel = false }: InventoryAg
         </div>
         <div className="mt-2 flex items-baseline justify-between">
           <span className="text-xl font-black text-rose-900 dark:text-rose-200">
-            Rs. {agedValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {agedValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <span className="text-xs font-black text-rose-600 dark:text-rose-400">
             {agedRatio}% ({totals.totalBucket18mPlusQty.toLocaleString()} pcs)

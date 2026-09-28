@@ -13,7 +13,10 @@ export function CostOfSalesHeader({ totals }: CostOfSalesHeaderProps) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 no-print">
-      <Card className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden">
+      <Card
+        className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden"
+        title={`Sold Articles: ${totals.totalProducts}`}
+      >
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
@@ -29,7 +32,10 @@ export function CostOfSalesHeader({ totals }: CostOfSalesHeaderProps) {
         </CardContent>
       </Card>
 
-      <Card className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden">
+      <Card
+        className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden"
+        title={`Net Sold Qty: ${totals.quantity.toLocaleString()} pcs`}
+      >
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
@@ -45,7 +51,10 @@ export function CostOfSalesHeader({ totals }: CostOfSalesHeaderProps) {
         </CardContent>
       </Card>
 
-      <Card className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden">
+      <Card
+        className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden"
+        title={`COGS (Cost): ${formatCurrency(totals.totalCost)}`}
+      >
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
@@ -61,7 +70,10 @@ export function CostOfSalesHeader({ totals }: CostOfSalesHeaderProps) {
         </CardContent>
       </Card>
 
-      <Card className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden">
+      <Card
+        className="shadow-2xs border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/80 backdrop-blur-xs rounded-2xl overflow-hidden"
+        title={`Net Revenue: ${formatCurrency(totals.totalRevenue)}`}
+      >
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">

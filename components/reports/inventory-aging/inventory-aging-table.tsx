@@ -181,37 +181,67 @@ export function InventoryAgingTable({
                   <div className="w-32 shrink-0 text-slate-600 dark:text-slate-400 truncate">
                     {item.categoryName}
                   </div>
-                  <div className="w-24 shrink-0 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
-                    Rs. {priceToDisplay.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  <div
+                    className="w-24 shrink-0 text-right font-mono font-bold text-slate-900 dark:text-slate-100"
+                    title={`Price: ${priceToDisplay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  >
+                    {priceToDisplay.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                   </div>
-                  <div className="w-24 shrink-0 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
+                  <div
+                    className="w-24 shrink-0 text-right font-mono font-bold text-slate-900 dark:text-slate-100"
+                    title={`Total Qty: ${item.totalQty.toLocaleString()} pcs`}
+                  >
                     {item.totalQty.toLocaleString()}
                   </div>
-                  <div className="w-28 shrink-0 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                    Rs. {item.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  <div
+                    className="w-28 shrink-0 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400"
+                    title={`Total Valuation: ${item.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  >
+                    {item.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </div>
 
                   {/* Aging Buckets */}
-                  <div className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket0to6mQty > 0 ? "font-bold text-sky-600 dark:text-sky-400" : "text-slate-300 dark:text-slate-700")}>
+                  <div
+                    className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket0to6mQty > 0 ? "font-bold text-sky-600 dark:text-sky-400" : "text-slate-300 dark:text-slate-700")}
+                    title={`Fresh (0-6M): ${item.bucket0to6mQty.toLocaleString()} pcs`}
+                  >
                     {item.bucket0to6mQty.toLocaleString()}
                   </div>
-                  <div className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket6to9mQty > 0 ? "font-semibold text-slate-700 dark:text-slate-300" : "text-slate-300 dark:text-slate-700")}>
+                  <div
+                    className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket6to9mQty > 0 ? "font-semibold text-slate-700 dark:text-slate-300" : "text-slate-300 dark:text-slate-700")}
+                    title={`6-9 Months: ${item.bucket6to9mQty.toLocaleString()} pcs`}
+                  >
                     {item.bucket6to9mQty.toLocaleString()}
                   </div>
-                  <div className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket9to12mQty > 0 ? "font-semibold text-amber-600 dark:text-amber-400" : "text-slate-300 dark:text-slate-700")}>
+                  <div
+                    className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket9to12mQty > 0 ? "font-semibold text-amber-600 dark:text-amber-400" : "text-slate-300 dark:text-slate-700")}
+                    title={`9-12 Months: ${item.bucket9to12mQty.toLocaleString()} pcs`}
+                  >
                     {item.bucket9to12mQty.toLocaleString()}
                   </div>
-                  <div className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket12to15mQty > 0 ? "font-semibold text-orange-600 dark:text-orange-400" : "text-slate-300 dark:text-slate-700")}>
+                  <div
+                    className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket12to15mQty > 0 ? "font-semibold text-orange-600 dark:text-orange-400" : "text-slate-300 dark:text-slate-700")}
+                    title={`12-15 Months: ${item.bucket12to15mQty.toLocaleString()} pcs`}
+                  >
                     {item.bucket12to15mQty.toLocaleString()}
                   </div>
-                  <div className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket15to18mQty > 0 ? "font-semibold text-orange-700 dark:text-orange-300" : "text-slate-300 dark:text-slate-700")}>
+                  <div
+                    className={cn("w-24 shrink-0 text-right font-mono px-2", item.bucket15to18mQty > 0 ? "font-semibold text-orange-700 dark:text-orange-300" : "text-slate-300 dark:text-slate-700")}
+                    title={`15-18 Months: ${item.bucket15to18mQty.toLocaleString()} pcs`}
+                  >
                     {item.bucket15to18mQty.toLocaleString()}
                   </div>
-                  <div className={cn("w-28 shrink-0 text-right font-mono px-2", item.bucket18mPlusQty > 0 ? "font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 py-0.5 rounded" : "text-slate-300 dark:text-slate-700")}>
+                  <div
+                    className={cn("w-28 shrink-0 text-right font-mono px-2", item.bucket18mPlusQty > 0 ? "font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 py-0.5 rounded" : "text-slate-300 dark:text-slate-700")}
+                    title={`Aged (>18M): ${item.bucket18mPlusQty.toLocaleString()} pcs`}
+                  >
                     {item.bucket18mPlusQty.toLocaleString()}
                   </div>
 
-                  <div className="w-24 shrink-0 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                  <div
+                    className="w-24 shrink-0 text-center font-mono font-bold text-slate-700 dark:text-slate-300"
+                    title={`Average Age: ${item.avgAgeDays} days`}
+                  >
                     {item.avgAgeDays}d
                   </div>
 
@@ -219,12 +249,20 @@ export function InventoryAgingTable({
                   {reportType === "separate" && (
                     <>
                       {locations.map((loc) => (
-                        <div key={loc.id} className="w-28 shrink-0 text-right font-mono text-slate-700 dark:text-slate-300 px-2">
+                        <div
+                          key={loc.id}
+                          className="w-28 shrink-0 text-right font-mono text-slate-700 dark:text-slate-300 px-2"
+                          title={`${loc.name}: ${(item.locationStocks[loc.id] || 0).toLocaleString()} pcs`}
+                        >
                           {(item.locationStocks[loc.id] || 0).toLocaleString()}
                         </div>
                       ))}
                       {warehouses.map((wh) => (
-                        <div key={wh.id} className="w-28 shrink-0 text-right font-mono text-slate-700 dark:text-slate-300 px-2">
+                        <div
+                          key={wh.id}
+                          className="w-28 shrink-0 text-right font-mono text-slate-700 dark:text-slate-300 px-2"
+                          title={`${wh.name}: ${(item.warehouseStocks[wh.id] || 0).toLocaleString()} pcs`}
+                        >
                           {(item.warehouseStocks[wh.id] || 0).toLocaleString()}
                         </div>
                       ))}
@@ -248,30 +286,54 @@ export function InventoryAgingTable({
               <div className="w-32 shrink-0"></div>
               <div className="w-32 shrink-0"></div>
               <div className="w-24 shrink-0 text-right"></div>
-              <div className="w-24 shrink-0 text-right font-mono text-emerald-400 text-sm font-black">
+              <div
+                className="w-24 shrink-0 text-right font-mono text-emerald-400 text-sm font-black"
+                title={`Grand Total Stock Qty: ${totals.totalStockQty.toLocaleString()} pcs`}
+              >
                 {totals.totalStockQty.toLocaleString()}
               </div>
-              <div className="w-28 shrink-0 text-right font-mono text-indigo-300 text-sm font-black">
-                Rs. {totals.totalStockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              <div
+                className="w-28 shrink-0 text-right font-mono text-indigo-300 text-sm font-black"
+                title={`Grand Total Stock Valuation: ${totals.totalStockValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              >
+                {totals.totalStockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
 
               {/* Bucket Totals */}
-              <div className="w-24 shrink-0 text-right font-mono text-sky-300 px-2">
+              <div
+                className="w-24 shrink-0 text-right font-mono text-sky-300 px-2"
+                title={`Grand Total Fresh (0-6M): ${totals.totalBucket0to6mQty.toLocaleString()} pcs`}
+              >
                 {totals.totalBucket0to6mQty.toLocaleString()}
               </div>
-              <div className="w-24 shrink-0 text-right font-mono text-slate-300 px-2">
+              <div
+                className="w-24 shrink-0 text-right font-mono text-slate-300 px-2"
+                title={`Grand Total 6-9M: ${totals.totalBucket6to9mQty.toLocaleString()} pcs`}
+              >
                 {totals.totalBucket6to9mQty.toLocaleString()}
               </div>
-              <div className="w-24 shrink-0 text-right font-mono text-amber-300 px-2">
+              <div
+                className="w-24 shrink-0 text-right font-mono text-amber-300 px-2"
+                title={`Grand Total 9-12M: ${totals.totalBucket9to12mQty.toLocaleString()} pcs`}
+              >
                 {totals.totalBucket9to12mQty.toLocaleString()}
               </div>
-              <div className="w-24 shrink-0 text-right font-mono text-orange-300 px-2">
+              <div
+                className="w-24 shrink-0 text-right font-mono text-orange-300 px-2"
+                title={`Grand Total 12-15M: ${totals.totalBucket12to15mQty.toLocaleString()} pcs`}
+              >
                 {totals.totalBucket12to15mQty.toLocaleString()}
               </div>
-              <div className="w-24 shrink-0 text-right font-mono text-orange-300 px-2">
+              <div
+                className="w-24 shrink-0 text-right font-mono text-orange-300 px-2"
+                title={`Grand Total 15-18M: ${totals.totalBucket15to18mQty.toLocaleString()} pcs`}
+              >
                 {totals.totalBucket15to18mQty.toLocaleString()}
               </div>
-              <div className="w-28 shrink-0 text-right font-mono text-rose-400 text-sm font-black px-2">
+              <div
+                className="w-28 shrink-0 text-right font-mono text-rose-400 text-sm font-black px-2"
+                title={`Grand Total Aged (>18M): ${totals.totalBucket18mPlusQty.toLocaleString()} pcs`}
+              >
                 {totals.totalBucket18mPlusQty.toLocaleString()}
               </div>
 

@@ -19,7 +19,7 @@ interface GrossSalesReturnHeaderProps {
 
 export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) {
   const formatCurr = (val: number) =>
-    `Rs. ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 no-print">
@@ -42,7 +42,7 @@ export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) 
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-extrabold text-rose-950 dark:text-rose-100 mt-1 font-mono">
+            <p className="text-base font-extrabold text-rose-950 dark:text-rose-100 mt-1 font-mono truncate" title={`Net Sales Returns: ${formatCurr(totals.netAmount)}`}>
               {formatCurr(totals.netAmount)}
             </p>
           </div>
@@ -71,7 +71,7 @@ export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) 
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Returns: ${totals.returnCount.toLocaleString()} | Units: ${totals.totalItems.toLocaleString()} pcs`}>
               {totals.returnCount.toLocaleString()} <span className="text-xs font-medium text-slate-500">({totals.totalItems.toLocaleString()} pcs)</span>
             </p>
           </div>
@@ -100,7 +100,7 @@ export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) 
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Return Amount: ${formatCurr(totals.grossAmount)}`}>
               {formatCurr(totals.grossAmount)}
             </p>
           </div>
@@ -129,7 +129,7 @@ export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) 
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono">
+            <p className="text-base font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Return Discounts: ${formatCurr(totals.discountAmount)}`}>
               {formatCurr(totals.discountAmount)}
             </p>
           </div>
@@ -158,8 +158,8 @@ export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) 
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
-              {formatCurr(totals.cashAmount)}
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Cash Refund: ${formatCurr(totals.cashAmount || 0)}`}>
+              {formatCurr(totals.cashAmount || 0)}
             </p>
           </div>
           <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
@@ -187,8 +187,8 @@ export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) 
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
-              {formatCurr(totals.cardAmount)}
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Card Refund: ${formatCurr(totals.cardAmount || 0)}`}>
+              {formatCurr(totals.cardAmount || 0)}
             </p>
           </div>
           <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
@@ -216,8 +216,8 @@ export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) 
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
-              {formatCurr(totals.voucherAmount)}
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Exchange Voucher: ${formatCurr(totals.voucherAmount || 0)}`}>
+              {formatCurr(totals.voucherAmount || 0)}
             </p>
           </div>
           <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">

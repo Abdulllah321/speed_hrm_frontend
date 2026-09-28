@@ -149,12 +149,13 @@ export async function exportStockTransactionDetailToExcel({
 
     // Register export in background
     try {
-        const wbBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
-        await registerClientGeneratedExport({
-            fileBuffer: wbBuffer,
-            fileName,
-            format: "xlsx",
-        });
+        const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+        const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const formData = new FormData();
+        formData.append("file", blob, fileName);
+        formData.append("fileName", fileName);
+        formData.append("format", "xlsx");
+        await registerClientGeneratedExport(formData);
     } catch {
         // non-blocking
     }

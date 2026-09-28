@@ -122,12 +122,12 @@ export async function exportStockTransactionDetailToPdf({
     // Register HTML export with backend for audit
     try {
         const fileName = `stock-transaction-detail-${new Date().toISOString().slice(0, 10)}.html`;
-        const buffer = Buffer.from(htmlContent, "utf-8").toString("base64");
-        await registerClientGeneratedExport({
-            fileBuffer: buffer,
-            fileName,
-            format: "html",
-        });
+        const blob = new Blob([htmlContent], { type: "text/html" });
+        const formData = new FormData();
+        formData.append("file", blob, fileName);
+        formData.append("fileName", fileName);
+        formData.append("format", "html");
+        await registerClientGeneratedExport(formData);
     } catch {
         // non-blocking
     }

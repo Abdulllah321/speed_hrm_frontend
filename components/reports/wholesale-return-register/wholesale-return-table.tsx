@@ -286,42 +286,66 @@ export function WholesaleReturnTable({ treeData, grandTotals, searchQuery, isLoa
                       </div>
 
                       {/* Column 4: Quantity */}
-                      <div className="w-28 px-2 text-right shrink-0 font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <div
+                        className="w-28 px-2 text-right shrink-0 font-mono font-bold text-slate-900 dark:text-slate-100"
+                        title={`Quantity: ${node.totals.totalItems.toLocaleString()} pcs`}
+                      >
                         {node.totals.totalItems.toLocaleString()}
                       </div>
 
                       {/* Column 5: Selling Price */}
-                      <div className="w-32 px-2 text-right shrink-0 font-mono text-slate-700 dark:text-slate-300">
+                      <div
+                        className="w-32 px-2 text-right shrink-0 font-mono text-slate-700 dark:text-slate-300"
+                        title={node.unitPrice ? `Selling Price: ${formatCurrency(node.unitPrice)}` : undefined}
+                      >
                         {node.unitPrice ? formatCurrency(node.unitPrice) : "-"}
                       </div>
 
                       {/* Column 6: Value Excluding Sales Tax */}
-                      <div className="w-40 px-2 text-right shrink-0 font-mono text-slate-700 dark:text-slate-300">
+                      <div
+                        className="w-40 px-2 text-right shrink-0 font-mono text-slate-700 dark:text-slate-300"
+                        title={`Value Excl. Tax: ${formatCurrency(node.totals.wostAmount)}`}
+                      >
                         {formatCurrency(node.totals.wostAmount)}
                       </div>
 
                       {/* Column 7: Discounts */}
-                      <div className="w-32 px-2 text-right shrink-0 font-mono font-semibold text-amber-600 dark:text-amber-400">
+                      <div
+                        className="w-32 px-2 text-right shrink-0 font-mono font-semibold text-amber-600 dark:text-amber-400"
+                        title={`Discount: ${formatCurrency(node.totals.discountAmount)}`}
+                      >
                         {formatCurrency(node.totals.discountAmount)}
                       </div>
 
                       {/* Column 8: Sales Tax */}
-                      <div className="w-28 px-2 text-right shrink-0 font-mono text-slate-600 dark:text-slate-400">
+                      <div
+                        className="w-28 px-2 text-right shrink-0 font-mono text-slate-600 dark:text-slate-400"
+                        title={`Sales Tax: ${formatCurrency(node.totals.taxAmount)}`}
+                      >
                         {formatCurrency(node.totals.taxAmount)}
                       </div>
 
                       {/* Column 9: Additional Sales Tax */}
-                      <div className="w-32 px-2 text-right shrink-0 font-mono text-slate-600 dark:text-slate-400">
+                      <div
+                        className="w-32 px-2 text-right shrink-0 font-mono text-slate-600 dark:text-slate-400"
+                        title={`Add. Sales Tax: ${formatCurrency(node.totals.addTaxAmount)}`}
+                      >
                         {formatCurrency(node.totals.addTaxAmount)}
                       </div>
 
                       {/* Column 10: Sales Tax Payable */}
-                      <div className="w-32 px-2 text-right shrink-0 font-mono text-slate-600 dark:text-slate-400">
+                      <div
+                        className="w-32 px-2 text-right shrink-0 font-mono text-slate-600 dark:text-slate-400"
+                        title={`Tax Payable: ${formatCurrency(node.totals.taxPayable)}`}
+                      >
                         {formatCurrency(node.totals.taxPayable)}
                       </div>
 
                       {/* Column 11: Value Including Sales Tax */}
-                      <div className="w-44 px-4 text-right shrink-0 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <div
+                        className="w-44 px-4 text-right shrink-0 font-mono font-bold text-emerald-600 dark:text-emerald-400"
+                        title={`Value Incl. Tax: ${formatCurrency(node.totals.netAmount)}`}
+                      >
                         {formatCurrency(node.totals.netAmount)}
                       </div>
                     </div>
@@ -335,14 +359,49 @@ export function WholesaleReturnTable({ treeData, grandTotals, searchQuery, isLoa
               <div className="flex-1 min-w-[340px] px-4 shrink-0">Grand Total Summary</div>
               <div className="w-24 px-2 text-center shrink-0">-</div>
               <div className="w-20 px-2 text-center shrink-0">-</div>
-              <div className="w-28 px-2 text-right font-black shrink-0">{grandTotals.totalItems.toLocaleString()}</div>
+              <div
+                className="w-28 px-2 text-right font-black shrink-0"
+                title={`Grand Total Quantity: ${grandTotals.totalItems.toLocaleString()} pcs`}
+              >
+                {grandTotals.totalItems.toLocaleString()}
+              </div>
               <div className="w-32 px-2 text-right shrink-0">-</div>
-              <div className="w-40 px-2 text-right shrink-0">{formatCurrency(grandTotals.wostAmount)}</div>
-              <div className="w-32 px-2 text-right text-amber-600 dark:text-amber-400 shrink-0">{formatCurrency(grandTotals.discountAmount)}</div>
-              <div className="w-28 px-2 text-right shrink-0">{formatCurrency(grandTotals.taxAmount)}</div>
-              <div className="w-32 px-2 text-right shrink-0">{formatCurrency(grandTotals.addTaxAmount)}</div>
-              <div className="w-32 px-2 text-right shrink-0">{formatCurrency(grandTotals.taxPayable)}</div>
-              <div className="w-44 px-4 text-right text-emerald-600 dark:text-emerald-400 font-black shrink-0">{formatCurrency(grandTotals.netAmount)}</div>
+              <div
+                className="w-40 px-2 text-right shrink-0"
+                title={`Grand Total Value Excl. Tax: ${formatCurrency(grandTotals.wostAmount)}`}
+              >
+                {formatCurrency(grandTotals.wostAmount)}
+              </div>
+              <div
+                className="w-32 px-2 text-right text-amber-600 dark:text-amber-400 shrink-0"
+                title={`Grand Total Discounts: ${formatCurrency(grandTotals.discountAmount)}`}
+              >
+                {formatCurrency(grandTotals.discountAmount)}
+              </div>
+              <div
+                className="w-28 px-2 text-right shrink-0"
+                title={`Grand Total Sales Tax: ${formatCurrency(grandTotals.taxAmount)}`}
+              >
+                {formatCurrency(grandTotals.taxAmount)}
+              </div>
+              <div
+                className="w-32 px-2 text-right shrink-0"
+                title={`Grand Total Add. Sales Tax: ${formatCurrency(grandTotals.addTaxAmount)}`}
+              >
+                {formatCurrency(grandTotals.addTaxAmount)}
+              </div>
+              <div
+                className="w-32 px-2 text-right shrink-0"
+                title={`Grand Total Tax Payable: ${formatCurrency(grandTotals.taxPayable)}`}
+              >
+                {formatCurrency(grandTotals.taxPayable)}
+              </div>
+              <div
+                className="w-44 px-4 text-right text-emerald-600 dark:text-emerald-400 font-black shrink-0"
+                title={`Grand Total Value Incl. Tax: ${formatCurrency(grandTotals.netAmount)}`}
+              >
+                {formatCurrency(grandTotals.netAmount)}
+              </div>
             </div>
           </div>
         </div>

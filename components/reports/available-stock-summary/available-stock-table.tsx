@@ -258,6 +258,7 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                                                 ? "text-emerald-600 dark:text-emerald-400 font-semibold"
                                                 : "text-muted-foreground"
                                         )}
+                                        title={`Available Qty: ${node.totals.quantity.toLocaleString()} pcs`}
                                     >
                                         {node.totals.quantity.toLocaleString()}
                                     </div>
@@ -270,6 +271,7 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                                                 ? "text-amber-600 dark:text-amber-400 font-semibold"
                                                 : "text-muted-foreground"
                                         )}
+                                        title={`In Transit: ${node.totals.transit.toLocaleString()} pcs`}
                                     >
                                         {node.totals.transit.toLocaleString()}
                                     </div>
@@ -282,34 +284,50 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                                                 ? "text-purple-600 dark:text-purple-400 font-semibold"
                                                 : "text-muted-foreground"
                                         )}
+                                        title={`Reserved: ${node.totals.reserved.toLocaleString()} pcs`}
                                     >
                                         {node.totals.reserved.toLocaleString()}
                                     </div>
 
                                     {/* Column 7: Total Balance */}
-                                    <div className="w-28 text-right shrink-0 font-bold text-foreground">
+                                    <div
+                                        className="w-28 text-right shrink-0 font-bold text-foreground"
+                                        title={`Total Balance: ${node.totals.total.toLocaleString()} pcs`}
+                                    >
                                         {node.totals.total.toLocaleString()}
                                     </div>
 
                                     {/* Column 8: Selling Price */}
-                                    <div className="w-32 text-right shrink-0 text-muted-foreground">
+                                    <div
+                                        className="w-32 text-right shrink-0 text-muted-foreground"
+                                        title={node.totals.unitPrice ? `Selling Price: ${formatCurrency(node.totals.unitPrice)}` : undefined}
+                                    >
                                         {node.totals.unitPrice ? formatCurrency(node.totals.unitPrice) : "-"}
                                     </div>
 
                                     {/* Column 9: Selling Value */}
-                                    <div className="w-36 text-right shrink-0 font-semibold text-foreground">
+                                    <div
+                                        className="w-36 text-right shrink-0 font-semibold text-foreground"
+                                        title={`Selling Value: ${formatCurrency(node.totals.value)}`}
+                                    >
                                         {formatCurrency(node.totals.value)}
                                     </div>
 
                                     {!isPosLevel && (
                                         <>
                                             {/* Column 10: Cost Price */}
-                                            <div className="w-32 text-right shrink-0 text-muted-foreground">
+                                            <div
+                                                className="w-32 text-right shrink-0 text-muted-foreground"
+                                                title={node.totals.unitCost ? `Unit Cost: ${formatCurrency(node.totals.unitCost)}` : undefined}
+                                            >
                                                 {node.totals.unitCost ? formatCurrency(node.totals.unitCost) : "-"}
                                             </div>
 
                                             {/* Column 11: Costing Value */}
-                                            <div className="w-36 text-right shrink-0 font-semibold text-teal-600 dark:text-teal-400">
+                                            <div
+                                                className="w-36 text-right shrink-0 font-semibold text-teal-600 dark:text-teal-400"
+                                                title={`Costing Value: ${formatCurrency(node.totals.costingValue)}`}
+                                            >
                                                 {formatCurrency(node.totals.costingValue)}
                                             </div>
                                         </>
@@ -329,26 +347,44 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                 <div className="flex-1 min-w-[340px] uppercase tracking-wider text-muted-foreground">GRAND TOTAL</div>
                 <div className="w-20 text-center text-muted-foreground/60">-</div>
                 <div className="w-44 text-center text-muted-foreground/60">-</div>
-                <div className="w-28 text-right text-emerald-600 dark:text-emerald-400">
+                <div
+                    className="w-28 text-right text-emerald-600 dark:text-emerald-400"
+                    title={`Grand Total Available: ${grandTotals.quantity.toLocaleString()} pcs`}
+                >
                     {grandTotals.quantity.toLocaleString()}
                 </div>
-                <div className="w-24 text-right text-amber-600 dark:text-amber-400">
+                <div
+                    className="w-24 text-right text-amber-600 dark:text-amber-400"
+                    title={`Grand Total In Transit: ${grandTotals.transit.toLocaleString()} pcs`}
+                >
                     {grandTotals.transit.toLocaleString()}
                 </div>
-                <div className="w-28 text-right text-purple-600 dark:text-purple-400">
+                <div
+                    className="w-28 text-right text-purple-600 dark:text-purple-400"
+                    title={`Grand Total Reserved: ${grandTotals.reserved.toLocaleString()} pcs`}
+                >
                     {grandTotals.reserved.toLocaleString()}
                 </div>
-                <div className="w-28 text-right text-cyan-600 dark:text-cyan-400">
+                <div
+                    className="w-28 text-right text-cyan-600 dark:text-cyan-400"
+                    title={`Grand Total Balance: ${grandTotals.total.toLocaleString()} pcs`}
+                >
                     {grandTotals.total.toLocaleString()}
                 </div>
                 <div className="w-32 text-right text-muted-foreground/60">-</div>
-                <div className="w-36 text-right text-indigo-600 dark:text-indigo-400 font-bold">
+                <div
+                    className="w-36 text-right text-indigo-600 dark:text-indigo-400 font-bold"
+                    title={`Grand Total Selling Value: ${formatCurrency(grandTotals.value)}`}
+                >
                     {formatCurrency(grandTotals.value)}
                 </div>
                 {!isPosLevel && (
                     <>
                         <div className="w-32 text-right text-muted-foreground/60">-</div>
-                        <div className="w-36 text-right text-teal-600 dark:text-teal-400 font-bold">
+                        <div
+                            className="w-36 text-right text-teal-600 dark:text-teal-400 font-bold"
+                            title={`Grand Total Costing Value: ${formatCurrency(grandTotals.costingValue)}`}
+                        >
                             {formatCurrency(grandTotals.costingValue)}
                         </div>
                     </>

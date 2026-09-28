@@ -34,7 +34,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <h3 className="text-xl font-bold mt-1 text-slate-900 dark:text-slate-100 font-mono">
+              <h3 className="text-xl font-bold mt-1 text-slate-900 dark:text-slate-100 font-mono" title={`Opening B/F: ${totals.bf?.toLocaleString() || 0} pcs`}>
                 {formatVal(totals.bf)}
               </h3>
             </div>
@@ -63,7 +63,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400 font-mono">
+              <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400 font-mono" title={`Purchases: ${totals.purchases?.toLocaleString() || 0} pcs`}>
                 {formatVal(totals.purchases)}
               </h3>
             </div>
@@ -92,7 +92,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <h3 className="text-xl font-bold mt-1 text-rose-600 dark:text-rose-400 font-mono">
+              <h3 className="text-xl font-bold mt-1 text-rose-600 dark:text-rose-400 font-mono" title={`Purchase Ret: ${totals.purchaseReturn?.toLocaleString() || 0} pcs`}>
                 {formatVal(totals.purchaseReturn)}
               </h3>
             </div>
@@ -121,7 +121,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <h3 className="text-xl font-bold mt-1 text-indigo-600 dark:text-indigo-400 font-mono">
+              <h3 className="text-xl font-bold mt-1 text-indigo-600 dark:text-indigo-400 font-mono" title={`To Outlets: ${totals.toOutlet?.toLocaleString() || 0} pcs`}>
                 {formatVal(totals.toOutlet)}
               </h3>
             </div>
@@ -150,7 +150,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <h3 className="text-xl font-bold mt-1 text-amber-600 dark:text-amber-400 font-mono">
+              <h3 className="text-xl font-bold mt-1 text-amber-600 dark:text-amber-400 font-mono" title={`Delivery Challan: ${totals.deliveryChallan?.toLocaleString() || 0} pcs`}>
                 {formatVal(totals.deliveryChallan)}
               </h3>
             </div>
@@ -179,7 +179,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <h3 className="text-xl font-bold mt-1 text-teal-600 dark:text-teal-400 font-mono">
+              <h3 className="text-xl font-bold mt-1 text-teal-600 dark:text-teal-400 font-mono" title={`Closing Available: ${totals.availableStock?.toLocaleString() || 0} pcs`}>
                 {formatVal(totals.availableStock)}
               </h3>
             </div>
@@ -213,7 +213,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                 </TooltipContent>
               </Tooltip>
             </div>
-            <h3 className="text-xl font-bold mt-1 text-slate-900 dark:text-slate-100 font-mono">
+            <h3 className="text-xl font-bold mt-1 text-slate-900 dark:text-slate-100 font-mono" title={`Opening B/F: ${totals.bf?.toLocaleString() || 0} pcs`}>
               {formatVal(totals.bf)}
             </h3>
           </div>
@@ -242,7 +242,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                 </TooltipContent>
               </Tooltip>
             </div>
-            <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400 font-mono">
+            <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400 font-mono" title={`Total Inbound: ${totals.totalTrfIn?.toLocaleString() || 0} pcs`}>
               {formatVal(totals.totalTrfIn)}
             </h3>
           </div>
@@ -271,7 +271,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                 </TooltipContent>
               </Tooltip>
             </div>
-            <h3 className="text-xl font-bold mt-1 text-rose-600 dark:text-rose-400 font-mono">
+            <h3 className="text-xl font-bold mt-1 text-rose-600 dark:text-rose-400 font-mono" title={`Total Outbound: ${totals.totalTrfOut?.toLocaleString() || 0} pcs`}>
               {formatVal(totals.totalTrfOut)}
             </h3>
           </div>
@@ -300,7 +300,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                 </TooltipContent>
               </Tooltip>
             </div>
-            <h3 className="text-xl font-bold mt-1 text-indigo-600 dark:text-indigo-400 font-mono">
+            <h3 className="text-xl font-bold mt-1 text-indigo-600 dark:text-indigo-400 font-mono" title={`POS Sold Qty: ${totals.sales?.toLocaleString() || 0} pcs`}>
               {formatVal(totals.sales)}
             </h3>
           </div>
@@ -329,7 +329,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                 </TooltipContent>
               </Tooltip>
             </div>
-            <h3 className="text-xl font-bold mt-1 text-teal-600 dark:text-teal-400 font-mono">
+            <h3 className="text-xl font-bold mt-1 text-teal-600 dark:text-teal-400 font-mono" title={`Closing Available: ${totals.availableStock?.toLocaleString() || 0} pcs`}>
               {formatVal(totals.availableStock)}
             </h3>
           </div>
@@ -358,7 +358,7 @@ export function StockActivityHeader({ totals, reportType = "merged" }: StockActi
                 </TooltipContent>
               </Tooltip>
             </div>
-            <h3 className="text-xl font-bold mt-1 text-amber-600 dark:text-amber-400 font-mono">
+            <h3 className="text-xl font-bold mt-1 text-amber-600 dark:text-amber-400 font-mono" title={`In-Transit: ${totals.transit?.toLocaleString() || 0} pcs`}>
               {formatVal(totals.transit)}
             </h3>
           </div>

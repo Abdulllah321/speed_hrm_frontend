@@ -1,6 +1,7 @@
 export interface NetSalesSummaryTotals {
   orderCount: number;
   unitPrice?: number;
+  priceWost?: number;
   totalItemsSold: number;
   totalItemsReturned: number;
   netItems: number;

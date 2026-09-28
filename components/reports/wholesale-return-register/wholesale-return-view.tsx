@@ -66,9 +66,9 @@ export function WholesaleReturnView() {
   useEffect(() => {
     async function loadOptions() {
       try {
-        const custRes = await getCustomers({ limit: 1000 });
-        if (custRes && custRes.data) {
-          setCustomers(custRes.data);
+        const custRes = await getCustomers();
+        if (custRes) {
+          setCustomers(Array.isArray(custRes) ? custRes : (custRes as any).data || []);
         }
       } catch (err) {
         console.error("Failed to load options:", err);

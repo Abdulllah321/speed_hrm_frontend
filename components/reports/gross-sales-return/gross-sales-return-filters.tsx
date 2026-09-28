@@ -275,19 +275,101 @@ export function GrossSalesReturnFilters({
                 )}
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-ret-no"
-                    checked={!!groupingLevels.returnNote}
-                    onCheckedChange={(c) => onToggleLevel("returnNote", !!c)}
+                    id="lvl-month-ret"
+                    checked={!!groupingLevels.month}
+                    onCheckedChange={(c) => onToggleLevel("month", !!c)}
                   />
-                  <Label htmlFor="lvl-ret-no" className="font-semibold text-rose-600 dark:text-rose-400">Return Voucher / Note Wise</Label>
+                  <Label htmlFor="lvl-month-ret" className="font-semibold text-rose-600 dark:text-rose-400">Month Wise (e.g. July 2026)</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="lvl-item-ret"
-                    checked={!!groupingLevels.item}
-                    onCheckedChange={(c) => onToggleLevel("item", !!c)}
+                    id="lvl-date-ret"
+                    checked={!!groupingLevels.date}
+                    onCheckedChange={(c) => onToggleLevel("date", !!c)}
                   />
-                  <Label htmlFor="lvl-item-ret" className="font-semibold text-emerald-600 dark:text-emerald-400">Returned Item Line Wise</Label>
+                  <Label htmlFor="lvl-date-ret" className="font-semibold text-rose-600 dark:text-rose-400">Date Wise (Exact Date)</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="lvl-doc-ret"
+                    checked={!!groupingLevels.document}
+                    onCheckedChange={(c) => onToggleLevel("document", !!c)}
+                  />
+                  <Label htmlFor="lvl-doc-ret" className="font-semibold text-rose-600 dark:text-rose-400">Document / Return Note Wise</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="lvl-sp-ret"
+                    checked={!!groupingLevels.salesPerson}
+                    onCheckedChange={(c) => onToggleLevel("salesPerson", !!c)}
+                  />
+                  <Label htmlFor="lvl-sp-ret" className="font-semibold text-indigo-600 dark:text-indigo-400">Sales Person / Cashier Wise</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="lvl-tax-ret"
+                    checked={!!groupingLevels.taxRate}
+                    onCheckedChange={(c) => onToggleLevel("taxRate", !!c)}
+                  />
+                  <Label htmlFor="lvl-tax-ret" className="font-semibold text-amber-600 dark:text-amber-400">Sales Tax Rate Wise (18%, 25%)</Label>
+                </div>
+                <div className="border-t pt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-brand-ret"
+                      checked={groupingLevels.brand}
+                      onCheckedChange={(c) => onToggleLevel("brand", !!c)}
+                    />
+                    <Label htmlFor="lvl-brand-ret">Brand</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-div-ret"
+                      checked={groupingLevels.division}
+                      onCheckedChange={(c) => onToggleLevel("division", !!c)}
+                    />
+                    <Label htmlFor="lvl-div-ret">Division</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-cat-ret"
+                      checked={groupingLevels.category}
+                      onCheckedChange={(c) => onToggleLevel("category", !!c)}
+                    />
+                    <Label htmlFor="lvl-cat-ret">Category</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-sil-ret"
+                      checked={groupingLevels.silhouette}
+                      onCheckedChange={(c) => onToggleLevel("silhouette", !!c)}
+                    />
+                    <Label htmlFor="lvl-sil-ret">Silhouette</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-gen-ret"
+                      checked={!!groupingLevels.gender}
+                      onCheckedChange={(c) => onToggleLevel("gender", !!c)}
+                    />
+                    <Label htmlFor="lvl-gen-ret">Gender</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-art-ret"
+                      checked={groupingLevels.article}
+                      onCheckedChange={(c) => onToggleLevel("article", !!c)}
+                    />
+                    <Label htmlFor="lvl-art-ret">Article (SKU)</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-var-ret"
+                      checked={groupingLevels.variant}
+                      onCheckedChange={(c) => onToggleLevel("variant", !!c)}
+                    />
+                    <Label htmlFor="lvl-var-ret">Variant (Size / Color)</Label>
+                  </div>
                 </div>
               </div>
             </PopoverContent>

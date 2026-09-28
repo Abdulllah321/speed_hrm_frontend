@@ -11,6 +11,7 @@ import {
   VoucherRegisterReportData,
   VoucherRegisterItem,
   VoucherReportMode,
+  getCurrentFiscalYearRange,
 } from "./types";
 import { useVoucherRegisterData } from "./use-voucher-register-data";
 import { VoucherRegisterHeader } from "./voucher-register-header";
@@ -26,15 +27,17 @@ export function VoucherRegisterView() {
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [mode, setMode] = useState<VoucherReportMode>("outstanding");
   const [activeTab, setActiveTab] = useState<string>("ALL");
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: subDays(new Date(), 90),
-    to: endOfDay(new Date()),
-  });
+  const [dateRange, setDateRange] = useState<DateRange>(() => getCurrentFiscalYearRange());
   const [asOfDate, setAsOfDate] = useState<Date>(new Date());
 
   const [reportData, setReportData] = useState<VoucherRegisterReportData | null>(null);
   const [selectedItem, setSelectedItem] = useState<VoucherRegisterItem | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Infinite Scroll & Fetch All state
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [isFetchingAll, setIsFetchingAll] = useState(false);
+  const [isAllLoaded, setIsAllLoaded] = useState(false);
 
   // Client export states
   const [isExportingExcel, setIsExportingExcel] = useState(false);
@@ -78,32 +81,6 @@ export function VoucherRegisterView() {
     return "All Outlets";
   }, [selectedLocationIds, locations]);
 
-  // Fetch complete dataset for date/mode from Backend once
-  const fetchReport = useCallback(() => {
-    startTransition(async () => {
-      const isOutstanding = mode === "outstanding";
-      const result = await getVoucherRegisterReport({
-        voucherType: "ALL", // Load all types so client-side tabs filter instantly with exact counts
-        locationId: locationParam ?? "",
-        startDate: !isOutstanding && dateRange.from ? dateRange.from.toISOString() : undefined,
-        endDate: !isOutstanding && dateRange.to ? dateRange.to.toISOString() : undefined,
-        asOfDate: isOutstanding ? asOfDate.toISOString() : undefined,
-        isOutstandingOnly: isOutstanding,
-      });
-
-      if (result && result.status && result.data) {
-        setReportData(result.data);
-      } else {
-        setReportData(null);
-        toast.error(result?.message || "Failed to load Voucher Register dataset");
-      }
-    });
-  }, [locationParam, mode, dateRange, asOfDate]);
-
-  useEffect(() => {
-    fetchReport();
-  }, [locationParam, mode, dateRange, asOfDate]);
-
   // Client Data Hook
   const {
     searchQuery,
@@ -117,6 +94,144 @@ export function VoucherRegisterView() {
     totals,
     resetClientFilters,
   } = useVoucherRegisterData(reportData, activeTab);
+
+  // Fetch initial page 1 on filter changes
+  const fetchReport = useCallback(() => {
+    startTransition(async () => {
+      const isOutstanding = mode === "outstanding";
+      const result = await getVoucherRegisterReport({
+        voucherType: isAllLoaded ? "ALL" : activeTab,
+        status: isAllLoaded ? "ALL" : statusFilter,
+        locationId: locationParam ?? "",
+        startDate: !isOutstanding && dateRange.from ? dateRange.from.toISOString() : undefined,
+        endDate: !isOutstanding && dateRange.to ? dateRange.to.toISOString() : undefined,
+        asOfDate: isOutstanding ? asOfDate.toISOString() : undefined,
+        isOutstandingOnly: isOutstanding,
+        page: 1,
+        limit: 100,
+        sortBy: sortColumn,
+        sortDirection,
+      });
+
+      if (result && result.status && result.data) {
+        setReportData(result.data);
+        if (result.data.pagination) {
+          setIsAllLoaded(!result.data.pagination.hasMore);
+        }
+      } else {
+        setReportData(null);
+        toast.error(result?.message || "Failed to load Voucher Register dataset");
+      }
+    });
+  }, [locationParam, mode, dateRange, asOfDate, activeTab, statusFilter, sortColumn, sortDirection, isAllLoaded]);
+
+  useEffect(() => {
+    fetchReport();
+  }, [locationParam, mode, dateRange, asOfDate, activeTab, statusFilter, sortColumn, sortDirection]);
+
+  // Load More chunks on scroll
+  const handleLoadMore = useCallback(async () => {
+    if (
+      isFetchingMore ||
+      isFetchingAll ||
+      isPending ||
+      !reportData?.pagination?.hasMore ||
+      isAllLoaded
+    ) {
+      return;
+    }
+
+    const nextPage = (reportData.pagination.page || 1) + 1;
+    setIsFetchingMore(true);
+    try {
+      const isOutstanding = mode === "outstanding";
+      const result = await getVoucherRegisterReport({
+        voucherType: activeTab,
+        status: statusFilter,
+        locationId: locationParam ?? "",
+        startDate: !isOutstanding && dateRange.from ? dateRange.from.toISOString() : undefined,
+        endDate: !isOutstanding && dateRange.to ? dateRange.to.toISOString() : undefined,
+        asOfDate: isOutstanding ? asOfDate.toISOString() : undefined,
+        isOutstandingOnly: isOutstanding,
+        page: nextPage,
+        limit: 100,
+        sortBy: sortColumn,
+        sortDirection,
+      });
+
+      if (result && result.status && result.data) {
+        setReportData((prev) => {
+          if (!prev) return result.data!;
+          const existingIds = new Set(prev.items.map((i) => i.id));
+          const newUniqueItems = (result.data?.items || []).filter((i) => !existingIds.has(i.id));
+          return {
+            ...result.data!,
+            items: [...prev.items, ...newUniqueItems],
+            pagination: result.data!.pagination,
+          };
+        });
+
+        if (result.data.pagination && !result.data.pagination.hasMore) {
+          setIsAllLoaded(true);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load more vouchers:", err);
+    } finally {
+      setIsFetchingMore(false);
+    }
+  }, [
+    isFetchingMore,
+    isFetchingAll,
+    isPending,
+    reportData,
+    isAllLoaded,
+    mode,
+    dateRange,
+    asOfDate,
+    activeTab,
+    statusFilter,
+    locationParam,
+    sortColumn,
+    sortDirection,
+  ]);
+
+  // Fetch All into Memory
+  const handleFetchAll = useCallback(async () => {
+    if (isFetchingAll || isPending) return;
+
+    setIsFetchingAll(true);
+    const toastId = toast.loading("Fetching all vouchers into memory...");
+    try {
+      const isOutstanding = mode === "outstanding";
+      const result = await getVoucherRegisterReport({
+        voucherType: "ALL",
+        status: "ALL",
+        locationId: locationParam ?? "",
+        startDate: !isOutstanding && dateRange.from ? dateRange.from.toISOString() : undefined,
+        endDate: !isOutstanding && dateRange.to ? dateRange.to.toISOString() : undefined,
+        asOfDate: isOutstanding ? asOfDate.toISOString() : undefined,
+        isOutstandingOnly: isOutstanding,
+        limit: 0, // 0 = fetch all
+      });
+
+      if (result && result.status && result.data) {
+        setReportData(result.data);
+        setIsAllLoaded(true);
+        toast.success(
+          `✓ Loaded all ${result.data.items.length.toLocaleString()} vouchers into local memory! Instant search & sort active.`,
+          { id: toastId },
+        );
+      } else {
+        toast.error(result?.message || "Failed to fetch all vouchers", { id: toastId });
+      }
+    } catch (err: any) {
+      console.error("Fetch all error:", err);
+      toast.error("Error fetching all records", { id: toastId });
+    } finally {
+      setIsFetchingAll(false);
+    }
+  }, [isFetchingAll, isPending, locationParam, mode, dateRange, asOfDate]);
 
   // Client Excel Export
   const handleExportExcel = async () => {
@@ -179,17 +294,24 @@ export function VoucherRegisterView() {
     }
   };
 
+  const handleModeChange = (newMode: VoucherReportMode) => {
+    setMode(newMode);
+    if (newMode === "period") {
+      setDateRange(getCurrentFiscalYearRange());
+    } else {
+      setAsOfDate(new Date());
+    }
+  };
+
   const handleReset = () => {
     setSelectedLocationIds([]);
     setActiveTab("ALL");
     resetClientFilters();
+    setIsAllLoaded(false);
     if (mode === "outstanding") {
       setAsOfDate(new Date());
     } else {
-      setDateRange({
-        from: startOfMonth(new Date()),
-        to: endOfMonth(new Date()),
-      });
+      setDateRange(getCurrentFiscalYearRange());
     }
   };
 
@@ -220,7 +342,7 @@ export function VoucherRegisterView() {
       {/* Filter Toolbar & Tab Switcher */}
       <VoucherRegisterFilters
         mode={mode}
-        setMode={setMode}
+        setMode={handleModeChange}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         statusFilter={statusFilter}
@@ -255,6 +377,13 @@ export function VoucherRegisterView() {
         sortColumn={sortColumn}
         sortDirection={sortDirection}
         onSort={handleSort}
+        totalCount={reportData?.pagination?.total || reportData?.kpis?.totalVouchers || 0}
+        hasMore={Boolean(reportData?.pagination?.hasMore)}
+        isFetchingMore={isFetchingMore}
+        isFetchingAll={isFetchingAll}
+        isAllLoaded={isAllLoaded}
+        onLoadMore={handleLoadMore}
+        onFetchAll={handleFetchAll}
       />
 
       {/* Voucher Detail Audit Modal */}

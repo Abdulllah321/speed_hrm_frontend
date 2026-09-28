@@ -42,6 +42,13 @@ export interface VoucherRegisterItem {
 
 export interface VoucherRegisterReportData {
   items: VoucherRegisterItem[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
   kpis: {
     totalVouchers: number;
     totalAmount: number;
@@ -81,6 +88,10 @@ export interface GetVoucherRegisterReportParams {
   asOfDate?: string;
   isOutstandingOnly?: boolean;
   search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
 }
 
 export async function getVoucherRegisterReport(
@@ -97,6 +108,10 @@ export async function getVoucherRegisterReport(
         asOfDate: params.asOfDate || undefined,
         isOutstandingOnly: params.isOutstandingOnly ? "true" : undefined,
         search: params.search || undefined,
+        page: params.page !== undefined ? String(params.page) : undefined,
+        limit: params.limit !== undefined ? String(params.limit) : undefined,
+        sortBy: params.sortBy || undefined,
+        sortDirection: params.sortDirection || undefined,
       },
     });
 

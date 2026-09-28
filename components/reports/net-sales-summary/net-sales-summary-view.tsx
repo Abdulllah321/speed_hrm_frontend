@@ -378,7 +378,7 @@ export function NetSalesSummaryView({
                 locations: initialMeta?.locations || [],
                 categories: accumulatedCategories,
                 flatItems: accumulatedFlatItems,
-                grandTotals: {},
+                grandTotals: {} as any,
               });
               setIsFetchingResult(false);
               setStreamProgress((prev) => ({
@@ -403,7 +403,7 @@ export function NetSalesSummaryView({
                   locations: data.locations || [],
                   categories: data.categories || [],
                   flatItems: data.flatItems || [],
-                  grandTotals: data.grandTotals || {},
+                  grandTotals: (data.grandTotals || {}) as any,
                 });
                 setIsFetchingResult(false);
                 setStreamProgress((prev) => ({

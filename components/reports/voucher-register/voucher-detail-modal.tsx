@@ -49,7 +49,7 @@ export function VoucherDetailModal({ item, isOpen, onClose }: VoucherDetailModal
   };
 
   const formatCurr = (val: number) =>
-    `Rs. ${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const getTypeBadgeClass = (vType: string) => {
     switch (vType.toUpperCase()) {
@@ -98,7 +98,7 @@ export function VoucherDetailModal({ item, isOpen, onClose }: VoucherDetailModal
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl gap-0 border shadow-2xl bg-background">
         {/* Modal Header */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-indigo-950 text-white p-6 rounded-t-2xl relative">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-855 to-indigo-950 text-white p-6 rounded-t-2xl relative">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
@@ -124,40 +124,40 @@ export function VoucherDetailModal({ item, isOpen, onClose }: VoucherDetailModal
             </div>
             <div className="text-right bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/10 shrink-0">
               <div className="text-[10px] uppercase font-bold text-slate-300">Face Value</div>
-              <div className="text-xl font-black font-mono text-[#4ade80]">{formatCurr(item.faceValue)}</div>
+              <div className="text-xl font-black font-mono text-[#4ade80]" title={`Face Value: ${formatCurr(item.faceValue)}`}>{formatCurr(item.faceValue)}</div>
             </div>
           </div>
         </div>
 
         {/* Financial Breakdown Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-4 bg-slate-50 dark:bg-slate-900/50 border-b text-xs">
-          <div className="p-2.5 rounded-xl bg-background border">
+          <div className="p-2.5 rounded-xl bg-background border" title={`Face Value: ${formatCurr(item.faceValue)}`}>
             <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
               <Coins className="h-3 w-3 text-emerald-600" /> Face Value
             </div>
-            <div className="text-sm font-black font-mono text-foreground mt-0.5">{formatCurr(item.faceValue)}</div>
+            <div className="text-sm font-black font-mono text-foreground mt-0.5 truncate">{formatCurr(item.faceValue)}</div>
           </div>
-          <div className="p-2.5 rounded-xl bg-background border">
+          <div className="p-2.5 rounded-xl bg-background border" title={`Discount Given: ${formatCurr(item.discountAmount)}`}>
             <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
               <Percent className="h-3 w-3 text-amber-600" /> Discount Given
             </div>
-            <div className="text-sm font-black font-mono text-amber-600 dark:text-amber-400 mt-0.5">
+            <div className="text-sm font-black font-mono text-amber-600 dark:text-amber-400 mt-0.5 truncate">
               {formatCurr(item.discountAmount)}
             </div>
           </div>
-          <div className="p-2.5 rounded-xl bg-background border">
+          <div className="p-2.5 rounded-xl bg-background border" title={`Settled Amount: ${formatCurr(item.settledAmount)}`}>
             <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
               <FileCheck2 className="h-3 w-3 text-sky-600" /> Settled Amount
             </div>
-            <div className="text-sm font-black font-mono text-sky-600 dark:text-sky-400 mt-0.5">
+            <div className="text-sm font-black font-mono text-sky-600 dark:text-sky-400 mt-0.5 truncate">
               {formatCurr(item.settledAmount)}
             </div>
           </div>
-          <div className="p-2.5 rounded-xl bg-background border">
+          <div className="p-2.5 rounded-xl bg-background border" title={`Outstanding Balance: ${formatCurr(item.outstandingAmount)}`}>
             <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3 text-indigo-600" /> Outstanding Bal
             </div>
-            <div className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 mt-0.5">
+            <div className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 mt-0.5 truncate">
               {formatCurr(item.outstandingAmount)}
             </div>
           </div>

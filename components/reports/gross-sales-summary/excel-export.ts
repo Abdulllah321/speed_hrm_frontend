@@ -38,8 +38,8 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "Brand",
       "Division",
       "Category",
-      "Gender",
       "Silhouette",
+      "Gender",
       "Order Number",
       "FBR Invoice",
       "SKU",
@@ -49,12 +49,12 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "Color",
       "Quantity",
       "Unit Price",
-      "Gross Sales",
-      "WOST Sales",
+      "Price WOST",
+      "Total Price WOST",
       "Discount Amount",
-      "After Disc Amt",
-      "Taxes",
-      "SubTotal Revenue",
+      "Value Excl. Sales Tax",
+      "Sales Tax",
+      "Value Incl. Sales Tax / Total Revenue",
     ];
 
     const dataRows: any[][] = [headers];
@@ -62,15 +62,22 @@ export async function generateGrossSalesSummaryExcel(opts: {
     const totalCount = flatItems.length;
     for (let i = 0; i < totalCount; i++) {
       const item = flatItems[i];
-      const gross = item.quantity * item.unitPrice;
-      const wost = item.wostAmount || Math.round((gross / 1.18) * 100) / 100;
+      const qty = item.quantity || 0;
+      const unitPrice = item.unitPrice || 0;
+      const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
+      const totalWost = item.wostAmount || Math.round((qty * priceWost) * 100) / 100;
+      const discAmt = item.discountAmount || 0;
+      const valExTax = Math.round((totalWost - discAmt) * 100) / 100;
+      const taxAmt = item.taxAmount || 0;
+      const valInclTax = item.subTotal || Math.round((valExTax + taxAmt) * 100) / 100;
+
       dataRows.push([
         item.locationName || "Main Outlet",
         item.brandName || "-",
         item.divisionName || "-",
         item.categoryName || "-",
-        item.genderName || "-",
         item.silhouetteName || "-",
+        item.genderName || "-",
         item.orderNumber || "-",
         item.fbrInvoiceNumber || "-",
         item.sku || "-",
@@ -78,14 +85,14 @@ export async function generateGrossSalesSummaryExcel(opts: {
         item.description || "-",
         item.sizeName || "-",
         item.colorName || "-",
-        item.quantity,
-        item.unitPrice,
-        gross,
-        wost,
-        item.discountAmount,
-        wost - (item.discountAmount || 0),
-        item.taxAmount,
-        item.subTotal,
+        qty,
+        unitPrice,
+        priceWost,
+        totalWost,
+        discAmt,
+        valExTax,
+        taxAmt,
+        valInclTax,
       ]);
 
       if (i % 300 === 0) {
@@ -106,14 +113,16 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "",
       "",
       "",
+      "",
+      "",
       grandTotals.totalItems,
       "",
-      grandTotals.grossAmount,
+      "",
       grandTotals.wostAmount,
       grandTotals.discountAmount,
-      (grandTotals.wostAmount || 0) - (grandTotals.discountAmount || 0),
+      grandTotals.valueExSalesTax || (grandTotals.wostAmount - grandTotals.discountAmount),
       grandTotals.taxAmount,
-      grandTotals.netAmount,
+      grandTotals.valueInclSalesTax || grandTotals.netAmount,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
@@ -122,21 +131,23 @@ export async function generateGrossSalesSummaryExcel(opts: {
       { wch: 18 },
       { wch: 18 },
       { wch: 18 },
+      { wch: 16 },
       { wch: 14 },
       { wch: 16 },
-      { wch: 16 },
       { wch: 18 },
+      { wch: 16 },
+      { wch: 16 },
       { wch: 28 },
       { wch: 10 },
       { wch: 12 },
       { wch: 10 },
       { wch: 12 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
       { wch: 12 },
-      { wch: 18 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 20 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Flat Gross Sales Items");
@@ -148,12 +159,13 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "Size",
       "Color",
       "Sold Qty",
-      "Gross Sales",
-      "WOST Sales",
+      "Unit Price",
+      "Price WOST",
+      "Total Price WOST",
       "Discount Amount",
-      "After Disc Amt",
-      "Taxes",
-      "SubTotal Revenue",
+      "Value Excl. Sales Tax",
+      "Sales Tax",
+      "Value Incl. Sales Tax / Total Revenue",
     ];
 
     const dataRows: any[][] = [headers];
@@ -168,18 +180,27 @@ export async function generateGrossSalesSummaryExcel(opts: {
           displayLabel = `${indent}[${node.barCode}] ${node.color || "Default"}-${node.size || "Default"}`;
         }
 
+        const uPrice = node.totals.unitPrice || node.unitPrice || 0;
+        const pWost = node.totals.priceWost || (uPrice > 0 ? Math.round((uPrice / 1.18) * 100) / 100 : 0);
+        const totWost = node.totals.wostAmount;
+        const disc = node.totals.discountAmount;
+        const valEx = node.totals.valueExSalesTax || Math.round((totWost - disc) * 100) / 100;
+        const tax = node.totals.taxAmount;
+        const valIncl = node.totals.valueInclSalesTax || node.totals.netAmount || Math.round((valEx + tax) * 100) / 100;
+
         dataRows.push([
           displayLabel,
           node.barCode || node.sku || "-",
           node.size || "-",
           node.color || "-",
           node.totals.totalItems,
-          node.totals.grossAmount,
-          node.totals.wostAmount,
-          node.totals.discountAmount,
-          (node.totals.wostAmount || 0) - (node.totals.discountAmount || 0),
-          node.totals.taxAmount,
-          node.totals.netAmount,
+          uPrice > 0 ? uPrice : "",
+          pWost > 0 ? pWost : "",
+          totWost,
+          disc,
+          valEx,
+          tax,
+          valIncl,
         ]);
 
         if (node.children && node.children.length > 0) {
@@ -196,12 +217,13 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "-",
       "-",
       grandTotals.totalItems,
-      grandTotals.grossAmount,
+      "",
+      "",
       grandTotals.wostAmount,
       grandTotals.discountAmount,
-      (grandTotals.wostAmount || 0) - (grandTotals.discountAmount || 0),
+      grandTotals.valueExSalesTax || (grandTotals.wostAmount - grandTotals.discountAmount),
       grandTotals.taxAmount,
-      grandTotals.netAmount,
+      grandTotals.valueInclSalesTax || grandTotals.netAmount,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
@@ -211,12 +233,13 @@ export async function generateGrossSalesSummaryExcel(opts: {
       { wch: 10 },
       { wch: 16 },
       { wch: 10 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
       { wch: 12 },
-      { wch: 18 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 20 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Hierarchical Gross Sales");

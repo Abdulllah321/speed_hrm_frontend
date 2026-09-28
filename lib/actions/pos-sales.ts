@@ -665,6 +665,80 @@ export async function getSalesListResult(
     }
 }
 
+// ─── PRO ERP Sales Return List Actions ───────────────────────────────────
+
+export async function queueSalesReturnListPreview(opts: {
+    locationId?: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    reportType?: "merged" | "separate";
+    search?: string;
+    subType?: string;
+    refundMode?: string;
+    fiscalYear?: string;
+    year?: number | string;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const res = await authFetch("/pos-sales/reports/sales-return-list/queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(opts),
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error queueing sales return list calculation" };
+    }
+}
+
+export async function getSalesReturnListResult(
+    jobId: string,
+): Promise<{ status: boolean; data?: any; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-sales/reports/sales-return-list/result/${jobId}`, {
+            method: "GET",
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error fetching sales return list result" };
+    }
+}
+
+export async function queueSalesReturnListReportExport(filters: {
+    locationId?: string;
+    locationIds?: string[];
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    format: "xlsx" | "pdf";
+    search?: string;
+    subType?: string;
+    refundMode?: string;
+    exportType?: "flat" | "hierarchical";
+}) {
+    try {
+        const res = await authFetch("/pos-sales/reports/sales-return-list/export/queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("queueSalesReturnListReportExport error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getSalesReturnListReportExportStatus(jobId: string) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/sales-return-list/export/${jobId}/status`, { method: "GET" });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("getSalesReturnListReportExportStatus error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
 // ─── PRO ERP Sales Register Actions ──────────────────────────────────────
 
 export async function queueSalesRegisterPreview(opts: {

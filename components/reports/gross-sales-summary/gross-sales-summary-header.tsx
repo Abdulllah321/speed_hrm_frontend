@@ -17,7 +17,7 @@ interface GrossSalesSummaryHeaderProps {
 
 export function GrossSalesSummaryHeader({ totals }: GrossSalesSummaryHeaderProps) {
   const formatCurr = (val: number) =>
-    `Rs. ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5 no-print">
@@ -40,7 +40,7 @@ export function GrossSalesSummaryHeader({ totals }: GrossSalesSummaryHeaderProps
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-extrabold text-emerald-950 dark:text-emerald-100 mt-1 font-mono">
+            <p className="text-lg font-extrabold text-emerald-950 dark:text-emerald-100 mt-1 font-mono truncate" title={`Net Sales Revenue: ${formatCurr(totals.netAmount)}`}>
               {formatCurr(totals.netAmount)}
             </p>
           </div>
@@ -69,7 +69,7 @@ export function GrossSalesSummaryHeader({ totals }: GrossSalesSummaryHeaderProps
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Total Units Sold: ${totals.totalItems.toLocaleString()} pcs`}>
               {totals.totalItems.toLocaleString()} <span className="text-xs font-medium text-slate-500">pcs</span>
             </p>
           </div>
@@ -98,7 +98,7 @@ export function GrossSalesSummaryHeader({ totals }: GrossSalesSummaryHeaderProps
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Amount: ${formatCurr(totals.grossAmount)}`}>
               {formatCurr(totals.grossAmount)}
             </p>
           </div>
@@ -127,7 +127,7 @@ export function GrossSalesSummaryHeader({ totals }: GrossSalesSummaryHeaderProps
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono">
+            <p className="text-lg font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Total Discounts: ${formatCurr(totals.discountAmount)}`}>
               {formatCurr(totals.discountAmount)}
             </p>
           </div>
@@ -156,7 +156,7 @@ export function GrossSalesSummaryHeader({ totals }: GrossSalesSummaryHeaderProps
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Taxes Collected: ${formatCurr(totals.taxAmount)}`}>
               {formatCurr(totals.taxAmount)}
             </p>
           </div>

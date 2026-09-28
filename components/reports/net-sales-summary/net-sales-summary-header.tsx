@@ -17,7 +17,7 @@ interface NetSalesSummaryHeaderProps {
 
 export function NetSalesSummaryHeader({ totals }: NetSalesSummaryHeaderProps) {
   const formatCurr = (val: number) =>
-    `Rs. ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5 no-print">
@@ -40,7 +40,7 @@ export function NetSalesSummaryHeader({ totals }: NetSalesSummaryHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-extrabold text-emerald-950 dark:text-emerald-100 mt-1 font-mono">
+            <p className="text-lg font-extrabold text-emerald-950 dark:text-emerald-100 mt-1 font-mono truncate" title={`Net Sales Revenue: ${formatCurr(totals.netSalesAmount)}`}>
               {formatCurr(totals.netSalesAmount)}
             </p>
           </div>
@@ -69,7 +69,7 @@ export function NetSalesSummaryHeader({ totals }: NetSalesSummaryHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Net Sold Quantity: ${totals.netItems.toLocaleString()} pcs`}>
               {totals.netItems.toLocaleString()} <span className="text-xs font-medium text-slate-500">pcs</span>
             </p>
           </div>
@@ -98,7 +98,7 @@ export function NetSalesSummaryHeader({ totals }: NetSalesSummaryHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Sales Amount: ${formatCurr(totals.grossSalesAmount)}`}>
               {formatCurr(totals.grossSalesAmount)}
             </p>
           </div>
@@ -127,7 +127,7 @@ export function NetSalesSummaryHeader({ totals }: NetSalesSummaryHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-bold text-rose-900 dark:text-rose-100 mt-1 font-mono">
+            <p className="text-lg font-bold text-rose-900 dark:text-rose-100 mt-1 font-mono truncate" title={`Total Returns & Refunds: ${formatCurr(totals.returnAmount)}`}>
               {formatCurr(totals.returnAmount)}
             </p>
           </div>
@@ -156,7 +156,7 @@ export function NetSalesSummaryHeader({ totals }: NetSalesSummaryHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono">
+            <p className="text-lg font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Discounts Applied: ${formatCurr(totals.discountAmount)}`}>
               {formatCurr(totals.discountAmount)}
             </p>
           </div>

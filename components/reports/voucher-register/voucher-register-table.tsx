@@ -8,9 +8,13 @@ import {
   Loader2,
   ArrowUpDown,
   FileText,
+  Zap,
+  CheckCircle2,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface VoucherRegisterTableProps {
   items: VoucherRegisterItem[];
@@ -21,6 +25,13 @@ interface VoucherRegisterTableProps {
   sortColumn: keyof VoucherRegisterItem;
   sortDirection: "asc" | "desc";
   onSort: (col: keyof VoucherRegisterItem) => void;
+  totalCount?: number;
+  hasMore?: boolean;
+  isFetchingMore?: boolean;
+  isFetchingAll?: boolean;
+  isAllLoaded?: boolean;
+  onLoadMore?: () => void;
+  onFetchAll?: () => void;
 }
 
 export function VoucherRegisterTable({
@@ -32,15 +43,32 @@ export function VoucherRegisterTable({
   sortColumn,
   sortDirection,
   onSort,
+  totalCount = 0,
+  hasMore = false,
+  isFetchingMore = false,
+  isFetchingAll = false,
+  isAllLoaded = false,
+  onLoadMore,
+  onFetchAll,
 }: VoucherRegisterTableProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const parentRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      if (hasMore && !isFetchingMore && !isFetchingAll && !isPending && onLoadMore) {
+        onLoadMore();
+      }
+    }
+  };
+
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 44,
-    overscan: 10,
+    overscan: 12,
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
@@ -60,7 +88,7 @@ export function VoucherRegisterTable({
   const formatCurr = (val: number) =>
     val === 0
       ? "-"
-      : `Rs. ${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      : val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const getTypeBadgeClass = (vType: string) => {
     switch (vType.toUpperCase()) {
@@ -95,7 +123,83 @@ export function VoucherRegisterTable({
 
   return (
     <div className="border border-border/80 rounded-xl shadow-2xs bg-card overflow-hidden no-print">
-      <div ref={parentRef} className="overflow-auto max-h-[700px] w-full">
+      {/* Stream & Dataset Capacity Status Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 bg-slate-50 dark:bg-slate-900/60 border-b border-border/70 text-xs">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+            <span className="font-semibold text-foreground">
+              {items.length.toLocaleString()}
+            </span>
+            <span className="text-muted-foreground">of</span>
+            <span className="font-bold text-foreground font-mono">
+              {totalCount.toLocaleString()}
+            </span>
+            <span className="text-muted-foreground">vouchers loaded</span>
+          </div>
+
+          {isAllLoaded ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+              <CheckCircle2 className="h-3 w-3" />
+              All Records In Memory (Instant Sort & Filter)
+            </span>
+          ) : hasMore ? (
+            <span className="text-[11px] text-muted-foreground hidden sm:inline">
+              • Scroll to stream more or fetch all at once
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Streaming next 100...</span>
+            </div>
+          )}
+
+          {isFetchingAll && (
+            <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Loading all {totalCount.toLocaleString()} records...</span>
+            </div>
+          )}
+
+          {!isAllLoaded && hasMore && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isFetchingMore || isFetchingAll || isPending}
+                onClick={onLoadMore}
+                className="h-7 px-2.5 text-[11px] font-semibold bg-background"
+              >
+                {isFetchingMore ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : null}
+                Load Next 100
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                disabled={isFetchingMore || isFetchingAll || isPending}
+                onClick={onFetchAll}
+                className="h-7 px-2.5 text-[11px] font-semibold bg-amber-500 hover:bg-amber-600 text-slate-950 dark:bg-amber-500 dark:hover:bg-amber-600 shadow-xs"
+              >
+                {isFetchingAll ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <Zap className="h-3 w-3 mr-1 fill-current" />
+                )}
+                Fetch All ({totalCount.toLocaleString()})
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div ref={parentRef} onScroll={handleScroll} className="overflow-auto max-h-[700px] w-full">
         <table className="w-full text-left border-collapse whitespace-nowrap min-w-[2000px]">
           {/* Synchronized Sticky Header */}
           <thead>
@@ -182,13 +286,13 @@ export function VoucherRegisterTable({
                 </div>
               </th>
 
-              {/* Discount Amount */}
+              {/* Discount */}
               <th
                 onClick={() => onSort("discountAmount")}
                 className="p-3 w-[150px] border-r border-slate-800 text-right bg-slate-900 cursor-pointer group"
               >
                 <div className="flex items-center justify-end gap-1">
-                  <span>Discount (Rs.)</span>
+                  <span>Discount</span>
                   {renderSortIndicator("discountAmount")}
                 </div>
               </th>
@@ -199,7 +303,7 @@ export function VoucherRegisterTable({
                 className="p-3 w-[160px] border-r border-slate-800 text-right bg-slate-900 text-emerald-300 font-bold cursor-pointer group"
               >
                 <div className="flex items-center justify-end gap-1">
-                  <span>Face Value (Rs.)</span>
+                  <span>Face Value</span>
                   {renderSortIndicator("faceValue")}
                 </div>
               </th>
@@ -345,12 +449,12 @@ export function VoucherRegisterTable({
                       </td>
 
                       {/* Discount */}
-                      <td className="p-3 border-r border-border/40 text-right font-mono font-medium text-muted-foreground">
+                      <td className="p-3 border-r border-border/40 text-right font-mono font-medium text-muted-foreground" title={`Discount: ${formatCurr(item.discountAmount)}`}>
                         {formatCurr(item.discountAmount)}
                       </td>
 
                       {/* Face Value */}
-                      <td className="p-3 border-r border-border/40 text-right font-mono font-bold text-foreground">
+                      <td className="p-3 border-r border-border/40 text-right font-mono font-bold text-foreground" title={`Face Value: ${formatCurr(item.faceValue)}`}>
                         {formatCurr(item.faceValue)}
                       </td>
 
@@ -418,19 +522,19 @@ export function VoucherRegisterTable({
               <td colSpan={8} className="p-3 border-r border-slate-800 text-left uppercase tracking-wider bg-slate-900 text-slate-300 font-semibold">
                 Grand Totals ({items.length.toLocaleString()} Vouchers)
               </td>
-              <td className="p-3 border-r border-slate-800 text-right bg-slate-900 text-slate-300 font-mono">
+              <td className="p-3 border-r border-slate-800 text-right bg-slate-900 text-slate-300 font-mono" title={`Total Discount: ${formatCurr(totals.totalDiscount)}`}>
                 {formatCurr(totals.totalDiscount)}
               </td>
-              <td className="p-3 border-r border-slate-800 text-right bg-slate-900 text-emerald-300 font-mono text-sm font-extrabold">
+              <td className="p-3 border-r border-slate-800 text-right bg-slate-900 text-emerald-300 font-mono text-sm font-extrabold" title={`Total Face Value: ${formatCurr(totals.totalFaceValue)}`}>
                 {formatCurr(totals.totalFaceValue)}
               </td>
               <td colSpan={4} className="p-3 bg-slate-900 text-slate-300 font-mono text-xs">
                 {mode === "outstanding" ? (
-                  <span className="text-amber-300">
+                  <span className="text-amber-300" title={`Outstanding Liability: ${formatCurr(totals.totalOutstandingAmount)}`}>
                     Outstanding Liability: {formatCurr(totals.totalOutstandingAmount)} ({totals.totalOutstandingCount.toLocaleString()} unredeemed)
                   </span>
                 ) : (
-                  <span>
+                  <span title={`Settled: ${formatCurr(totals.totalSettledAmount)} | Outstanding: ${formatCurr(totals.totalOutstandingAmount)}`}>
                     Settled: {formatCurr(totals.totalSettledAmount)} | Outstanding: {formatCurr(totals.totalOutstandingAmount)}
                   </span>
                 )}

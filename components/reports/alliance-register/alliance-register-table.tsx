@@ -214,57 +214,57 @@ export function AllianceRegisterTable({ records, grandTotals, searchQuery, isLoa
                       <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-muted-foreground whitespace-nowrap">
                         {row.date} <span className="text-[10px]">{row.time}</span>
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono" title={`Retail Price: ${formatVal(row.retailPrice)}`}>
                         {formatVal(row.retailPrice)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono" title={`Retail WOST: ${formatVal(row.retailWost)}`}>
                         {formatVal(row.retailWost)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-rose-600 dark:text-rose-400" title={`Discount: ${formatVal(row.discount)}`}>
                         {formatVal(row.discount)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono text-muted-foreground">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono text-muted-foreground" title={`Sales Tax: ${formatVal(row.sTax)}`}>
                         {formatVal(row.sTax)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10" title={`Net Sale: ${formatVal(row.netSale)}`}>
                         {formatVal(row.netSale)}
                       </td>
 
                       {/* 12 Tender Breakdown Cells */}
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-teal-700 dark:text-teal-400">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-teal-700 dark:text-teal-400" title={`Cash Sale: ${formatVal(row.cashSale)}`}>
                         {formatVal(row.cashSale)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-rose-600 dark:text-rose-400" title={`Cash Return: ${formatVal(row.cashReturn)}`}>
                         {formatVal(row.cashReturn)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-indigo-700 dark:text-indigo-400" title={`Card Sale: ${formatVal(row.cardSale)}`}>
                         {formatVal(row.cardSale)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-sky-700 dark:text-sky-400">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-sky-700 dark:text-sky-400" title={`Credit Sale: ${formatVal(row.creditSale)}`}>
                         {formatVal(row.creditSale)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono" title={`Gift Voucher: ${formatVal(row.giftVoucherAmount)}`}>
                         {formatVal(row.giftVoucherAmount)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono" title={`Credit Voucher: ${formatVal(row.creditVoucherAmount)}`}>
                         {formatVal(row.creditVoucherAmount)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono" title={`Exchange Voucher: ${formatVal(row.exchangeVoucherAmount)}`}>
                         {formatVal(row.exchangeVoucherAmount)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono" title={`Claim Voucher: ${formatVal(row.claimVoucherAmount)}`}>
                         {formatVal(row.claimVoucherAmount)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono" title={`Corporate Voucher: ${formatVal(row.giftVoucherCorporate)}`}>
                         {formatVal(row.giftVoucherCorporate)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-red-600 dark:text-red-400">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold text-red-600 dark:text-red-400" title={`Credit Voucher Issued: ${formatVal(row.creditVoucherIssuedAmount)}`}>
                         {formatVal(row.creditVoucherIssuedAmount)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono" title={`Reward Voucher: ${formatVal(row.rewardVoucherAmount)}`}>
                         {formatVal(row.rewardVoucherAmount)}
                       </td>
-                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold">
+                      <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 text-right font-mono font-bold" title={`On Credit: ${formatVal(row.onCreditAmount)}`}>
                         {formatVal(row.onCreditAmount)}
                       </td>
 
@@ -318,57 +318,57 @@ export function AllianceRegisterTable({ records, grandTotals, searchQuery, isLoa
                   GRAND TOTALS
                 </td>
                 <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600">-</td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black" title={`Total Retail Price: ${formatVal(grandTotals.retailPrice)}`}>
                   {formatVal(grandTotals.retailPrice)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black" title={`Total Retail WOST: ${formatVal(grandTotals.retailWost)}`}>
                   {formatVal(grandTotals.retailWost)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-rose-600 dark:text-rose-400">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-rose-600 dark:text-rose-400" title={`Total Discount: ${formatVal(grandTotals.discount)}`}>
                   {formatVal(grandTotals.discount)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right" title={`Total Sales Tax: ${formatVal(grandTotals.sTax)}`}>
                   {formatVal(grandTotals.sTax)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30" title={`Total Net Sale: ${formatVal(grandTotals.netSale)}`}>
                   {formatVal(grandTotals.netSale)}
                 </td>
 
                 {/* 12 Tender Breakdown Totals */}
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-teal-700 dark:text-teal-400">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-teal-700 dark:text-teal-400" title={`Total Cash Sale: ${formatVal(grandTotals.cashSale)}`}>
                   {formatVal(grandTotals.cashSale)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-rose-600 dark:text-rose-400">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-rose-600 dark:text-rose-400" title={`Total Cash Return: ${formatVal(grandTotals.cashReturn)}`}>
                   {formatVal(grandTotals.cashReturn)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-indigo-700 dark:text-indigo-400">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-indigo-700 dark:text-indigo-400" title={`Total Card Sale: ${formatVal(grandTotals.cardSale)}`}>
                   {formatVal(grandTotals.cardSale)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-sky-700 dark:text-sky-400">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-sky-700 dark:text-sky-400" title={`Total Credit Sale: ${formatVal(grandTotals.creditSale)}`}>
                   {formatVal(grandTotals.creditSale)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right" title={`Total Gift Voucher: ${formatVal(grandTotals.giftVoucherAmount)}`}>
                   {formatVal(grandTotals.giftVoucherAmount)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right" title={`Total Credit Voucher: ${formatVal(grandTotals.creditVoucherAmount)}`}>
                   {formatVal(grandTotals.creditVoucherAmount)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right" title={`Total Exchange Voucher: ${formatVal(grandTotals.exchangeVoucherAmount)}`}>
                   {formatVal(grandTotals.exchangeVoucherAmount)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right" title={`Total Claim Voucher: ${formatVal(grandTotals.claimVoucherAmount)}`}>
                   {formatVal(grandTotals.claimVoucherAmount)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right" title={`Total Corporate Voucher: ${formatVal(grandTotals.giftVoucherCorporate)}`}>
                   {formatVal(grandTotals.giftVoucherCorporate)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-red-600 dark:text-red-400">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black text-red-600 dark:text-red-400" title={`Total Credit Voucher Issued: ${formatVal(grandTotals.creditVoucherIssuedAmount)}`}>
                   {formatVal(grandTotals.creditVoucherIssuedAmount)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right" title={`Total Reward Voucher: ${formatVal(grandTotals.rewardVoucherAmount)}`}>
                   {formatVal(grandTotals.rewardVoucherAmount)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black">
+                <td className="py-3 px-3 border-r border-slate-300 dark:border-slate-600 text-right font-black" title={`Total On Credit: ${formatVal(grandTotals.onCreditAmount)}`}>
                   {formatVal(grandTotals.onCreditAmount)}
                 </td>
 

@@ -29,7 +29,7 @@ export function VoucherRegisterHeader({
   totalVouchersInDataset,
 }: VoucherRegisterHeaderProps) {
   const formatCurr = (val: number) =>
-    `Rs. ${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const isOutstandingMode = mode === "outstanding";
   const displayCount = totals.totalVouchers;
@@ -62,16 +62,16 @@ export function VoucherRegisterHeader({
               <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                 Total Unsettled
               </div>
-              <div className="text-base font-extrabold font-mono text-white">
+              <div className="text-base font-extrabold font-mono text-white" title={`Total Unsettled: ${totals.totalOutstandingCount.toLocaleString()} vouchers`}>
                 {totals.totalOutstandingCount.toLocaleString()}{" "}
                 <span className="text-xs font-normal text-slate-400">vouchers</span>
               </div>
             </div>
             <div>
               <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                Liability (PKR)
+                Total Liability
               </div>
-              <div className="text-base font-extrabold font-mono text-amber-300">
+              <div className="text-base font-extrabold font-mono text-amber-300" title={`Total Liability: ${formatCurr(totals.totalOutstandingAmount)}`}>
                 {formatCurr(totals.totalOutstandingAmount)}
               </div>
             </div>
@@ -100,7 +100,7 @@ export function VoucherRegisterHeader({
               </Tooltip>
             </div>
             <div className="mt-2 flex items-baseline gap-1">
-              <p className="text-xl font-bold font-mono text-foreground tracking-tight">
+              <p className="text-xl font-bold font-mono text-foreground tracking-tight truncate" title={`Outstanding Liability: ${formatCurr(totals.totalOutstandingAmount)}`}>
                 {formatCurr(totals.totalOutstandingAmount)}
               </p>
             </div>
@@ -130,7 +130,7 @@ export function VoucherRegisterHeader({
               </Tooltip>
             </div>
             <div className="mt-2">
-              <p className="text-xl font-bold font-mono text-foreground tracking-tight">
+              <p className="text-xl font-bold font-mono text-foreground tracking-tight truncate" title={`Total Face Value: ${formatCurr(totals.totalFaceValue)}`}>
                 {formatCurr(totals.totalFaceValue)}
               </p>
             </div>
@@ -160,7 +160,7 @@ export function VoucherRegisterHeader({
               </Tooltip>
             </div>
             <div className="mt-2">
-              <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight">
+              <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight truncate" title={`Settled Value: ${formatCurr(totals.totalSettledAmount)}`}>
                 {formatCurr(totals.totalSettledAmount)}
               </p>
             </div>
@@ -190,12 +190,12 @@ export function VoucherRegisterHeader({
               </Tooltip>
             </div>
             <div className="mt-2">
-              <p className="text-xl font-bold font-mono text-foreground tracking-tight">
+              <p className="text-xl font-bold font-mono text-foreground tracking-tight truncate" title={`Total Discounts: ${formatCurr(totals.totalDiscount)}`}>
                 {formatCurr(totals.totalDiscount)}
               </p>
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="font-mono text-[11px]">Net: {formatCurr(totals.totalNetValue)}</span>
+              <span className="font-mono text-[11px]" title={`Net Value: ${formatCurr(totals.totalNetValue)}`}>Net: {formatCurr(totals.totalNetValue)}</span>
             </div>
           </CardContent>
         </Card>

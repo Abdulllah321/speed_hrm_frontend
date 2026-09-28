@@ -370,19 +370,19 @@ export function GrossSalesSummaryFilters({
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
-                      id="lvl-gen-sum"
-                      checked={groupingLevels.gender}
-                      onCheckedChange={(c) => onToggleLevel("gender", !!c)}
-                    />
-                    <Label htmlFor="lvl-gen-sum">Gender</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
                       id="lvl-sil-sum"
                       checked={groupingLevels.silhouette}
                       onCheckedChange={(c) => onToggleLevel("silhouette", !!c)}
                     />
                     <Label htmlFor="lvl-sil-sum">Silhouette</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-gen-sum"
+                      checked={!!groupingLevels.gender}
+                      onCheckedChange={(c) => onToggleLevel("gender", !!c)}
+                    />
+                    <Label htmlFor="lvl-gen-sum">Gender</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox

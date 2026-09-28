@@ -106,8 +106,72 @@ export function useVoucherRegisterData(
     });
   }, [reportData?.items, activeTab, statusFilter, searchQuery, sortColumn, sortDirection]);
 
-  // Aggregate Totals dynamically computed over current filtered dataset
+  // Aggregate Totals dynamically computed over dataset
   const totals: VoucherRegisterTotals = useMemo(() => {
+    // If we have reportData.kpis and no client-side search or status filter active, use accurate backend aggregation
+    const hasClientFilter = searchQuery.trim() !== "" || statusFilter !== "ALL";
+    if (reportData?.kpis && !hasClientFilter) {
+      if (activeTab === "ALL") {
+        return {
+          totalVouchers: reportData.kpis.totalVouchers,
+          totalFaceValue: reportData.kpis.totalAmount,
+          totalDiscount: reportData.kpis.totalDiscount,
+          totalNetValue: reportData.kpis.totalNetValue,
+          totalSettledAmount: reportData.kpis.totalSettledAmount,
+          totalOutstandingAmount: reportData.kpis.totalOutstandingAmount,
+          totalOutstandingCount: reportData.kpis.totalOutstandingCount,
+          totalRedeemedCount: reportData.kpis.totalRedeemedCount,
+          totalActiveCount: reportData.kpis.totalActiveCount,
+          totalExpiredCount: reportData.kpis.totalExpiredCount,
+          typeBreakdown: reportData.kpis.typeBreakdown || {},
+          typeBreakdownDetails: reportData.kpis.typeBreakdownDetails,
+          statusBreakdown: reportData.kpis.statusBreakdown,
+        };
+      }
+
+      // If viewing a specific tab and tabDetail is present in typeBreakdownDetails
+      const tabKey = activeTab.toUpperCase();
+      const tabDetail = reportData.kpis.typeBreakdownDetails?.[tabKey];
+      if (tabDetail) {
+        return {
+          totalVouchers: tabDetail.count,
+          totalFaceValue: tabDetail.faceValue,
+          totalDiscount: tabDetail.discount,
+          totalNetValue: Math.max(0, tabDetail.faceValue - tabDetail.discount),
+          totalSettledAmount: tabDetail.settledAmount,
+          totalOutstandingAmount: tabDetail.outstandingAmount,
+          totalOutstandingCount: tabDetail.outstandingCount ?? (tabDetail.count - (tabDetail.redeemedCount ?? 0)),
+          totalRedeemedCount: tabDetail.redeemedCount ?? (reportData.kpis.totalRedeemedCount || 0),
+          totalActiveCount: tabDetail.activeCount ?? (tabDetail.outstandingCount ?? tabDetail.count),
+          totalExpiredCount: tabDetail.expiredCount ?? 0,
+          typeBreakdown: reportData.kpis.typeBreakdown || {},
+          typeBreakdownDetails: reportData.kpis.typeBreakdownDetails,
+          statusBreakdown: {
+            ACTIVE: tabDetail.activeCount ?? (tabDetail.outstandingCount ?? tabDetail.count),
+            REDEEMED: tabDetail.redeemedCount ?? 0,
+            EXPIRED: tabDetail.expiredCount ?? 0,
+          },
+        };
+      }
+
+      // Fallback to reportData.kpis directly if tabDetail is not found
+      return {
+        totalVouchers: reportData.kpis.totalVouchers,
+        totalFaceValue: reportData.kpis.totalAmount,
+        totalDiscount: reportData.kpis.totalDiscount,
+        totalNetValue: reportData.kpis.totalNetValue,
+        totalSettledAmount: reportData.kpis.totalSettledAmount,
+        totalOutstandingAmount: reportData.kpis.totalOutstandingAmount,
+        totalOutstandingCount: reportData.kpis.totalOutstandingCount,
+        totalRedeemedCount: reportData.kpis.totalRedeemedCount,
+        totalActiveCount: reportData.kpis.totalActiveCount,
+        totalExpiredCount: reportData.kpis.totalExpiredCount,
+        typeBreakdown: reportData.kpis.typeBreakdown || {},
+        typeBreakdownDetails: reportData.kpis.typeBreakdownDetails,
+        statusBreakdown: reportData.kpis.statusBreakdown,
+      };
+    }
+
     let totalFaceValue = 0;
     let totalDiscount = 0;
     let totalNetValue = 0;
@@ -118,7 +182,7 @@ export function useVoucherRegisterData(
     let totalActiveCount = 0;
     let totalExpiredCount = 0;
 
-    const typeBreakdown: Record<string, number> = {};
+    const typeBreakdown: Record<string, number> = reportData?.kpis?.typeBreakdown || {};
     const typeBreakdownDetails: Record<
       string,
       {
@@ -128,7 +192,7 @@ export function useVoucherRegisterData(
         settledAmount: number;
         outstandingAmount: number;
       }
-    > = {};
+    > = reportData?.kpis?.typeBreakdownDetails || {};
 
     const statusBreakdown: Record<string, number> = {
       ACTIVE: 0,
@@ -148,24 +212,6 @@ export function useVoucherRegisterData(
       totalNetValue += net;
       totalSettledAmount += settled;
       totalOutstandingAmount += outstanding;
-
-      const vType = item.voucherType || "GIFT";
-      typeBreakdown[vType] = (typeBreakdown[vType] || 0) + 1;
-
-      if (!typeBreakdownDetails[vType]) {
-        typeBreakdownDetails[vType] = {
-          count: 0,
-          faceValue: 0,
-          discount: 0,
-          settledAmount: 0,
-          outstandingAmount: 0,
-        };
-      }
-      typeBreakdownDetails[vType].count += 1;
-      typeBreakdownDetails[vType].faceValue += faceVal;
-      typeBreakdownDetails[vType].discount += disc;
-      typeBreakdownDetails[vType].settledAmount += settled;
-      typeBreakdownDetails[vType].outstandingAmount += outstanding;
 
       if (item.status === "REDEEMED") {
         totalRedeemedCount += 1;
@@ -196,7 +242,7 @@ export function useVoucherRegisterData(
       typeBreakdownDetails,
       statusBreakdown,
     };
-  }, [filteredItems]);
+  }, [filteredItems, reportData?.kpis, searchQuery, statusFilter, activeTab]);
 
   return {
     searchQuery,

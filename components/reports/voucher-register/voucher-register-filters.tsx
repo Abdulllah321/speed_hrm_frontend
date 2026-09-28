@@ -1,5 +1,4 @@
-import React from "react";
-import { VoucherReportMode } from "./types";
+import { VoucherReportMode, getCurrentFiscalYearRange } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
@@ -108,7 +107,7 @@ export function VoucherRegisterFilters({
     } else if (preset === "last30") {
       setDateRange({ from: subDays(now, 30), to: endOfDay(now) });
     } else if (preset === "year") {
-      setDateRange({ from: startOfYear(now), to: endOfYear(now) });
+      setDateRange(getCurrentFiscalYearRange());
     }
   };
 
@@ -292,9 +291,17 @@ export function VoucherRegisterFilters({
                   <button
                     type="button"
                     onClick={() => applyPreset("last30")}
-                    className="hover:text-foreground font-medium"
+                    className="hover:text-foreground font-medium cursor-pointer"
                   >
                     30d
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("year")}
+                    className="hover:text-foreground font-medium cursor-pointer"
+                  >
+                    Fiscal Year
                   </button>
                 </div>
               </div>

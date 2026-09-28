@@ -1,16 +1,17 @@
 "use client";
 
 import { format } from "date-fns";
-import { GrossSalesReturnNode, GrossSalesReturnTotals } from "./types";
+import { GrossSalesReturnNode, GrossSalesReturnTotals, GrossSalesReturnFlatRecord } from "./types";
 
 export async function generateGrossSalesReturnPdf(opts: {
-  returns: GrossSalesReturnNode[];
+  flatItems?: GrossSalesReturnFlatRecord[];
+  returns?: GrossSalesReturnNode[];
   grandTotals: GrossSalesReturnTotals;
   dateRange: { from?: Date; to?: Date };
   locationNames: string;
   onProgress?: (percent: number, message?: string) => void;
 }): Promise<void> {
-  const { returns, grandTotals, dateRange, locationNames, onProgress } = opts;
+  const { flatItems = [], grandTotals, dateRange, locationNames, onProgress } = opts;
   onProgress?.(30, "Compiling PDF document layout...");
 
   const dateStr = format(new Date(), "yyyy-MM-dd");
@@ -23,37 +24,52 @@ export async function generateGrossSalesReturnPdf(opts: {
     return;
   }
 
-  const rowsHtml = returns
+  const rowsHtml = flatItems
     .slice(0, 1500)
-    .map(
-      (ret) => `
+    .map((item) => {
+      const qty = item.quantity || 0;
+      const unitPrice = item.unitPrice || 0;
+      const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
+      const totalWost = item.wostAmount || Math.round((qty * priceWost) * 100) / 100;
+      const discAmt = item.discountAmount || 0;
+      const valExTax = Math.round((totalWost - discAmt) * 100) / 100;
+      const taxAmt = item.taxAmount || 0;
+      const valInclTax = item.subTotal || Math.round((valExTax + taxAmt) * 100) / 100;
+
+      return `
     <tr>
-      <td>${ret.returnNumber}</td>
-      <td>${ret.orderNumber}</td>
-      <td>${format(new Date(ret.createdAt), "yyyy-MM-dd HH:mm")}</td>
-      <td>${ret.customerName} (${ret.customerPhone})</td>
-      <td>${ret.cashierName}</td>
-      <td style="text-align: center;">${ret.paymentMethod}</td>
-      <td>${ret.fbrInvoiceNumber || "-"}</td>
-      <td style="text-align: right;">${ret.totals.totalItems}</td>
-      <td style="text-align: right;">Rs. ${ret.totals.grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-      <td style="text-align: right; color: #b45309;">Rs. ${ret.totals.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-      <td style="text-align: right;">Rs. ${ret.totals.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-      <td style="text-align: right; font-weight: bold; color: #e11d48;">Rs. ${ret.totals.netAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td>${item.locationName || "Main Outlet"}</td>
+      <td>${item.brandName || "-"}</td>
+      <td>${item.divisionName || "-"}</td>
+      <td>${item.categoryName || "-"}</td>
+      <td>${item.silhouetteName || "-"}</td>
+      <td>${item.genderName || "-"}</td>
+      <td style="font-family: monospace;">${item.sku || item.barCode || "-"}</td>
+      <td>${item.description || "-"}</td>
+      <td>${item.sizeName || "-"}</td>
+      <td>${item.colorName || "-"}</td>
+      <td style="text-align: right; font-family: monospace; font-weight: bold; color: #e11d48;">${qty.toLocaleString()}</td>
+      <td style="text-align: right; font-family: monospace;">Rs. ${unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td style="text-align: right; font-family: monospace;">Rs. ${priceWost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td style="text-align: right; font-family: monospace; color: #4338ca;">Rs. ${totalWost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td style="text-align: right; font-family: monospace; color: #d97706;">Rs. ${discAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td style="text-align: right; font-family: monospace; color: #0284c7;">Rs. ${valExTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td style="text-align: right; font-family: monospace;">Rs. ${taxAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+      <td style="text-align: right; font-family: monospace; font-weight: bold; color: #e11d48;">Rs. ${valInclTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
     </tr>
-  `,
-    )
+  `;
+    })
     .join("");
 
   const html = `
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Sales Return Register Report - ${dateStr}</title>
+        <title>POS Sales Return Register Report - ${dateStr}</title>
         <style>
           @page { size: landscape; margin: 10mm; }
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 10px; color: #1e293b; margin: 0; padding: 15px; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; border-b: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
           .title { font-size: 18px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
           .subtitle { font-size: 11px; color: #64748b; margin-top: 4px; }
           .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 15px; }
@@ -61,10 +77,10 @@ export async function generateGrossSalesReturnPdf(opts: {
           .kpi-label { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; }
           .kpi-val { font-size: 12px; font-weight: 800; color: #0f172a; margin-top: 2px; }
           table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th { background: #f1f5f9; color: #334155; text-transform: uppercase; font-size: 9px; font-weight: 700; padding: 6px 8px; border: 1px solid #cbd5e1; text-align: left; }
-          td { padding: 5px 8px; border: 1px solid #e2e8f0; font-size: 9.5px; }
+          th { background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 8px; font-weight: 700; padding: 6px 8px; border: 1px solid #cbd5e1; text-align: left; font-family: monospace; }
+          td { padding: 5px 8px; border: 1px solid #e2e8f0; font-size: 9px; }
           tr:nth-child(even) { background: #f8fafc; }
-          tfoot td { background: #e2e8f0; font-weight: 800; font-size: 10px; border-top: 2px solid #94a3b8; }
+          tfoot td { background: #e2e8f0; font-weight: 800; font-size: 9.5px; border-top: 2px solid #94a3b8; }
         </style>
       </head>
       <body>
@@ -81,7 +97,7 @@ export async function generateGrossSalesReturnPdf(opts: {
         <div class="kpi-grid">
           <div class="kpi-card">
             <div class="kpi-label">Net Sales Returns</div>
-            <div class="kpi-val" style="color: #e11d48;">Rs. ${grandTotals.netAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+            <div class="kpi-val" style="color: #e11d48;">Rs. ${(grandTotals.valueInclSalesTax || grandTotals.netAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Total Returns</div>
@@ -92,8 +108,8 @@ export async function generateGrossSalesReturnPdf(opts: {
             <div class="kpi-val">${grandTotals.totalItems.toLocaleString()} pcs</div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">Gross Return Amt</div>
-            <div class="kpi-val">Rs. ${grandTotals.grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+            <div class="kpi-label">Total Price WOST</div>
+            <div class="kpi-val">Rs. ${grandTotals.wostAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Return Discounts</div>
@@ -108,17 +124,23 @@ export async function generateGrossSalesReturnPdf(opts: {
         <table>
           <thead>
             <tr>
-              <th>Return #</th>
-              <th>Orig Order #</th>
-              <th>Return Date</th>
-              <th>Customer</th>
-              <th>Cashier</th>
-              <th style="text-align: center;">Refund</th>
-              <th>FBR Inv #</th>
-              <th style="text-align: right;">Items</th>
-              <th style="text-align: right;">Gross Return</th>
+              <th>Outlet</th>
+              <th>Brand</th>
+              <th>Division</th>
+              <th>Category</th>
+              <th>Silhouette</th>
+              <th>Gender</th>
+              <th>SKU / Barcode</th>
+              <th>Description</th>
+              <th>Size</th>
+              <th>Color</th>
+              <th style="text-align: right;">Return Qty</th>
+              <th style="text-align: right;">UnitPrice</th>
+              <th style="text-align: right;">Price WOST</th>
+              <th style="text-align: right;">Total WOST</th>
               <th style="text-align: right;">Disc Reversal</th>
-              <th style="text-align: right;">Taxes</th>
+              <th style="text-align: right;">Val Excl Tax</th>
+              <th style="text-align: right;">Tax</th>
               <th style="text-align: right;">Net Refund</th>
             </tr>
           </thead>
@@ -127,12 +149,15 @@ export async function generateGrossSalesReturnPdf(opts: {
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="7">GRAND TOTAL (ALL SELECTED SALES RETURN NOTES)</td>
-              <td style="text-align: right;">${grandTotals.totalItems.toLocaleString()}</td>
-              <td style="text-align: right;">Rs. ${grandTotals.grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td colspan="10">GRAND TOTAL SUMMARY (${flatItems.length.toLocaleString()} ITEMS)</td>
+              <td style="text-align: right; color: #e11d48;">${grandTotals.totalItems.toLocaleString()}</td>
+              <td style="text-align: right;">-</td>
+              <td style="text-align: right;">-</td>
+              <td style="text-align: right; color: #4338ca;">Rs. ${grandTotals.wostAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               <td style="text-align: right; color: #b45309;">Rs. ${grandTotals.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td style="text-align: right; color: #0284c7;">Rs. ${(grandTotals.valueExSalesTax || (grandTotals.wostAmount - grandTotals.discountAmount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               <td style="text-align: right;">Rs. ${grandTotals.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-              <td style="text-align: right; color: #e11d48;">Rs. ${grandTotals.netAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td style="text-align: right; color: #e11d48;">Rs. ${(grandTotals.valueInclSalesTax || grandTotals.netAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
             </tr>
           </tfoot>
         </table>
@@ -151,3 +176,4 @@ export async function generateGrossSalesReturnPdf(opts: {
   printWindow.document.write(html);
   printWindow.document.close();
 }
+

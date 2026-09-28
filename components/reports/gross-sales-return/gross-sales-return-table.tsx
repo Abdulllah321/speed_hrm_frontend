@@ -1,425 +1,374 @@
-import React, { useRef } from "react";
+"use client";
+import React, { useState, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { cn } from "@/lib/utils";
-import { GrossSalesReturnTableRow, GrossSalesReturnTotals } from "./types";
-import { ChevronRight, ChevronDown, UnfoldVertical, FoldVertical, Info, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { GrossSalesReturnTreeNode, GrossSalesReturnTotals } from "./types";
+import { ChevronRight, ChevronDown, Folder, Package, Layers, QrCode, RotateCcw } from "lucide-react";
+import { cn, formatCurrency } from "@/lib/utils";
 
-interface GrossSalesReturnTableProps {
-  rows: GrossSalesReturnTableRow[];
-  grandTotals: GrossSalesReturnTotals;
-  onToggleNode?: (nodeId: string) => void;
-  onExpandAll?: () => void;
-  onCollapseAll?: () => void;
+function highlight(text: string, query: string) {
+  if (!text) return <></>;
+  const q = query.trim();
+  if (!q) return <>{text}</>;
+
+  try {
+    const pattern = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+    const parts = text.split(pattern);
+
+    return (
+      <>
+        {parts.map((part, i) =>
+          part.toLowerCase() === q.toLowerCase() ? (
+            <mark key={i} className="bg-amber-200 dark:bg-amber-700/60 text-inherit rounded-sm px-0.5 font-semibold">
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </>
+    );
+  } catch {
+    return <>{text}</>;
+  }
 }
 
-export function GrossSalesReturnTable({
-  rows,
-  grandTotals,
-  onToggleNode,
-  onExpandAll,
-  onCollapseAll,
-}: GrossSalesReturnTableProps) {
+interface TableProps {
+  treeData: GrossSalesReturnTreeNode[];
+  grandTotals: GrossSalesReturnTotals;
+  searchQuery: string;
+  isLoading: boolean;
+}
+
+interface FlatRowItem {
+  id: string;
+  node: GrossSalesReturnTreeNode;
+  depth: number;
+  hasChildren: boolean;
+  isExpanded: boolean;
+}
+
+export function GrossSalesReturnTable({ treeData, grandTotals, searchQuery, isLoading }: TableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
+  const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
+
+  const toggleCollapse = (key: string) => {
+    setCollapsedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const expandAll = () => setCollapsedKeys(new Set());
+  const collapseAll = () => {
+    const allKeys = new Set<string>();
+    function traverse(nodes: GrossSalesReturnTreeNode[], parentKey: string = "root") {
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const key = `${parentKey}_${node.level}_${node.value}_${i}`;
+        if (node.children && node.children.length > 0) {
+          allKeys.add(key);
+          traverse(node.children, key);
+        }
+      }
+    }
+    traverse(treeData, "root");
+    setCollapsedKeys(allKeys);
+  };
+
+  const flatVisibleRows = useMemo(() => {
+    const rows: FlatRowItem[] = [];
+
+    function traverse(nodes: GrossSalesReturnTreeNode[], depth: number = 0, parentKey: string = "root") {
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const nodeKey = `${parentKey}_${node.level}_${node.value}_${i}`;
+        const hasChildren = Boolean(node.children && node.children.length > 0);
+        const isCollapsed = collapsedKeys.has(nodeKey);
+
+        rows.push({
+          id: nodeKey,
+          node,
+          depth,
+          hasChildren,
+          isExpanded: !isCollapsed,
+        });
+
+        if (hasChildren && !isCollapsed) {
+          traverse(node.children, depth + 1, nodeKey);
+        }
+      }
+    }
+
+    traverse(treeData, 0, "root");
+    return rows;
+  }, [treeData, collapsedKeys]);
 
   const rowVirtualizer = useVirtualizer({
-    count: rows.length,
+    count: flatVisibleRows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 38,
-    overscan: 12,
+    estimateSize: () => 40,
+    overscan: 25,
   });
 
-  const virtualItems = rowVirtualizer.getVirtualItems();
-  const totalSize = rowVirtualizer.getTotalSize();
-  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
-  const paddingBottom =
-    virtualItems.length > 0 ? totalSize - virtualItems[virtualItems.length - 1].end : 0;
-
-  const formatVal = (val?: number) =>
-    val === undefined || val === 0 ? "-" : val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3 border rounded-2xl bg-background shadow-sm">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <p className="text-xs font-semibold text-muted-foreground animate-pulse">
+          Computing Gross Sales Return hierarchy...
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-2.5">
-      {/* Expand / Collapse Controls */}
-      <div className="flex items-center justify-between px-1 no-print">
-        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-          Showing <span className="font-bold text-slate-900 dark:text-slate-100">{rows.length.toLocaleString()}</span> sales return hierarchy rows
-          {grandTotals.returnCount > rows.length && (
-            <span className="text-[11px] text-slate-500 font-normal">
-              (Preview Sample &bull; Grand Totals include all {grandTotals.returnCount.toLocaleString()} returns)
+    <div className="flex flex-col gap-2">
+      {/* Table Action Controls */}
+      <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+        <div>
+          Showing <span className="font-bold text-foreground">{flatVisibleRows.length.toLocaleString()}</span> matrix rows
+          {grandTotals.totalItems > 0 && grandTotals.totalItems > flatVisibleRows.length && (
+            <span className="text-[11px] text-muted-foreground ml-1 font-normal">
+              (Preview Sample &bull; Grand Totals include all {grandTotals.totalItems.toLocaleString()} items)
             </span>
           )}
-        </span>
+        </div>
         <div className="flex items-center gap-2">
-          {onExpandAll && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onExpandAll}
-              className="h-7 px-2.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 rounded-lg gap-1 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              <UnfoldVertical className="h-3 w-3 text-rose-600" />
-              Expand All
-            </Button>
-          )}
-          {onCollapseAll && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onCollapseAll}
-              className="h-7 px-2.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 rounded-lg gap-1 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              <FoldVertical className="h-3 w-3 text-indigo-600" />
-              Collapse All
-            </Button>
-          )}
+          <button
+            type="button"
+            onClick={expandAll}
+            className="hover:text-primary font-medium transition-colors"
+          >
+            + Expand All
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={collapseAll}
+            className="hover:text-primary font-medium transition-colors"
+          >
+            - Collapse All
+          </button>
         </div>
       </div>
 
-      {/* Clean Minimalist Matrix Table Container */}
-      <div className="border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs bg-white dark:bg-slate-900 overflow-hidden no-print">
-        <div ref={parentRef} className="overflow-auto max-h-[700px] relative">
-          <table className="w-full text-left border-collapse min-w-[2210px] text-xs">
-            {/* Clean Light-Themed Header */}
-            <thead className="sticky top-0 z-20 bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 uppercase text-[10px] font-mono tracking-wider border-b border-slate-200 dark:border-slate-700 shadow-2xs backdrop-blur-xs">
-              <tr>
-                <th className="py-3 px-3.5 w-[300px] shrink-0 border-r border-slate-200 dark:border-slate-700">
-                  Location / Sales Return # / Returned Product
-                </th>
-                <th className="py-3 px-3 w-[120px] shrink-0 border-r border-slate-200 dark:border-slate-700">Orig Order #</th>
-                <th className="py-3 px-3 w-[120px] shrink-0 border-r border-slate-200 dark:border-slate-700">Return Date</th>
-                <th className="py-3 px-3 w-[150px] shrink-0 border-r border-slate-200 dark:border-slate-700">Customer</th>
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700">Cashier</th>
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">Refund Mode</th>
-                <th className="py-3 px-3 w-[130px] shrink-0 border-r border-slate-200 dark:border-slate-700">FBR Inv #</th>
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700">Category</th>
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700">Brand</th>
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700">SKU / Barcode</th>
-                <th className="py-3 px-3 w-[70px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">Size</th>
-                <th className="py-3 px-3 w-[85px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-center">Color</th>
+      {/* Main Virtualized Container */}
+      <div className="border border-border/80 rounded-2xl overflow-hidden bg-background shadow-md">
+        <div ref={parentRef} className="max-h-[660px] overflow-auto relative">
+          <div className="min-w-[1650px] w-full">
+            {/* Sticky Table Header */}
+            <div className="sticky top-0 z-20 flex items-center bg-slate-950 text-slate-100 text-[11px] font-mono font-bold uppercase tracking-wider h-11 border-b-2 border-slate-800 shadow-md min-w-[1650px] px-3">
+              <div className="w-[360px] min-w-[360px] shrink-0 px-2">Product Hierarchy / Description</div>
+              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-center">SKU / Barcode</div>
+              <div className="w-[80px] min-w-[80px] shrink-0 px-2 text-center">Size</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-center">Color</div>
+              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right">Return Qty</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right">Unit Price</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right">Price WOST</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right">Total Price WOST</div>
+              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right">Disc Reversal</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right">Val Excl Tax</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right">Sales Tax</div>
+              <div className="w-[160px] min-w-[160px] shrink-0 pl-2 pr-4 text-right">Val Incl Tax / Net Refund</div>
+            </div>
 
-                {/* Returned Qty */}
-                <th className="py-3 px-3 w-[80px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Ret Qty</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-slate-400 hover:text-slate-600">
-                          <Info className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs text-[11px] font-medium bg-slate-900 text-slate-100">
-                        Quantity of items returned.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </th>
+            {/* Virtualized Body */}
+            {flatVisibleRows.length === 0 ? (
+              <div className="py-16 text-center text-xs text-muted-foreground">
+                No matching gross sales return records found.
+              </div>
+            ) : (
+              <div
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  position: "relative",
+                }}
+                className="w-full min-w-[1650px]"
+              >
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = flatVisibleRows[virtualRow.index];
+                  const { node, depth, hasChildren, isExpanded, id } = row;
+                  const indentPx = depth * 18;
 
-                {/* Gross Return */}
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Gross Return</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-slate-400 hover:text-slate-600">
-                          <Info className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs text-[11px] font-medium bg-slate-900 text-slate-100">
-                        Gross product value of returned stock.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </th>
+                  let displayLabel = node.value;
+                  if (node.sku && node.articleName) {
+                    displayLabel = `[${node.sku}] ${node.articleName}`;
+                  } else if (node.level === "variant" && node.barCode) {
+                    displayLabel = `[${node.barCode}] ${node.color || "Default"}-${node.size || "Default"}`;
+                  }
 
-                {/* WOST Return */}
-                <th className="py-3 px-3 w-[110px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>WOST Return</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-slate-400 hover:text-slate-600">
-                          <Info className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs text-[11px] font-medium bg-slate-900 text-slate-100">
-                        Without Sales Tax value of returned stock.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </th>
+                  const isSubtotalRow = depth < 3;
+                  const isArticle = node.level === "article";
+                  const isVariant = node.level === "variant";
 
-                {/* Return Discount */}
-                <th className="py-3 px-3 w-[100px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-amber-600 dark:text-amber-400">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Disc Reversal</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-amber-600 hover:text-amber-800">
-                          <Info className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs text-[11px] font-medium bg-slate-900 text-slate-100">
-                        Discount reversed on return.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </th>
-
-                {/* Taxes */}
-                <th className="py-3 px-3 w-[100px] shrink-0 border-r border-slate-200 dark:border-slate-700 text-right font-bold text-slate-600 dark:text-slate-400">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Taxes</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-slate-400 hover:text-slate-600">
-                          <Info className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs text-[11px] font-medium bg-slate-900 text-slate-100">
-                        Sales tax reversed on return.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </th>
-
-                {/* Net Return Sales */}
-                <th className="py-3 px-3.5 w-[130px] shrink-0 text-right font-bold text-rose-600 dark:text-rose-400">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Net Refund</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-rose-600 hover:text-rose-800">
-                          <Info className="h-3 w-3" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs text-[11px] font-medium bg-slate-900 text-slate-100">
-                        Net refund amount paid out.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-
-            {/* Clean Light-Themed Body */}
-            <tbody>
-              {paddingTop > 0 && (
-                <tr>
-                  <td colSpan={19} style={{ height: `${paddingTop}px` }} />
-                </tr>
-              )}
-
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={19} className="p-14 text-center text-muted-foreground font-medium text-xs">
-                    No sales return records found matching the selected store, cashier, or date range filters.
-                  </td>
-                </tr>
-              ) : (
-                virtualItems.map((virtualRow) => {
-                  const item = rows[virtualRow.index];
-                  if (!item) return null;
-
-                  const isLocation = item.type === "location";
-                  const isReturnNote = item.type === "returnNote";
-                  const isItem = item.type === "item";
-
-                  const t = item.totals;
-
-                  const depthIndentClass =
-                    item.depth === 1
-                      ? "pl-6"
-                      : item.depth === 2
-                      ? "pl-10"
-                      : "pl-3.5";
+                  const unitPrice = node.totals.unitPrice || node.unitPrice || 0;
+                  const priceWost = node.totals.priceWost || (unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0);
+                  const totalPriceWost = node.totals.wostAmount;
+                  const discountAmt = node.totals.discountAmount;
+                  const valExTax = node.totals.valueExSalesTax;
+                  const taxAmt = node.totals.taxAmount;
+                  const valInclTax = node.totals.valueInclSalesTax || node.totals.netAmount;
 
                   return (
-                    <tr
-                      key={item.id}
-                      onClick={() => {
-                        if (item.hasChildren && item.nodeId && onToggleNode) {
-                          onToggleNode(item.nodeId);
-                        }
+                    <div
+                      key={id}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        minWidth: "1650px",
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
                       }}
                       className={cn(
-                        "border-b border-slate-100 dark:border-slate-800/60 transition-colors text-xs select-none",
-                        item.hasChildren && "cursor-pointer",
-                        isLocation && "bg-slate-200/80 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-extrabold border-l-4 border-rose-600 hover:bg-slate-200/90",
-                        isReturnNote && "bg-slate-100/90 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 font-bold border-l-2 border-slate-400 dark:border-slate-500 hover:bg-slate-200/80",
-                        isItem && "bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-normal hover:bg-slate-50/70 dark:hover:bg-slate-900/30",
+                        "border-b border-border/40 text-xs transition-colors flex items-center px-3 whitespace-nowrap",
+                        depth === 0
+                          ? "bg-slate-100/90 dark:bg-slate-900/90 font-bold border-b-2 border-border/60 text-foreground"
+                          : isSubtotalRow
+                          ? "bg-slate-50/70 dark:bg-slate-900/50 font-semibold text-foreground"
+                          : "bg-background text-foreground/90 hover:bg-slate-100/60 dark:hover:bg-slate-800/40"
                       )}
                     >
-                      {/* Label with Expand / Collapse Chevron */}
-                      <td className={cn("py-2.5 px-3.5 border-r border-slate-100 dark:border-slate-800/60 truncate", depthIndentClass)}>
-                        <div className="flex items-center gap-2">
-                          {item.hasChildren ? (
+                      {/* Column 1: Node Label & Hierarchy Tree */}
+                      <div className="w-[360px] min-w-[360px] shrink-0 px-2 flex items-center gap-1.5 overflow-hidden">
+                        <div style={{ marginLeft: `${indentPx}px` }} className="flex items-center gap-1.5 shrink-0 overflow-hidden max-w-full">
+                          {hasChildren ? (
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (item.nodeId && onToggleNode) onToggleNode(item.nodeId);
-                              }}
-                              className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0"
+                              onClick={() => toggleCollapse(id)}
+                              className="p-0.5 rounded hover:bg-muted text-muted-foreground shrink-0 transition-colors cursor-pointer"
                             >
-                              {item.isExpanded ? (
-                                <ChevronDown className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 font-bold" />
+                              {isExpanded ? (
+                                <ChevronDown className="h-3.5 w-3.5 text-rose-600" />
                               ) : (
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                                <ChevronRight className="h-3.5 w-3.5" />
                               )}
                             </button>
                           ) : (
-                            <span className="w-3.5 shrink-0" />
+                            <span className="w-4 shrink-0" />
                           )}
 
-                          {isReturnNote ? (
-                            <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-rose-950 dark:text-rose-200">
-                              <RotateCcw className="h-3.5 w-3.5 text-rose-600" />
-                              <span>{item.returnNumber}</span>
-                            </div>
-                          ) : isItem ? (
-                            <span className="truncate">{item.description}</span>
+                          {depth === 0 ? (
+                            <Layers className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                          ) : node.level === "document" ? (
+                            <RotateCcw className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                          ) : isVariant ? (
+                            <QrCode className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                          ) : isArticle ? (
+                            <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           ) : (
-                            <span className="truncate font-extrabold">{item.label}</span>
+                            <Folder className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                           )}
-                        </div>
-                      </td>
 
-                      {/* Orig Order # */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                        {item.orderNumber || "-"}
-                      </td>
-
-                      {/* Return Date */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 font-mono text-[11px]">
-                        {item.createdAt ? new Date(item.createdAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : "-"}
-                      </td>
-
-                      {/* Customer */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 font-medium truncate">
-                        {item.customerName ? `${item.customerName} (${item.customerPhone})` : "-"}
-                      </td>
-
-                      {/* Cashier */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 font-medium">
-                        {item.cashierName || "-"}
-                      </td>
-
-                      {/* Refund Mode */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-center font-mono font-semibold">
-                        {item.paymentMethod ? (
-                          <span className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px]",
-                            item.paymentMethod.includes("CASH") ? "bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300" :
-                            item.paymentMethod.includes("CARD") ? "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300" :
-                            "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300"
-                          )}>
-                            {item.paymentMethod}
+                          <span className="truncate font-medium" title={displayLabel}>
+                            {highlight(displayLabel, searchQuery)}
                           </span>
-                        ) : "-"}
-                      </td>
+                        </div>
+                      </div>
 
-                      {/* FBR Inv # */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 font-mono text-[11px] text-rose-700 dark:text-rose-400">
-                        {item.fbrInvoiceNumber || "-"}
-                      </td>
+                      {/* Column 2: SKU / Barcode */}
+                      <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-center flex items-center justify-center font-mono text-[11px]">
+                        {node.barCode || node.sku ? (
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-muted/80 text-foreground font-semibold border border-border/50 shadow-2xs">
+                            {highlight(node.barCode || node.sku || "", searchQuery)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/30">-</span>
+                        )}
+                      </div>
 
-                      {/* Category */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 font-medium truncate">
-                        {isItem ? item.categoryName || "-" : "-"}
-                      </td>
+                      {/* Column 3: Size Badge */}
+                      <div className="w-[80px] min-w-[80px] shrink-0 px-2 text-center flex items-center justify-center">
+                        {node.size ? (
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-muted text-[11px] font-bold text-foreground border border-border/60">
+                            {node.size}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/30">-</span>
+                        )}
+                      </div>
 
-                      {/* Brand */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 font-medium truncate">
-                        {isItem ? item.brandName || "-" : "-"}
-                      </td>
+                      {/* Column 4: Color Pill Badge */}
+                      <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-center flex items-center justify-center">
+                        {node.color ? (
+                          <span
+                            title={node.color}
+                            className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-secondary/90 text-[11px] font-medium text-secondary-foreground border border-border/60 truncate whitespace-nowrap max-w-[100px]"
+                          >
+                            {highlight(node.color, searchQuery)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/30">-</span>
+                        )}
+                      </div>
 
-                      {/* SKU / Barcode */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 font-mono text-[11px]">
-                        {isItem ? item.barCode || item.sku || "-" : "-"}
-                      </td>
+                      {/* Column 5: Return Qty */}
+                      <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right font-mono font-bold text-rose-600 dark:text-rose-400" title={`Return Qty: ${node.totals.totalItems.toLocaleString()}`}>
+                        {node.totals.totalItems.toLocaleString()}
+                      </div>
 
-                      {/* Size */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-center font-medium">
-                        {isItem ? item.sizeName || "N/A" : "-"}
-                      </td>
+                      {/* Column 6: Unit Price */}
+                      <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right font-mono font-medium text-slate-700 dark:text-slate-300" title={unitPrice > 0 ? `Unit Price: ${formatCurrency(unitPrice)}` : undefined}>
+                        {unitPrice > 0 ? formatCurrency(unitPrice) : "-"}
+                      </div>
 
-                      {/* Color */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-center">
-                        {isItem ? item.colorName || "N/A" : "-"}
-                      </td>
+                      {/* Column 7: Price WOST */}
+                      <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right font-mono text-slate-600 dark:text-slate-400" title={priceWost > 0 ? `Price WOST: ${formatCurrency(priceWost)}` : undefined}>
+                        {priceWost > 0 ? formatCurrency(priceWost) : "-"}
+                      </div>
 
-                      {/* Qty */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-semibold">
-                        {isItem ? item.quantity : t.totalItems.toLocaleString()}
-                      </td>
+                      {/* Column 8: Total Price WOST */}
+                      <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right font-mono font-medium text-indigo-600 dark:text-indigo-400" title={`Total Price WOST: ${formatCurrency(totalPriceWost)}`}>
+                        {formatCurrency(totalPriceWost)}
+                      </div>
 
-                      {/* Gross Return */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.grossAmount)}
-                      </td>
+                      {/* Column 9: Discount Reversal */}
+                      <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right font-mono font-semibold text-amber-600 dark:text-amber-400" title={`Discount Reversal: ${formatCurrency(discountAmt)}`}>
+                        {formatCurrency(discountAmt)}
+                      </div>
 
-                      {/* WOST Return */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatVal(t.wostAmount)}
-                      </td>
+                      {/* Column 10: Value Excl. Sales Tax (After Discount) */}
+                      <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right font-mono font-semibold text-sky-600 dark:text-sky-400" title={`Value Excl. Sales Tax: ${formatCurrency(valExTax)}`}>
+                        {formatCurrency(valExTax)}
+                      </div>
 
-                      {/* Disc Reversal */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
-                        {formatVal(t.discountAmount)}
-                      </td>
+                      {/* Column 11: Sales Tax */}
+                      <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right font-mono text-slate-600 dark:text-slate-400" title={`Sales Tax: ${formatCurrency(taxAmt)}`}>
+                        {formatCurrency(taxAmt)}
+                      </div>
 
-                      {/* Taxes */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-600 dark:text-slate-400">
-                        {formatVal(t.taxAmount)}
-                      </td>
-
-                      {/* Net Refund */}
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
-                        {formatVal(t.netAmount)}
-                      </td>
-                    </tr>
+                      {/* Column 12: Value Incl. Sales Tax / Net Refund */}
+                      <div className="w-[160px] min-w-[160px] shrink-0 pl-2 pr-4 text-right font-mono font-bold text-rose-600 dark:text-rose-400" title={`Value Incl. Sales Tax: ${formatCurrency(valInclTax)}`}>
+                        {formatCurrency(valInclTax)}
+                      </div>
+                    </div>
                   );
-                })
-              )}
+                })}
+              </div>
+            )}
 
-              {paddingBottom > 0 && (
-                <tr>
-                  <td colSpan={19} style={{ height: `${paddingBottom}px` }} />
-                </tr>
-              )}
-            </tbody>
-
-            {/* Clean Light-Themed Footer */}
-            <tfoot className="sticky bottom-0 z-20 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase text-[11px] font-mono font-bold shadow-sm border-t-2 border-slate-300 dark:border-slate-700">
-              <tr>
-                <td className="py-3 px-3.5 border-r border-slate-200 dark:border-slate-700 font-bold" colSpan={12}>
-                  GRAND TOTAL (ALL SELECTED SALES RETURN NOTES)
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-900 dark:text-slate-100">
-                  {grandTotals.totalItems.toLocaleString()}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.grossAmount)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
-                  {formatVal(grandTotals.wostAmount)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
-                  {formatVal(grandTotals.discountAmount)}
-                </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-600 dark:text-slate-400">
-                  {formatVal(grandTotals.taxAmount)}
-                </td>
-                <td className="py-3 px-3.5 text-right font-mono text-rose-600 dark:text-rose-400">
-                  {formatVal(grandTotals.netAmount)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+            {/* Sticky Table Footer */}
+            <div className="sticky bottom-0 z-20 flex items-center bg-slate-900 text-slate-100 text-xs font-mono font-bold uppercase h-12 border-t-2 border-slate-700 shadow-xl min-w-[1650px] px-3">
+              <div className="w-[360px] min-w-[360px] shrink-0 px-2">Grand Total Summary</div>
+              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-center text-slate-500">-</div>
+              <div className="w-[80px] min-w-[80px] shrink-0 px-2 text-center text-slate-500">-</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-center text-slate-500">-</div>
+              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right font-black text-rose-400" title={`Total Items: ${grandTotals.totalItems.toLocaleString()}`}>{grandTotals.totalItems.toLocaleString()}</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right text-slate-400">-</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right text-slate-400">-</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right text-indigo-300" title={`Total Price WOST: ${formatCurrency(grandTotals.wostAmount)}`}>{formatCurrency(grandTotals.wostAmount)}</div>
+              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right text-amber-400" title={`Total Discount: ${formatCurrency(grandTotals.discountAmount)}`}>{formatCurrency(grandTotals.discountAmount)}</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right text-sky-300" title={`Total Value Excl. Tax: ${formatCurrency(grandTotals.valueExSalesTax)}`}>{formatCurrency(grandTotals.valueExSalesTax)}</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right text-slate-300" title={`Total Sales Tax: ${formatCurrency(grandTotals.taxAmount)}`}>{formatCurrency(grandTotals.taxAmount)}</div>
+              <div className="w-[160px] min-w-[160px] shrink-0 pl-2 pr-4 text-right text-rose-400 font-black text-sm" title={`Total Value Incl. Tax: ${formatCurrency(grandTotals.valueInclSalesTax || grandTotals.netAmount)}`}>{formatCurrency(grandTotals.valueInclSalesTax || grandTotals.netAmount)}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
