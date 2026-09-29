@@ -1,8 +1,13 @@
+export type SalesListViewMode = "audit" | "standard" | "grid";
+
 export interface SalesListTotals {
   orderCount: number;
   totalItems: number;
   grossAmount: number;
+  wostAmount?: number;
   discountAmount: number;
+  discountWostAmount?: number;
+  amountAfterDiscount?: number;
   netAmount: number;
   taxAmount: number;
   paidAmount: number;
@@ -10,7 +15,7 @@ export interface SalesListTotals {
   cardAmount: number;
   walletAmount: number;
   creditAmount: number;
-  // 12 requested breakdown fields
+  // Breakdown columns (11 distinct channels)
   cashSale: number;
   cashReturn: number;
   cardSale: number;
@@ -22,7 +27,48 @@ export interface SalesListTotals {
   giftVoucherCorporate: number;
   creditVoucherIssuedAmount: number;
   rewardVoucherAmount: number;
-  onCreditAmount: number;
+}
+
+export interface SalesListDiscountDetails {
+  hasOverrideDiscount: boolean;
+  overrideDiscountItemsCount: number;
+  overrideDiscountNotes?: string[];
+  overrideDiscountPercents?: number[];
+  hasManualDiscount: boolean;
+  manualDiscountType?: 'PERCENT' | 'FLAT_PKR' | 'MIXED';
+  manualDiscountPercent?: number;
+  manualDiscountAmount?: number;
+  manualDiscountNote?: string;
+  alliance?: {
+    partnerName: string;
+    code: string;
+    discountPercent: number;
+    description?: string;
+  };
+  promo?: {
+    name: string;
+    code: string;
+    type: string;
+    value: number;
+  };
+  coupon?: {
+    code: string;
+    description?: string;
+    discountType: string;
+    discountValue: number;
+  };
+  retailDiscount: number;
+  wostDiscount: number;
+}
+
+export interface SalesListCustomerDetails {
+  id?: string;
+  name: string;
+  phone?: string;
+  cnic?: string;
+  code?: string;
+  email?: string;
+  address?: string;
 }
 
 export interface SalesListLineItem {
@@ -35,8 +81,20 @@ export interface SalesListLineItem {
   colorName: string;
   quantity: number;
   unitPrice: number;
+  priceWost: number;
+  valueExcl?: number;
+  discountPercent: number;
   discountAmount: number;
-  subTotal: number;
+  discountAmountWost: number;
+  amountAfterDiscount?: number;
+  hasOverrideDiscount: boolean;
+  overrideDiscountPercent?: number;
+  overrideDiscountNote?: string;
+  taxPercent: number;
+  taxAmount: number;
+  lineTotal: number;
+  subTotal?: number;
+  valueIncl?: number;
 }
 
 export interface CardTenderInfo {
@@ -54,6 +112,11 @@ export interface VoucherTenderInfo {
   description?: string;
   companyName?: string;
   remarks?: string;
+  voucherType?: string;
+  paymentMode?: string;
+  cardholderName?: string;
+  cardLast4?: string;
+  slipNo?: string;
 }
 
 export interface SalesListTenderDetails {
@@ -82,6 +145,8 @@ export interface SalesListInvoiceNode {
   createdAt: string;
   customerName: string;
   customerPhone: string;
+  customerCnic?: string;
+  customerCode?: string;
   cashierName: string;
   cashierUserId?: string;
   locationId?: string;
@@ -90,8 +155,11 @@ export interface SalesListInvoiceNode {
   merchant?: string;
   fbrInvoiceNumber: string;
   fbrStatus: string;
+  notes?: string;
   totals: SalesListTotals;
   items: SalesListLineItem[];
+  discountDetails?: SalesListDiscountDetails;
+  customerDetails?: SalesListCustomerDetails;
   tenderDetails?: SalesListTenderDetails;
 }
 
@@ -110,10 +178,13 @@ export interface SalesListFlatRecord {
   cashierName: string;
   customerName: string;
   customerPhone: string;
+  customerCnic?: string;
+  customerCode?: string;
   paymentMethod: string;
   merchant?: string;
   fbrInvoiceNumber: string;
   fbrStatus: string;
+  orderNotes?: string;
   sku: string;
   barCode: string;
   description: string;
@@ -121,8 +192,29 @@ export interface SalesListFlatRecord {
   colorName: string;
   quantity: number;
   unitPrice: number;
+  priceWost?: number;
+  valueExcl?: number;
+  discountPercent?: number;
   discountAmount: number;
+  discountAmountWost?: number;
+  amountAfterDiscount?: number;
+  hasOverrideDiscount?: boolean;
+  overrideDiscountPercent?: number;
+  overrideDiscountNote?: string;
+  manualDiscountNote?: string;
+  manualDiscountType?: string;
+  manualDiscountPercent?: number;
+  manualDiscountAmount?: number;
+  alliancePartner?: string;
+  allianceCode?: string;
+  promoCode?: string;
+  couponCode?: string;
+  voucherCodes?: string;
+  cardLast4?: string;
+  cardSlipNo?: string;
+  taxAmount?: number;
   subTotal: number;
+  valueIncl?: number;
   orderGrossAmount: number;
   orderDiscountAmount: number;
   orderNetAmount: number;
@@ -138,7 +230,6 @@ export interface SalesListFlatRecord {
   giftVoucherCorporate: number;
   creditVoucherIssuedAmount: number;
   rewardVoucherAmount: number;
-  onCreditAmount: number;
 }
 
 export interface SalesListReportData {
@@ -165,11 +256,14 @@ export interface SalesListTableRow {
   createdAt?: string;
   customerName?: string;
   customerPhone?: string;
+  customerCnic?: string;
+  customerCode?: string;
   cashierName?: string;
   paymentMethod?: string;
   merchant?: string;
   fbrInvoiceNumber?: string;
   fbrStatus?: string;
+  notes?: string;
   sku?: string;
   barCode?: string;
   description?: string;
@@ -177,12 +271,26 @@ export interface SalesListTableRow {
   colorName?: string;
   quantity?: number;
   unitPrice?: number;
+  priceWost?: number;
+  valueExcl?: number;
+  discountPercent?: number;
   discountAmount?: number;
+  discountAmountWost?: number;
+  amountAfterDiscount?: number;
+  hasOverrideDiscount?: boolean;
+  overrideDiscountPercent?: number;
+  overrideDiscountNote?: string;
+  taxPercent?: number;
+  taxAmount?: number;
   subTotal?: number;
+  valueIncl?: number;
   depth?: number;
   hasChildren?: boolean;
   isExpanded?: boolean;
   nodeId?: string;
   totals: SalesListTotals;
+  discountDetails?: SalesListDiscountDetails;
+  customerDetails?: SalesListCustomerDetails;
   tenderDetails?: SalesListTenderDetails;
+  items?: SalesListLineItem[];
 }

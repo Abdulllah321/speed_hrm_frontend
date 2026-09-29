@@ -168,21 +168,21 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
         <div ref={parentRef} className="max-h-[660px] overflow-auto relative">
           <div className="min-w-[1980px] w-full">
             {/* Sticky Table Header */}
-            <div className="sticky top-0 z-20 flex items-center bg-slate-950 text-slate-100 text-[11px] font-mono font-bold uppercase tracking-wider h-11 border-b-2 border-slate-800 shadow-md min-w-[1980px] px-3">
+            <div className="sticky top-0 z-20 flex items-center bg-slate-950 text-slate-100 text-[11px] font-mono font-bold uppercase tracking-wider h-11 border-b-2 border-slate-800 shadow-md min-w-[1715px] px-3">
               <div className="w-[360px] min-w-[360px] shrink-0 px-2">Product Hierarchy / Description</div>
               <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-center">SKU / Barcode</div>
               <div className="w-[80px] min-w-[80px] shrink-0 px-2 text-center">Size</div>
               <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-center">Color</div>
+              <div className="w-[85px] min-w-[85px] shrink-0 px-2 text-right">Sold Qty</div>
+              <div className="w-[85px] min-w-[85px] shrink-0 px-2 text-right">Ret Qty</div>
+              <div className="w-[85px] min-w-[85px] shrink-0 px-2 text-right">Net Qty</div>
               <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right">Unit Price</div>
-              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right">Sold Qty</div>
-              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right">Ret Qty</div>
-              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right">Net Qty</div>
-              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right">Retail Sales</div>
-              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right">WOST Amount</div>
-              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right">Discounts</div>
-              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right">Val Excl Tax</div>
-              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right">Sales Tax</div>
-              <div className="w-[190px] min-w-[190px] shrink-0 pl-2 pr-4 text-right">Val Incl Tax / Net Rev</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right">Price WOST</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right">Total Price WOST</div>
+              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right">Discount Amt</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right">Val Excl Tax</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right">Sales Tax</div>
+              <div className="w-[160px] min-w-[160px] shrink-0 pl-2 pr-4 text-right">Val Incl Tax / Net Rev</div>
             </div>
 
             {/* Virtualized Body */}
@@ -196,7 +196,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
                   height: `${rowVirtualizer.getTotalSize()}px`,
                   position: "relative",
                 }}
-                className="w-full min-w-[1980px]"
+                className="w-full min-w-[1715px]"
               >
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const row = flatVisibleRows[virtualRow.index];
@@ -215,7 +215,12 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
                   const isVariant = node.level === "variant";
 
                   const unitPrice = node.totals.unitPrice || node.unitPrice || 0;
-                  const retailSalesVal = node.totals.retailSalesValue !== undefined ? node.totals.retailSalesValue : (unitPrice * node.totals.netItems);
+                  const priceWost = node.totals.priceWost || (unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0);
+                  const totalPriceWost = node.totals.wostAmount;
+                  const discountAmt = node.totals.discountAmount;
+                  const valExTax = node.totals.valueExSalesTax;
+                  const taxAmt = node.totals.taxAmount;
+                  const valInclTax = node.totals.valueInclSalesTax || node.totals.netSalesAmount;
 
                   return (
                     <div
@@ -225,7 +230,7 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
                         top: 0,
                         left: 0,
                         width: "100%",
-                        minWidth: "1980px",
+                        minWidth: "1715px",
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start}px)`,
                       }}
@@ -321,54 +326,54 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
                         )}
                       </div>
 
-                      {/* Column 5: Unit Price */}
-                      <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right font-mono font-medium text-slate-700 dark:text-slate-300">
-                        {unitPrice > 0 ? formatCurrency(unitPrice) : "-"}
-                      </div>
-
-                      {/* Column 6: Sold Qty */}
-                      <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right font-mono font-medium text-slate-900 dark:text-slate-100">
+                      {/* Column 5: Sold Qty */}
+                      <div className="w-[85px] min-w-[85px] shrink-0 px-2 text-right font-mono font-medium text-slate-900 dark:text-slate-100" title={`Sold Qty: ${node.totals.totalItemsSold.toLocaleString()}`}>
                         {node.totals.totalItemsSold.toLocaleString()}
                       </div>
 
-                      {/* Column 7: Ret Qty */}
-                      <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right font-mono font-medium text-rose-600 dark:text-rose-400">
+                      {/* Column 6: Ret Qty */}
+                      <div className="w-[85px] min-w-[85px] shrink-0 px-2 text-right font-mono font-medium text-rose-600 dark:text-rose-400" title={`Returned Qty: ${node.totals.totalItemsReturned.toLocaleString()}`}>
                         {node.totals.totalItemsReturned.toLocaleString()}
                       </div>
 
-                      {/* Column 8: Net Qty */}
-                      <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
+                      {/* Column 7: Net Qty */}
+                      <div className="w-[85px] min-w-[85px] shrink-0 px-2 text-right font-mono font-bold text-slate-900 dark:text-slate-100" title={`Net Qty: ${node.totals.netItems.toLocaleString()}`}>
                         {node.totals.netItems.toLocaleString()}
                       </div>
 
-                      {/* Column 9: Retail Sales Value (unitPrice * netItems) */}
-                      <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right font-mono font-medium text-indigo-600 dark:text-indigo-400">
-                        {formatCurrency(retailSalesVal)}
+                      {/* Column 8: Unit Price */}
+                      <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right font-mono font-medium text-slate-700 dark:text-slate-300" title={unitPrice > 0 ? `Unit Price: ${formatCurrency(unitPrice)}` : undefined}>
+                        {unitPrice > 0 ? formatCurrency(unitPrice) : "-"}
                       </div>
 
-                      {/* Column 10: WOST Amount (Price Excl. Tax) */}
-                      <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right font-mono text-slate-700 dark:text-slate-300">
-                        {formatCurrency(node.totals.wostAmount)}
+                      {/* Column 9: Price WOST */}
+                      <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right font-mono text-slate-600 dark:text-slate-400" title={priceWost > 0 ? `Price WOST: ${formatCurrency(priceWost)}` : undefined}>
+                        {priceWost > 0 ? formatCurrency(priceWost) : "-"}
                       </div>
 
-                      {/* Column 11: Discounts */}
-                      <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right font-mono font-semibold text-amber-600 dark:text-amber-400">
-                        {formatCurrency(node.totals.discountAmount)}
+                      {/* Column 10: Total Price WOST */}
+                      <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right font-mono font-medium text-indigo-600 dark:text-indigo-400" title={`Total Price WOST: ${formatCurrency(totalPriceWost)}`}>
+                        {formatCurrency(totalPriceWost)}
                       </div>
 
-                      {/* Column 12: Value Excl. Sales Tax */}
-                      <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right font-mono font-semibold text-sky-600 dark:text-sky-400">
-                        {formatCurrency(node.totals.valueExSalesTax)}
+                      {/* Column 11: Discount Amount */}
+                      <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right font-mono font-semibold text-amber-600 dark:text-amber-400" title={`Discount Amount: ${formatCurrency(discountAmt)}`}>
+                        {formatCurrency(discountAmt)}
                       </div>
 
-                      {/* Column 13: Sales Tax Amount */}
-                      <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right font-mono text-slate-600 dark:text-slate-400">
-                        {formatCurrency(node.totals.taxAmount)}
+                      {/* Column 12: Value Excl. Sales Tax (After Discount) */}
+                      <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right font-mono font-semibold text-sky-600 dark:text-sky-400" title={`Value Excl. Sales Tax: ${formatCurrency(valExTax)}`}>
+                        {formatCurrency(valExTax)}
+                      </div>
+
+                      {/* Column 13: Sales Tax */}
+                      <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right font-mono text-slate-600 dark:text-slate-400" title={`Sales Tax: ${formatCurrency(taxAmt)}`}>
+                        {formatCurrency(taxAmt)}
                       </div>
 
                       {/* Column 14: Value Incl. Sales Tax / Net Revenue */}
-                      <div className="w-[190px] min-w-[190px] shrink-0 pl-2 pr-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        {formatCurrency(node.totals.valueInclSalesTax)}
+                      <div className="w-[160px] min-w-[160px] shrink-0 pl-2 pr-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400" title={`Value Incl. Sales Tax: ${formatCurrency(valInclTax)}`}>
+                        {formatCurrency(valInclTax)}
                       </div>
                     </div>
                   );
@@ -377,21 +382,21 @@ export function NetSalesSummaryTable({ treeData, grandTotals, searchQuery, isLoa
             )}
 
             {/* Sticky Table Footer */}
-            <div className="sticky bottom-0 z-20 flex items-center bg-slate-900 text-slate-100 text-xs font-mono font-bold uppercase h-12 border-t-2 border-slate-700 shadow-xl min-w-[1980px] px-3">
+            <div className="sticky bottom-0 z-20 flex items-center bg-slate-900 text-slate-100 text-xs font-mono font-bold uppercase h-12 border-t-2 border-slate-700 shadow-xl min-w-[1715px] px-3">
               <div className="w-[360px] min-w-[360px] shrink-0 px-2">Grand Total Summary</div>
               <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-center text-slate-500">-</div>
               <div className="w-[80px] min-w-[80px] shrink-0 px-2 text-center text-slate-500">-</div>
               <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-center text-slate-500">-</div>
+              <div className="w-[85px] min-w-[85px] shrink-0 px-2 text-right font-bold text-slate-200" title={`Total Sold Items: ${grandTotals.totalItemsSold.toLocaleString()}`}>{grandTotals.totalItemsSold.toLocaleString()}</div>
+              <div className="w-[85px] min-w-[85px] shrink-0 px-2 text-right text-rose-400" title={`Total Returned Items: ${grandTotals.totalItemsReturned.toLocaleString()}`}>{grandTotals.totalItemsReturned.toLocaleString()}</div>
+              <div className="w-[85px] min-w-[85px] shrink-0 px-2 text-right font-black text-amber-300" title={`Net Items: ${grandTotals.netItems.toLocaleString()}`}>{grandTotals.netItems.toLocaleString()}</div>
               <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right text-slate-400">-</div>
-              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right">{grandTotals.totalItemsSold.toLocaleString()}</div>
-              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right text-rose-400">{grandTotals.totalItemsReturned.toLocaleString()}</div>
-              <div className="w-[90px] min-w-[90px] shrink-0 px-2 text-right font-black text-amber-300">{grandTotals.netItems.toLocaleString()}</div>
-              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right text-indigo-300">{formatCurrency(grandTotals.retailSalesValue)}</div>
-              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right text-slate-200">{formatCurrency(grandTotals.wostAmount)}</div>
-              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right text-amber-400">{formatCurrency(grandTotals.discountAmount)}</div>
-              <div className="w-[140px] min-w-[140px] shrink-0 px-2 text-right text-sky-300">{formatCurrency(grandTotals.valueExSalesTax)}</div>
-              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right text-slate-300">{formatCurrency(grandTotals.taxAmount)}</div>
-              <div className="w-[190px] min-w-[190px] shrink-0 pl-2 pr-4 text-right text-emerald-400 font-black text-sm">{formatCurrency(grandTotals.valueInclSalesTax)}</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right text-slate-400">-</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right text-indigo-300" title={`Total Price WOST: ${formatCurrency(grandTotals.wostAmount)}`}>{formatCurrency(grandTotals.wostAmount)}</div>
+              <div className="w-[120px] min-w-[120px] shrink-0 px-2 text-right text-amber-400" title={`Total Discount: ${formatCurrency(grandTotals.discountAmount)}`}>{formatCurrency(grandTotals.discountAmount)}</div>
+              <div className="w-[130px] min-w-[130px] shrink-0 px-2 text-right text-sky-300" title={`Total Value Excl. Tax: ${formatCurrency(grandTotals.valueExSalesTax)}`}>{formatCurrency(grandTotals.valueExSalesTax)}</div>
+              <div className="w-[110px] min-w-[110px] shrink-0 px-2 text-right text-slate-300" title={`Total Sales Tax: ${formatCurrency(grandTotals.taxAmount)}`}>{formatCurrency(grandTotals.taxAmount)}</div>
+              <div className="w-[160px] min-w-[160px] shrink-0 pl-2 pr-4 text-right text-emerald-400 font-black text-sm" title={`Total Value Incl. Tax: ${formatCurrency(grandTotals.valueInclSalesTax)}`}>{formatCurrency(grandTotals.valueInclSalesTax)}</div>
             </div>
           </div>
         </div>

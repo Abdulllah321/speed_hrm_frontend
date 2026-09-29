@@ -217,12 +217,14 @@ export function GrossSalesReturnView({
     setFbrOnlyFilter,
     groupingLevels,
     handleToggleLevel,
+    treeData,
     grandTotals,
-    flatRows,
-    toggleNode,
-    expandAll,
-    collapseAll,
-  } = useGrossSalesReturnData(reportData);
+    filteredFlatItems,
+  } = useGrossSalesReturnData(reportData, {
+    reportType,
+    selectedLocationIds,
+    selectedCashierId,
+  });
 
   // Intelligent Export Handler: Instant Client (<2,500) vs Background Bull Queue (>2,500)
   const handleExportExcel = async (type: "flat" | "hierarchical") => {
@@ -361,8 +363,9 @@ export function GrossSalesReturnView({
     try {
       const { excelBuffer, fileName } = await generateGrossSalesReturnExcel({
         exportType: type,
+        treeData: treeData || [],
         returns: reportData.returns || [],
-        flatItems: reportData.flatItems || [],
+        flatItems: filteredFlatItems.length > 0 ? filteredFlatItems : (reportData.flatItems || []),
         grandTotals,
         dateRange,
         locationNames: activeSelectionNames,
@@ -415,6 +418,7 @@ export function GrossSalesReturnView({
 
     try {
       await generateGrossSalesReturnPdf({
+        flatItems: filteredFlatItems.length > 0 ? filteredFlatItems : (reportData.flatItems || []),
         returns: reportData.returns || [],
         grandTotals,
         dateRange,
@@ -520,11 +524,10 @@ export function GrossSalesReturnView({
 
       {/* Virtualized Minimal Light Theme Matrix Table */}
       <GrossSalesReturnTable
-        rows={flatRows}
+        treeData={treeData}
         grandTotals={grandTotals}
-        onToggleNode={toggleNode}
-        onExpandAll={expandAll}
-        onCollapseAll={collapseAll}
+        searchQuery={searchQuery}
+        isLoading={isPending || isQueueingJob || isFetchingResult}
       />
     </div>
   );

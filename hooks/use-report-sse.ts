@@ -15,7 +15,7 @@ export interface ReportSseState {
 
 export function useReportSse(
   jobId: string | null,
-  reportType: "available" | "valuation" | "stock-activity" | "overall-reserved" | "transaction-detail" | "cost-of-sales" | "sales-list" | "sales-register" | "gross-sales-return" | "gross-sales-summary" | "net-sales-summary" | "inventory-aging" | "wholesale-invoice-register" | "wholesale-return-register" = "available"
+  reportType: "available" | "valuation" | "stock-activity" | "overall-reserved" | "transaction-detail" | "cost-of-sales" | "sales-list" | "sales-register" | "sales-return-list" | "gross-sales-return" | "gross-sales-summary" | "net-sales-summary" | "inventory-aging" | "wholesale-invoice-register" | "wholesale-return-register" = "available"
 ): ReportSseState {
   const [state, setState] = useState<ReportSseState>({
     status: "idle",
@@ -68,6 +68,8 @@ export function useReportSse(
         ? `/api/pos-sales/reports/sales-list/stream/${jobId}`
         : reportType === "sales-register"
         ? `/api/pos-sales/reports/sales-register/stream/${jobId}`
+        : reportType === "sales-return-list"
+        ? `/api/pos-sales/reports/sales-return-list/stream/${jobId}`
         : reportType === "gross-sales-return"
         ? `/api/pos-sales/reports/gross-sales-return/stream/${jobId}`
         : reportType === "gross-sales-summary"

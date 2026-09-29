@@ -19,7 +19,7 @@ interface SalesRegisterHeaderProps {
 
 export function SalesRegisterHeader({ totals }: SalesRegisterHeaderProps) {
   const formatCurr = (val: number) =>
-    `Rs. ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 no-print">
@@ -42,7 +42,7 @@ export function SalesRegisterHeader({ totals }: SalesRegisterHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-extrabold text-emerald-950 dark:text-emerald-100 mt-1 font-mono">
+            <p className="text-base font-extrabold text-emerald-950 dark:text-emerald-100 mt-1 font-mono truncate" title={`Net Sales: ${formatCurr(totals.netAmount)}`}>
               {formatCurr(totals.netAmount)}
             </p>
           </div>
@@ -71,7 +71,7 @@ export function SalesRegisterHeader({ totals }: SalesRegisterHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Invoices: ${totals.orderCount.toLocaleString()} | Items: ${totals.totalItems.toLocaleString()} pcs`}>
               {totals.orderCount.toLocaleString()} <span className="text-xs font-medium text-slate-500">({totals.totalItems.toLocaleString()} pcs)</span>
             </p>
           </div>
@@ -100,7 +100,7 @@ export function SalesRegisterHeader({ totals }: SalesRegisterHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Sales: ${formatCurr(totals.grossAmount)}`}>
               {formatCurr(totals.grossAmount)}
             </p>
           </div>
@@ -129,7 +129,7 @@ export function SalesRegisterHeader({ totals }: SalesRegisterHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono">
+            <p className="text-base font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Total Discounts: ${formatCurr(totals.discountAmount)}`}>
               {formatCurr(totals.discountAmount)}
             </p>
           </div>
@@ -158,7 +158,7 @@ export function SalesRegisterHeader({ totals }: SalesRegisterHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Cash Tender: ${formatCurr(totals.cashAmount)}`}>
               {formatCurr(totals.cashAmount)}
             </p>
           </div>
@@ -187,7 +187,7 @@ export function SalesRegisterHeader({ totals }: SalesRegisterHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Card / POS Term: ${formatCurr(totals.cardAmount)}`}>
               {formatCurr(totals.cardAmount)}
             </p>
           </div>
@@ -216,7 +216,7 @@ export function SalesRegisterHeader({ totals }: SalesRegisterHeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
+            <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Wallet / Credit: ${formatCurr(totals.walletAmount + totals.creditAmount)}`}>
               {formatCurr(totals.walletAmount + totals.creditAmount)}
             </p>
           </div>

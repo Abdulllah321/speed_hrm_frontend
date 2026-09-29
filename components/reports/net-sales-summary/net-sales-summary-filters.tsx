@@ -369,19 +369,19 @@ export function NetSalesSummaryFilters({
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
-                      id="lvl-gen-net"
-                      checked={groupingLevels.gender}
-                      onCheckedChange={(c) => onToggleLevel("gender", !!c)}
-                    />
-                    <Label htmlFor="lvl-gen-net">Gender</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
                       id="lvl-sil-net"
                       checked={groupingLevels.silhouette}
                       onCheckedChange={(c) => onToggleLevel("silhouette", !!c)}
                     />
                     <Label htmlFor="lvl-sil-net">Silhouette</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="lvl-gen-net"
+                      checked={!!groupingLevels.gender}
+                      onCheckedChange={(c) => onToggleLevel("gender", !!c)}
+                    />
+                    <Label htmlFor="lvl-gen-net">Gender</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox

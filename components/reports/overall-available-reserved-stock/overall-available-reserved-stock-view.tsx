@@ -207,13 +207,14 @@ export function OverallAvailableReservedStockView({
           setIsFetchingData(false);
 
           if (res && res.status !== false) {
-            const payload = res.data?.flatItemsList
-              ? res.data
-              : res.flatItemsList
-                ? res
-                : res.data?.data
-                  ? res.data.data
-                  : res.data;
+            const resAny = res as any;
+            const payload = resAny.data?.flatItemsList
+              ? resAny.data
+              : resAny.flatItemsList
+                ? resAny
+                : resAny.data?.data
+                  ? resAny.data.data
+                  : resAny.data;
 
             if (
               Array.isArray(payload?.warehouses) &&

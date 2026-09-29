@@ -7,30 +7,76 @@ export interface VoucherRegisterItem {
   voucherNumber: string;
   voucherType: string;
   dateTime: string;
+  createdAtRaw?: string;
   companyName: string;
   companyGlCode: string;
   customerDetail: string;
+  customerName?: string;
+  customerPhone?: string;
   outletName: string;
   baseCashMemo: string;
   validTill: string;
+  expiresAtRaw?: string | null;
+  isExpired?: boolean;
+  daysToExpiry?: number | null;
   discountAmount: number;
   faceValue: number;
+  netValue: number;
   settledInCashMemo: string;
   settledDateTime: string;
-  status: string;
+  settledAmount: number;
+  outstandingAmount: number;
+  status: string; // 'ACTIVE', 'REDEEMED', 'EXPIRED'
+  paymentMode?: string;
+  merchantName?: string;
+  slipNo?: string;
+  cardholderName?: string;
+  cardLast4?: string;
+  description?: string;
+  redemptionList?: Array<{
+    orderNumber: string;
+    amountUsed: number;
+    dateTime: string;
+  }>;
 }
 
 export interface VoucherRegisterReportData {
   items: VoucherRegisterItem[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
   kpis: {
     totalVouchers: number;
     totalAmount: number;
     totalDiscount: number;
+    totalNetValue: number;
     totalSettledAmount: number;
+    totalOutstandingAmount: number;
+    totalOutstandingCount: number;
+    totalRedeemedCount: number;
+    totalActiveCount: number;
+    totalExpiredCount: number;
     typeBreakdown: Record<string, number>;
+    typeBreakdownDetails?: Record<
+      string,
+      {
+        count: number;
+        faceValue: number;
+        discount: number;
+        settledAmount: number;
+        outstandingAmount: number;
+      }
+    >;
+    statusBreakdown?: Record<string, number>;
   };
   startDate: string;
   endDate: string;
+  asOfDate?: string;
+  isOutstandingOnly?: boolean;
 }
 
 export interface GetVoucherRegisterReportParams {
@@ -39,7 +85,13 @@ export interface GetVoucherRegisterReportParams {
   locationId?: string;
   startDate?: string;
   endDate?: string;
+  asOfDate?: string;
+  isOutstandingOnly?: boolean;
   search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
 }
 
 export async function getVoucherRegisterReport(
@@ -53,7 +105,13 @@ export async function getVoucherRegisterReport(
         locationId: params.locationId || undefined,
         startDate: params.startDate || undefined,
         endDate: params.endDate || undefined,
+        asOfDate: params.asOfDate || undefined,
+        isOutstandingOnly: params.isOutstandingOnly ? "true" : undefined,
         search: params.search || undefined,
+        page: params.page !== undefined ? String(params.page) : undefined,
+        limit: params.limit !== undefined ? String(params.limit) : undefined,
+        sortBy: params.sortBy || undefined,
+        sortDirection: params.sortDirection || undefined,
       },
     });
 
@@ -73,6 +131,8 @@ export async function queueVoucherRegisterExport(params: {
   locationId?: string;
   startDate?: string;
   endDate?: string;
+  asOfDate?: string;
+  isOutstandingOnly?: boolean;
   format: "xlsx" | "pdf";
   search?: string;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
@@ -106,3 +166,4 @@ export async function getVoucherRegisterExportStatus(
     return { status: false, message: error?.message || "Error checking job status" };
   }
 }
+

@@ -183,44 +183,68 @@ export function OverallAvailableReservedTable({
                                     </div>
 
                                     {/* Available Qty */}
-                                    <div className={cn("w-24 text-right shrink-0 font-semibold", item.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+                                    <div
+                                        className={cn("w-24 text-right shrink-0 font-semibold", item.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}
+                                        title={`Available Qty: ${item.quantity.toLocaleString()} pcs`}
+                                    >
                                         {item.quantity.toLocaleString()}
                                     </div>
 
                                     {/* Transit */}
-                                    <div className={cn("w-20 text-right shrink-0 font-medium", item.transit > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>
+                                    <div
+                                        className={cn("w-20 text-right shrink-0 font-medium", item.transit > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}
+                                        title={`In Transit: ${item.transit.toLocaleString()} pcs`}
+                                    >
                                         {item.transit.toLocaleString()}
                                     </div>
 
                                     {/* Reserved */}
-                                    <div className={cn("w-20 text-right shrink-0 font-medium", item.reserved > 0 ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground")}>
+                                    <div
+                                        className={cn("w-20 text-right shrink-0 font-medium", item.reserved > 0 ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground")}
+                                        title={`Reserved: ${item.reserved.toLocaleString()} pcs`}
+                                    >
                                         {item.reserved.toLocaleString()}
                                     </div>
 
                                     {/* Total Balance */}
-                                    <div className="w-24 text-right shrink-0 font-bold text-foreground">
+                                    <div
+                                        className="w-24 text-right shrink-0 font-bold text-foreground"
+                                        title={`Total Balance: ${item.total.toLocaleString()} pcs`}
+                                    >
                                         {item.total.toLocaleString()}
                                     </div>
 
                                     {/* Price */}
-                                    <div className="w-28 text-right shrink-0 text-muted-foreground">
+                                    <div
+                                        className="w-28 text-right shrink-0 text-muted-foreground"
+                                        title={item.unitPrice ? `Unit Price: ${formatCurrency(item.unitPrice)}` : undefined}
+                                    >
                                         {item.unitPrice ? formatCurrency(item.unitPrice) : "-"}
                                     </div>
 
                                     {/* Selling Value */}
-                                    <div className="w-32 text-right shrink-0 font-semibold text-foreground">
+                                    <div
+                                        className="w-32 text-right shrink-0 font-semibold text-foreground"
+                                        title={`Selling Value: ${formatCurrency(item.value)}`}
+                                    >
                                         {formatCurrency(item.value)}
                                     </div>
 
                                     {!isPosLevel && (
                                         <>
                                             {/* Unit Cost */}
-                                            <div className="w-28 text-right shrink-0 text-muted-foreground">
+                                            <div
+                                                className="w-28 text-right shrink-0 text-muted-foreground"
+                                                title={item.unitCost ? `Unit Cost: ${formatCurrency(item.unitCost)}` : undefined}
+                                            >
                                                 {item.unitCost ? formatCurrency(item.unitCost) : "-"}
                                             </div>
 
                                             {/* Unit Value */}
-                                            <div className="w-32 text-right shrink-0 font-semibold text-teal-600 dark:text-teal-400">
+                                            <div
+                                                className="w-32 text-right shrink-0 font-semibold text-teal-600 dark:text-teal-400"
+                                                title={`Costing Value: ${formatCurrency(item.costingValue)}`}
+                                            >
                                                 {formatCurrency(item.costingValue)}
                                             </div>
                                         </>
@@ -239,6 +263,7 @@ export function OverallAvailableReservedTable({
                                                     "w-24 text-right shrink-0 px-2 font-mono text-xs",
                                                     qty > 0 ? "font-bold text-foreground" : "text-muted-foreground/40"
                                                 )}
+                                                title={`${hdr.name}: ${qty.toLocaleString()} pcs`}
                                             >
                                                 {qty}
                                             </div>
@@ -262,26 +287,44 @@ export function OverallAvailableReservedTable({
                         <div className="w-24 text-center text-muted-foreground/40">-</div>
                         <div className="w-32 text-center text-muted-foreground/40">-</div>
 
-                        <div className="w-24 text-right shrink-0 text-emerald-600 dark:text-emerald-400">
+                        <div
+                            className="w-24 text-right shrink-0 text-emerald-600 dark:text-emerald-400"
+                            title={`Grand Total Available: ${grandTotals.quantity.toLocaleString()} pcs`}
+                        >
                             {grandTotals.quantity.toLocaleString()}
                         </div>
-                        <div className="w-20 text-right shrink-0 text-amber-600 dark:text-amber-400">
+                        <div
+                            className="w-20 text-right shrink-0 text-amber-600 dark:text-amber-400"
+                            title={`Grand Total In Transit: ${grandTotals.transit.toLocaleString()} pcs`}
+                        >
                             {grandTotals.transit.toLocaleString()}
                         </div>
-                        <div className="w-20 text-right shrink-0 text-purple-600 dark:text-purple-400">
+                        <div
+                            className="w-20 text-right shrink-0 text-purple-600 dark:text-purple-400"
+                            title={`Grand Total Reserved: ${grandTotals.reserved.toLocaleString()} pcs`}
+                        >
                             {grandTotals.reserved.toLocaleString()}
                         </div>
-                        <div className="w-24 text-right shrink-0 text-cyan-600 dark:text-cyan-400">
+                        <div
+                            className="w-24 text-right shrink-0 text-cyan-600 dark:text-cyan-400"
+                            title={`Grand Total Balance: ${grandTotals.total.toLocaleString()} pcs`}
+                        >
                             {grandTotals.total.toLocaleString()}
                         </div>
                         <div className="w-28 text-right shrink-0 text-muted-foreground/40">-</div>
-                        <div className="w-32 text-right shrink-0 text-indigo-600 dark:text-indigo-400 font-bold">
+                        <div
+                            className="w-32 text-right shrink-0 text-indigo-600 dark:text-indigo-400 font-bold"
+                            title={`Grand Total Selling Value: ${formatCurrency(grandTotals.value)}`}
+                        >
                             {formatCurrency(grandTotals.value)}
                         </div>
                         {!isPosLevel && (
                             <>
                                 <div className="w-28 text-right shrink-0 text-muted-foreground/40">-</div>
-                                <div className="w-32 text-right shrink-0 text-teal-600 dark:text-teal-400 font-bold">
+                                <div
+                                    className="w-32 text-right shrink-0 text-teal-600 dark:text-teal-400 font-bold"
+                                    title={`Grand Total Costing Value: ${formatCurrency(grandTotals.costingValue)}`}
+                                >
                                     {formatCurrency(grandTotals.costingValue)}
                                 </div>
                             </>
@@ -294,7 +337,11 @@ export function OverallAvailableReservedTable({
                                 : (grandTotals.locationStocks?.[hdr.id] || 0);
 
                             return (
-                                <div key={hdr.id} className="w-24 text-right shrink-0 px-2 font-mono text-primary font-bold">
+                                <div
+                                    key={hdr.id}
+                                    className="w-24 text-right shrink-0 px-2 font-mono text-primary font-bold"
+                                    title={`${hdr.name} Total: ${totalStoreQty.toLocaleString()} pcs`}
+                                >
                                     {totalStoreQty.toLocaleString()}
                                 </div>
                             );

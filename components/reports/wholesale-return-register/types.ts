@@ -74,7 +74,6 @@ export interface GroupingLevels {
   salesPerson: boolean;
   taxRate: boolean;
   customer: boolean;
-  document: boolean;
   brand: boolean;
   division: boolean;
   category: boolean;

@@ -1,14 +1,18 @@
 export interface GrossSalesReturnTotals {
   returnCount: number;
   totalItems: number;
+  unitPrice?: number;
+  priceWost?: number;
   grossAmount: number;
   wostAmount: number;
   discountAmount: number;
-  netAmount: number;
+  valueExSalesTax: number;
   taxAmount: number;
-  cashAmount: number;
-  cardAmount: number;
-  voucherAmount: number;
+  valueInclSalesTax: number;
+  netAmount: number;
+  cashAmount?: number;
+  cardAmount?: number;
+  voucherAmount?: number;
 }
 
 export interface GrossSalesReturnLineItem {
@@ -101,16 +105,38 @@ export interface GrossSalesReturnReportData {
 }
 
 export interface GroupingLevels {
-  brand?: boolean;
-  division?: boolean;
-  category?: boolean;
+  brand: boolean;
+  division: boolean;
+  category: boolean;
+  silhouette: boolean;
+  article: boolean;
+  variant: boolean;
   gender?: boolean;
-  silhouette?: boolean;
-  article?: boolean;
-  variant?: boolean;
+  location?: boolean;
+  month?: boolean;
+  date?: boolean;
+  document?: boolean;
+  salesPerson?: boolean;
+  taxRate?: boolean;
   returnNote?: boolean;
   item?: boolean;
-  location?: boolean;
+}
+
+export interface GrossSalesReturnTreeNode {
+  level: string; // "location" | "month" | "date" | "document" | "salesPerson" | "taxRate" | "brand" | "division" | "category" | "silhouette" | "gender" | "article" | "variant"
+  value: string;
+  sku?: string;
+  returnNumber?: string;
+  orderNumber?: string;
+  fbrInvoiceNumber?: string;
+  articleName?: string;
+  color?: string;
+  size?: string;
+  barCode?: string;
+  brandName?: string;
+  unitPrice?: number;
+  totals: GrossSalesReturnTotals;
+  children: GrossSalesReturnTreeNode[];
 }
 
 export interface GrossSalesReturnTableRow {

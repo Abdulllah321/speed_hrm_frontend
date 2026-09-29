@@ -33,11 +33,10 @@ export function useWholesaleReturnData(
   const [groupingLevels, setGroupingLevels] = useState<GroupingLevels>({
     month: false,
     date: false,
-    document: false,
+    document: true,
     salesPerson: false,
     taxRate: false,
     customer: true,
-    Return: true,
     brand: false,
     division: false,
     category: true,
@@ -85,7 +84,7 @@ export function useWholesaleReturnData(
     if (isSeparate && groupingLevels.customer) levels.push("customer");
     if (groupingLevels.month) levels.push("month");
     if (groupingLevels.date) levels.push("date");
-    if (groupingLevels.Return || groupingLevels.document) levels.push("Return");
+    if (groupingLevels.document) levels.push("document");
     if (groupingLevels.salesPerson) levels.push("salesPerson");
     if (groupingLevels.taxRate) levels.push("taxRate");
     if (groupingLevels.brand) levels.push("brand");

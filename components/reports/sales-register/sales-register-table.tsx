@@ -335,7 +335,7 @@ export function SalesRegisterTable({
                       <td className={cn(
                         "py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-semibold",
                         (isItem ? (item.quantity ?? 0) < 0 : t.totalItems < 0) && "text-rose-600 dark:text-rose-400 font-bold"
-                      )}>
+                      )} title={`Qty: ${isItem ? item.quantity : t.totalItems.toLocaleString()}`}>
                         {isItem ? item.quantity : t.totalItems.toLocaleString()}
                       </td>
 
@@ -343,17 +343,17 @@ export function SalesRegisterTable({
                       <td className={cn(
                         "py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300",
                         t.grossAmount < 0 && "text-rose-600 dark:text-rose-400 font-semibold"
-                      )}>
+                      )} title={`Gross Amount: ${formatVal(t.grossAmount)}`}>
                         {formatVal(t.grossAmount)}
                       </td>
 
                       {/* Discount */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400" title={`Discount: ${formatVal(t.discountAmount)}`}>
                         {formatVal(t.discountAmount)}
                       </td>
 
                       {/* Taxes */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-600 dark:text-slate-400">
+                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-600 dark:text-slate-400" title={`Tax: ${formatVal(t.taxAmount)}`}>
                         {formatVal(t.taxAmount)}
                       </td>
 
@@ -361,7 +361,7 @@ export function SalesRegisterTable({
                       <td className={cn(
                         "py-2.5 px-3.5 text-right font-mono font-bold",
                         t.netAmount < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
-                      )}>
+                      )} title={`Net Sales: ${formatVal(t.netAmount)}`}>
                         {formatVal(t.netAmount)}
                       </td>
                     </tr>
@@ -382,19 +382,19 @@ export function SalesRegisterTable({
                 <td className="py-3 px-3.5 border-r border-slate-200 dark:border-slate-700 font-bold" colSpan={11}>
                   GRAND TOTAL (ALL SELECTED REGISTER INVOICES)
                 </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-900 dark:text-slate-100">
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-900 dark:text-slate-100" title={`Total Qty: ${grandTotals.totalItems.toLocaleString()}`}>
                   {grandTotals.totalItems.toLocaleString()}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono" title={`Total Gross: ${formatVal(grandTotals.grossAmount)}`}>
                   {formatVal(grandTotals.grossAmount)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400" title={`Total Discount: ${formatVal(grandTotals.discountAmount)}`}>
                   {formatVal(grandTotals.discountAmount)}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-600 dark:text-slate-400">
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-600 dark:text-slate-400" title={`Total Tax: ${formatVal(grandTotals.taxAmount)}`}>
                   {formatVal(grandTotals.taxAmount)}
                 </td>
-                <td className="py-3 px-3.5 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                <td className="py-3 px-3.5 text-right font-mono text-emerald-600 dark:text-emerald-400" title={`Total Net Sales: ${formatVal(grandTotals.netAmount)}`}>
                   {formatVal(grandTotals.netAmount)}
                 </td>
               </tr>

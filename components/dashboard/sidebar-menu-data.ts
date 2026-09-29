@@ -1885,6 +1885,11 @@ export const menuData: MenuItem[] = [
         permissions: ["pos.report.view"],
       },
       {
+        title: "Sales Return List",
+        href: "/pos/reports/sales-return-list",
+        permissions: ["pos.report.view"],
+      },
+      {
         title: "Gross Sales Summary",
         href: "/pos/reports/gross-sales-summary",
         permissions: ["pos.report.view"],
@@ -1991,6 +1996,11 @@ export const menuData: MenuItem[] = [
           {
             title: "Sales List Report",
             href: "/erp/reports/pos/sales-list",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Sales Return List",
+            href: "/erp/reports/pos/sales-return-list",
             permissions: ["erp.report.view"],
           },
           {

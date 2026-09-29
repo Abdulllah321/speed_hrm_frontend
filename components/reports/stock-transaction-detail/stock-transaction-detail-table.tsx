@@ -213,32 +213,32 @@ export function StockTransactionDetailTable({
                                         </div>
 
                                         {/* Barcode */}
-                                        <div className="w-32 text-center shrink-0 font-mono font-bold text-primary truncate">
+                                        <div className="w-32 text-center shrink-0 font-mono font-bold text-primary truncate" title={item.barCode || "-"}>
                                             {highlight(item.barCode || "-", searchQuery)}
                                         </div>
 
                                         {/* B/F Opening */}
-                                        <div className="w-24 text-right shrink-0 text-muted-foreground">
+                                        <div className="w-24 text-right shrink-0 text-muted-foreground truncate" title={`Opening Balance (B/F): ${item.openingBalance.toLocaleString()}`}>
                                             {item.openingBalance.toLocaleString()}
                                         </div>
 
                                         {/* In Qty */}
-                                        <div className={cn("w-20 text-right shrink-0 font-semibold", item.inQty > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+                                        <div className={cn("w-20 text-right shrink-0 font-semibold truncate", item.inQty > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")} title={`Inbound Qty: ${item.inQty > 0 ? `+${item.inQty.toLocaleString()}` : "0"}`}>
                                             {item.inQty > 0 ? `+${item.inQty.toLocaleString()}` : "0"}
                                         </div>
 
                                         {/* Out Qty */}
-                                        <div className={cn("w-20 text-right shrink-0 font-semibold", item.outQty > 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground")}>
+                                        <div className={cn("w-20 text-right shrink-0 font-semibold truncate", item.outQty > 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground")} title={`Outbound Qty: ${item.outQty > 0 ? `-${item.outQty.toLocaleString()}` : "0"}`}>
                                             {item.outQty > 0 ? `-${item.outQty.toLocaleString()}` : "0"}
                                         </div>
 
                                         {/* Transit */}
-                                        <div className={cn("w-20 text-right shrink-0 font-medium", item.inTransitQty > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>
+                                        <div className={cn("w-20 text-right shrink-0 font-medium truncate", item.inTransitQty > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")} title={`In Transit Qty: ${item.inTransitQty.toLocaleString()}`}>
                                             {item.inTransitQty.toLocaleString()}
                                         </div>
 
                                         {/* Closing Balance */}
-                                        <div className="w-28 text-right shrink-0 font-bold text-indigo-600 dark:text-indigo-400">
+                                        <div className="w-28 text-right shrink-0 font-bold text-indigo-600 dark:text-indigo-400 truncate" title={`Net Closing Balance: ${item.closingBalance.toLocaleString()}`}>
                                             {item.closingBalance.toLocaleString()}
                                         </div>
                                     </div>
@@ -312,13 +312,13 @@ export function StockTransactionDetailTable({
                                                                     <td className="py-1.5 px-3 font-sans text-muted-foreground">
                                                                         {highlight(tx.remarks || "-", searchQuery)}
                                                                     </td>
-                                                                    <td className={cn("py-1.5 px-3 text-right font-bold", tx.inQty > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40")}>
+                                                                    <td className={cn("py-1.5 px-3 text-right font-bold", tx.inQty > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40")} title={tx.inQty > 0 ? `Inbound: +${tx.inQty}` : undefined}>
                                                                         {tx.inQty > 0 ? `+${tx.inQty}` : "-"}
                                                                     </td>
-                                                                    <td className={cn("py-1.5 px-3 text-right font-bold", tx.outQty > 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground/40")}>
+                                                                    <td className={cn("py-1.5 px-3 text-right font-bold", tx.outQty > 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground/40")} title={tx.outQty > 0 ? `Outbound: -${tx.outQty}` : undefined}>
                                                                         {tx.outQty > 0 ? `-${tx.outQty}` : "-"}
                                                                     </td>
-                                                                    <td className="py-1.5 px-3 text-right font-bold text-indigo-600 dark:text-indigo-400">
+                                                                    <td className="py-1.5 px-3 text-right font-bold text-indigo-600 dark:text-indigo-400" title={`Running Balance: ${tx.runningBalance?.toLocaleString() ?? "-"}`}>
                                                                         {tx.runningBalance?.toLocaleString() ?? "-"}
                                                                     </td>
                                                                 </tr>
@@ -349,19 +349,19 @@ export function StockTransactionDetailTable({
                         <div className="w-24 text-center text-muted-foreground/40">-</div>
                         <div className="w-32 text-center text-muted-foreground/40">-</div>
 
-                        <div className="w-24 text-right shrink-0 text-slate-600 dark:text-slate-400">
+                        <div className="w-24 text-right shrink-0 text-slate-600 dark:text-slate-400 truncate" title={`Total Opening Balance (B/F): ${grandTotals.openingBalance.toLocaleString()}`}>
                             {grandTotals.openingBalance.toLocaleString()}
                         </div>
-                        <div className="w-20 text-right shrink-0 text-emerald-600 dark:text-emerald-400">
+                        <div className="w-20 text-right shrink-0 text-emerald-600 dark:text-emerald-400 truncate" title={`Total Inbound Stock: +${grandTotals.totalInQty.toLocaleString()}`}>
                             +{grandTotals.totalInQty.toLocaleString()}
                         </div>
-                        <div className="w-20 text-right shrink-0 text-rose-600 dark:text-rose-400">
+                        <div className="w-20 text-right shrink-0 text-rose-600 dark:text-rose-400 truncate" title={`Total Outbound Stock: -${grandTotals.totalOutQty.toLocaleString()}`}>
                             -{grandTotals.totalOutQty.toLocaleString()}
                         </div>
-                        <div className="w-20 text-right shrink-0 text-amber-600 dark:text-amber-400">
+                        <div className="w-20 text-right shrink-0 text-amber-600 dark:text-amber-400 truncate" title={`Total In-Transit Stock: ${grandTotals.inTransitQty.toLocaleString()}`}>
                             {grandTotals.inTransitQty.toLocaleString()}
                         </div>
-                        <div className="w-28 text-right shrink-0 text-indigo-600 dark:text-indigo-400 font-bold">
+                        <div className="w-28 text-right shrink-0 text-indigo-600 dark:text-indigo-400 font-bold truncate" title={`Total Net Closing Balance: ${grandTotals.closingBalance.toLocaleString()}`}>
                             {grandTotals.closingBalance.toLocaleString()}
                         </div>
                     </div>

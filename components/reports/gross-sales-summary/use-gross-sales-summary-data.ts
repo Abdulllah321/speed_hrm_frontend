@@ -11,11 +11,15 @@ function createEmptyTotals(): GrossSalesSummaryTotals {
   return {
     orderCount: 0,
     totalItems: 0,
+    unitPrice: 0,
+    priceWost: 0,
     grossAmount: 0,
     wostAmount: 0,
     discountAmount: 0,
-    netAmount: 0,
+    valueExSalesTax: 0,
     taxAmount: 0,
+    valueInclSalesTax: 0,
+    netAmount: 0,
   };
 }
 
@@ -25,8 +29,10 @@ function addTotals(target: GrossSalesSummaryTotals, source: GrossSalesSummaryTot
   target.grossAmount += source.grossAmount;
   target.wostAmount += source.wostAmount;
   target.discountAmount += source.discountAmount;
-  target.netAmount += source.netAmount;
+  target.valueExSalesTax += source.valueExSalesTax;
   target.taxAmount += source.taxAmount;
+  target.valueInclSalesTax += source.valueInclSalesTax;
+  target.netAmount += source.netAmount;
 }
 
 export interface UseGrossSalesSummaryDataOptions {
@@ -61,10 +67,10 @@ export function useGrossSalesSummaryData(
     brand: true,
     division: true,
     category: true,
-    gender: true,
     silhouette: true,
     article: true,
     variant: true,
+    gender: false,
     location: true,
     month: false,
     date: false,
@@ -154,17 +160,21 @@ export function useGrossSalesSummaryData(
       return true;
     });
 
-    // 2. Build level sequence
+    // 2. Build level sequence: Location -> Month -> Date -> Document -> SalesPerson -> TaxRate -> Brand -> Division -> Category -> Silhouette -> Gender -> Article -> Variant
     const isSeparate = effectiveReportType === "separate";
     const levels: string[] = [];
 
     if (isSeparate && groupingLevels.location) levels.push("location");
+    if (groupingLevels.month) levels.push("month");
+    if (groupingLevels.date) levels.push("date");
+    if (groupingLevels.document) levels.push("document");
+    if (groupingLevels.salesPerson) levels.push("salesPerson");
+    if (groupingLevels.taxRate) levels.push("taxRate");
     if (groupingLevels.brand) levels.push("brand");
     if (groupingLevels.division) levels.push("division");
     if (groupingLevels.category) levels.push("category");
-    if (groupingLevels.gender) levels.push("gender");
     if (groupingLevels.silhouette) levels.push("silhouette");
-    if (groupingLevels.document) levels.push("document");
+    if (groupingLevels.gender) levels.push("gender");
     if (groupingLevels.article) levels.push("article");
     if (groupingLevels.variant) levels.push("variant");
 
@@ -177,17 +187,28 @@ export function useGrossSalesSummaryData(
     for (const item of filtered) {
       if (item.quantity <= 0) continue;
 
-      const grossAmt = item.quantity * item.unitPrice;
+      const qty = item.quantity;
+      const unitPrice = item.unitPrice || 0;
+      const grossAmt = qty * unitPrice;
+      const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
       const wostAmt = item.wostAmount || Math.round((grossAmt / 1.18) * 100) / 100;
+      const discountAmt = item.discountAmount || 0;
+      const valExTax = Math.round((wostAmt - discountAmt) * 100) / 100;
+      const taxAmt = item.taxAmount || 0;
+      const valInclTax = item.subTotal || Math.round((valExTax + taxAmt) * 100) / 100;
 
       const itemTotals: GrossSalesSummaryTotals = {
         orderCount: 1,
-        totalItems: item.quantity,
+        totalItems: qty,
+        unitPrice,
+        priceWost,
         grossAmount: grossAmt,
         wostAmount: wostAmt,
-        discountAmount: item.discountAmount,
-        netAmount: item.subTotal,
-        taxAmount: item.taxAmount,
+        discountAmount: discountAmt,
+        valueExSalesTax: valExTax,
+        taxAmount: taxAmt,
+        valueInclSalesTax: valInclTax,
+        netAmount: valInclTax,
       };
 
       let currentLevelNodes = root;
@@ -205,10 +226,10 @@ export function useGrossSalesSummaryData(
           nodeVal = item.divisionName || "Default Division";
         } else if (levelName === "category") {
           nodeVal = item.categoryName || "Default Category";
-        } else if (levelName === "gender") {
-          nodeVal = item.genderName || "Default Gender";
         } else if (levelName === "silhouette") {
           nodeVal = item.silhouetteName || "Default Silhouette";
+        } else if (levelName === "gender") {
+          nodeVal = item.genderName || "Default Gender";
         } else if (levelName === "document") {
           nodeVal = item.orderNumber || "No Invoice";
           extraFields.fbrInvoiceNumber = item.fbrInvoiceNumber;
@@ -217,6 +238,7 @@ export function useGrossSalesSummaryData(
           extraFields.sku = item.sku;
           extraFields.articleName = item.description || "Article";
           extraFields.barCode = item.barCode;
+          extraFields.unitPrice = unitPrice;
         } else if (levelName === "variant") {
           nodeVal = item.barCode
             ? `[${item.barCode}] ${item.colorName || "Default"}-${item.sizeName || "Default"}`
@@ -225,6 +247,7 @@ export function useGrossSalesSummaryData(
           extraFields.size = item.sizeName || "Default";
           extraFields.barCode = item.barCode;
           extraFields.sku = item.sku;
+          extraFields.unitPrice = unitPrice;
         }
 
         let existingNode = (currentLevelNodes as any)._childMap?.get(nodeVal);
@@ -257,12 +280,8 @@ export function useGrossSalesSummaryData(
       addTotals(calculatedGrandTotals, node.totals);
     }
 
-    const finalGrandTotals = (!hasActiveFilters && reportData?.grandTotals)
-      ? reportData.grandTotals
-      : calculatedGrandTotals;
-
-    return { treeData: root, grandTotals: finalGrandTotals, filteredFlatItems: filtered };
-  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange, hasActiveFilters, hasSubDateFilter, reportData?.grandTotals]);
+    return { treeData: root, grandTotals: calculatedGrandTotals, filteredFlatItems: filtered };
+  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange, hasActiveFilters, hasSubDateFilter]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));

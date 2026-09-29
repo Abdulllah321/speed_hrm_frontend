@@ -12,7 +12,10 @@ export const createEmptyTotals = (): SalesListTotals => ({
   orderCount: 0,
   totalItems: 0,
   grossAmount: 0,
+  wostAmount: 0,
   discountAmount: 0,
+  discountWostAmount: 0,
+  amountAfterDiscount: 0,
   netAmount: 0,
   taxAmount: 0,
   paidAmount: 0,
@@ -31,14 +34,16 @@ export const createEmptyTotals = (): SalesListTotals => ({
   giftVoucherCorporate: 0,
   creditVoucherIssuedAmount: 0,
   rewardVoucherAmount: 0,
-  onCreditAmount: 0,
 });
 
 export const addTotals = (target: SalesListTotals, source: SalesListTotals) => {
   target.orderCount += source.orderCount;
   target.totalItems += source.totalItems;
   target.grossAmount += source.grossAmount;
+  target.wostAmount = (target.wostAmount || 0) + (source.wostAmount || (source.grossAmount ? source.grossAmount / 1.18 : 0));
   target.discountAmount += source.discountAmount;
+  target.discountWostAmount = (target.discountWostAmount || 0) + (source.discountWostAmount || (source.discountAmount ? source.discountAmount / 1.18 : 0));
+  target.amountAfterDiscount = (target.amountAfterDiscount || 0) + (source.amountAfterDiscount || Math.max(0, (source.wostAmount || source.grossAmount / 1.18) - (source.discountWostAmount || source.discountAmount / 1.18)));
   target.netAmount += source.netAmount;
   target.taxAmount += source.taxAmount;
   target.paidAmount += source.paidAmount;
@@ -57,7 +62,6 @@ export const addTotals = (target: SalesListTotals, source: SalesListTotals) => {
   target.giftVoucherCorporate += source.giftVoucherCorporate;
   target.creditVoucherIssuedAmount += source.creditVoucherIssuedAmount;
   target.rewardVoucherAmount += source.rewardVoucherAmount;
-  target.onCreditAmount += source.onCreditAmount;
 };
 
 export interface UseSalesListDataOptions {
@@ -154,7 +158,12 @@ export function useSalesListData(
     if (!hasActiveFilters) return reportData.invoices;
 
     const q = searchQuery.toLowerCase().trim();
-    const fromTime = subDateRange?.from ? new Date(subDateRange.from).getTime() : undefined;
+    let fromTime: number | undefined;
+    if (subDateRange?.from) {
+      const f = new Date(subDateRange.from);
+      f.setHours(0, 0, 0, 0);
+      fromTime = f.getTime();
+    }
     let toTime: number | undefined;
     if (subDateRange?.to) {
       const d = new Date(subDateRange.to);
@@ -343,13 +352,19 @@ export function useSalesListData(
             createdAt: inv.createdAt,
             customerName: inv.customerName,
             customerPhone: inv.customerPhone,
+            customerCnic: inv.customerCnic,
+            customerCode: inv.customerCode,
             cashierName: inv.cashierName,
             paymentMethod: inv.paymentMethod,
             merchant: inv.merchant,
             fbrInvoiceNumber: inv.fbrInvoiceNumber,
             fbrStatus: inv.fbrStatus,
+            notes: inv.notes,
             totals: inv.totals,
+            discountDetails: inv.discountDetails,
+            customerDetails: inv.customerDetails,
             tenderDetails: inv.tenderDetails,
+            items: inv.items,
             depth: depthOffset,
             hasChildren: hasItems && groupingLevels.item,
             isExpanded: isInvExpanded,
@@ -361,7 +376,7 @@ export function useSalesListData(
 
         if (shouldRenderItems) {
           for (const line of inv.items) {
-            const lineSubTotal = line.subTotal || 0;
+            const lineSubTotal = line.lineTotal || line.subTotal || 0;
             const proratedTax =
               inv.totals.taxAmount > 0 && inv.totals.netAmount > 0
                 ? (lineSubTotal / inv.totals.netAmount) * inv.totals.taxAmount
@@ -369,6 +384,11 @@ export function useSalesListData(
             const lineGross = line.unitPrice
               ? line.unitPrice * line.quantity
               : lineSubTotal + (line.discountAmount || 0);
+
+            const itemPriceWost = line.priceWost !== undefined ? line.priceWost : (line.unitPrice || 0) / 1.18;
+            const itemDiscWost = line.discountAmountWost !== undefined ? line.discountAmountWost : (line.discountAmount || 0) / 1.18;
+            const itemValueExcl = (line.quantity || 1) * itemPriceWost;
+            const itemAmtAfterDisc = Math.max(0, itemValueExcl - itemDiscWost);
 
             rows.push({
               type: "item",
@@ -382,16 +402,27 @@ export function useSalesListData(
               colorName: line.colorName,
               quantity: line.quantity,
               unitPrice: line.unitPrice,
+              priceWost: itemPriceWost,
+              valueExcl: itemValueExcl,
+              discountPercent: line.discountPercent,
               discountAmount: line.discountAmount,
-              subTotal: line.subTotal,
+              discountAmountWost: itemDiscWost,
+              amountAfterDiscount: itemAmtAfterDisc,
+              taxPercent: line.taxPercent,
+              taxAmount: proratedTax,
+              subTotal: lineSubTotal,
+              valueIncl: lineSubTotal,
+              hasOverrideDiscount: line.hasOverrideDiscount,
+              overrideDiscountPercent: line.overrideDiscountPercent,
+              overrideDiscountNote: line.overrideDiscountNote,
               totals: {
                 orderCount: 0,
                 totalItems: line.quantity,
                 grossAmount: lineGross,
-                discountAmount: line.discountAmount,
-                netAmount: line.subTotal,
+                discountAmount: line.discountAmount || 0,
+                netAmount: lineSubTotal,
                 taxAmount: proratedTax,
-                paidAmount: line.subTotal,
+                paidAmount: lineSubTotal,
                 cashAmount:
                   inv.totals.cashAmount > 0 && inv.totals.netAmount > 0
                     ? (lineSubTotal / inv.totals.netAmount) * inv.totals.cashAmount
@@ -456,10 +487,6 @@ export function useSalesListData(
                   inv.totals.rewardVoucherAmount > 0 && inv.totals.netAmount > 0
                     ? (lineSubTotal / inv.totals.netAmount) * inv.totals.rewardVoucherAmount
                     : 0,
-                onCreditAmount:
-                  inv.totals.onCreditAmount > 0 && inv.totals.netAmount > 0
-                    ? (lineSubTotal / inv.totals.netAmount) * inv.totals.onCreditAmount
-                    : 0,
               },
               tenderDetails: inv.tenderDetails,
               depth: depthOffset + 1,
@@ -514,7 +541,37 @@ export function useSalesListData(
   const getFilteredFlatItems = useCallback((): SalesListFlatRecord[] => {
     const records: SalesListFlatRecord[] = [];
     for (const inv of filteredInvoices) {
-      for (const line of inv.items) {
+      const allVouchers = [
+        ...(inv.tenderDetails?.giftVouchers || []),
+        ...(inv.tenderDetails?.creditVouchers || []),
+        ...(inv.tenderDetails?.exchangeVouchers || []),
+        ...(inv.tenderDetails?.claimVouchers || []),
+        ...(inv.tenderDetails?.corporateVouchers || []),
+        ...(inv.tenderDetails?.rewardVouchers || []),
+      ];
+      const voucherCodes = allVouchers.map((v) => `${v.code} (Rs. ${(v.amount || 0).toLocaleString()})`).join(", ");
+
+      const items = inv.items && inv.items.length > 0 ? inv.items : [{
+        id: inv.id,
+        orderNumber: inv.orderNumber,
+        sku: "-",
+        barCode: "-",
+        description: "Invoice Summary",
+        sizeName: "-",
+        colorName: "-",
+        quantity: inv.totals?.totalItems || 1,
+        unitPrice: inv.totals?.grossAmount || 0,
+        priceWost: inv.totals?.wostAmount !== undefined ? inv.totals.wostAmount / (inv.totals?.totalItems || 1) : (inv.totals?.grossAmount || 0) / 1.18,
+        discountPercent: 0,
+        discountAmount: inv.totals?.discountAmount || 0,
+        discountAmountWost: inv.totals?.discountWostAmount !== undefined ? inv.totals.discountWostAmount : (inv.totals?.discountAmount || 0) / 1.18,
+        taxPercent: 18,
+        taxAmount: inv.totals?.taxAmount || 0,
+        lineTotal: inv.totals?.netAmount || 0,
+        hasOverrideDiscount: false,
+      }];
+
+      for (const line of items) {
         records.push({
           locationName: inv.locationName || "Main Outlet",
           orderNumber: inv.orderNumber,
@@ -522,10 +579,13 @@ export function useSalesListData(
           cashierName: inv.cashierName,
           customerName: inv.customerName,
           customerPhone: inv.customerPhone,
+          customerCnic: inv.customerCnic,
+          customerCode: inv.customerCode,
           paymentMethod: inv.paymentMethod,
           merchant: inv.merchant,
           fbrInvoiceNumber: inv.fbrInvoiceNumber,
           fbrStatus: inv.fbrStatus,
+          orderNotes: inv.notes,
           sku: line.sku,
           barCode: line.barCode,
           description: line.description,
@@ -533,8 +593,29 @@ export function useSalesListData(
           colorName: line.colorName,
           quantity: line.quantity,
           unitPrice: line.unitPrice,
+          priceWost: line.priceWost !== undefined ? line.priceWost : (line.unitPrice || 0) / 1.18,
+          valueExcl: (line.quantity || 1) * (line.priceWost !== undefined ? line.priceWost : (line.unitPrice || 0) / 1.18),
+          discountPercent: line.discountPercent,
           discountAmount: line.discountAmount,
-          subTotal: line.subTotal,
+          discountAmountWost: line.discountAmountWost !== undefined ? line.discountAmountWost : (line.discountAmount || 0) / 1.18,
+          amountAfterDiscount: Math.max(0, ((line.quantity || 1) * (line.priceWost !== undefined ? line.priceWost : (line.unitPrice || 0) / 1.18)) - (line.discountAmountWost !== undefined ? line.discountAmountWost : (line.discountAmount || 0) / 1.18)),
+          hasOverrideDiscount: line.hasOverrideDiscount,
+          overrideDiscountPercent: line.overrideDiscountPercent,
+          overrideDiscountNote: line.overrideDiscountNote,
+          manualDiscountNote: inv.discountDetails?.manualDiscountNote,
+          manualDiscountType: inv.discountDetails?.manualDiscountType,
+          manualDiscountPercent: inv.discountDetails?.manualDiscountPercent,
+          manualDiscountAmount: inv.discountDetails?.manualDiscountAmount,
+          alliancePartner: inv.discountDetails?.alliance?.partnerName,
+          allianceCode: inv.discountDetails?.alliance?.code,
+          promoCode: inv.discountDetails?.promo?.code,
+          couponCode: inv.discountDetails?.coupon?.code,
+          voucherCodes: voucherCodes || undefined,
+          cardLast4: inv.tenderDetails?.card?.cardLast4,
+          cardSlipNo: inv.tenderDetails?.card?.authId,
+          taxAmount: line.taxAmount,
+          subTotal: line.lineTotal || line.subTotal || 0,
+          valueIncl: line.lineTotal || line.subTotal || 0,
           orderGrossAmount: inv.totals.grossAmount,
           orderDiscountAmount: inv.totals.discountAmount,
           orderNetAmount: inv.totals.netAmount,
@@ -550,7 +631,6 @@ export function useSalesListData(
           giftVoucherCorporate: inv.totals.giftVoucherCorporate,
           creditVoucherIssuedAmount: inv.totals.creditVoucherIssuedAmount,
           rewardVoucherAmount: inv.totals.rewardVoucherAmount,
-          onCreditAmount: inv.totals.onCreditAmount,
         });
       }
     }

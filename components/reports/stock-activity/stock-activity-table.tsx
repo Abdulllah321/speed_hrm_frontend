@@ -500,129 +500,219 @@ export function StockActivityTable({
                       </td>
 
                       {/* Opening B/F */}
-                      <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
+                      <td
+                        className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-slate-800 dark:text-slate-200"
+                        title={`Opening B/F: ${t.bf?.toLocaleString() || 0} pcs`}
+                      >
                         {formatVal(t.bf)}
                       </td>
 
                       {reportType === "detailed" ? (
                         <>
                           {/* Purchases */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400"
+                            title={`Purchases: ${t.purchases?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.purchases)}
                           </td>
                           {/* Purchase Ret */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-rose-600 dark:text-rose-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-rose-600 dark:text-rose-400"
+                            title={`Purchase Ret: ${t.purchaseReturn?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.purchaseReturn)}
                           </td>
                           {/* From Outlet */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`From Outlet: ${t.fromOutlet?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.fromOutlet)}
                           </td>
                           {/* To Outlet */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-indigo-600 dark:text-indigo-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-indigo-600 dark:text-indigo-400"
+                            title={`To Outlet: ${t.toOutlet?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.toOutlet)}
                           </td>
                           {/* Delivery Challan */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-amber-600 dark:text-amber-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-amber-600 dark:text-amber-400"
+                            title={`Delivery Challan: ${t.deliveryChallan?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.deliveryChallan)}
                           </td>
                           {/* Wholesale Ret */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Wholesale Ret: ${t.wholesaleReturn?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.wholesaleReturn)}
                           </td>
                           {/* Adj */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Adj: ${t.adj?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.adj)}
                           </td>
                           {/* Available */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-teal-600 dark:text-teal-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-teal-600 dark:text-teal-400"
+                            title={`Available Stock: ${t.availableStock?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.availableStock)}
                           </td>
                           {/* Reserved SO */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-rose-600">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-rose-600"
+                            title={`Reserved SO: ${t.reservedSO?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.reservedSO)}
                           </td>
                           {/* Reserved SRN */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-orange-600">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-orange-600"
+                            title={`Reserved SRN: ${t.reservedSRN?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.reservedSRN)}
                           </td>
                           {/* Total Reserved */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-red-600">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-red-600"
+                            title={`Total Reserved: ${((t.reservedSO || 0) + (t.reservedSRN || 0)).toLocaleString()} pcs`}
+                          >
                             {formatVal((t.reservedSO || 0) + (t.reservedSRN || 0))}
                           </td>
                           {/* Stock After Res */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600"
+                            title={`Stock After Reservation: ${((t.availableStock || 0) - ((t.reservedSO || 0) + (t.reservedSRN || 0))).toLocaleString()} pcs`}
+                          >
                             {formatVal((t.availableStock || 0) - ((t.reservedSO || 0) + (t.reservedSRN || 0)))}
                           </td>
                           {/* Transit GRN */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-sky-600">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-sky-600"
+                            title={`Transit GRN: ${t.transitGRN?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.transitGRN)}
                           </td>
                           {/* Transit */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400"
+                            title={`Transit: ${t.transit?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.transit)}
                           </td>
                           {/* Balance */}
-                          <td className="py-2.5 px-3.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400">
+                          <td
+                            className="py-2.5 px-3.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400"
+                            title={`Net Balance: ${t.balance?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.balance)}
                           </td>
                         </>
                       ) : (
                         <>
                           {/* Wh IN */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Wh IN: ${t.fromWarehouse?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.fromWarehouse)}
                           </td>
                           {/* Outlet IN */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Outlet IN: ${t.fromOutlet?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.fromOutlet)}
                           </td>
                           {/* Total IN */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400"
+                            title={`Total IN: ${t.totalTrfIn?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.totalTrfIn)}
                           </td>
                           {/* Wh OUT */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Wh OUT: ${t.toWarehouse?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.toWarehouse)}
                           </td>
                           {/* Outlet OUT */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Outlet OUT: ${t.toOutlet?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.toOutlet)}
                           </td>
                           {/* Total OUT */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-rose-600 dark:text-rose-400"
+                            title={`Total OUT: ${t.totalTrfOut?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.totalTrfOut)}
                           </td>
                           {/* Exchg */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Exchg: ${t.exchg?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.exchg)}
                           </td>
                           {/* Refund */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Refund: ${t.refund?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.refund)}
                           </td>
                           {/* Claim */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Claim: ${t.claim?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.claim)}
                           </td>
                           {/* Sales */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400"
+                            title={`Sales: ${t.sales?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.sales)}
                           </td>
                           {/* Adj */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono text-slate-700 dark:text-slate-300"
+                            title={`Adj: ${t.adj?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.adj)}
                           </td>
                           {/* Available */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-teal-600 dark:text-teal-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-teal-600 dark:text-teal-400"
+                            title={`Available Stock: ${t.availableStock?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.availableStock)}
                           </td>
                           {/* Transit */}
-                          <td className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                          <td
+                            className="py-2.5 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400"
+                            title={`Transit: ${t.transit?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.transit)}
                           </td>
                           {/* Balance */}
-                          <td className="py-2.5 px-3.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400">
+                          <td
+                            className="py-2.5 px-3.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400"
+                            title={`Net Balance: ${t.balance?.toLocaleString() || 0} pcs`}
+                          >
                             {formatVal(t.balance)}
                           </td>
                         </>
@@ -645,99 +735,189 @@ export function StockActivityTable({
                 <td className="py-3 px-3.5 border-r border-slate-200 dark:border-slate-700 font-bold" colSpan={5}>
                   {reportType === "detailed" ? "GRAND TOTAL (CENTRAL WAREHOUSE C40001)" : "GRAND TOTAL (ALL OUTLETS)"}
                 </td>
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-900 dark:text-slate-100">
+                <td
+                  className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-slate-900 dark:text-slate-100"
+                  title={`Grand Total Opening B/F: ${grandTotals.bf?.toLocaleString() || 0} pcs`}
+                >
                   {formatVal(grandTotals.bf)}
                 </td>
                 {reportType === "detailed" ? (
                   <>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600 dark:text-emerald-400"
+                      title={`Grand Total Purchases: ${grandTotals?.purchases?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.purchases)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600 dark:text-rose-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600 dark:text-rose-400"
+                      title={`Grand Total Purchase Ret: ${grandTotals?.purchaseReturn?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.purchaseReturn)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total From Outlet: ${grandTotals?.fromOutlet?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.fromOutlet)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-indigo-600 dark:text-indigo-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-indigo-600 dark:text-indigo-400"
+                      title={`Grand Total To Outlet: ${grandTotals?.toOutlet?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.toOutlet)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400"
+                      title={`Grand Total Delivery Challan: ${grandTotals?.deliveryChallan?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.deliveryChallan)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Wholesale Ret: ${grandTotals?.wholesaleReturn?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.wholesaleReturn)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Adj: ${grandTotals?.adj?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.adj)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-teal-600 dark:text-teal-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-teal-600 dark:text-teal-400"
+                      title={`Grand Total Available Stock: ${grandTotals?.availableStock?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.availableStock)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600"
+                      title={`Grand Total Reserved SO: ${grandTotals?.reservedSO?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.reservedSO)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-orange-600">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-orange-600"
+                      title={`Grand Total Reserved SRN: ${grandTotals?.reservedSRN?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.reservedSRN)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-red-600">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-red-600"
+                      title={`Grand Total Reserved: ${((grandTotals?.reservedSO || 0) + (grandTotals?.reservedSRN || 0)).toLocaleString()} pcs`}
+                    >
                       {formatVal((grandTotals?.reservedSO || 0) + (grandTotals?.reservedSRN || 0))}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600"
+                      title={`Grand Total Stock After Reservation: ${((grandTotals?.availableStock || 0) - ((grandTotals?.reservedSO || 0) + (grandTotals?.reservedSRN || 0))).toLocaleString()} pcs`}
+                    >
                       {formatVal((grandTotals?.availableStock || 0) - ((grandTotals?.reservedSO || 0) + (grandTotals?.reservedSRN || 0)))}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-sky-600">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-sky-600"
+                      title={`Grand Total Transit GRN: ${grandTotals?.transitGRN?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.transitGRN)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400"
+                      title={`Grand Total Transit: ${grandTotals?.transit?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.transit)}
                     </td>
-                    <td className="py-3 px-3.5 text-right font-mono text-sky-600 dark:text-sky-400">
+                    <td
+                      className="py-3 px-3.5 text-right font-mono text-sky-600 dark:text-sky-400"
+                      title={`Grand Total Balance: ${grandTotals?.balance?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals?.balance)}
                     </td>
                   </>
                 ) : (
                   <>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Wh IN: ${grandTotals.fromWarehouse?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.fromWarehouse)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Outlet IN: ${grandTotals.fromOutlet?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.fromOutlet)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-emerald-600 dark:text-emerald-400"
+                      title={`Grand Total IN: ${grandTotals.totalTrfIn?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.totalTrfIn)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Wh OUT: ${grandTotals.toWarehouse?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.toWarehouse)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Outlet OUT: ${grandTotals.toOutlet?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.toOutlet)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600 dark:text-rose-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-rose-600 dark:text-rose-400"
+                      title={`Grand Total OUT: ${grandTotals.totalTrfOut?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.totalTrfOut)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Exchg: ${grandTotals.exchg?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.exchg)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Refund: ${grandTotals.refund?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.refund)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Claim: ${grandTotals.claim?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.claim)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-indigo-600 dark:text-indigo-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-indigo-600 dark:text-indigo-400"
+                      title={`Grand Total Sales: ${grandTotals.sales?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.sales)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono"
+                      title={`Grand Total Adj: ${grandTotals.adj?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.adj)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-teal-600 dark:text-teal-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-teal-600 dark:text-teal-400"
+                      title={`Grand Total Available Stock: ${grandTotals.availableStock?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.availableStock)}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400">
+                    <td
+                      className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400"
+                      title={`Grand Total Transit: ${grandTotals.transit?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.transit)}
                     </td>
-                    <td className="py-3 px-3.5 text-right font-mono text-sky-600 dark:text-sky-400">
+                    <td
+                      className="py-3 px-3.5 text-right font-mono text-sky-600 dark:text-sky-400"
+                      title={`Grand Total Balance: ${grandTotals.balance?.toLocaleString() || 0} pcs`}
+                    >
                       {formatVal(grandTotals.balance)}
                     </td>
                   </>

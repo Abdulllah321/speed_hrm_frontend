@@ -60,6 +60,7 @@ const posMenuGroups = [
             { title: "Inventory Aging", icon: Clock, href: "/pos/reports/inventory-aging" },
             { title: "Net Sales Summary", icon: FileText, href: "/pos/reports/net-sales-summary" },
             { title: "Sales List Report", icon: FileText, href: "/pos/reports/sales-list" },
+            { title: "Sales Return List", icon: RefreshCw, href: "/pos/reports/sales-return-list" },
             { title: "Gross Sales Summary", icon: FileText, href: "/pos/reports/gross-sales-summary" },
             { title: "Gross Sales Return", icon: FileText, href: "/pos/reports/gross-sales-return" },
         ],

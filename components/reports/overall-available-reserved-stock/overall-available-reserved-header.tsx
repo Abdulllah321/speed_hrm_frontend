@@ -83,6 +83,7 @@ export function OverallAvailableReservedHeader({ grandTotals, totalItemsCount, i
                     <div
                         key={idx}
                         className={`p-3.5 rounded-2xl border ${card.bg} shadow-sm transition-all duration-200 hover:shadow-md flex flex-col justify-between`}
+                        title={`${card.title}: ${card.value} (${card.sub})`}
                     >
                         <div className="flex items-center justify-between gap-2">
                             <span className="text-[11px] font-semibold text-muted-foreground truncate">{card.title}</span>

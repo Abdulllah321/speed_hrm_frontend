@@ -62,19 +62,19 @@ export async function generateNetSalesSummaryExcel(opts: {
       "Brand",
       "Division",
       "Category",
-      "Gender",
       "Silhouette",
+      "Gender",
       "SKU",
       "Barcode",
       "Description",
       "Size",
       "Color",
-      "Unit Price",
       "Sold Qty",
       "Return Qty",
       "Net Qty",
-      "Retail Sales Value",
-      "WOST Amount",
+      "Unit Price",
+      "Price WOST",
+      "Total Price WOST",
       "Discount Amount",
       "Value Excl. Sales Tax",
       "Sales Tax Amount",
@@ -90,14 +90,10 @@ export async function generateNetSalesSummaryExcel(opts: {
       const returnQty = item.returnQty || 0;
       const netQty = item.netQty !== undefined ? item.netQty : (soldQty - returnQty);
       const unitPrice = item.unitPrice || (soldQty > 0 ? item.grossAmount / soldQty : 0);
-      const taxPct = item.taxRatePercent || 18;
-      const taxDivisor = 1 + taxPct / 100;
-      const defaultWost = Math.round((unitPrice / taxDivisor) * netQty * 100) / 100;
-
-      const retailSalesVal = item.retailSalesValue !== undefined ? item.retailSalesValue : (unitPrice * netQty);
-      const wostAmount = item.wostAmount !== undefined ? item.wostAmount : defaultWost;
+      const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
+      const totalWost = item.wostAmount !== undefined ? item.wostAmount : Math.round((netQty * priceWost) * 100) / 100;
       const discountAmount = item.discountAmount || 0;
-      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((wostAmount - discountAmount) * 100) / 100;
+      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((totalWost - discountAmount) * 100) / 100;
       const taxAmount = item.taxAmount || 0;
       const valueInclSalesTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : Math.round((valueExSalesTax + taxAmount) * 100) / 100;
 
@@ -111,19 +107,19 @@ export async function generateNetSalesSummaryExcel(opts: {
         item.brandName || "-",
         item.divisionName || "-",
         item.categoryName || "-",
-        item.genderName || "-",
         item.silhouetteName || "-",
+        item.genderName || "-",
         item.sku || "-",
         item.barCode || "-",
         item.description || "-",
         item.sizeName || "-",
         item.colorName || "-",
-        unitPrice,
         soldQty,
         returnQty,
         netQty,
-        retailSalesVal,
-        wostAmount,
+        unitPrice,
+        priceWost,
+        totalWost,
         discountAmount,
         valueExSalesTax,
         taxAmount,
@@ -153,11 +149,11 @@ export async function generateNetSalesSummaryExcel(opts: {
       "",
       "",
       "",
-      "-",
       grandTotals.totalItemsSold,
       grandTotals.totalItemsReturned,
       grandTotals.netItems,
-      grandTotals.retailSalesValue,
+      "",
+      "",
       grandTotals.wostAmount,
       grandTotals.discountAmount,
       grandTotals.valueExSalesTax,
@@ -176,18 +172,18 @@ export async function generateNetSalesSummaryExcel(opts: {
       { wch: 18 },
       { wch: 18 },
       { wch: 18 },
-      { wch: 14 },
       { wch: 16 },
+      { wch: 14 },
       { wch: 16 },
       { wch: 18 },
       { wch: 28 },
       { wch: 10 },
       { wch: 12 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 10 },
       { wch: 12 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 16 },
+      { wch: 12 },
       { wch: 16 },
       { wch: 14 },
       { wch: 16 },
@@ -203,12 +199,12 @@ export async function generateNetSalesSummaryExcel(opts: {
       "SKU / Barcode",
       "Size",
       "Color",
-      "Unit Price",
       "Sold Qty",
       "Return Qty",
       "Net Qty",
-      "Retail Sales Value",
-      "WOST Amount",
+      "Unit Price",
+      "Price WOST",
+      "Total Price WOST",
       "Discount Amount",
       "Value Excl. Sales Tax",
       "Sales Tax Amount",
@@ -228,23 +224,28 @@ export async function generateNetSalesSummaryExcel(opts: {
         }
 
         const unitPrice = node.totals.unitPrice || node.unitPrice || 0;
-        const retailSalesVal = node.totals.retailSalesValue !== undefined ? node.totals.retailSalesValue : (unitPrice * node.totals.netItems);
+        const priceWost = node.totals.priceWost || (unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0);
+        const totalWost = node.totals.wostAmount;
+        const disc = node.totals.discountAmount;
+        const valEx = node.totals.valueExSalesTax;
+        const tax = node.totals.taxAmount;
+        const valIncl = node.totals.valueInclSalesTax;
 
         dataRows.push([
           displayLabel,
           node.barCode || node.sku || "-",
           node.size || "-",
           node.color || "-",
-          unitPrice > 0 ? unitPrice : "-",
           node.totals.totalItemsSold,
           node.totals.totalItemsReturned,
           node.totals.netItems,
-          retailSalesVal,
-          node.totals.wostAmount,
-          node.totals.discountAmount,
-          node.totals.valueExSalesTax,
-          node.totals.taxAmount,
-          node.totals.valueInclSalesTax,
+          unitPrice > 0 ? unitPrice : "",
+          priceWost > 0 ? priceWost : "",
+          totalWost,
+          disc,
+          valEx,
+          tax,
+          valIncl,
         ]);
 
         if (node.children && node.children.length > 0) {
@@ -260,11 +261,11 @@ export async function generateNetSalesSummaryExcel(opts: {
       "-",
       "-",
       "-",
-      "-",
       grandTotals.totalItemsSold,
       grandTotals.totalItemsReturned,
       grandTotals.netItems,
-      grandTotals.retailSalesValue,
+      "",
+      "",
       grandTotals.wostAmount,
       grandTotals.discountAmount,
       grandTotals.valueExSalesTax,
@@ -278,11 +279,11 @@ export async function generateNetSalesSummaryExcel(opts: {
       { wch: 18 },
       { wch: 10 },
       { wch: 16 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 10 },
       { wch: 12 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 16 },
+      { wch: 12 },
       { wch: 16 },
       { wch: 14 },
       { wch: 16 },
