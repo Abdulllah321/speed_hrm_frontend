@@ -259,3 +259,32 @@ export async function queueLoanRequestExport(): Promise<{ status: boolean; data?
     return { status: false, message: 'Failed to connect to server' };
   }
 }
+
+// Bulk create loan requests
+export async function bulkCreateLoanRequests(loanRequests: {
+  employeeId: string;
+  loanTypeId: string;
+  amount: number;
+  paidAmount?: number;
+  requestedDate: string;
+  repaymentStartMonthYear?: string;
+  numberOfInstallments?: number;
+  disbursementType?: string;
+  reason: string;
+  additionalDetails?: string;
+}[]): Promise<{ status: boolean; data?: LoanRequest[]; message?: string }> {
+  try {
+    const res = await authFetch(`/loan-requests`, {
+      method: "POST",
+      body: JSON.stringify({ loanRequests }),
+    });
+    if (!res.ok) {
+      const errorData = res.data || { message: "Failed to bulk create loan requests" };
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    return res.data;
+  } catch (error) {
+    console.error("Error bulk creating loan requests:", error);
+    return { status: false, message: error instanceof Error ? error.message : "Failed to bulk create loan requests" };
+  }
+}

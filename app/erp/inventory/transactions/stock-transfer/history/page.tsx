@@ -69,9 +69,15 @@ export default async function StockTransferHistoryPage({
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <History className="h-7 w-7 text-primary" />
-                                <h2 className="text-3xl font-bold tracking-tight">Stock Transfer History</h2>
+                                <h2 className="text-3xl font-bold tracking-tight">
+                                    {filters.transferType === 'OUTLET_TO_WAREHOUSE' ? 'Returns from Outlets' : 'Stock Transfer History'}
+                                </h2>
                             </div>
-                            <p className="text-muted-foreground">Monitor all warehouse to shop transfer requests, tracking status, and fulfillment details.</p>
+                            <p className="text-muted-foreground">
+                                {filters.transferType === 'OUTLET_TO_WAREHOUSE' 
+                                    ? 'Monitor and manage all stock returns sent from POS outlets to the warehouse.' 
+                                    : 'Monitor all warehouse to shop transfer requests, tracking status, and fulfillment details.'}
+                            </p>
                         </div>
                         <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
                             <Link href="/erp/inventory/transactions/stock-transfer" transitionTypes={["nav-back"]}>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import DataTable from "@/components/common/data-table";
 import { Button } from "@/components/ui/button";
-import { Printer, Plus, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Printer, Plus, FileSpreadsheet, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getColumns, type LoanRequestRow } from "./columns";
 import { queueLoanRequestExport } from "@/lib/actions/loan-request";
+import { LoanRequestBulkUploadModal } from "@/components/loan-request/loan-request-bulk-upload-modal";
 
 interface LoanRequestListProps {
   initialData?: LoanRequestRow[];
@@ -20,6 +21,7 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
   const data: LoanRequestRow[] = initialData;
   const router = useRouter();
   const { isAdmin, hasPermission } = useAuth();
+  const [uploadDialog, setUploadDialog] = useState(false);
 
   const currentColumns = getColumns(isAdmin(), hasPermission);
 
@@ -374,6 +376,10 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
               Create Loan Request
             </Button>
           </Link>
+          <Button variant="outline" className="bg-white" onClick={() => setUploadDialog(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Upload
+          </Button>
           <Button variant="secondary" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Print
@@ -402,6 +408,14 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
           tableId="loan-request-list"
         />
       </div>
+
+      <LoanRequestBulkUploadModal
+        open={uploadDialog}
+        onOpenChange={setUploadDialog}
+        onSuccess={() => {
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

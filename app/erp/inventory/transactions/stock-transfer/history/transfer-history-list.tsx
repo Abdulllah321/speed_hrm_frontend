@@ -96,13 +96,21 @@ export function StockTransferHistoryList({
             : []
     );
 
-    // Keep state in sync with initialEntries and initialMeta when props update from SSR
+    // Keep state in sync with initialEntries, initialMeta and initialFilters when props update from SSR
     React.useEffect(() => {
         setEntries(initialEntries);
         if (initialMeta) {
             setMeta(initialMeta);
         }
-    }, [initialEntries, initialMeta]);
+        if (initialFilters) {
+            setSearch(initialFilters.search || "");
+            setStatus(initialFilters.status || "all");
+            setTransferType(initialFilters.transferType || "all");
+            setWarehouseId(initialFilters.warehouseId || "all");
+            setDateFrom(initialFilters.dateFrom || "");
+            setDateTo(initialFilters.dateTo || "");
+        }
+    }, [initialEntries, initialMeta, initialFilters]);
 
     const fetchPage = async (targetPage: number, targetLimit: number, extraFilters?: any) => {
         setLoading(true);

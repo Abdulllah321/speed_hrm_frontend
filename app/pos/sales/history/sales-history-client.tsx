@@ -692,7 +692,13 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
             setShowReturnPrint(true);
         }
         try {
-            const res = await authFetch(`/pos-sales/orders/${listOrder.id}`);
+            const orderIdToFetch = listOrder.isReturnRow ? listOrder.originalOrderId : listOrder.id;
+            if (!orderIdToFetch) {
+                toast.error("Invalid order ID");
+                setIsLoadingReceipt(false);
+                return;
+            }
+            const res = await authFetch(`/pos-sales/orders/${orderIdToFetch}`);
             if (res.ok && res.data?.status) {
                 const full = res.data.data;
                 if (mode === "sales")  setSelectedOrder({ ...full, isGiftReceipt: false });
@@ -701,13 +707,18 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                     setSelectedOrder(full);
                     const typeParam = mode === "refund" ? "refund" : "return";
                     const retRes = await authFetch(`/pos-sales/orders/${listOrder.id}/return-details?type=${typeParam}`);
-                    if (retRes.ok && retRes.data?.status) setReturnDetails(retRes.data.data);
+                    if (retRes.ok && retRes.data?.status) {
+                        setReturnDetails(retRes.data.data);
+                    } else {
+                        toast.error(retRes.data?.message || "Failed to load return details");
+                    }
                 }
             } else {
-                toast.error("Failed to load order details");
+                toast.error(res.data?.message || "Failed to load parent order details");
             }
-        } catch {
-            toast.error("Failed to load order details");
+        } catch (err: any) {
+            console.error("Print fetch error:", err);
+            toast.error(err?.message || "Failed to load details due to an error");
         } finally {
             setIsLoadingReceipt(false);
         }
@@ -870,26 +881,30 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                             onClick={() => {
                                 startTransition(() => {
                                     addTransitionType("nav-forward");
-                                    router.push(`/pos/sales/order-details/${order.id}`);
+                                    router.push(`/pos/sales/order-details/${order.isReturnRow ? order.originalOrderId : order.id}`);
                                 });
                             }}>
                             <Eye className="h-3.5 w-3.5" />
                         </Button>
                         {!isHold && canPrint && (
                             <>
-                                <Button variant="ghost" size="icon"
-                                    className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
-                                    title="Print receipt"
-                                    onClick={() => openPrintDialog(order, "sales")}>
-                                    <Printer className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon"
-                                    className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
-                                    title="Print gift receipt"
-                                    onClick={() => openPrintDialog(order, "gift")}>
-                                    <Printer className="h-3.5 w-3.5" />
-                                </Button>
-                                {(order.hasReturn || order.status === "returned" || order.status === "partially_returned") && (
+                                {!order.isReturnRow && (
+                                    <>
+                                        <Button variant="ghost" size="icon"
+                                            className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
+                                            title="Print receipt"
+                                            onClick={() => openPrintDialog(order, "sales")}>
+                                            <Printer className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon"
+                                            className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
+                                            title="Print gift receipt"
+                                            onClick={() => openPrintDialog(order, "gift")}>
+                                            <Printer className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </>
+                                )}
+                                {(order.isReturnRow || order.hasReturn || order.status === "returned" || order.status === "partially_returned") && (
                                     <Button variant="ghost" size="icon"
                                         className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
                                         title="Print return slip"
