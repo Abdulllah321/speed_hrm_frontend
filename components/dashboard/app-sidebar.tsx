@@ -718,6 +718,20 @@ export function AppSidebar({
     const isChildTerminal = user?.terminal && !user.terminal.isParent;
     let finalFiltered = envFiltered;
     
+    // Filter out Online Orders for non-online locations
+    if (environment === "POS" && !user?.terminal?.location?.isOnline) {
+      finalFiltered = finalFiltered.map(item => {
+        if (item.children) {
+          const filteredChildren = item.children.filter(child => child.href !== "/pos/online-order-management");
+          return { ...item, children: filteredChildren };
+        }
+        return item;
+      }).filter(item => {
+        if (item.children && item.children.length === 0 && !item.href) return false;
+        return item.href !== "/pos/online-order-management";
+      });
+    }
+    
     const roleName = (user?.role?.name || "").toLowerCase().trim();
     const isCurrentUserManager =
       roleName.includes("manager") ||

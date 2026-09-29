@@ -2070,6 +2070,20 @@ export const menuData: MenuItem[] = [
     ],
   },
 
+  // ── POS: Online Orders ───────────────────────────────────────────────────────
+  {
+    title: "Online Orders",
+    icon: ShoppingCart,
+    environment: "POS",
+    permissions: ["pos.dashboard.view"], // Using generic pos view permission for now, change if specific is needed
+    children: [
+      {
+        title: "Order Management",
+        href: "/pos/online-order-management",
+        permissions: ["pos.dashboard.view"],
+      },
+    ],
+  },
 
   // ── POS: Terminal ────────────────────────────────────────────────────────────
   {
