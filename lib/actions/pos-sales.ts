@@ -912,3 +912,100 @@ export async function registerClientNetSalesSummaryExport(opts: {
     }
 }
 
+// ─── PRO ERP Net Sales List Actions ──────────────────────────────────────
+
+export async function queueNetSalesListPreview(opts: {
+    locationId?: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    docTypeFilter?: "ALL" | "SALES_ONLY" | "RETURNS_ONLY";
+    reportType?: "merged" | "separate";
+    search?: string;
+    paymentModeGroup?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    fbrOnly?: boolean;
+    fiscalYear?: string;
+    year?: number | string;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const res = await authFetch("/pos-sales/reports/net-sales-list/queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(opts),
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error queueing net sales list calculation" };
+    }
+}
+
+export async function getNetSalesListResult(
+    jobId: string,
+): Promise<{ status: boolean; data?: any; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-sales/reports/net-sales-list/result/${jobId}`, {
+            method: "GET",
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error fetching net sales list result" };
+    }
+}
+
+export async function queueNetSalesListReportExport(filters: {
+    locationId?: string;
+    locationIds?: string[];
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    format: "xlsx" | "pdf";
+    search?: string;
+    docTypeFilter?: "ALL" | "SALES_ONLY" | "RETURNS_ONLY";
+    reportType?: "merged" | "separate";
+    exportType?: "flat" | "hierarchical";
+    fiscalYear?: string;
+    year?: number | string;
+}) {
+    try {
+        const res = await authFetch("/pos-sales/reports/net-sales-list/export/queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("queueNetSalesListReportExport error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getNetSalesListReportExportStatus(jobId: string) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/net-sales-list/export/${jobId}/status`, { method: "GET" });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("getNetSalesListReportExportStatus error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function registerClientNetSalesListExport(opts: {
+    fileName: string;
+    fileBase64: string;
+    mimeType?: string;
+}): Promise<{ status: boolean; data?: { historyId: string; downloadUrl: string }; message?: string }> {
+    try {
+        const res = await authFetch("/pos-sales/reports/net-sales-list/export/register-client-export", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(opts),
+        });
+        return res.data || res;
+    } catch (err: any) {
+        return { status: false, message: err.message || "Network error registering net sales list export file" };
+    }
+}
+
+

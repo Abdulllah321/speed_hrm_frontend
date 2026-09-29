@@ -1890,6 +1890,11 @@ export const menuData: MenuItem[] = [
         permissions: ["pos.report.view"],
       },
       {
+        title: "Net Sales List Report",
+        href: "/pos/reports/net-sales-list",
+        permissions: ["pos.report.view"],
+      },
+      {
         title: "Gross Sales Summary",
         href: "/pos/reports/gross-sales-summary",
         permissions: ["pos.report.view"],
@@ -1978,11 +1983,7 @@ export const menuData: MenuItem[] = [
         title: "Sales & POS Analytics",
         icon: ShoppingCart,
         children: [
-          {
-            title: "Net Sales Summary",
-            href: "/erp/reports/pos/net-sales-summary",
-            permissions: ["erp.report.view"],
-          },
+        
           {
             title: "Gross Sales Summary",
             href: "/erp/reports/pos/gross-sales-summary",
@@ -1993,6 +1994,11 @@ export const menuData: MenuItem[] = [
             href: "/erp/reports/pos/gross-sales-return",
             permissions: ["erp.report.view"],
           },
+            {
+            title: "Net Sales Summary",
+            href: "/erp/reports/pos/net-sales-summary",
+            permissions: ["erp.report.view"],
+          },
           {
             title: "Sales List Report",
             href: "/erp/reports/pos/sales-list",
@@ -2001,6 +2007,11 @@ export const menuData: MenuItem[] = [
           {
             title: "Sales Return List",
             href: "/erp/reports/pos/sales-return-list",
+            permissions: ["erp.report.view"],
+          },
+          {
+            title: "Net Sales List Report",
+            href: "/erp/reports/pos/net-sales-list",
             permissions: ["erp.report.view"],
           },
           {

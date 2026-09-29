@@ -61,6 +61,7 @@ const posMenuGroups = [
             { title: "Net Sales Summary", icon: FileText, href: "/pos/reports/net-sales-summary" },
             { title: "Sales List Report", icon: FileText, href: "/pos/reports/sales-list" },
             { title: "Sales Return List", icon: RefreshCw, href: "/pos/reports/sales-return-list" },
+            { title: "Net Sales List Report", icon: TrendingUp, href: "/pos/reports/net-sales-list" },
             { title: "Gross Sales Summary", icon: FileText, href: "/pos/reports/gross-sales-summary" },
             { title: "Gross Sales Return", icon: FileText, href: "/pos/reports/gross-sales-return" },
         ],

@@ -199,7 +199,7 @@ function SaleInspectorDialog({
             </div>
 
             {/* 3. Discount */}
-            <div className="bg-amber-50/70 dark:bg-amber-950/30 p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/50 min-w-0" title={`Discount: ${discVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}>
+            <div className="bg-amber-50/70 dark:bg-amber-950/30 p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/50 min-w-0" title={`Discount (WOST): ${discWost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Retail: ${discVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}>
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[10.5px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider block truncate">
                   Discount
@@ -211,10 +211,10 @@ function SaleInspectorDialog({
                 )}
               </div>
               <p className="font-mono text-base font-black text-amber-900 dark:text-amber-200 mt-1 truncate">
-                {discVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {discWost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
-              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono block mt-0.5 truncate" title={`WOST: ${discWost.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`}>
-                WOST: {discWost.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono block mt-0.5 truncate" title={`Retail: ${discVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`}>
+                Retail: {discVal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
               </span>
             </div>
 
@@ -1817,12 +1817,12 @@ export function SalesListTable({
                         <td className="py-2 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-semibold text-slate-800 dark:text-slate-200" title={`Value Excl. Tax: ${formatVal(rowValExcl)}`}>
                           {formatVal(rowValExcl)}
                         </td>
-                        <td className="py-2 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400" title={`Discount: ${formatVal(rowDisc)} (WOST: ${rowDiscWost.toFixed(1)})`}>
+                        <td className="py-2 px-3 border-r border-slate-100 dark:border-slate-800/60 text-right font-mono font-bold text-amber-600 dark:text-amber-400" title={`Discount (WOST): ${formatVal(rowDiscWost)} | Retail: ${formatVal(rowDisc)}`}>
                           <div className="flex flex-col items-end">
-                            <span>{formatVal(rowDisc)}</span>
+                            <span>{formatVal(rowDiscWost)}</span>
                             {rowDisc > 0 ? (
                               <span className="text-[9px] text-amber-700/80 dark:text-amber-400/80 font-normal">
-                                WOST: {rowDiscWost.toFixed(1)}
+                                Retail: {formatVal(rowDisc)}
                               </span>
                             ) : null}
                           </div>
@@ -2051,12 +2051,26 @@ export function SalesListTable({
                   {grandTotals.totalItems > 0 ? formatVal(grandValExcl / grandTotals.totalItems) : "-"}
                 </td>
                 {/* 4. Value Excl. */}
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono" title={`Total Value Excl. Tax: ${formatVal(grandValExcl)}`}>
-                  {formatVal(grandValExcl)}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono" title={`Total Value Excl. Tax (WOST): ${formatVal(grandValExcl)} | Retail: ${formatVal(grandGross)}`}>
+                  <div className="flex flex-col items-end">
+                    <span>{formatVal(grandValExcl)}</span>
+                    {grandGross > 0 && (
+                      <span className="text-[9px] text-slate-500 dark:text-slate-400 font-normal">
+                        Retail: {formatVal(grandGross)}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 {/* 5. Discount */}
-                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400" title={`Total Discount: ${formatVal(grandDisc)}`}>
-                  {formatVal(grandDisc)}
+                <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-amber-600 dark:text-amber-400" title={`Total Discount (WOST): ${formatVal(grandDiscWost)} | Retail: ${formatVal(grandDisc)}`}>
+                  <div className="flex flex-col items-end">
+                    <span>{formatVal(grandDiscWost)}</span>
+                    {grandDisc > 0 && (
+                      <span className="text-[9px] text-amber-700/80 dark:text-amber-400/80 font-normal">
+                        Retail: {formatVal(grandDisc)}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 {/* 6. Amt After Disc. */}
                 <td className="py-3 px-3 border-r border-slate-200 dark:border-slate-700 text-right font-mono text-blue-700 dark:text-blue-400" title={`Total Amt After Disc: ${formatVal(grandAmtAfterDisc)}`}>
