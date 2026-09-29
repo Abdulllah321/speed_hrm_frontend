@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 import React, { useState } from "react";
 import { SalesListTotals } from "./types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -123,11 +130,11 @@ export function SalesListHeader({ totals }: SalesListHeaderProps) {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Sales: ${formatCurr(totals.grossAmount)}`}>
-                {formatCurr(totals.grossAmount)}
+              <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Sales (WOST): ${formatCurr(totals.wostAmount ?? totals.grossAmount / 1.18)} | Retail: ${formatCurr(totals.grossAmount)}`}>
+                {formatCurr(totals.wostAmount ?? totals.grossAmount / 1.18)}
               </p>
-              <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate" title={`WOST: ${formatCurr(totals.wostAmount ?? totals.grossAmount / 1.18)}`}>
-                WOST: {formatCurr(totals.wostAmount ?? totals.grossAmount / 1.18)}
+              <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate" title={`Retail Gross: ${formatCurr(totals.grossAmount)}`}>
+                Retail: {formatCurr(totals.grossAmount)}
               </p>
             </div>
             <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
@@ -155,11 +162,11 @@ export function SalesListHeader({ totals }: SalesListHeaderProps) {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <p className="text-base font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Total Discounts: ${formatCurr(totals.discountAmount)}`}>
-                {formatCurr(totals.discountAmount)}
+              <p className="text-base font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Total Discounts (WOST): ${formatCurr(totals.discountWostAmount ?? totals.discountAmount / 1.18)} | Retail: ${formatCurr(totals.discountAmount)}`}>
+                {formatCurr(totals.discountWostAmount ?? totals.discountAmount / 1.18)}
               </p>
-              <p className="text-[10px] text-amber-700/80 dark:text-amber-400 font-mono mt-0.5 truncate" title={`WOST: ${formatCurr(totals.discountWostAmount ?? totals.discountAmount / 1.18)}`}>
-                WOST: {formatCurr(totals.discountWostAmount ?? totals.discountAmount / 1.18)}
+              <p className="text-[10px] text-amber-700/80 dark:text-amber-400 font-mono mt-0.5 truncate" title={`Retail Discount: ${formatCurr(totals.discountAmount)}`}>
+                Retail: {formatCurr(totals.discountAmount)}
               </p>
             </div>
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">

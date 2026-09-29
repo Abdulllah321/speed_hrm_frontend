@@ -159,7 +159,7 @@ export default function PosStockAdjustmentsPage() {
                                                 <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                                                     <span className="flex items-center gap-1">
                                                         <CalendarDays className="h-3.5 w-3.5" />
-                                                        {format(new Date(adj.createdAt), "dd MMM yyyy HH:mm")}
+                                                        {format(new Date(adj.adjustmentDate || adj.createdAt), "dd MMM yyyy HH:mm")}
                                                     </span>
                                                     <span>•</span>
                                                     <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-bold">

@@ -54,18 +54,21 @@ const STATUS_META: Record<string, { label: string; badgeClass: string }> = {
 
 const columns: ColumnDef<StockAdjustmentRow>[] = [
     {
-        accessorKey: "createdAt",
+        accessorKey: "adjustmentDate",
         header: "Date",
-        cell: ({ row }) => (
-            <div className="flex flex-col">
-                <span className="text-sm font-medium whitespace-nowrap">
-                    {format(new Date(row.original.createdAt), "dd MMM yyyy")}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                    {format(new Date(row.original.createdAt), "HH:mm")}
-                </span>
-            </div>
-        ),
+        cell: ({ row }) => {
+            const dateVal = row.original.adjustmentDate || row.original.createdAt;
+            return (
+                <div className="flex flex-col">
+                    <span className="text-sm font-medium whitespace-nowrap">
+                        {dateVal ? format(new Date(dateVal), "dd MMM yyyy") : "-"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        {dateVal ? format(new Date(dateVal), "HH:mm") : ""}
+                    </span>
+                </div>
+            );
+        },
     },
     {
         accessorKey: "adjustmentNo",
