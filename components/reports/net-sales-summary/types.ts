@@ -8,6 +8,7 @@ export interface NetSalesSummaryTotals {
   retailSalesValue: number;
   wostAmount: number;
   discountAmount: number;
+  discountWostAmount?: number;
   valueExSalesTax: number;
   taxAmount: number;
   valueInclSalesTax: number;
@@ -43,6 +44,7 @@ export interface NetSalesSummaryLineItem {
   retailSalesValue: number;
   wostAmount: number;
   discountAmount: number;
+  discountWostAmount?: number;
   valueExSalesTax: number;
   taxAmount: number;
   valueInclSalesTax: number;
@@ -83,6 +85,7 @@ export interface NetSalesSummaryFlatRecord {
   grossAmount: number;
   returnAmount: number;
   discountAmount: number;
+  discountWostAmount?: number;
   valueExSalesTax?: number;
   taxAmount: number;
   valueInclSalesTax?: number;

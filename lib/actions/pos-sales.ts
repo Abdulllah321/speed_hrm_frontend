@@ -206,6 +206,8 @@ export async function queueNetSalesSummaryReportExport(filters: {
     showSilhouette?: boolean;
     showArticle?: boolean;
     showVariant?: boolean;
+    search?: string;
+    exportType?: "flat" | "hierarchical";
 }) {
     try {
         const res = await authFetch(`/pos-sales/reports/net-sales-summary/export/queue`, {
@@ -230,6 +232,7 @@ export async function getNetSalesSummaryReportExportStatus(jobId: string) {
     }
 }
 export const getNetSalesSummaryExportJobStatus = getNetSalesSummaryReportExportStatus;
+export const getNetSalesExportStatus = getNetSalesSummaryReportExportStatus;
 
 
 export async function queuePosSalesActivityExport(filters?: {
@@ -860,6 +863,7 @@ export async function getGrossSalesSummaryResult(
 
 export async function queueNetSalesSummaryPreview(opts: {
     locationId?: string;
+    locationIds?: string[];
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
@@ -869,6 +873,8 @@ export async function queueNetSalesSummaryPreview(opts: {
     minAmount?: number;
     maxAmount?: number;
     fbrOnly?: boolean;
+    fiscalYear?: string;
+    year?: string | number;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const res = await authFetch("/pos-sales/reports/net-sales-summary/queue", {

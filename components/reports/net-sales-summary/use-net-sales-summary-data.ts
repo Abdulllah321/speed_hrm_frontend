@@ -11,12 +11,14 @@ function createEmptyTotals(): NetSalesSummaryTotals {
   return {
     orderCount: 0,
     unitPrice: 0,
+    priceWost: 0,
     totalItemsSold: 0,
     totalItemsReturned: 0,
     netItems: 0,
     retailSalesValue: 0,
     wostAmount: 0,
     discountAmount: 0,
+    discountWostAmount: 0,
     valueExSalesTax: 0,
     taxAmount: 0,
     valueInclSalesTax: 0,
@@ -31,17 +33,18 @@ function addTotals(target: NetSalesSummaryTotals, source: NetSalesSummaryTotals)
   target.totalItemsSold += source.totalItemsSold;
   target.totalItemsReturned += source.totalItemsReturned;
   target.netItems += source.netItems;
-  target.retailSalesValue += source.retailSalesValue;
-  target.wostAmount += source.wostAmount;
-  target.discountAmount += source.discountAmount;
-  target.valueExSalesTax += source.valueExSalesTax;
-  target.taxAmount += source.taxAmount;
-  target.valueInclSalesTax += source.valueInclSalesTax;
+  target.retailSalesValue = Number((target.retailSalesValue + source.retailSalesValue).toFixed(2));
+  target.wostAmount = Number((target.wostAmount + source.wostAmount).toFixed(2));
+  target.discountAmount = Number((target.discountAmount + source.discountAmount).toFixed(2));
+  target.discountWostAmount = Number(((target.discountWostAmount || 0) + (source.discountWostAmount || 0)).toFixed(2));
+  target.valueExSalesTax = Number((target.valueExSalesTax + source.valueExSalesTax).toFixed(2));
+  target.taxAmount = Number((target.taxAmount + source.taxAmount).toFixed(2));
+  target.valueInclSalesTax = Number((target.valueInclSalesTax + source.valueInclSalesTax).toFixed(2));
 
   // Legacy field aliases
-  target.grossSalesAmount += source.grossSalesAmount;
-  target.returnAmount += source.returnAmount;
-  target.netSalesAmount += source.netSalesAmount;
+  target.grossSalesAmount = Number((target.grossSalesAmount + source.grossSalesAmount).toFixed(2));
+  target.returnAmount = Number((target.returnAmount + source.returnAmount).toFixed(2));
+  target.netSalesAmount = Number((target.netSalesAmount + source.netSalesAmount).toFixed(2));
 }
 
 export interface UseNetSalesSummaryDataOptions {
@@ -96,6 +99,30 @@ export function useNetSalesSummaryData(
 
   const rawItems = reportData?.flatItems || [];
 
+  // Check if sub-date range differs from loaded period
+  const hasSubDateFilter = useMemo(() => {
+    if (!subDateRange?.from || !subDateRange?.to || !reportData?.dateRange) return false;
+    const repFrom = new Date(reportData.dateRange.startDate).getTime();
+    const repTo = new Date(reportData.dateRange.endDate).getTime();
+    const subFrom = new Date(subDateRange.from).getTime();
+    const subTo = new Date(subDateRange.to).getTime();
+    return subFrom - repFrom > 86400000 || repTo - subTo > 86400000;
+  }, [subDateRange?.from, subDateRange?.to, reportData?.dateRange]);
+
+  const hasActiveFilters = useMemo(() => {
+    return Boolean(
+      effectiveSearchQuery.trim() ||
+      (selectedLocationIds && selectedLocationIds.length > 0) ||
+      (selectedCashierId && selectedCashierId !== "all") ||
+      hasSubDateFilter
+    );
+  }, [
+    effectiveSearchQuery,
+    selectedLocationIds,
+    selectedCashierId,
+    hasSubDateFilter,
+  ]);
+
   const { treeData, grandTotals, filteredFlatItems } = useMemo(() => {
     const q = effectiveSearchQuery.toLowerCase().trim();
 
@@ -135,7 +162,7 @@ export function useNetSalesSummaryData(
       }
 
       // Sub-date filter within loaded period
-      if (subDateRange?.from && subDateRange?.to && item.createdAt) {
+      if (hasSubDateFilter && subDateRange?.from && subDateRange?.to && item.createdAt) {
         const itemDate = new Date(item.createdAt).getTime();
         const fromTime = new Date(subDateRange.from).setHours(0, 0, 0, 0);
         const toTime = new Date(subDateRange.to).setHours(23, 59, 59, 999);
@@ -201,12 +228,15 @@ export function useNetSalesSummaryData(
       const retailSalesVal = item.retailSalesValue !== undefined ? item.retailSalesValue : (unitPrice * netQty);
       const wostAmt = item.wostAmount !== undefined ? item.wostAmount : Math.round((netQty * priceWost) * 100) / 100;
       const discAmt = item.discountAmount || 0;
-      const valExTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((wostAmt - discAmt) * 100) / 100;
+      const discWostAmt = item.discountWostAmount !== undefined ? item.discountWostAmount : Math.round((discAmt / 1.18) * 100) / 100;
+      const valExTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((wostAmt - discWostAmt) * 100) / 100;
       const taxAmt = item.taxAmount || 0;
       const valInclTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : Math.round((valExTax + taxAmt) * 100) / 100;
 
+      const isReturn = returnQty > 0 && soldQty === 0;
+
       const itemTotals: NetSalesSummaryTotals = {
-        orderCount: 1,
+        orderCount: isReturn ? 0 : 1,
         unitPrice,
         priceWost,
         totalItemsSold: soldQty,
@@ -215,11 +245,12 @@ export function useNetSalesSummaryData(
         retailSalesValue: retailSalesVal,
         wostAmount: wostAmt,
         discountAmount: discAmt,
+        discountWostAmount: discWostAmt,
         valueExSalesTax: valExTax,
         taxAmount: taxAmt,
         valueInclSalesTax: valInclTax,
-        grossSalesAmount: item.grossAmount,
-        returnAmount: item.returnAmount,
+        grossSalesAmount: item.grossAmount || 0,
+        returnAmount: item.returnAmount || 0,
         netSalesAmount: valInclTax,
       };
 
@@ -238,6 +269,7 @@ export function useNetSalesSummaryData(
           nodeVal = item.docDate ? item.docDate.split("T")[0] : "No Date";
         } else if (levelName === "document") {
           nodeVal = item.docNo || "General Transaction";
+          extraFields.sku = item.docNo;
         } else if (levelName === "salesPerson") {
           nodeVal = item.salesPerson || "Default Cashier";
         } else if (levelName === "taxRate") {
@@ -299,8 +331,13 @@ export function useNetSalesSummaryData(
       addTotals(calculatedGrandTotals, node.totals);
     }
 
-    return { treeData: root, grandTotals: calculatedGrandTotals, filteredFlatItems: filtered };
-  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange]);
+    const effectiveGrandTotals =
+      !hasActiveFilters && reportData?.grandTotals && reportData.grandTotals.totalItemsSold > 0
+        ? reportData.grandTotals
+        : calculatedGrandTotals;
+
+    return { treeData: root, grandTotals: effectiveGrandTotals, filteredFlatItems: filtered };
+  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange, hasActiveFilters, hasSubDateFilter, reportData?.grandTotals]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));

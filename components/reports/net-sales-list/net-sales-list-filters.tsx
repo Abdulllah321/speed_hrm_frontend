@@ -91,9 +91,11 @@ export function NetSalesListFilters({
         {/* Date Range Picker */}
         <div className="w-full sm:w-auto min-w-[240px]">
           <DateRangePicker
-            date={dateRange}
-            onDateChange={onDateRangeChange}
-            className="w-full"
+            initialDateFrom={dateRange?.from}
+            initialDateTo={dateRange?.to}
+            onUpdate={({ range }: { range: DateRange }) => {
+              if (range) onDateRangeChange(range);
+            }}
           />
         </div>
 
@@ -165,11 +167,14 @@ export function NetSalesListFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Cashiers</SelectItem>
-                {cashiers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name || c.email}
-                  </SelectItem>
-                ))}
+                {cashiers.map((c) => {
+                  const fullName = `${c.firstName || ""} ${c.lastName || ""}`.trim() || c.email;
+                  return (
+                    <SelectItem key={c.id} value={c.id}>
+                      {fullName}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

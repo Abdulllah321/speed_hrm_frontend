@@ -76,7 +76,8 @@ export async function generateGrossSalesReturnExcel(opts: {
       const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
       const totalWost = item.wostAmount || Math.round((qty * priceWost) * 100) / 100;
       const discAmt = item.discountAmount || 0;
-      const valExTax = Math.round((totalWost - discAmt) * 100) / 100;
+      const discWostAmt = item.discountWostAmount !== undefined ? item.discountWostAmount : Math.round((discAmt / 1.18) * 100) / 100;
+      const valExTax = item.amountAfterDiscount !== undefined ? item.amountAfterDiscount : Math.max(0, Math.round((totalWost - discWostAmt) * 100) / 100);
       const taxAmt = item.taxAmount || 0;
       const valInclTax = item.subTotal || Math.round((valExTax + taxAmt) * 100) / 100;
 
@@ -143,7 +144,7 @@ export async function generateGrossSalesReturnExcel(opts: {
       "",
       grandTotals.wostAmount,
       grandTotals.discountAmount,
-      grandTotals.valueExSalesTax || (grandTotals.wostAmount - grandTotals.discountAmount),
+      grandTotals.valueExSalesTax || grandTotals.amountAfterDiscount || Math.max(0, Math.round((grandTotals.wostAmount - (grandTotals.discountWostAmount || grandTotals.discountAmount / 1.18)) * 100) / 100),
       grandTotals.taxAmount,
       grandTotals.valueInclSalesTax || grandTotals.netAmount,
     ]);
@@ -200,7 +201,7 @@ export async function generateGrossSalesReturnExcel(opts: {
 
     const dataRows: any[][] = [headers];
 
-    function traverseTree(nodes: GrossSalesReturnTreeNode[], depth: number = 0) {
+    const traverseTree = (nodes: GrossSalesReturnTreeNode[], depth: number = 0) => {
       for (const node of nodes) {
         const indent = "  ".repeat(depth);
         let displayLabel = `${indent}${node.value}`;
@@ -214,7 +215,7 @@ export async function generateGrossSalesReturnExcel(opts: {
         const pWost = node.totals.priceWost || (uPrice > 0 ? Math.round((uPrice / 1.18) * 100) / 100 : 0);
         const totWost = node.totals.wostAmount;
         const disc = node.totals.discountAmount;
-        const valEx = node.totals.valueExSalesTax || Math.round((totWost - disc) * 100) / 100;
+        const valEx = node.totals.valueExSalesTax || node.totals.amountAfterDiscount || Math.max(0, Math.round((totWost - (node.totals.discountWostAmount || disc / 1.18)) * 100) / 100);
         const tax = node.totals.taxAmount;
         const valIncl = node.totals.valueInclSalesTax || node.totals.netAmount || Math.round((valEx + tax) * 100) / 100;
 
@@ -251,7 +252,7 @@ export async function generateGrossSalesReturnExcel(opts: {
       "",
       grandTotals.wostAmount,
       grandTotals.discountAmount,
-      grandTotals.valueExSalesTax || (grandTotals.wostAmount - grandTotals.discountAmount),
+      grandTotals.valueExSalesTax || grandTotals.amountAfterDiscount || Math.max(0, Math.round((grandTotals.wostAmount - (grandTotals.discountWostAmount || grandTotals.discountAmount / 1.18)) * 100) / 100),
       grandTotals.taxAmount,
       grandTotals.valueInclSalesTax || grandTotals.netAmount,
     ]);

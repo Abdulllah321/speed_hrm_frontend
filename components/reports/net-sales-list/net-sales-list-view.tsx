@@ -69,8 +69,8 @@ export function NetSalesListView({ isPosLevel = false }: NetSalesListViewProps) 
       }
     });
     getUsers({ role: "CASHIER" } as any).then((res) => {
-      if (mounted && res?.users) {
-        setCashiers(res.users);
+      if (mounted && res?.status && Array.isArray(res.data)) {
+        setCashiers(res.data);
       }
     });
     return () => {
