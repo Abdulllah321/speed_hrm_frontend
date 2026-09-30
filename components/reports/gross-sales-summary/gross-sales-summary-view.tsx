@@ -394,6 +394,12 @@ export function GrossSalesSummaryView({
           showSilhouette: !!groupingLevels.silhouette,
           showArticle: !!groupingLevels.article,
           showVariant: !!groupingLevels.variant,
+          showLocation: !!groupingLevels.location,
+          showMonth: !!groupingLevels.month,
+          showDate: !!groupingLevels.date,
+          showDocument: !!groupingLevels.document,
+          showSalesPerson: !!groupingLevels.salesPerson,
+          showTaxRate: !!groupingLevels.taxRate,
         });
 
         if (!queueRes.status || !queueRes.data?.jobId) {

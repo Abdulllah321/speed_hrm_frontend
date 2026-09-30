@@ -465,6 +465,12 @@ export async function queueGrossSalesSummaryReportExport(filters: {
     showArticle?: boolean;
     showVariant?: boolean;
     showInvoices?: boolean;
+    showLocation?: boolean;
+    showMonth?: boolean;
+    showDate?: boolean;
+    showDocument?: boolean;
+    showSalesPerson?: boolean;
+    showTaxRate?: boolean;
 }) {
     try {
         const res = await authFetch(`/pos-sales/reports/gross-sales-summary/export/queue`, {
