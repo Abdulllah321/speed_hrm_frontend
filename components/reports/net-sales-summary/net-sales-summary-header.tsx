@@ -159,6 +159,11 @@ export function NetSalesSummaryHeader({ totals }: NetSalesSummaryHeaderProps) {
             <p className="text-lg font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Discounts Applied: ${formatCurr(totals.discountAmount)}`}>
               {formatCurr(totals.discountAmount)}
             </p>
+            {totals.discountWostAmount !== undefined && totals.discountWostAmount !== 0 && (
+              <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 font-mono mt-0.5 truncate" title={`WOST Discount: ${formatCurr(totals.discountWostAmount)}`}>
+                WOST: {formatCurr(totals.discountWostAmount)}
+              </p>
+            )}
           </div>
           <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
             <Percent className="h-5 w-5" />

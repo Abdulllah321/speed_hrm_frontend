@@ -103,6 +103,11 @@ export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) 
             <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Return Amount: ${formatCurr(totals.grossAmount)}`}>
               {formatCurr(totals.grossAmount)}
             </p>
+            {totals.wostAmount > 0 && (
+              <p className="text-[10px] text-slate-500 font-medium font-mono truncate" title={`WOST (Excl. Tax): ${formatCurr(totals.wostAmount)}`}>
+                WOST: {formatCurr(totals.wostAmount)}
+              </p>
+            )}
           </div>
           <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
             <DollarSign className="h-4 w-4" />
@@ -132,6 +137,11 @@ export function GrossSalesReturnHeader({ totals }: GrossSalesReturnHeaderProps) 
             <p className="text-base font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Return Discounts: ${formatCurr(totals.discountAmount)}`}>
               {formatCurr(totals.discountAmount)}
             </p>
+            {(totals.discountWostAmount || 0) > 0 && (
+              <p className="text-[10px] text-amber-700/80 dark:text-amber-300/80 font-medium font-mono truncate" title={`Discount WOST: ${formatCurr(totals.discountWostAmount || 0)}`}>
+                WOST: {formatCurr(totals.discountWostAmount || 0)}
+              </p>
+            )}
           </div>
           <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
             <Percent className="h-4 w-4" />

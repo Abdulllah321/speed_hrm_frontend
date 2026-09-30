@@ -6,6 +6,8 @@ export interface GrossSalesSummaryTotals {
   grossAmount: number;
   wostAmount: number;
   discountAmount: number;
+  discountWostAmount?: number;
+  amountAfterDiscount?: number;
   valueExSalesTax: number;
   taxAmount: number;
   valueInclSalesTax: number;
@@ -28,6 +30,7 @@ export interface GrossSalesSummaryLineItem {
   unitPrice: number;
   wostAmount: number;
   discountAmount: number;
+  discountWostAmount?: number;
   taxAmount: number;
   subTotal: number;
 }
@@ -53,6 +56,7 @@ export interface GrossSalesSummaryFlatRecord {
   unitPrice: number;
   wostAmount: number;
   discountAmount: number;
+  discountWostAmount?: number;
   taxAmount: number;
   subTotal: number;
 }

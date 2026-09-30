@@ -93,7 +93,8 @@ export async function generateNetSalesSummaryExcel(opts: {
       const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
       const totalWost = item.wostAmount !== undefined ? item.wostAmount : Math.round((netQty * priceWost) * 100) / 100;
       const discountAmount = item.discountAmount || 0;
-      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((totalWost - discountAmount) * 100) / 100;
+      const discountWostAmount = item.discountWostAmount !== undefined ? item.discountWostAmount : Math.round((discountAmount / 1.18) * 100) / 100;
+      const valueExSalesTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((totalWost - discountWostAmount) * 100) / 100;
       const taxAmount = item.taxAmount || 0;
       const valueInclSalesTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : Math.round((valueExSalesTax + taxAmount) * 100) / 100;
 
@@ -213,7 +214,7 @@ export async function generateNetSalesSummaryExcel(opts: {
 
     const dataRows: any[][] = [headers];
 
-    function traverseTree(nodes: NetSalesSummaryTreeNode[], depth: number = 0) {
+    const traverseTree = (nodes: NetSalesSummaryTreeNode[], depth: number = 0) => {
       for (const node of nodes) {
         const indent = "  ".repeat(depth);
         let displayLabel = `${indent}${node.value}`;

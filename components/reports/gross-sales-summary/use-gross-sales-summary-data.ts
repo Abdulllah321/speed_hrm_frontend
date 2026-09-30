@@ -16,6 +16,8 @@ function createEmptyTotals(): GrossSalesSummaryTotals {
     grossAmount: 0,
     wostAmount: 0,
     discountAmount: 0,
+    discountWostAmount: 0,
+    amountAfterDiscount: 0,
     valueExSalesTax: 0,
     taxAmount: 0,
     valueInclSalesTax: 0,
@@ -29,6 +31,8 @@ function addTotals(target: GrossSalesSummaryTotals, source: GrossSalesSummaryTot
   target.grossAmount += source.grossAmount;
   target.wostAmount += source.wostAmount;
   target.discountAmount += source.discountAmount;
+  target.discountWostAmount = (target.discountWostAmount || 0) + (source.discountWostAmount || 0);
+  target.amountAfterDiscount = (target.amountAfterDiscount || 0) + (source.amountAfterDiscount || 0);
   target.valueExSalesTax += source.valueExSalesTax;
   target.taxAmount += source.taxAmount;
   target.valueInclSalesTax += source.valueInclSalesTax;
@@ -193,7 +197,8 @@ export function useGrossSalesSummaryData(
       const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
       const wostAmt = item.wostAmount || Math.round((grossAmt / 1.18) * 100) / 100;
       const discountAmt = item.discountAmount || 0;
-      const valExTax = Math.round((wostAmt - discountAmt) * 100) / 100;
+      const discountWostAmt = item.discountWostAmount !== undefined ? item.discountWostAmount : Math.round((discountAmt / 1.18) * 100) / 100;
+      const valExTax = Math.max(0, Math.round((wostAmt - discountWostAmt) * 100) / 100);
       const taxAmt = item.taxAmount || 0;
       const valInclTax = item.subTotal || Math.round((valExTax + taxAmt) * 100) / 100;
 
@@ -205,6 +210,8 @@ export function useGrossSalesSummaryData(
         grossAmount: grossAmt,
         wostAmount: wostAmt,
         discountAmount: discountAmt,
+        discountWostAmount: discountWostAmt,
+        amountAfterDiscount: valExTax,
         valueExSalesTax: valExTax,
         taxAmount: taxAmt,
         valueInclSalesTax: valInclTax,
@@ -280,8 +287,18 @@ export function useGrossSalesSummaryData(
       addTotals(calculatedGrandTotals, node.totals);
     }
 
-    return { treeData: root, grandTotals: calculatedGrandTotals, filteredFlatItems: filtered };
-  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange, hasActiveFilters, hasSubDateFilter]);
+    const effectiveGrandTotals: GrossSalesSummaryTotals = !hasActiveFilters && reportData?.grandTotals
+      ? {
+          ...reportData.grandTotals,
+          discountWostAmount: reportData.grandTotals.discountWostAmount !== undefined ? reportData.grandTotals.discountWostAmount : Math.round((reportData.grandTotals.discountAmount / 1.18) * 100) / 100,
+          amountAfterDiscount: reportData.grandTotals.amountAfterDiscount !== undefined ? reportData.grandTotals.amountAfterDiscount : Math.max(0, Math.round((reportData.grandTotals.wostAmount - (reportData.grandTotals.discountWostAmount || reportData.grandTotals.discountAmount / 1.18)) * 100) / 100),
+          valueExSalesTax: reportData.grandTotals.valueExSalesTax || reportData.grandTotals.amountAfterDiscount || Math.max(0, Math.round((reportData.grandTotals.wostAmount - (reportData.grandTotals.discountWostAmount || reportData.grandTotals.discountAmount / 1.18)) * 100) / 100),
+          valueInclSalesTax: reportData.grandTotals.valueInclSalesTax || reportData.grandTotals.netAmount,
+        }
+      : calculatedGrandTotals;
+
+    return { treeData: root, grandTotals: effectiveGrandTotals, filteredFlatItems: filtered };
+  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange, hasActiveFilters, hasSubDateFilter, reportData?.grandTotals]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));

@@ -34,7 +34,7 @@ export interface User {
   };
 }
 
-export async function getUsers(): Promise<{ status: boolean; data: User[]; message?: string }> {
+export async function getUsers(p0?: any): Promise<{ status: boolean; data: User[]; message?: string }> {
   try {
     const res = await authFetch(`/auth/users?limit=1000`, {});
     const payload = res.data;

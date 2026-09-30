@@ -67,7 +67,8 @@ export async function generateGrossSalesSummaryExcel(opts: {
       const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
       const totalWost = item.wostAmount || Math.round((qty * priceWost) * 100) / 100;
       const discAmt = item.discountAmount || 0;
-      const valExTax = Math.round((totalWost - discAmt) * 100) / 100;
+      const discWost = item.discountWostAmount !== undefined ? item.discountWostAmount : Math.round((discAmt / 1.18) * 100) / 100;
+      const valExTax = Math.max(0, Math.round((totalWost - discWost) * 100) / 100);
       const taxAmt = item.taxAmount || 0;
       const valInclTax = item.subTotal || Math.round((valExTax + taxAmt) * 100) / 100;
 
@@ -120,7 +121,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "",
       grandTotals.wostAmount,
       grandTotals.discountAmount,
-      grandTotals.valueExSalesTax || (grandTotals.wostAmount - grandTotals.discountAmount),
+      grandTotals.valueExSalesTax || grandTotals.amountAfterDiscount || Math.max(0, Math.round((grandTotals.wostAmount - (grandTotals.discountWostAmount || grandTotals.discountAmount / 1.18)) * 100) / 100),
       grandTotals.taxAmount,
       grandTotals.valueInclSalesTax || grandTotals.netAmount,
     ]);
@@ -221,7 +222,7 @@ export async function generateGrossSalesSummaryExcel(opts: {
       "",
       grandTotals.wostAmount,
       grandTotals.discountAmount,
-      grandTotals.valueExSalesTax || (grandTotals.wostAmount - grandTotals.discountAmount),
+      grandTotals.valueExSalesTax || grandTotals.amountAfterDiscount || Math.max(0, Math.round((grandTotals.wostAmount - (grandTotals.discountWostAmount || grandTotals.discountAmount / 1.18)) * 100) / 100),
       grandTotals.taxAmount,
       grandTotals.valueInclSalesTax || grandTotals.netAmount,
     ]);

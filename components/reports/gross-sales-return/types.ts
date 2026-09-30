@@ -6,6 +6,8 @@ export interface GrossSalesReturnTotals {
   grossAmount: number;
   wostAmount: number;
   discountAmount: number;
+  discountWostAmount?: number;
+  amountAfterDiscount?: number;
   valueExSalesTax: number;
   taxAmount: number;
   valueInclSalesTax: number;
@@ -33,6 +35,8 @@ export interface GrossSalesReturnLineItem {
   unitPrice: number;
   wostAmount: number;
   discountAmount: number;
+  discountWostAmount?: number;
+  amountAfterDiscount?: number;
   taxAmount: number;
   subTotal: number;
 }
@@ -61,6 +65,8 @@ export interface GrossSalesReturnLocationNode {
 }
 
 export interface GrossSalesReturnFlatRecord {
+  locationId?: string;
+  cashierUserId?: string;
   locationName: string;
   returnNumber: string;
   orderNumber: string;
@@ -85,11 +91,14 @@ export interface GrossSalesReturnFlatRecord {
   unitPrice: number;
   wostAmount: number;
   discountAmount: number;
+  discountWostAmount?: number;
+  amountAfterDiscount?: number;
   taxAmount: number;
   subTotal: number;
   returnGrossAmount: number;
   returnWostAmount?: number;
   returnDiscountAmount: number;
+  returnDiscountWostAmount?: number;
   returnNetAmount: number;
   returnTaxAmount: number;
 }

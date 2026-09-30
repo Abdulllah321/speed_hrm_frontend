@@ -32,7 +32,8 @@ export async function generateNetSalesSummaryPdf(opts: {
         const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
         const totalWost = item.wostAmount !== undefined ? item.wostAmount : Math.round((netQty * priceWost) * 100) / 100;
         const discAmt = item.discountAmount || 0;
-        const valExTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((totalWost - discAmt) * 100) / 100;
+        const discWostAmt = item.discountWostAmount !== undefined ? item.discountWostAmount : Math.round((discAmt / 1.18) * 100) / 100;
+        const valExTax = item.valueExSalesTax !== undefined ? item.valueExSalesTax : Math.round((totalWost - discWostAmt) * 100) / 100;
         const taxAmt = item.taxAmount || 0;
         const valInclTax = item.valueInclSalesTax !== undefined ? item.valueInclSalesTax : Math.round((valExTax + taxAmt) * 100) / 100;
 

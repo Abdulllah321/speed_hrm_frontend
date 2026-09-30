@@ -35,7 +35,8 @@ export async function generateGrossSalesSummaryPdf(opts: {
         const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
         const totalWost = item.wostAmount || Math.round((qty * priceWost) * 100) / 100;
         const discAmt = item.discountAmount || 0;
-        const valExTax = Math.round((totalWost - discAmt) * 100) / 100;
+        const discWost = item.discountWostAmount !== undefined ? item.discountWostAmount : Math.round((discAmt / 1.18) * 100) / 100;
+        const valExTax = Math.max(0, Math.round((totalWost - discWost) * 100) / 100);
         const taxAmt = item.taxAmount || 0;
         const valInclTax = item.subTotal || Math.round((valExTax + taxAmt) * 100) / 100;
 
@@ -155,7 +156,7 @@ export async function generateGrossSalesSummaryPdf(opts: {
               <td style="text-align: right;">-</td>
               <td style="text-align: right; color: #4338ca;">Rs. ${grandTotals.wostAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               <td style="text-align: right; color: #d97706;">Rs. ${grandTotals.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-              <td style="text-align: right; color: #0284c7;">Rs. ${(grandTotals.valueExSalesTax || (grandTotals.wostAmount - grandTotals.discountAmount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td style="text-align: right; color: #0284c7;">Rs. ${(grandTotals.valueExSalesTax || grandTotals.amountAfterDiscount || Math.max(0, Math.round((grandTotals.wostAmount - (grandTotals.discountWostAmount || grandTotals.discountAmount / 1.18)) * 100) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               <td style="text-align: right;">Rs. ${grandTotals.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               <td style="text-align: right; color: #059669;">Rs. ${(grandTotals.valueInclSalesTax || grandTotals.netAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
             </tr>

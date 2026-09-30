@@ -16,6 +16,8 @@ function createEmptyTotals(): GrossSalesReturnTotals {
     grossAmount: 0,
     wostAmount: 0,
     discountAmount: 0,
+    discountWostAmount: 0,
+    amountAfterDiscount: 0,
     valueExSalesTax: 0,
     taxAmount: 0,
     valueInclSalesTax: 0,
@@ -32,6 +34,8 @@ function addTotals(target: GrossSalesReturnTotals, source: GrossSalesReturnTotal
   target.grossAmount += source.grossAmount;
   target.wostAmount += source.wostAmount;
   target.discountAmount += source.discountAmount;
+  target.discountWostAmount = (target.discountWostAmount || 0) + (source.discountWostAmount || 0);
+  target.amountAfterDiscount = (target.amountAfterDiscount || 0) + (source.amountAfterDiscount || 0);
   target.valueExSalesTax += source.valueExSalesTax;
   target.taxAmount += source.taxAmount;
   target.valueInclSalesTax += source.valueInclSalesTax;
@@ -134,13 +138,14 @@ export function useGrossSalesReturnData(
       // Outlet / Location filter
       if (selectedLocationIds.length > 0) {
         const matchesLoc =
-          selectedLocationIds.some((id) => item.locationName?.toLowerCase().includes(id.toLowerCase()));
+          selectedLocationIds.some((id) => (item.locationId && item.locationId === id) || item.locationName?.toLowerCase().includes(id.toLowerCase()));
         if (!matchesLoc) return false;
       }
 
       // Cashier filter
-      if (selectedCashierId && selectedCashierId !== "all" && item.cashierName && !item.cashierName.toLowerCase().includes(selectedCashierId.toLowerCase())) {
-        return false;
+      if (selectedCashierId && selectedCashierId !== "all") {
+        const matchesCashier = (item.cashierUserId && item.cashierUserId === selectedCashierId) || (item.cashierName && item.cashierName.toLowerCase().includes(selectedCashierId.toLowerCase()));
+        if (!matchesCashier) return false;
       }
 
       // Payment Mode filter
@@ -218,7 +223,8 @@ export function useGrossSalesReturnData(
       const priceWost = unitPrice > 0 ? Math.round((unitPrice / 1.18) * 100) / 100 : 0;
       const wostAmt = item.wostAmount || Math.round((grossAmt / 1.18) * 100) / 100;
       const discountAmt = item.discountAmount || 0;
-      const valExTax = Math.round((wostAmt - discountAmt) * 100) / 100;
+      const discountWostAmt = item.discountWostAmount !== undefined ? item.discountWostAmount : Math.round((discountAmt / 1.18) * 100) / 100;
+      const valExTax = item.amountAfterDiscount !== undefined ? item.amountAfterDiscount : Math.max(0, Math.round((wostAmt - discountWostAmt) * 100) / 100);
       const taxAmt = item.taxAmount || 0;
       const valInclTax = item.subTotal || Math.round((valExTax + taxAmt) * 100) / 100;
 
@@ -230,6 +236,8 @@ export function useGrossSalesReturnData(
         grossAmount: grossAmt,
         wostAmount: wostAmt,
         discountAmount: discountAmt,
+        discountWostAmount: discountWostAmt,
+        amountAfterDiscount: valExTax,
         valueExSalesTax: valExTax,
         taxAmount: taxAmt,
         valueInclSalesTax: valInclTax,
@@ -324,8 +332,18 @@ export function useGrossSalesReturnData(
       addTotals(calculatedGrandTotals, node.totals);
     }
 
-    return { treeData: root, grandTotals: calculatedGrandTotals, filteredFlatItems: filtered };
-  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, paymentModeFilter, fbrOnlyFilter, subDateRange, hasActiveFilters, hasSubDateFilter]);
+    const effectiveGrandTotals: GrossSalesReturnTotals = !hasActiveFilters && reportData?.grandTotals
+      ? {
+          ...reportData.grandTotals,
+          discountWostAmount: reportData.grandTotals.discountWostAmount !== undefined ? reportData.grandTotals.discountWostAmount : Math.round((reportData.grandTotals.discountAmount / 1.18) * 100) / 100,
+          amountAfterDiscount: reportData.grandTotals.amountAfterDiscount !== undefined ? reportData.grandTotals.amountAfterDiscount : Math.max(0, Math.round((reportData.grandTotals.wostAmount - (reportData.grandTotals.discountWostAmount || reportData.grandTotals.discountAmount / 1.18)) * 100) / 100),
+          valueExSalesTax: reportData.grandTotals.valueExSalesTax || reportData.grandTotals.amountAfterDiscount || Math.max(0, Math.round((reportData.grandTotals.wostAmount - (reportData.grandTotals.discountWostAmount || reportData.grandTotals.discountAmount / 1.18)) * 100) / 100),
+          valueInclSalesTax: reportData.grandTotals.valueInclSalesTax || reportData.grandTotals.netAmount,
+        }
+      : calculatedGrandTotals;
+
+    return { treeData: root, grandTotals: effectiveGrandTotals, filteredFlatItems: filtered };
+  }, [rawItems, reportData?.grandTotals, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, paymentModeFilter, fbrOnlyFilter, subDateRange, hasActiveFilters, hasSubDateFilter]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));

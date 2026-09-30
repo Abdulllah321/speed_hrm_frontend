@@ -98,9 +98,14 @@ export function GrossSalesSummaryHeader({ totals }: GrossSalesSummaryHeaderProps
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Amount: ${formatCurr(totals.grossAmount)}`}>
+            <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Amount (Retail): ${formatCurr(totals.grossAmount)} | WOST: ${formatCurr(totals.wostAmount)}`}>
               {formatCurr(totals.grossAmount)}
             </p>
+            {totals.wostAmount > 0 && (
+              <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate" title={`WOST: ${formatCurr(totals.wostAmount)}`}>
+                WOST: {formatCurr(totals.wostAmount)}
+              </p>
+            )}
           </div>
           <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
             <DollarSign className="h-5 w-5" />
@@ -127,9 +132,14 @@ export function GrossSalesSummaryHeader({ totals }: GrossSalesSummaryHeaderProps
                 </TooltipContent>
               </Tooltip>
             </div>
-            <p className="text-lg font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Total Discounts: ${formatCurr(totals.discountAmount)}`}>
+            <p className="text-lg font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Total Discounts (Retail): ${formatCurr(totals.discountAmount)} | WOST: ${formatCurr(totals.discountWostAmount || totals.discountAmount / 1.18)}`}>
               {formatCurr(totals.discountAmount)}
             </p>
+            {(totals.discountWostAmount !== undefined ? totals.discountWostAmount : totals.discountAmount / 1.18) > 0 && (
+              <p className="text-[10px] text-amber-700/80 dark:text-amber-400 font-mono mt-0.5 truncate" title={`WOST: ${formatCurr(totals.discountWostAmount ?? totals.discountAmount / 1.18)}`}>
+                WOST: {formatCurr(totals.discountWostAmount ?? totals.discountAmount / 1.18)}
+              </p>
+            )}
           </div>
           <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
             <Percent className="h-5 w-5" />
