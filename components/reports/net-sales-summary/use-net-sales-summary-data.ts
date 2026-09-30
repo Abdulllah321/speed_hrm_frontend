@@ -336,8 +336,18 @@ export function useNetSalesSummaryData(
         ? reportData.grandTotals
         : calculatedGrandTotals;
 
+    // Patch location totals in separate mode to avoid preview truncation issues
+    if (isSeparate && !hasActiveFilters && root.length > 0 && root[0].level === "location" && reportData?.locations) {
+      for (const locNode of root) {
+        const backendLoc = reportData.locations.find((l: any) => l.locationName === locNode.value || l.locationKey === locNode.value);
+        if (backendLoc && backendLoc.totals) {
+          locNode.totals = { ...backendLoc.totals };
+        }
+      }
+    }
+
     return { treeData: root, grandTotals: effectiveGrandTotals, filteredFlatItems: filtered };
-  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange, hasActiveFilters, hasSubDateFilter, reportData?.grandTotals]);
+  }, [rawItems, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, subDateRange, hasActiveFilters, hasSubDateFilter, reportData?.grandTotals, reportData?.locations]);
 
   const handleToggleLevel = (level: keyof GroupingLevels, checked: boolean) => {
     setGroupingLevels((prev) => ({ ...prev, [level]: checked }));

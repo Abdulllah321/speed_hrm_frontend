@@ -197,8 +197,30 @@ export function useSalesReturnListData(
     for (const ret of filteredReturns) {
       addReturnTotals(totals, ret.totals);
     }
+    
+    const hasActiveFilters = 
+      (subTypeFilter && subTypeFilter !== "ALL") ||
+      (refundModeFilter && refundModeFilter.toUpperCase() !== "ALL") ||
+      selectedLocationIds.length > 0 ||
+      (selectedCashierId && selectedCashierId !== "all") ||
+      !!subDateRange?.from ||
+      searchQuery.trim().length > 0;
+
+    if (!hasActiveFilters && reportData?.grandTotals) {
+      return reportData.grandTotals;
+    }
+
     return totals;
-  }, [filteredReturns]);
+  }, [
+    filteredReturns,
+    reportData,
+    subTypeFilter,
+    refundModeFilter,
+    selectedLocationIds,
+    selectedCashierId,
+    subDateRange,
+    searchQuery,
+  ]);
 
   // ── Step 3: Helper to Generate Flat Items for Excel Export ──
   const getFilteredFlatItems = useCallback((): SalesReturnFlatRecord[] => {
@@ -362,6 +384,22 @@ export function useSalesReturnListData(
         const locTotals = createEmptyReturnTotals();
         for (const r of returns) addReturnTotals(locTotals, r.totals);
 
+        const hasActiveFilters = 
+          (subTypeFilter && subTypeFilter !== "ALL") ||
+          (refundModeFilter && refundModeFilter.toUpperCase() !== "ALL") ||
+          selectedLocationIds.length > 0 ||
+          (selectedCashierId && selectedCashierId !== "all") ||
+          !!subDateRange?.from ||
+          searchQuery.trim().length > 0;
+
+        let finalLocTotals = locTotals;
+        if (!hasActiveFilters && reportData?.locations) {
+          const backendLoc = reportData.locations.find((l: any) => l.locationKey === locKey);
+          if (backendLoc && backendLoc.totals) {
+            finalLocTotals = { ...backendLoc.totals };
+          }
+        }
+
         const locId = `loc:${locKey}`;
         const isLocExpanded = expandedNodes[locId] ?? true;
 
@@ -371,7 +409,7 @@ export function useSalesReturnListData(
           locationKey: locKey,
           locationName: name,
           itemCount: returns.length,
-          totals: locTotals,
+          totals: finalLocTotals,
           isExpanded: isLocExpanded,
           depth: 0,
         });
