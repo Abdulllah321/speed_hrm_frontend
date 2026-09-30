@@ -127,11 +127,6 @@ export default function CreateDeliveryChallanPage() {
         return;
       }
 
-      if (!formData.driverName || !formData.vehicleNo) {
-        toast.error("Please fill in driver name and vehicle number");
-        return;
-      }
-
       if (deliveryItems.length === 0) {
         toast.error("No items to deliver");
         return;
@@ -262,18 +257,34 @@ export default function CreateDeliveryChallanPage() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Driver Name *</Label>
-                <Input
-                  placeholder="Enter driver name"
-                  value={formData.driverName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, driverName: e.target.value }))}
-                />
+                <Label>{formData.transportMode === 'COURIER' ? 'Courier Name' : 'Driver Name'}</Label>
+                {formData.transportMode === 'COURIER' ? (
+                  <Select 
+                    value={formData.driverName}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, driverName: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Courier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["TCS", "Leopard", "Trax", "PostEx", "M&P", "CallCourier", "Swyft", "Daewoo Fastex"].map(c => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    placeholder="Enter driver name"
+                    value={formData.driverName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, driverName: e.target.value }))}
+                  />
+                )}
               </div>
               
               <div className="space-y-2">
-                <Label>Vehicle Number *</Label>
+                <Label>{formData.transportMode === 'COURIER' ? 'Courier Number' : 'Vehicle Number'}</Label>
                 <Input
-                  placeholder="ABC-123"
+                  placeholder={formData.transportMode === 'COURIER' ? 'Tracking Number' : 'ABC-123'}
                   value={formData.vehicleNo}
                   onChange={(e) => setFormData(prev => ({ ...prev, vehicleNo: e.target.value }))}
                 />

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Search, Filter, Trash2, Package, Info, FileSpreadsheet, Warehouse as WarehouseIcon } from "lucide-react";
 import { SalesOrderBulkItemUploadModal } from "@/components/sales/sales-order-bulk-item-upload-modal";
+import { NewSaleTopBar } from "@/components/pos/new-sale/top-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -186,17 +187,11 @@ export default function CreateSalesOrderPage() {
       const res = await inventoryApi.search(query, selectedWarehouseId, undefined, appliedFilters);
       if (res.status && res.data) {
         const options = res.data.map((item: any) => ({
-          value: item.id,
-          label: `${item.sku} - ${item.description}`,
-          description: `Available: ${item.totalQuantity || 0} | Cost: Rs. ${item.unitCost || 0}`,
-          item: {
-            ...item,
-            availableStock: item.totalQuantity || 0,
-            costPrice: item.unitCost || 0,
-          }
+          ...item,
+          availableStock: item.totalQuantity || 0,
+          costPrice: item.unitCost || 0,
         }));
         setItemOptions(options);
-        if (!isPopoverOpen) setIsPopoverOpen(true);
       }
     } catch (error) {
       console.error("Search failed", error);
@@ -406,135 +401,34 @@ export default function CreateSalesOrderPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-              <Label className="text-sm font-semibold mb-3 block">Search & Multi-Select Items</Label>
-              <div className="space-y-3">
-                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        placeholder="Type SKU or description to search items..."
-                        value={itemSearchQuery}
-                        onChange={(e) => setItemSearchQuery(e.target.value)}
-                        onFocus={() => itemSearchQuery.length >= 2 && setIsPopoverOpen(true)}
-                        className="pl-10 h-10 border-primary/20 focus-visible:ring-primary shadow-sm"
-                        disabled={!selectedWarehouseId}
-                      />
-                      {searchLoading && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        </div>
-                      )}
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[600px] p-0 shadow-xl" align="start">
-                    <Command shouldFilter={false}>
-                      <CommandList className="max-h-[400px]">
-                        {itemOptions.length === 0 ? (
-                          <div className="py-6 px-4 text-center space-y-1">
-                            {searchLoading ? (
-                              <p className="text-sm text-muted-foreground">Searching...</p>
-                            ) : itemSearchQuery.length > 0 ? (
-                              <>
-                                <p className="text-sm font-medium text-muted-foreground">No items match "{itemSearchQuery}"</p>
-                                <p className="text-xs text-muted-foreground">Try a different SKU or description.</p>
-                              </>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">
-                                {!selectedWarehouseId ? "Please select a warehouse first" : "Type at least 2 characters to search items"}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <CommandGroup>
-                            <div className="flex items-center justify-between px-3 py-2 border-b border-muted/50">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search Results</span>
-                                <span className="text-xs text-muted-foreground">({itemOptions.length})</span>
-                              </div>
-                              <button
-                                type="button"
-                                className="text-xs text-primary underline underline-offset-2 hover:text-primary/70 transition-colors"
-                                onClick={() => {
-                                  const unselected = itemOptions
-                                    .map((o: any) => o.item)
-                                    .filter((item: any) => !selectedItems.some(s => s.id === item.id));
-                                  unselected.forEach((item: any) => addItem(item));
-                                }}
-                              >
-                                Select all
-                              </button>
-                            </div>
-                            <ScrollArea className="h-[350px]">
-                              {itemOptions.map((option) => {
-                                const item = (option as any).item;
-                                const isSelected = selectedItems.some(i => i.id === item.id);
-                                return (
-                                  <CommandItem
-                                    key={item.id}
-                                    value={`${item.sku} ${item.description}`}
-                                    onSelect={() => addItem(item)}
-                                    className={`flex items-center justify-between gap-3 px-4 py-3 cursor-pointer transition-all duration-200 border-b border-muted/50 last:border-0 ${
-                                      isSelected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-accent"
-                                    }`}
-                                  >
-                                    <div className="flex flex-col gap-1 min-w-0 flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded border leading-none font-bold ${
-                                          isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-muted-foreground/20"
-                                        }`}>
-                                          {item.sku}
-                                        </span>
-                                        <span className={`truncate text-sm ${
-                                          isSelected ? "font-bold text-primary" : "font-medium"
-                                        }`}>
-                                          {item.description}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                                          <Package className="h-3 w-3" />
-                                          Stock: <span className={`font-bold ${item.availableStock > 0 ? "text-foreground" : "text-destructive"}`}>{item.availableStock}</span>
-                                        </span>
-                                        <span className="text-[11px] text-muted-foreground">
-                                          Price: {formatCurrency(item.unitPrice || 0)}
-                                        </span>
-                                        {isSelected && (
-                                          <Badge variant="outline" className="h-4 text-[9px] px-1 bg-primary/5 text-primary border-primary/20">Added</Badge>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="shrink-0 flex items-center justify-center w-8">
-                                      {isSelected ? (
-                                        <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                                          <div className="h-2 w-2 bg-white rounded-full"></div>
-                                        </div>
-                                      ) : (
-                                        <Plus className="h-4 w-4 text-muted-foreground opacity-50" />
-                                      )}
-                                    </div>
-                                  </CommandItem>
-                                );
-                              })}
-                            </ScrollArea>
-                          </CommandGroup>
-                        )}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                
-                <div className="flex items-center justify-between text-xs text-muted-foreground bg-primary/5 p-2 rounded border border-primary/5">
-                  <div className="flex items-center gap-2 text-primary font-medium italic">
-                    <Info className="h-3 w-3" />
-                    <span>Click items in the list to add them. Popover stays open for multiple selections.</span>
-                  </div>
-                  <div className="font-semibold">
-                    {selectedItems.length} items selected
-                  </div>
-                </div>
-              </div>
+            <div className="-mx-1">
+              <NewSaleTopBar
+                itemCount={selectedItems.length}
+                totalQuantity={totalQuantity}
+                searchQuery={itemSearchQuery}
+                onSearchChange={(value) => {
+                  setItemSearchQuery(value);
+                  if (!value) setItemOptions([]);
+                }}
+                onSearchSubmit={() => {
+                  if (itemOptions.length === 1) {
+                    addItem(itemOptions[0]);
+                    setItemSearchQuery("");
+                    setItemOptions([]);
+                  }
+                }}
+                searchResults={itemOptions.map((item: any) => ({
+                  ...item,
+                  stockQty: item.availableStock,
+                  unitPrice: item.unitPrice || item.salePrice
+                }))}
+                isSearching={searchLoading}
+                onSelectProduct={(product) => {
+                  addItem(product);
+                  setItemSearchQuery("");
+                  setItemOptions([]);
+                }}
+              />
             </div>
           </CardContent>
         </Card>
