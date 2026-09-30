@@ -36,10 +36,9 @@ function StockTransferContent() {
 
     // Form State
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
-    const [destWarehouseId, setDestWarehouseId] = useState<string>('');
     const [sourceLocationId, setSourceLocationId] = useState<string>('unassigned');
     const [destLocationId, setDestLocationId] = useState<string>('');
-    const [transferMode, setTransferMode] = useState<'WAREHOUSE_TO_OUTLET' | 'OUTLET_TO_WAREHOUSE' | 'OUTLET_TO_OUTLET' | 'WAREHOUSE_TO_WAREHOUSE'>('WAREHOUSE_TO_OUTLET');
+    const [transferMode, setTransferMode] = useState<'WAREHOUSE_TO_OUTLET' | 'OUTLET_TO_WAREHOUSE' | 'OUTLET_TO_OUTLET'>('WAREHOUSE_TO_OUTLET');
     const [nextTransferNumber, setNextTransferNumber] = useState<string>('');
 
     // Dispatch & Courier State
@@ -736,23 +735,8 @@ function StockTransferContent() {
     };
 
     const handleTransfer = async () => {
-        if (selectedItems.length === 0) {
-            toast.error('Please select at least one item');
-            return;
-        }
-
-        if (transferMode === 'WAREHOUSE_TO_OUTLET' && (!selectedWarehouseId || !destLocationId)) {
-            toast.error('Please select source warehouse and destination outlet');
-            return;
-        }
-
-        if (transferMode === 'OUTLET_TO_WAREHOUSE' && (!destLocationId || !selectedWarehouseId)) {
-            toast.error('Please select source outlet and destination warehouse');
-            return;
-        }
-
-        if (transferMode === 'WAREHOUSE_TO_WAREHOUSE' && (!selectedWarehouseId || !destWarehouseId)) {
-            toast.error('Please select source and destination warehouses');
+        if (selectedItems.length === 0 || !selectedWarehouseId || !destLocationId) {
+            toast.error('Please complete all fields and select at least one item');
             return;
         }
 
@@ -821,17 +805,6 @@ function StockTransferContent() {
                     });
                     toast.success('Transfer request created! Awaiting shop acceptance.');
                     stnId = (res as any)?.id;
-                } else if (transferMode === 'WAREHOUSE_TO_WAREHOUSE') {
-                    const res = await createTransferRequest({
-                        fromWarehouseId: selectedWarehouseId,
-                        toWarehouseId: destWarehouseId,
-                        transferType: 'WAREHOUSE_TO_WAREHOUSE',
-                        items: itemsToTransfer,
-                        notes: globalNotes,
-                        ...dispatchPayload
-                    });
-                    toast.success('Warehouse transfer request created!');
-                    stnId = (res as any)?.id;
                 } else if (transferMode === 'OUTLET_TO_WAREHOUSE') {
                     await createReturnTransferRequest({
                         fromLocationId: destLocationId,
@@ -879,31 +852,27 @@ function StockTransferContent() {
     return (
         <PermissionGuard permissions="erp.inventory.transfer.create">
             <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                <div className="flex items-center gap-4 min-w-0">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight truncate">
+                        <h1 className="text-3xl font-bold tracking-tight">
                             {transferMode === 'WAREHOUSE_TO_OUTLET' ? 'Stock Transfer' :
-                                transferMode === 'OUTLET_TO_WAREHOUSE' ? 'Return Transfer' : 
-                                transferMode === 'WAREHOUSE_TO_WAREHOUSE' ? 'Warehouse Transfer' : 'Outlet Transfer'}
+                                transferMode === 'OUTLET_TO_WAREHOUSE' ? 'Return Transfer' : 'Outlet Transfer'}
                         </h1>
-                        <p className="text-muted-foreground truncate">
+                        <p className="text-muted-foreground">
                             {transferMode === 'WAREHOUSE_TO_OUTLET'
                                 ? 'Move stock from warehouse to outlets.'
                                 : transferMode === 'OUTLET_TO_WAREHOUSE'
                                     ? 'Return stock from outlets to warehouse.'
-                                    : transferMode === 'WAREHOUSE_TO_WAREHOUSE'
-                                        ? 'Transfer stock between warehouses.'
-                                        : 'Transfer stock between outlets with dual approval.'
+                                    : 'Transfer stock between outlets with dual approval.'
                             }
                         </p>
                     </div>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex gap-2">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
-                                size="sm"
                                 variant={transferMode === 'WAREHOUSE_TO_OUTLET' ? 'default' : 'outline'}
                                 onClick={() => { setTransferMode('WAREHOUSE_TO_OUTLET'); setSelectedItems([]); }}
                                 className="font-bold"
@@ -917,7 +886,6 @@ function StockTransferContent() {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
-                                size="sm"
                                 variant={transferMode === 'OUTLET_TO_WAREHOUSE' ? 'default' : 'outline'}
                                 onClick={() => { setTransferMode('OUTLET_TO_WAREHOUSE'); setSelectedItems([]); }}
                                 className="font-bold"
@@ -931,21 +899,6 @@ function StockTransferContent() {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
-                                size="sm"
-                                variant={transferMode === 'WAREHOUSE_TO_WAREHOUSE' ? 'default' : 'outline'}
-                                onClick={() => { setTransferMode('WAREHOUSE_TO_WAREHOUSE'); setSelectedItems([]); }}
-                                className="font-bold"
-                            >
-                                <WarehouseIcon className="h-4 w-4 mr-2" /> WH Transfer
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Transfer stock between two warehouses</TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                size="sm"
                                 variant={transferMode === 'OUTLET_TO_OUTLET' ? 'default' : 'outline'}
                                 onClick={() => { setTransferMode('OUTLET_TO_OUTLET'); setSelectedItems([]); }}
                                 className="font-bold"
@@ -959,7 +912,6 @@ function StockTransferContent() {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
-                                size="sm"
                                 variant="outline"
                                 onClick={() => setIsRequisitionsSheetOpen(true)}
                                 className="border-2 font-bold shadow-sm border-indigo-200 text-indigo-700 hover:bg-indigo-50"
@@ -972,7 +924,7 @@ function StockTransferContent() {
 
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button size="sm" variant="outline" onClick={() => { setIsReturnsSheetOpen(true); loadPendingReturns(); }} className="border-2 font-bold shadow-sm border-orange-200 text-orange-700 hover:bg-orange-50">
+                            <Button variant="outline" onClick={() => { setIsReturnsSheetOpen(true); loadPendingReturns(); }} className="border-2 font-bold shadow-sm border-orange-200 text-orange-700 hover:bg-orange-50">
                                 <RotateCcw className="h-4 w-4 mr-2" /> Return from warehouse
                             </Button>
                         </TooltipTrigger>
@@ -981,7 +933,7 @@ function StockTransferContent() {
 
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button size="sm" variant="outline" asChild className="border-2 font-bold shadow-sm">
+                            <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
                                 <Link href="/erp/inventory/transactions/stock-transfer/history" transitionTypes={["nav-forward"]}>
                                     <History className="h-4 w-4 mr-2" /> History
                                 </Link>
@@ -1109,40 +1061,6 @@ function StockTransferContent() {
                                     <p className="text-xs text-orange-600 mt-1">
                                         Returned items will be restocked here
                                     </p>
-                                </div>
-                            </>
-                        ) : transferMode === 'WAREHOUSE_TO_WAREHOUSE' ? (
-                            <>
-                                <div className="space-y-1 p-3 bg-primary/5 rounded-md border border-primary/10">
-                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Source (From)</Label>
-                                    <div className="flex items-center gap-2 font-semibold mb-2">
-                                        <WarehouseIcon className="h-4 w-4 text-primary" />
-                                        <span>Source Warehouse</span>
-                                    </div>
-                                    <Autocomplete
-                                        options={warehouseOptions}
-                                        value={selectedWarehouseId}
-                                        onValueChange={(val) => {
-                                            setSelectedWarehouseId(val);
-                                            loadLocations(val);
-                                            setSelectedItems([]);
-                                        }}
-                                        placeholder="Search warehouse..."
-                                    />
-                                </div>
-
-                                <div className="flex justify-center py-1">
-                                    <ArrowRightLeft className="h-5 w-5 text-muted-foreground rotate-90" />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Destination Warehouse</Label>
-                                    <Autocomplete
-                                        options={warehouseOptions.filter(w => w.value !== selectedWarehouseId)}
-                                        value={destWarehouseId}
-                                        onValueChange={setDestWarehouseId}
-                                        placeholder="Search destination warehouse..."
-                                    />
                                 </div>
                             </>
                         ) : (

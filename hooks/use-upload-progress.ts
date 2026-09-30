@@ -118,13 +118,6 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
                 credentials: "include",
                 // No timeout — large files can take time to respond during heavy DB load
             });
-            
-            if (!response.ok && response.status === 404) {
-                isTerminalRef.current = true;
-                setError('Upload not found');
-                return;
-            }
-
             const result = await response.json();
             if (result.status && result.data) {
                 setData(result.data);
