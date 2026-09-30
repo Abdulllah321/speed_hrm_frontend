@@ -342,6 +342,18 @@ export function useGrossSalesReturnData(
         }
       : calculatedGrandTotals;
 
+    // Patch root nodes with backend computed values to avoid preview truncation discrepancies
+    if (!hasActiveFilters && reportData) {
+      if (isSeparate && reportData.locations && levels[0] === "location") {
+        for (const locNode of root) {
+          const backendLoc = reportData.locations.find((l: any) => l.locationName === locNode.value);
+          if (backendLoc && backendLoc.totals) {
+            locNode.totals = { ...backendLoc.totals };
+          }
+        }
+      }
+    }
+
     return { treeData: root, grandTotals: effectiveGrandTotals, filteredFlatItems: filtered };
   }, [rawItems, reportData?.grandTotals, effectiveReportType, groupingLevels, effectiveSearchQuery, selectedLocationIds, selectedCashierId, paymentModeFilter, fbrOnlyFilter, subDateRange, hasActiveFilters, hasSubDateFilter]);
 
