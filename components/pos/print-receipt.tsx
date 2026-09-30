@@ -1542,8 +1542,8 @@ function ReceiptBody({
               <Image
                 src={
                   typeof window !== "undefined"
-                    ? `${window.location.origin}/fbr_logo.png`
-                    : "/fbr_logo.png"
+                    ? `${window.location.origin}/fbr_pos.png`
+                    : "/fbr_pos.png"
                 }
                 alt="FBR POS Invoicing System"
                 width={60}
@@ -1922,8 +1922,8 @@ function A4InvoiceBody({
                 <Image
                   src={
                     typeof window !== "undefined"
-                      ? `${window.location.origin}/fbr_logo.png`
-                      : "/fbr_logo.png"
+                      ? `${window.location.origin}/fbr_pos.png`
+                      : "/fbr_pos.png"
                   }
                   alt="FBR POS Logo"
                   width={56}

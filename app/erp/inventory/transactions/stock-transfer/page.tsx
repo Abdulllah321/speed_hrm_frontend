@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { warehouseApi, inventoryApi, locationApi, brandApi, categoryApi, silhouetteApi, genderApi, Warehouse, WarehouseLocation, stockRequisitionApi, transferRequestApi } from '@/lib/api';
 import { createTransferRequest, createReturnTransferRequest, createOutletToOutletTransferRequest } from '@/lib/actions/transfer-request';
+import { getStockTransfers } from '@/lib/actions/stock-transfer';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History, RotateCcw, Trash2, Plus, CheckCircle2, Info, Loader2, WarehouseIcon, ArrowDown, Filter, X, ChevronDown, ChevronRight, ScanBarcode, Volume2, VolumeX, Keyboard, Sparkles, Printer, Truck, Bike, User } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -71,6 +72,10 @@ function StockTransferContent() {
     const [isRequisitionsSheetOpen, setIsRequisitionsSheetOpen] = useState(false);
     const [activeRequisitionId, setActiveRequisitionId] = useState<string | null>(null);
     const [activeRequisitionNo, setActiveRequisitionNo] = useState<string | null>(null);
+
+    const [pendingReturns, setPendingReturns] = useState<any[]>([]);
+    const [loadingReturns, setLoadingReturns] = useState(false);
+    const [isReturnsSheetOpen, setIsReturnsSheetOpen] = useState(false);
 
     // Selection State
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -400,6 +405,30 @@ function StockTransferContent() {
             console.error('Failed to load pending requisitions', error);
         } finally {
             setLoadingRequisitions(false);
+        }
+    };
+
+    const loadPendingReturns = async () => {
+        setLoadingReturns(true);
+        try {
+            const res = await getStockTransfers({ transferType: 'OUTLET_TO_WAREHOUSE', limit: 300 });
+            
+            let pending: any[] = [];
+            if (res.status && res.data) {
+                pending = res.data.filter((req: any) => {
+                    const s = (req.status || '').toUpperCase();
+                    return s === 'PENDING' || s === 'PENDING_CHECKER';
+                });
+            } else if (!res.status) {
+                toast.error("Failed to load returns: " + res.message);
+            }
+
+            setPendingReturns(pending);
+        } catch (error) {
+            console.error('Failed to load pending returns', error);
+            toast.error('Failed to load pending returns');
+        } finally {
+            setLoadingReturns(false);
         }
     };
 
@@ -891,6 +920,15 @@ function StockTransferContent() {
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>Load items from a pending stock requisition</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="outline" onClick={() => { setIsReturnsSheetOpen(true); loadPendingReturns(); }} className="border-2 font-bold shadow-sm border-orange-200 text-orange-700 hover:bg-orange-50">
+                                <RotateCcw className="h-4 w-4 mr-2" /> Return from warehouse
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>View all pending returns from outlets</TooltipContent>
                     </Tooltip>
 
                     <Tooltip>
@@ -1859,6 +1897,79 @@ function StockTransferContent() {
                                                             onClick={() => handleSelectRequisition(req)}
                                                         >
                                                             Select
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            {/* Pending Returns Sheet */}
+            <Sheet open={isReturnsSheetOpen} onOpenChange={setIsReturnsSheetOpen}>
+                <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
+                    <SheetHeader className="pb-4 border-b">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <SheetTitle className="text-xl font-bold text-orange-700 flex items-center gap-2">
+                                    <RotateCcw className="h-5 w-5" />
+                                    Pending Returns from Outlets
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    View and manage stock returns sent from POS to the warehouse.
+                                </p>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={loadPendingReturns} disabled={loadingReturns}>
+                                {loadingReturns ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
+                            </Button>
+                        </div>
+                    </SheetHeader>
+
+                    <div className="py-4">
+                        {loadingReturns ? (
+                            <div className="flex justify-center items-center py-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+                            </div>
+                        ) : pendingReturns.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground font-semibold">
+                                No pending returns from outlets at the moment.
+                            </div>
+                        ) : (
+                            <div className="border rounded-md overflow-hidden">
+                                <Table>
+                                    <TableHeader className="bg-gray-50/50">
+                                        <TableRow>
+                                            <TableHead className="font-bold">Transfer No</TableHead>
+                                            <TableHead className="font-bold">Date</TableHead>
+                                            <TableHead className="font-bold">From Outlet</TableHead>
+                                            <TableHead className="text-right font-bold">Action</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingReturns.map((req) => (
+                                            <TableRow key={req.id} className="hover:bg-amber-50/10 transition-colors">
+                                                <TableCell className="font-bold text-orange-600">{req.requestNo}</TableCell>
+                                                <TableCell>{new Date(req.createdAt).toLocaleDateString()}</TableCell>
+                                                <TableCell className="font-medium text-xs">{req.fromLocation?.name || req.fromWarehouse?.name || '—'}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            asChild
+                                                            className="font-bold text-xs"
+                                                        >
+                                                            <Link
+                                                                href={`/erp/inventory/transactions/stock-transfer/slip/${req.id}`}
+                                                                target="_blank"
+                                                            >
+                                                                 <Printer className="h-3.5 w-3.5 mr-1" /> View / Print
+                                                            </Link>
                                                         </Button>
                                                     </div>
                                                 </TableCell>

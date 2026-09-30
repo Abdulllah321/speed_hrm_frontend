@@ -8,6 +8,7 @@ function createEmptyTotals(): StockTotals {
         quantity: 0,
         transit: 0,
         reserved: 0,
+        pendingInvoice: 0,
         total: 0,
         unitPrice: 0,
         value: 0,
@@ -20,6 +21,7 @@ function addTotals(target: StockTotals, source: StockTotals) {
     target.quantity += source.quantity;
     target.transit += source.transit;
     target.reserved += source.reserved;
+    target.pendingInvoice += source.pendingInvoice;
     target.total += source.total;
     target.value += source.value;
     target.costingValue += source.costingValue;
@@ -162,6 +164,7 @@ export function useAvailableStockData({
                 quantity: item.quantity,
                 transit: item.transit,
                 reserved: item.reserved,
+                pendingInvoice: item.pendingInvoice,
                 total: item.total,
                 unitPrice: item.unitPrice,
                 value: item.value,

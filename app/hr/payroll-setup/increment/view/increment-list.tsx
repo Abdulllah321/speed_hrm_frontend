@@ -94,9 +94,9 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
                   Create Promotion
                 </Button>
               </Link>
-              <Button variant="secondary" onClick={() => setUploadDialog(true)}>
+              <Button variant="outline" className="bg-white" onClick={() => setUploadDialog(true)}>
                 <Upload className="h-4 w-4 mr-2" />
-                Import Excel
+                Bulk Upload
               </Button>
             </>
           )}

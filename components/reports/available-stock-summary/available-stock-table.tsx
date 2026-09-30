@@ -135,6 +135,7 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                         <div className="w-28 text-right shrink-0">Available Qty</div>
                         <div className="w-24 text-right shrink-0">In Transit</div>
                         <div className="w-28 text-right shrink-0">Reserved</div>
+                        <div className="w-28 text-right shrink-0">Pending Invoice</div>
                         <div className="w-28 text-right shrink-0">Total Balance</div>
                         <div className="w-32 text-right shrink-0">Selling Price</div>
                         <div className="w-36 text-right shrink-0">Selling Value</div>
@@ -289,6 +290,19 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                                         {node.totals.reserved.toLocaleString()}
                                     </div>
 
+                                    {/* Column 6.5: Pending Invoice */}
+                                    <div
+                                        className={cn(
+                                            "w-28 text-right shrink-0 font-medium",
+                                            node.totals.pendingInvoice > 0
+                                                ? "text-pink-600 dark:text-pink-400 font-semibold"
+                                                : "text-muted-foreground"
+                                        )}
+                                        title={`Pending Invoice: ${node.totals.pendingInvoice.toLocaleString()} pcs`}
+                                    >
+                                        {node.totals.pendingInvoice.toLocaleString()}
+                                    </div>
+
                                     {/* Column 7: Total Balance */}
                                     <div
                                         className="w-28 text-right shrink-0 font-bold text-foreground"
@@ -364,6 +378,12 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                     title={`Grand Total Reserved: ${grandTotals.reserved.toLocaleString()} pcs`}
                 >
                     {grandTotals.reserved.toLocaleString()}
+                </div>
+                <div
+                    className="w-28 text-right text-pink-600 dark:text-pink-400"
+                    title={`Grand Total Pending Invoice: ${grandTotals.pendingInvoice.toLocaleString()} pcs`}
+                >
+                    {grandTotals.pendingInvoice.toLocaleString()}
                 </div>
                 <div
                     className="w-28 text-right text-cyan-600 dark:text-cyan-400"

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { List, BarChart3, Plus, Printer, Download } from "lucide-react";
+import { List, BarChart3, Plus, Upload } from "lucide-react";
 import Link from "next/link";
 import DataTable from "@/components/common/data-table";
 import { type LoanRequestRow } from "./columns";
@@ -13,6 +13,8 @@ import { LoanRequestListContent } from "./loan-request-list-content";
 import { LoanReportContent } from "./loan-report-content";
 import { useMemo } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
+import { LoanRequestBulkUploadModal } from "@/components/loan-request/loan-request-bulk-upload-modal";
+import { useRouter } from "next/navigation";
 
 interface LoanRequestUnifiedProps {
   listData: LoanRequestRow[];
@@ -21,6 +23,8 @@ interface LoanRequestUnifiedProps {
 
 export function LoanRequestUnified({ listData, reportData }: LoanRequestUnifiedProps) {
   const [activeTab, setActiveTab] = useState<"list" | "analytics">("list");
+  const [uploadDialog, setUploadDialog] = useState(false);
+  const router = useRouter();
   const { user, isAdmin, hasPermission } = useAuth();
 
   const canViewReports = isAdmin() || hasPermission("hr.loan-request.read");
@@ -69,6 +73,10 @@ export function LoanRequestUnified({ listData, reportData }: LoanRequestUnifiedP
               Create Loan Request
             </Button>
           </Link>
+          <Button variant="outline" className="bg-white" onClick={() => setUploadDialog(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Upload
+          </Button>
         </div>
       </div>
 
@@ -99,6 +107,14 @@ export function LoanRequestUnified({ listData, reportData }: LoanRequestUnifiedP
           </TabsContent>
         )}
       </Tabs>
+
+      <LoanRequestBulkUploadModal
+        open={uploadDialog}
+        onOpenChange={setUploadDialog}
+        onSuccess={() => {
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

@@ -73,6 +73,7 @@ export interface User {
       fbrNtn?: string;
       fbrSellerName?: string;
       fbrEnabled?: boolean;
+      isOnline?: boolean;
     } | null;
   };
 }

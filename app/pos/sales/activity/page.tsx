@@ -478,9 +478,9 @@ export default function SalesActivityPage() {
                                                         if (act.type === "sale") {
                                                             openSalePrint(act.orderId);
                                                         } else if (act.type === "return") {
-                                                            openReturnPrint({ id: act.orderId, orderNumber: act.orderNumber, grandTotal: act.amount }, "return");
+                                                            openReturnPrint({ id: act.id, orderNumber: act.orderNumber, grandTotal: act.amount }, "return");
                                                         } else if (act.type === "refund") {
-                                                            openReturnPrint({ id: act.orderId, orderNumber: act.orderNumber, grandTotal: act.amount }, "refund");
+                                                            openReturnPrint({ id: act.id, orderNumber: act.orderNumber, grandTotal: act.amount }, "refund");
                                                         } else if (act.type === "claim") {
                                                             openClaimPrint(act, act.orderNumber);
                                                         }

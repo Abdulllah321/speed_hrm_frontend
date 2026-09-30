@@ -912,11 +912,11 @@ export default function CheckoutPage() {
   const validateVoucherCode = useCallback(
     async (code: string) => {
       const trimmed = code.trim().toUpperCase();
-      const validFormat = /^[A-Z]{3}-[A-Z0-9]{6}$/.test(trimmed);
+      const validFormat = /^[A-Z]{3}-[A-Z0-9-]{6,}$/.test(trimmed);
       if (!validFormat) {
         setValidatedVoucher(null);
         setVoucherError(
-          trimmed.length >= 4 ? "Invalid format — expected: ABC-123456" : null,
+          trimmed.length >= 4 ? "Invalid format — expected e.g. GFT-ABC123 or EXC-LOC-001" : null,
         );
         return;
       }
@@ -956,18 +956,26 @@ export default function CheckoutPage() {
   );
 
   const handleVoucherCodeChange = (value: string) => {
-    const clean = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    // Only allow alphanumeric and dashes
+    const clean = value.replace(/[^A-Za-z0-9-]/g, "").toUpperCase();
+    
+    // Auto-insert first dash if typing manually
     let formatted = clean;
-    if (clean.length > 3)
-      formatted = `${clean.slice(0, 3)}-${clean.slice(3, 9)}`;
+    if (clean.length > 3 && !clean.includes('-')) {
+        formatted = `${clean.slice(0, 3)}-${clean.slice(3)}`;
+    }
+
     setVoucherCode(formatted);
     setValidatedVoucher(null);
     setVoucherError(null);
+    
     if (voucherDebounceRef.current) clearTimeout(voucherDebounceRef.current);
-    if (formatted.length === 10) {
+    
+    // If it looks like a complete voucher, debounce validate
+    if (/^[A-Z]{3}-[A-Z0-9-]{6,}$/.test(formatted)) {
       voucherDebounceRef.current = setTimeout(
         () => validateVoucherCode(formatted),
-        400,
+        800,
       );
     }
   };

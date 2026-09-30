@@ -20,7 +20,8 @@ export interface FlatItemRecord {
     quantity: number; // Available stock
     transit: number;
     reserved: number;
-    total: number; // Total balance = quantity + transit + reserved
+    pendingInvoice: number;
+    total: number; // Total balance = quantity + transit + reserved + pendingInvoice
     unitPrice: number;
     value: number;
     unitCost: number;
@@ -41,6 +42,7 @@ export interface StockTotals {
     quantity: number;
     transit: number;
     reserved: number;
+    pendingInvoice: number;
     total: number;
     unitPrice: number;
     value: number;

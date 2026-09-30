@@ -306,6 +306,10 @@ function RowActions({ row }: RowActionsProps) {
     location.ipWhitelistEnabled || false,
   );
   const [fbrEnabled, setFbrEnabled] = useState(location.fbrEnabled || false);
+  const [fbrBposId, setFbrBposId] = useState(location.fbrBposId || "");
+  const [fbrNtn, setFbrNtn] = useState(location.fbrNtn || "");
+  const [fbrSellerName, setFbrSellerName] = useState(location.fbrSellerName || "");
+  const [fbrBearerToken, setFbrBearerToken] = useState(location.fbrBearerToken || "");
 
   const canEdit = hasPermission("master.location.update");
   const canDelete = hasPermission("master.location.delete");
@@ -363,6 +367,10 @@ function RowActions({ row }: RowActionsProps) {
     setGeoFenceEnabled(location.geoFenceEnabled || false);
     setIpWhitelistEnabled(location.ipWhitelistEnabled || false);
     setFbrEnabled(location.fbrEnabled || false);
+    setFbrBposId(location.fbrBposId || "");
+    setFbrNtn(location.fbrNtn || "");
+    setFbrSellerName(location.fbrSellerName || "");
+    setFbrBearerToken(location.fbrBearerToken || "");
     setEditDialog(true);
   };
 
@@ -385,12 +393,12 @@ function RowActions({ row }: RowActionsProps) {
 
     startTransition(async () => {
       const resGeneral = await updateSingleLocation(location.id, {
-        name: formData.get("name") as string,
-        code: formData.get("code") as string,
-        shortCode: (formData.get("shortCode") as string) || undefined,
-        centerId: (formData.get("centerId") as string)?.trim() || undefined,
-        address: formData.get("address") as string,
-        cityId: formData.get("cityId") as string,
+        name: formData.get("name") !== null ? (formData.get("name") as string) : location.name,
+        code: formData.get("code") !== null ? (formData.get("code") as string) : location.code,
+        shortCode: formData.get("shortCode") !== null ? ((formData.get("shortCode") as string) || undefined) : (location.shortCode || undefined),
+        centerId: formData.get("centerId") !== null ? ((formData.get("centerId") as string)?.trim() || undefined) : (location.centerId || undefined),
+        address: formData.get("address") !== null ? (formData.get("address") as string) : (location.address || undefined),
+        cityId: formData.get("cityId") !== null ? (formData.get("cityId") as string) : (location.cityId || undefined),
         cashGLCode,
         isStockLocation,
         brandIds: selectedBrandIds,
@@ -401,29 +409,34 @@ function RowActions({ row }: RowActionsProps) {
         return;
       }
 
-      const latVal = formData.get("latitude")
-        ? Number(formData.get("latitude"))
-        : undefined;
-      const lngVal = formData.get("longitude")
-        ? Number(formData.get("longitude"))
-        : undefined;
-      const radiusVal = formData.get("geoFenceRadius")
-        ? Number(formData.get("geoFenceRadius"))
-        : undefined;
+      const latValRaw = formData.get("latitude");
+      const latVal = latValRaw !== null 
+        ? (latValRaw ? Number(latValRaw) : undefined)
+        : (location.latitude !== null ? Number(location.latitude) : undefined);
+
+      const lngValRaw = formData.get("longitude");
+      const lngVal = lngValRaw !== null 
+        ? (lngValRaw ? Number(lngValRaw) : undefined)
+        : (location.longitude !== null ? Number(location.longitude) : undefined);
+
+      const radiusValRaw = formData.get("geoFenceRadius");
+      const radiusVal = radiusValRaw !== null 
+        ? (radiusValRaw ? Number(radiusValRaw) : undefined)
+        : (location.geoFenceRadius || undefined);
 
       const resOther = await updateLocationOtherInfo(location.id, {
-        phone: formData.get("phone") as string,
+        phone: formData.get("phone") !== null ? (formData.get("phone") as string) : (location.phone || undefined),
         latitude: latVal,
         longitude: lngVal,
         geoFenceEnabled,
         geoFenceRadius: radiusVal,
         ipWhitelistEnabled,
-        ipWhitelist: formData.get("ipWhitelist") as string,
+        ipWhitelist: formData.get("ipWhitelist") !== null ? (formData.get("ipWhitelist") as string) : (location.ipWhitelist || undefined),
         fbrEnabled,
-        fbrBposId: formData.get("fbrBposId") as string,
-        fbrNtn: formData.get("fbrNtn") as string,
-        fbrSellerName: formData.get("fbrSellerName") as string,
-        fbrBearerToken: formData.get("fbrBearerToken") as string,
+        fbrBposId: formData.get("fbrBposId") !== null ? (formData.get("fbrBposId") as string) : (location.fbrBposId || undefined),
+        fbrNtn: formData.get("fbrNtn") !== null ? (formData.get("fbrNtn") as string) : (location.fbrNtn || undefined),
+        fbrSellerName: formData.get("fbrSellerName") !== null ? (formData.get("fbrSellerName") as string) : (location.fbrSellerName || undefined),
+        fbrBearerToken: formData.get("fbrBearerToken") !== null ? (formData.get("fbrBearerToken") as string) : (location.fbrBearerToken || undefined),
       });
 
       if (resOther.status) {
@@ -541,7 +554,7 @@ function RowActions({ row }: RowActionsProps) {
                 <TabsTrigger value="fbr">FBR Integration</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="general" className="space-y-4 py-4">
+              <TabsContent value="general" forceMount className="data-[state=inactive]:hidden space-y-4 py-4">
                 <div className="grid grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-name">Name</Label>
@@ -696,7 +709,7 @@ function RowActions({ row }: RowActionsProps) {
                 </div>
               </TabsContent>
 
-              <TabsContent value="security" className="space-y-6 py-4">
+              <TabsContent value="security" forceMount className="data-[state=inactive]:hidden space-y-6 py-4">
                 <div className="space-y-4 border rounded-lg p-4">
                   <Label className="text-base block">Coordinates</Label>
                   <div className="grid grid-cols-2 gap-4">
@@ -797,7 +810,7 @@ function RowActions({ row }: RowActionsProps) {
                 </div>
               </TabsContent>
 
-              <TabsContent value="fbr" className="space-y-4 py-4">
+              <TabsContent value="fbr" forceMount className="data-[state=inactive]:hidden space-y-4 py-4">
                 <div className="space-y-4 border rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
@@ -820,7 +833,8 @@ function RowActions({ row }: RowActionsProps) {
                           <Input
                             id="edit-fbr-bpos"
                             name="fbrBposId"
-                            defaultValue={location.fbrBposId || ""}
+                            value={fbrBposId}
+                            onChange={(e) => setFbrBposId(e.target.value)}
                             disabled={isPending}
                             placeholder="e.g. 123456"
                             required={fbrEnabled}
@@ -831,7 +845,8 @@ function RowActions({ row }: RowActionsProps) {
                           <Input
                             id="edit-fbr-ntn"
                             name="fbrNtn"
-                            defaultValue={location.fbrNtn || ""}
+                            value={fbrNtn}
+                            onChange={(e) => setFbrNtn(e.target.value)}
                             disabled={isPending}
                             placeholder="e.g. 1234567-8"
                           />
@@ -842,7 +857,8 @@ function RowActions({ row }: RowActionsProps) {
                         <Input
                           id="edit-fbr-seller"
                           name="fbrSellerName"
-                          defaultValue={location.fbrSellerName || ""}
+                          value={fbrSellerName}
+                          onChange={(e) => setFbrSellerName(e.target.value)}
                           disabled={isPending}
                           placeholder="e.g. Speed (pvt.) Limited Retail"
                         />
@@ -852,7 +868,8 @@ function RowActions({ row }: RowActionsProps) {
                         <Input
                           id="edit-fbr-token"
                           name="fbrBearerToken"
-                          defaultValue={location.fbrBearerToken || ""}
+                          value={fbrBearerToken}
+                          onChange={(e) => setFbrBearerToken(e.target.value)}
                           disabled={isPending}
                           placeholder="FBR Bearer Token for authorization"
                         />

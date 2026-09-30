@@ -17,6 +17,9 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
@@ -454,6 +457,7 @@ export default function SalesHistoryPage() {
     const openPrintDialog = useCallback(async (
         listOrder: any,
         mode: "sales" | "gift" | "return" | "refund",
+        specificReturnId?: string
     ) => {
         // Open dialog right away with loading state
         setIsLoadingReceipt(true);
@@ -476,7 +480,8 @@ export default function SalesHistoryPage() {
         }
 
         try {
-            const res = await authFetch(`/pos-sales/orders/${listOrder.id}`);
+            const orderIdToFetch = listOrder.isReturnRow ? (listOrder.originalOrderId || listOrder.id) : listOrder.id;
+            const res = await authFetch(`/pos-sales/orders/${orderIdToFetch}`);
             if (res.ok && res.data?.status) {
                 const full = res.data.data;
                 if (mode === "sales")  setSelectedOrder({ ...full, isGiftReceipt: false });
@@ -484,14 +489,20 @@ export default function SalesHistoryPage() {
                 if (mode === "return" || mode === "refund") {
                     setSelectedOrder(full);
                     const typeParam = mode === "refund" ? "refund" : "return";
-                    const retRes = await authFetch(`/pos-sales/orders/${listOrder.id}/return-details?type=${typeParam}`);
-                    if (retRes.ok && retRes.data?.status) setReturnDetails(retRes.data.data);
+                    const retId = specificReturnId || (listOrder.isReturnRow ? listOrder.id : listOrder.id);
+                    const retRes = await authFetch(`/pos-sales/orders/${retId}/return-details?type=${typeParam}`);
+                    if (retRes.ok && retRes.data?.status) {
+                        setReturnDetails(retRes.data.data);
+                    } else {
+                        toast.error(retRes.data?.message || "Failed to load return details");
+                    }
                 }
             } else {
-                toast.error("Failed to load order details");
+                toast.error(res.data?.message || "Failed to load parent order details");
             }
-        } catch {
-            toast.error("Failed to load order details");
+        } catch (err: any) {
+            console.error("Print fetch error:", err);
+            toast.error(err?.message || "Failed to load details due to an error");
         } finally {
             setIsLoadingReceipt(false);
         }
@@ -683,33 +694,56 @@ export default function SalesHistoryPage() {
                             onClick={() => {
                                 startTransition(() => {
                                     addTransitionType("nav-forward");
-                                    router.push(`/pos/sales/order-details/${order.id}`);
+                                    router.push(`/pos/sales/order-details/${order.isReturnRow ? order.originalOrderId : order.id}`);
                                 });
                             }}>
                             <Eye className="h-3.5 w-3.5" />
                         </Button>
                         {/* Print */}
                         {!isHold && canPrint && (<>
-                            <Button variant="ghost" size="icon"
-                                className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
-                                title="Print receipt"
-                                onClick={() => openPrintDialog(order, "sales")}>
-                                <Printer className="h-3.5 w-3.5" />
-                            </Button>
-                            {/* Gift receipt button - always show on sales history */}
-                            <Button variant="ghost" size="icon"
-                                className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
-                                title="Print gift receipt (no prices)"
-                                onClick={() => openPrintDialog(order, "gift")}>
-                                <Printer className="h-3.5 w-3.5" />
-                            </Button>
-                            {(order.hasReturn || order.status === 'returned' || order.status === 'partially_returned') && (
-                                <Button variant="ghost" size="icon"
-                                    className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
-                                    title="Print return slip"
-                                    onClick={() => openPrintDialog(order, "return")}>
-                                    <RotateCcw className="h-3.5 w-3.5" />
-                                </Button>
+                            {!order.isReturnRow && (
+                                <>
+                                    <Button variant="ghost" size="icon"
+                                        className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
+                                        title="Print receipt"
+                                        onClick={() => openPrintDialog(order, "sales")}>
+                                        <Printer className="h-3.5 w-3.5" />
+                                    </Button>
+                                    {/* Gift receipt button - always show on sales history */}
+                                    <Button variant="ghost" size="icon"
+                                        className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
+                                        title="Print gift receipt (no prices)"
+                                        onClick={() => openPrintDialog(order, "gift")}>
+                                        <Printer className="h-3.5 w-3.5" />
+                                    </Button>
+                                </>
+                            )}
+                            {(order.isReturnRow || order.hasReturn || order.status === 'returned' || order.status === 'partially_returned') && (
+                                order.posReturns && order.posReturns.length > 1 ? (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon"
+                                                className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
+                                                title="Print return slips">
+                                                <RotateCcw className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            {order.posReturns.map((pr: any, i: number) => (
+                                                <DropdownMenuItem key={pr.id} onClick={() => openPrintDialog(order, "return", pr.id)}>
+                                                    Print Return: {pr.returnNumber || `Return ${i + 1}`}
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                ) : (
+                                    <Button variant="ghost" size="icon"
+                                        className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
+                                        title="Print return slip"
+                                        onClick={() => openPrintDialog(order, "return", order.posReturns?.[0]?.id)}>
+                                        <RotateCcw className="h-3.5 w-3.5" />
+                                    </Button>
+                                )
                             )}
                             {(order.hasRefund || order.status === 'refunded' || (order.status === 'partially_returned' && !order.hasReturn && !order.hasRefund)) && (
                                 <Button variant="ghost" size="icon"

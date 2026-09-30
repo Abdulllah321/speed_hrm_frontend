@@ -37,6 +37,8 @@ export async function GET(
             backendPath = `${API_URL}/finance/chart-of-accounts/bulk-upload/${uploadId}/events`;
         } else if (uploadType === "sales-history") {
             backendPath = `${API_URL}/pos-sales/bulk-upload/${uploadId}/events`;
+        } else if (uploadType === "online-orders") {
+            backendPath = `${API_URL}/pos-sales/online-orders/bulk-upload/${uploadId}/events`;
         } else if (uploadType === "stock") {
             backendPath = `${API_URL}/warehouse/stock/bulk-upload/${uploadId}/events`;
         } else if (uploadType === "srn") {

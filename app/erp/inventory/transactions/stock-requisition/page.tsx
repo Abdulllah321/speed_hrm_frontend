@@ -195,8 +195,11 @@ export default function StockRequisitionPage() {
           }
         });
         
+        // Use the exact net sales calculated by the backend which perfectly matches Net Sales Summary
+        const totalSoldQty = res.summary?.totalNetSales ?? 0;
+        
         setReplenishSummary({
-          totalSoldItems: res.data.length,
+          totalSoldItems: totalSoldQty,
           replenishFully: fully,
           replenishPartially: partially,
           outOfStock: oos,
