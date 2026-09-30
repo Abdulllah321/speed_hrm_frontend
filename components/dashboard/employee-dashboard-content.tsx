@@ -292,17 +292,19 @@ export function EmployeeDashboardContent() {
                                         </Link>
                                     </Button>
 
-                                    <Button asChild variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all group">
-                                        <Link href="/hr/payroll-setup/payroll/payslips">
-                                            <div className="bg-purple-100 p-2 rounded-md mr-3 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 group-hover:scale-105 transition-transform">
-                                                <FileText className="h-4 w-4" />
-                                            </div>
-                                            <div className="text-left">
-                                                <div className="font-medium">My Payslips</div>
-                                                <div className="text-xs text-muted-foreground">View salary details</div>
-                                            </div>
-                                        </Link>
-                                    </Button>
+                                    {!user?.role?.toLowerCase().includes("pos") && (
+                                        <Button asChild variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all group">
+                                            <Link href="/hr/payroll-setup/payroll/payslips">
+                                                <div className="bg-purple-100 p-2 rounded-md mr-3 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 group-hover:scale-105 transition-transform">
+                                                    <FileText className="h-4 w-4" />
+                                                </div>
+                                                <div className="text-left">
+                                                    <div className="font-medium">My Payslips</div>
+                                                    <div className="text-xs text-muted-foreground">View salary details</div>
+                                                </div>
+                                            </Link>
+                                        </Button>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>
