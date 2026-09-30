@@ -68,7 +68,7 @@ export function StockActivityView({
     }
   }, [isWarehouseOnly, warehouseCode, warehouses]);
 
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [reportType, setReportType] = useState<"merged" | "separate">("separate");
 
   // Default to current fiscal year (July 1 – June 30), not calendar year
   const currentFY = getFiscalYearInfo();

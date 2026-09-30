@@ -71,6 +71,7 @@ export interface GrossSalesSummaryReportData {
 }
 
 export interface GroupingLevels {
+  includes(arg0: string): boolean | undefined;
   brand: boolean;
   division: boolean;
   category: boolean;

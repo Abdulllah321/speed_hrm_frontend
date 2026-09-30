@@ -277,8 +277,20 @@ export function useSalesListData(
       addTotals(group.totals, inv.totals);
     }
 
-    return Array.from(map.values());
-  }, [filteredInvoices]);
+    const result = Array.from(map.values());
+
+    // Patch location totals with backend computed values to avoid preview truncation discrepancies
+    if (!hasActiveFilters && reportData?.locations) {
+      for (const group of result) {
+        const backendLoc = reportData.locations.find((l) => l.locationKey === group.locationKey);
+        if (backendLoc && backendLoc.totals) {
+          group.totals = { ...backendLoc.totals };
+        }
+      }
+    }
+
+    return result;
+  }, [filteredInvoices, hasActiveFilters, reportData?.locations]);
 
   // Expand all locations and all invoices
   const expandAll = useCallback(() => {

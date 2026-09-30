@@ -685,3 +685,30 @@ export async function getEmployeeExportStatus(
   }
 }
 
+// --- USER BRANDS ---
+export async function getUserBrands(userId: string) {
+  try {
+    const res = await authFetch(`/employees/user/${userId}/brands`);
+    if (!res.ok) return { status: false, data: [] };
+    return res.data; // { status: true, data: [...] }
+  } catch (error) {
+    return { status: false, data: [] };
+  }
+}
+
+export async function updateUserBrands(userId: string, brandIds: string[]) {
+  try {
+    const res = await authFetch(`/employees/user/${userId}/brands`, {
+      method: 'PUT',
+      body: JSON.stringify({ brandIds }),
+    });
+    if (!res.ok) {
+      return { status: false, message: res.data?.message || 'Failed to update brands' };
+    }
+    revalidatePath('/hr/employee/user-account');
+    return res.data;
+  } catch (error) {
+    return { status: false, message: 'Failed to update brands' };
+  }
+}
+

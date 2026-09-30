@@ -127,7 +127,7 @@ export function GrossSalesSummaryView({
     initialReportData
   );
   const [reportType, setReportType] = useState<"merged" | "separate">(
-    initialReportData?.reportType || "merged"
+    initialReportData?.reportType || "separate"
   );
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>();
@@ -330,7 +330,10 @@ export function GrossSalesSummaryView({
 
     // Instant On-The-Fly Server Filtered Streaming Export
     // Zero browser CPU lag, zero database re-querying, preserving current search & outlet filters.
-    if (previewJobId) {
+    // NOTE: We ONLY use this for "flat" exports because the backend streaming endpoint does not
+    // have the dynamic matrix aggregation logic. For "hierarchical", we will either use the Bull Queue
+    // (for large datasets) or the frontend generator (for small datasets).
+    if (previewJobId && type === "flat") {
       try {
         setExportProgressState((prev) => ({
           ...prev,
@@ -366,7 +369,7 @@ export function GrossSalesSummaryView({
       return;
     }
 
-    // For large un-previewed datasets, offload to Bull Queue streaming worker
+    // For large un-previewed datasets or large matrix datasets, offload to Bull Queue streaming worker
     if (totalCount > 2500) {
       try {
         setExportProgressState((prev) => ({
@@ -384,6 +387,13 @@ export function GrossSalesSummaryView({
           format: "xlsx",
           exportType: type,
           search: searchQuery || undefined,
+          showCategory: !!groupingLevels.category,
+          showBrand: !!groupingLevels.brand,
+          showDivision: !!groupingLevels.division,
+          showGender: !!groupingLevels.gender,
+          showSilhouette: !!groupingLevels.silhouette,
+          showArticle: !!groupingLevels.article,
+          showVariant: !!groupingLevels.variant,
         });
 
         if (!queueRes.status || !queueRes.data?.jobId) {
@@ -446,7 +456,7 @@ export function GrossSalesSummaryView({
 
     // Instant browser export for small datasets
     try {
-      await generateGrossSalesSummaryExcel({
+      const { excelBuffer, fileName } = await generateGrossSalesSummaryExcel({
         exportType: type,
         treeData,
         flatItems: filteredFlatItems,
@@ -461,6 +471,20 @@ export function GrossSalesSummaryView({
           }));
         },
       });
+
+      // Trigger browser download from the returned ArrayBuffer
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
       toast.success("Excel exported successfully!");
     } catch (err: any) {
       toast.error("Failed to generate Excel file");

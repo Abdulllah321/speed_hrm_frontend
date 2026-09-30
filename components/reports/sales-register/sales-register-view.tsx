@@ -41,7 +41,7 @@ export function SalesRegisterView({ isPosLevel = false }: SalesRegisterViewProps
     }
   }, [isPosLevel, posLocationId]);
 
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [reportType, setReportType] = useState<"merged" | "separate">("separate");
   const [dateRange, setDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),

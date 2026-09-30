@@ -42,6 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/components/providers/auth-provider";
+import { UserBrandsModal } from "./user-brands-modal";
 
 interface Row {
   employeeId: string;
@@ -98,6 +99,11 @@ export function EmployeeUserList({
   const [isSavingPermissions, startSavingPermissionsTransition] = useTransition();
   const [activePermissionTab, setActivePermissionTab] = useState<"HR" | "Master" | "ERP" | "POS">("HR");
   const [masterFilter, setMasterFilter] = useState<"All" | "HR" | "ERP" | "POS">("All");
+
+  // Brands Modal State
+  const [isBrandsModalOpen, setIsBrandsModalOpen] = useState(false);
+  const [targetBrandsUserId, setTargetBrandsUserId] = useState<string>("");
+  const [targetBrandsUserName, setTargetBrandsUserName] = useState<string>("");
 
   const getRelativeTimeDesc = (dateStr: string) => {
     if (!dateStr) return "";
@@ -462,6 +468,20 @@ export function EmployeeUserList({
                     >
                       <ShieldCheck className="h-4 w-4 mr-2" />
                       Manage Permissions
+                    </button>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <button
+                      type="button"
+                      className="flex w-full items-center text-blue-600 focus:text-blue-600"
+                      onClick={() => {
+                        setTargetBrandsUserId(r.userId || "");
+                        setTargetBrandsUserName(r.employeeName || "");
+                        setIsBrandsModalOpen(true);
+                      }}
+                    >
+                      <LayoutDashboard className="h-4 w-4 mr-2" />
+                      Manage Brands
                     </button>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
@@ -1043,6 +1063,13 @@ export function EmployeeUserList({
           </div>
         </DialogContent>
       </Dialog>
+      {/* Manage Brands Modal */}
+      <UserBrandsModal
+        open={isBrandsModalOpen}
+        onOpenChange={setIsBrandsModalOpen}
+        userId={targetBrandsUserId}
+        userName={targetBrandsUserName}
+      />
     </div>
   );
 }

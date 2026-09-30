@@ -78,7 +78,7 @@ export function WholesaleInvoiceView() {
   }, []);
 
   const [reportData, setReportData] = useState<WholesaleInvoiceRegisterData | null>(null);
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [reportType, setReportType] = useState<"merged" | "separate">("separate");
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 

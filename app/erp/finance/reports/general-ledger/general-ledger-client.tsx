@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRangePicker, getFiscalYearInfo } from "@/components/ui/date-range-picker";
 import {
   ChartOfAccountSelect,
   getSharedTree,
@@ -79,16 +79,9 @@ const fmt = (n: number | null | undefined) => {
   });
 };
 
-const getLocalStartOfDayISO = (d: Date) => {
-  const start = new Date(d);
-  start.setHours(0, 0, 0, 0);
-  return start.toISOString();
-};
-
-const getLocalEndOfDayISO = (d: Date) => {
-  const end = new Date(d);
-  end.setHours(23, 59, 59, 999);
-  return end.toISOString();
+const formatDateParam = (d?: Date) => {
+  if (!d) return undefined;
+  return format(d, "yyyy-MM-dd");
 };
 
 /**
@@ -577,10 +570,13 @@ export function GeneralLedgerClient({
   const [selectedAccountIds, setSelectedAccountIds] = React.useState<string[]>([]);
   const [selectedTagAccountIds, setSelectedTagAccountIds] = React.useState<string[]>([]);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
-    new Date(new Date().getFullYear(), 0, 1),
+    () => getFiscalYearInfo(new Date()).startDate,
   );
-  const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
+  const [toDate, setToDate] = React.useState<Date | undefined>(
+    () => new Date(),
+  );
   const [sourceType, setSourceType] = React.useState<string>("all");
+  const [hideInactiveAccounts, setHideInactiveAccounts] = React.useState<boolean>(false);
 
   // ─── Data & View States ─────────────────────────────────────────────────────
   const [data, setData] = React.useState<GeneralLedgerResult | undefined>();
@@ -690,19 +686,26 @@ export function GeneralLedgerClient({
   }, [selectedTagAccountIds, selectedAccountIds, activeSubAccounts]);
 
   // ─── Query & Load Ledger ───────────────────────────────────────────────────
-  const load = (targetPage = page, targetLimit = limit) => {
-    if (!targetAccountId) {
+  const load = (
+    targetPage = page,
+    targetLimit = limit,
+    targetFrom = fromDate,
+    targetTo = toDate,
+    targetSource = sourceType,
+    targetAccId = targetAccountId,
+  ) => {
+    if (!targetAccId) {
       toast.warning("Please select an Account Head or Sub-Account first.");
       return;
     }
     startTransition(async () => {
       try {
-        const res = await getGeneralLedger(targetAccountId, {
-          from: fromDate ? getLocalStartOfDayISO(fromDate) : undefined,
-          to: toDate ? getLocalEndOfDayISO(toDate) : undefined,
+        const res = await getGeneralLedger(targetAccId, {
+          from: targetFrom ? formatDateParam(targetFrom) : undefined,
+          to: targetTo ? formatDateParam(targetTo) : undefined,
           page: targetPage,
           limit: targetLimit,
-          sourceType: sourceType === "all" ? undefined : sourceType,
+          sourceType: targetSource === "all" ? undefined : targetSource,
         });
         if (res?.status && res?.data) {
           setData(res.data);
@@ -732,7 +735,7 @@ export function GeneralLedgerClient({
     if (selectedTagAccountIds.length > 1 || selectedAccountIds.length > 1) {
       setViewMode("all");
     }
-    load(1, limit);
+    load(1, limit, fromDate, toDate, sourceType, targetAccountId);
   };
 
   // ─── 5. Hierarchical Data Grouping (Heads & Ledgers) ───────────────────────
@@ -740,63 +743,84 @@ export function GeneralLedgerClient({
     if (!data) return [];
 
     const isLedgerEmpty = (lg: SingleAccountLedger) =>
-      lg.openingBalance === 0 && lg.rangeClosingBalance === 0 && lg.rows.length === 0;
+      Number(lg.openingBalance || 0) === 0 &&
+      Number(lg.rangeClosingBalance || 0) === 0 &&
+      (!lg.rows || lg.rows.length === 0);
+
+    let headsList: GeneralLedgerHeadGroup[] = [];
 
     if (data.heads && data.heads.length > 0) {
-      return data.heads
+      headsList = data.heads;
+    } else {
+      const ledgersList: SingleAccountLedger[] =
+        data.ledgers && data.ledgers.length > 0
+          ? data.ledgers
+          : [
+              {
+                account: data.account,
+                openingBalance: data.openingBalance,
+                rows: data.rows,
+                closingBalance: data.closingBalance,
+                rangeTotalDebit: data.rangeTotalDebit,
+                rangeTotalCredit: data.rangeTotalCredit,
+                rangeClosingBalance: data.rangeClosingBalance,
+                pagination: data.pagination,
+              },
+            ];
+
+      const map = new Map<string, GeneralLedgerHeadGroup>();
+      for (const lg of ledgersList) {
+        const h = lg.head ?? {
+          id: lg.account.id,
+          code: lg.account.code,
+          name: lg.account.name,
+        };
+        if (!map.has(h.id)) {
+          map.set(h.id, {
+            head: h,
+            openingBalance: 0,
+            rangeTotalDebit: 0,
+            rangeTotalCredit: 0,
+            rangeClosingBalance: 0,
+            ledgerCount: 0,
+            transactionCount: 0,
+            ledgers: [],
+          });
+        }
+        const grp = map.get(h.id)!;
+        grp.openingBalance += Number(lg.openingBalance || 0);
+        grp.rangeTotalDebit += Number(lg.rangeTotalDebit || 0);
+        grp.rangeTotalCredit += Number(lg.rangeTotalCredit || 0);
+        grp.rangeClosingBalance += Number(lg.rangeClosingBalance || 0);
+        grp.ledgerCount += 1;
+        grp.transactionCount += (lg.pagination?.total ?? lg.rows.length);
+        grp.ledgers.push(lg);
+      }
+      headsList = Array.from(map.values());
+    }
+
+    if (hideInactiveAccounts) {
+      const filtered = headsList
         .map((hg) => ({
           ...hg,
           ledgers: hg.ledgers.filter((lg) => !isLedgerEmpty(lg)),
         }))
         .filter((hg) => hg.ledgers.length > 0);
-    }
 
-    const ledgersList: SingleAccountLedger[] =
-      data.ledgers && data.ledgers.length > 0
-        ? data.ledgers.filter((lg) => !isLedgerEmpty(lg))
-        : [
-            {
-              account: data.account,
-              openingBalance: data.openingBalance,
-              rows: data.rows,
-              closingBalance: data.closingBalance,
-              rangeTotalDebit: data.rangeTotalDebit,
-              rangeTotalCredit: data.rangeTotalCredit,
-              rangeClosingBalance: data.rangeClosingBalance,
-              pagination: data.pagination,
-            },
-          ].filter((lg) => !isLedgerEmpty(lg));
-
-    const map = new Map<string, GeneralLedgerHeadGroup>();
-    for (const lg of ledgersList) {
-      const h = lg.head ?? {
-        id: lg.account.id,
-        code: lg.account.code,
-        name: lg.account.name,
-      };
-      if (!map.has(h.id)) {
-        map.set(h.id, {
-          head: h,
-          openingBalance: 0,
-          rangeTotalDebit: 0,
-          rangeTotalCredit: 0,
-          rangeClosingBalance: 0,
-          ledgerCount: 0,
-          transactionCount: 0,
-          ledgers: [],
-        });
+      if (filtered.length > 0) {
+        return filtered;
       }
-      const grp = map.get(h.id)!;
-      grp.openingBalance += lg.openingBalance;
-      grp.rangeTotalDebit += lg.rangeTotalDebit;
-      grp.rangeTotalCredit += lg.rangeTotalCredit;
-      grp.rangeClosingBalance += lg.rangeClosingBalance;
-      grp.ledgerCount += 1;
-      grp.transactionCount += (lg.pagination?.total ?? lg.rows.length);
-      grp.ledgers.push(lg);
     }
-    return Array.from(map.values());
-  }, [data]);
+
+    return headsList;
+  }, [data, hideInactiveAccounts]);
+
+  // Reset activeHeadFilter if current filter head does not exist in groupedHeads
+  React.useEffect(() => {
+    if (activeHeadFilter !== "all" && !groupedHeads.some((h) => h.head.id === activeHeadFilter)) {
+      setActiveHeadFilter("all");
+    }
+  }, [groupedHeads, activeHeadFilter]);
 
   // All flat ledgers for navigation
   const allLedgers: SingleAccountLedger[] = React.useMemo(() => {
@@ -805,7 +829,7 @@ export function GeneralLedgerClient({
       return groupedHeads.flatMap((h) => h.ledgers);
     }
     const found = groupedHeads.find((h) => h.head.id === activeHeadFilter);
-    return found ? found.ledgers : [];
+    return found ? found.ledgers : groupedHeads.flatMap((h) => h.ledgers);
   }, [groupedHeads, activeHeadFilter]);
 
   // Safe active ledger for single view
@@ -1011,8 +1035,8 @@ export function GeneralLedgerClient({
 
     toast.promise(
       queueGeneralLedgerExport(targetAccountId, {
-        from: fromDate ? getLocalStartOfDayISO(fromDate) : undefined,
-        to: toDate ? getLocalEndOfDayISO(toDate) : undefined,
+        from: fromDate ? formatDateParam(fromDate) : undefined,
+        to: toDate ? formatDateParam(toDate) : undefined,
         sourceType: sourceType === "all" ? undefined : sourceType,
       }),
       {
@@ -1196,8 +1220,14 @@ export function GeneralLedgerClient({
                   initialDateFrom={fromDate}
                   initialDateTo={toDate}
                   onUpdate={(v) => {
-                    setFromDate(v.range.from);
-                    setToDate(v.range.to);
+                    const nextFrom = v.range.from;
+                    const nextTo = v.range.to;
+                    setFromDate(nextFrom);
+                    setToDate(nextTo);
+                    if (data && targetAccountId) {
+                      setPage(1);
+                      load(1, limit, nextFrom, nextTo, sourceType, targetAccountId);
+                    }
                   }}
                   align="start"
                   locale="en-GB"
@@ -1211,7 +1241,16 @@ export function GeneralLedgerClient({
                 <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Filter className="h-3 w-3 text-primary/70" /> Document Type
                 </Label>
-                <Select value={sourceType} onValueChange={setSourceType}>
+                <Select
+                  value={sourceType}
+                  onValueChange={(val) => {
+                    setSourceType(val);
+                    if (data && targetAccountId) {
+                      setPage(1);
+                      load(1, limit, fromDate, toDate, val, targetAccountId);
+                    }
+                  }}
+                >
                   <SelectTrigger className="h-10 text-sm shadow-sm">
                     <SelectValue placeholder="All Documents" />
                   </SelectTrigger>
@@ -1393,6 +1432,15 @@ export function GeneralLedgerClient({
                             </button>
                           </div>
                         )}
+
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer select-none px-2.5 py-1 rounded-lg border border-border/60 bg-background hover:bg-muted/40 transition-colors">
+                          <Checkbox
+                            checked={hideInactiveAccounts}
+                            onCheckedChange={(c) => setHideInactiveAccounts(Boolean(c))}
+                            className="h-3.5 w-3.5"
+                          />
+                          <span className="text-[11px] font-medium whitespace-nowrap">Hide Inactive</span>
+                        </label>
                       </div>
                     </div>
 
@@ -1430,6 +1478,18 @@ export function GeneralLedgerClient({
                       </div>
                     )}
                   </div>
+
+                  {/* Empty Result Fallback */}
+                  {ledgersToRender.length === 0 && (
+                    <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground border border-dashed rounded-xl bg-muted/5">
+                      <BookOpen className="h-10 w-10 text-muted-foreground/35 mb-2 stroke-[1.5]" />
+                      <p className="text-sm font-semibold text-foreground">No Ledger Records Found</p>
+                      <p className="text-xs text-muted-foreground/70 mt-1 max-w-sm">
+                        No transactions or balances found for the selected account(s) and date range.
+                        {hideInactiveAccounts && " (Inactive accounts are currently hidden. Uncheck 'Hide Inactive' to view all accounts.)"}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Render Ledgers */}
                   {ledgersToRender.map((ledgerItem, ledgerIdx) => {

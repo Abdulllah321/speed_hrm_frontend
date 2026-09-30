@@ -67,7 +67,7 @@ export function GrossSalesReturnView({
   }, [isPosLevel, posLocationId]);
 
   const [reportType, setReportType] = useState<"merged" | "separate">(
-    initialReportData?.reportType || "merged"
+    initialReportData?.reportType || "separate"
   );
   const getDefaultFiscalDateRange = (): DateRange => {
     const now = new Date();

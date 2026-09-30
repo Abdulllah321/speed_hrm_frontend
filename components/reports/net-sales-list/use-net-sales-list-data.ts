@@ -201,9 +201,26 @@ export function useNetSalesListData(
     totals.netCreditVoucher = totals.creditVoucherRedeemed - totals.creditVoucherIssued;
     totals.netClaimVoucher = totals.claimVoucherRedeemed - totals.claimVoucherIssued;
 
+    const hasActiveFilters =
+      filters.locationId !== "all" ||
+      filters.docTypeFilter !== "ALL" ||
+      (filters.search || "").trim().length > 0;
+
+    const effectiveGrandTotals = !hasActiveFilters && data.grandTotals ? data.grandTotals : totals;
+
+    // Patch location totals with backend computed values to avoid preview truncation discrepancies
+    if (!hasActiveFilters && data.locations) {
+      for (const loc of filteredLocations) {
+        const backendLoc = data.locations.find((l) => l.locationKey === loc.locationKey);
+        if (backendLoc && backendLoc.totals) {
+          loc.totals = { ...backendLoc.totals };
+        }
+      }
+    }
+
     return {
       locations: filteredLocations,
-      grandTotals: totals,
+      grandTotals: effectiveGrandTotals,
       allDocuments: allFilteredDocs,
     };
   }, [data, filters]);
