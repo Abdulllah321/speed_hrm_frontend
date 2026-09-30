@@ -1,13 +1,18 @@
 "use client";
 
 /**
- * Gross Sales Summary — Beautiful Styled Excel Export
+ * Gross Sales Summary — Excel Export
  *
- * Uses the already-installed `xlsx` (SheetJS) package.
- * Cell-level styles are injected via the `s` property on each cell object.
- * The workbook is written with `{ cellStyles: true }` to enable style output.
+ * Uses the installed `xlsx` (SheetJS Community 0.18.5).
+ * Cell-object `s` styles are NOT supported in community edition writer —
+ * attempting them produces a corrupt file. We use what IS supported:
+ *   - number format strings (cell `z` property)
+ *   - column widths (`!cols`)
+ *   - freeze panes (`!freeze`)
+ *   - row heights (`!rows`)
  *
- * Color palette mirrors the UI preview hierarchy levels.
+ * For large datasets (> 2500 items), the view falls through to the
+ * server-side Bull Queue export which uses ExcelJS with full styling.
  */
 
 import * as XLSX from "xlsx";
@@ -20,114 +25,8 @@ import {
 
 const yieldToMain = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function encCell(r: number, c: number) {
-  return XLSX.utils.encode_cell({ r, c });
-}
-
-function numCell(v: number | string, numFmt?: string, s?: any): any {
-  return { v, t: typeof v === "number" ? "n" : "s", s, ...(numFmt ? { z: numFmt } : {}) };
-}
-
-function strCell(v: string, s?: any): any {
-  return { v, t: "s", s };
-}
-
-// ─── Style Factories ──────────────────────────────────────────────────────────
-
-const DARK_NAV   = "1E293B"; // Slate-900 — header background
-const NEAR_BLACK = "0F172A"; // Near-black — title & grand total
-const WHITE      = "FFFFFF";
-
-/** Hierarchy level → background RGB (for dark levels: white text; light: dark text) */
-const LEVEL_BG: Record<string, string> = {
-  location:    "1D4ED8", // Blue-700    → white text
-  month:       "1E40AF", // Blue-800    → white text
-  date:        "1D4ED8", // Blue-700    → white text
-  document:    "374151", // Gray-700    → white text
-  salesPerson: "4B5563", // Gray-600    → white text
-  taxRate:     "6B7280", // Gray-500    → white text
-  brand:       "334155", // Slate-700   → white text
-  division:    "475569", // Slate-600   → white text
-  category:    "64748B", // Slate-500   → white text
-  gender:      "7C3AED", // Violet-600  → white text
-  silhouette:  "0369A1", // Sky-700     → white text
-  article:     "ECFDF5", // Green-50    → dark text (light row)
-  variant:     "F8FAFC", // Near-white  → dark text (leaf)
-};
-
-const DARK_LEVELS = new Set([
-  "location","month","date","document","salesPerson","taxRate",
-  "brand","division","category","gender","silhouette",
-]);
-
-const borderThin = {
-  top:    { style: "thin",   color: { rgb: "CBD5E1" } },
-  bottom: { style: "thin",   color: { rgb: "CBD5E1" } },
-  left:   { style: "thin",   color: { rgb: "CBD5E1" } },
-  right:  { style: "thin",   color: { rgb: "CBD5E1" } },
-};
-
-const borderTotal = {
-  top:    { style: "medium", color: { rgb: "1E293B" } },
-  bottom: { style: "double", color: { rgb: "1E293B" } },
-  left:   { style: "thin",   color: { rgb: "CBD5E1" } },
-  right:  { style: "thin",   color: { rgb: "CBD5E1" } },
-};
-
-function headerS(align: "left" | "center" | "right" = "left") {
-  return {
-    font:      { bold: true, sz: 10, color: { rgb: WHITE } },
-    fill:      { fgColor: { rgb: DARK_NAV }, patternType: "solid" },
-    alignment: { horizontal: align, vertical: "center", wrapText: true },
-    border:    borderThin,
-  };
-}
-
-function levelS(level: string, align: "left" | "center" | "right" = "left") {
-  const bg   = LEVEL_BG[level] || "F1F5F9";
-  const dark = DARK_LEVELS.has(level);
-  return {
-    font:      { bold: !["article","variant"].includes(level), sz: 9.5, color: { rgb: dark ? WHITE : "0F172A" } },
-    fill:      { fgColor: { rgb: bg }, patternType: "solid" },
-    alignment: { horizontal: align, vertical: "center" },
-    border:    borderThin,
-  };
-}
-
-function plainS(align: "left" | "center" | "right" = "left", alt = false) {
-  return {
-    font:      { sz: 9, color: { rgb: "1E293B" } },
-    fill:      { fgColor: { rgb: alt ? "F1F5F9" : WHITE }, patternType: "solid" },
-    alignment: { horizontal: align, vertical: "center" },
-    border:    borderThin,
-  };
-}
-
-function totalS(align: "left" | "center" | "right" = "left") {
-  return {
-    font:      { bold: true, sz: 10, color: { rgb: WHITE } },
-    fill:      { fgColor: { rgb: NEAR_BLACK }, patternType: "solid" },
-    alignment: { horizontal: align, vertical: "center" },
-    border:    borderTotal,
-  };
-}
-
-function titleS() {
-  return {
-    font:      { bold: true, sz: 12, color: { rgb: WHITE } },
-    fill:      { fgColor: { rgb: NEAR_BLACK }, patternType: "solid" },
-    alignment: { horizontal: "left", vertical: "center" },
-    border:    { bottom: { style: "thin", color: { rgb: "334155" } } },
-  };
-}
-
-// ─── Number formats ───────────────────────────────────────────────────────────
 const FMT_NUM = "#,##0.00";
 const FMT_INT = "#,##0";
-
-// ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function generateGrossSalesSummaryExcel(opts: {
   exportType: "flat" | "hierarchical";
@@ -155,79 +54,86 @@ export async function generateGrossSalesSummaryExcel(opts: {
   const dateStr = format(new Date(), "yyyy-MM-dd");
   const fileName = `gross-sales-summary-${exportType}-${dateStr}.xlsx`;
 
-  const title = `Gross Sales Summary — ${locationNames}` +
-    (dateRange.from ? `  |  ${format(dateRange.from, "dd MMM yyyy")}` : "") +
-    (dateRange.to   ? ` – ${format(dateRange.to, "dd MMM yyyy")}`   : "");
-
   if (exportType === "flat") {
-    await buildFlatSheet(wb, flatItems, grandTotals, title, onProgress);
+    await buildFlatSheet(wb, flatItems, grandTotals, locationNames, dateRange, onProgress);
   } else {
-    await buildHierarchicalSheet(wb, treeData, grandTotals, title, onProgress);
+    await buildHierarchicalSheet(wb, treeData, grandTotals, locationNames, dateRange, onProgress);
   }
 
   onProgress?.(92);
   await yieldToMain();
 
-  // `cellStyles: true` enables the `s` property on cell objects to be written
   const excelBuffer: ArrayBuffer = XLSX.write(wb, {
     bookType: "xlsx",
     type: "array",
-    cellStyles: true,
-  } as any);
+  });
 
   onProgress?.(100);
   return { excelBuffer, fileName, fileBase64: "" };
 }
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+function n(v: number, z = FMT_NUM) {
+  return { v, t: "n" as const, z };
+}
+
+function s(v: string) {
+  return { v, t: "s" as const };
+}
+
 // ─── FLAT SHEET ───────────────────────────────────────────────────────────────
 
-const FLAT_COLS = [
-  { label: "Outlet / Location",              w: 22, align: "left"   as const },
-  { label: "Brand",                          w: 18, align: "left"   as const },
-  { label: "Division",                       w: 16, align: "left"   as const },
-  { label: "Category",                       w: 18, align: "left"   as const },
-  { label: "Silhouette",                     w: 16, align: "left"   as const },
-  { label: "Gender",                         w: 12, align: "left"   as const },
-  { label: "Order #",                        w: 16, align: "center" as const },
-  { label: "FBR Invoice",                    w: 18, align: "center" as const },
-  { label: "SKU",                            w: 14, align: "center" as const },
-  { label: "Barcode",                        w: 14, align: "center" as const },
-  { label: "Description",                    w: 30, align: "left"   as const },
-  { label: "Size",                           w: 10, align: "center" as const },
-  { label: "Color",                          w: 12, align: "center" as const },
-  { label: "Qty",                            w:  8, align: "right"  as const, numFmt: FMT_INT },
-  { label: "Unit Price (Rs.)",               w: 14, align: "right"  as const, numFmt: FMT_NUM },
-  { label: "Price WOST",                     w: 14, align: "right"  as const, numFmt: FMT_NUM },
-  { label: "Total Price WOST",               w: 16, align: "right"  as const, numFmt: FMT_NUM },
-  { label: "Discount Amt (Rs.)",             w: 16, align: "right"  as const, numFmt: FMT_NUM },
-  { label: "Value Excl. Sales Tax",          w: 18, align: "right"  as const, numFmt: FMT_NUM },
-  { label: "Sales Tax (Rs.)",                w: 14, align: "right"  as const, numFmt: FMT_NUM },
-  { label: "Value Incl. Tax / Revenue",      w: 22, align: "right"  as const, numFmt: FMT_NUM },
+const FLAT_HEADERS = [
+  "Outlet / Location",
+  "Brand",
+  "Division",
+  "Category",
+  "Silhouette",
+  "Gender",
+  "Order #",
+  "FBR Invoice",
+  "SKU",
+  "Barcode",
+  "Description",
+  "Size",
+  "Color",
+  "Qty",
+  "Unit Price (Rs.)",
+  "Price WOST",
+  "Total Price WOST",
+  "Discount Amt (Rs.)",
+  "Value Excl. Sales Tax",
+  "Sales Tax (Rs.)",
+  "Value Incl. Tax / Revenue",
+];
+
+const FLAT_COL_W = [
+  22, 18, 16, 18, 16, 12,
+  16, 18, 14, 14, 30, 10, 12,
+  8, 14, 14, 16, 16, 18, 14, 22,
 ];
 
 async function buildFlatSheet(
   wb: XLSX.WorkBook,
   flatItems: GrossSalesSummaryFlatRecord[],
   gt: GrossSalesSummaryTotals,
-  title: string,
+  locationNames: string,
+  dateRange: { from?: Date; to?: Date },
   onProgress?: (p: number) => void,
 ) {
-  const ws: any = {};
-  const nc = FLAT_COLS.length;
-  let r = 0;
+  const rows: any[][] = [];
 
-  // Title
-  ws[encCell(r, 0)] = strCell(title, titleS());
-  ws["!merges"] = [{ s: { r, c: 0 }, e: { r, c: nc - 1 } }];
-  r++;
+  // Row 1: Report Title (merged via writing into col A)
+  const fromStr = dateRange.from ? format(dateRange.from, "dd MMM yyyy") : "";
+  const toStr = dateRange.to ? format(dateRange.to, "dd MMM yyyy") : "";
+  const title = `Gross Sales Summary — ${locationNames}${fromStr ? `  |  ${fromStr}` : ""}${toStr ? ` – ${toStr}` : ""}`;
+  rows.push([title]);
 
-  // Header
-  for (let c = 0; c < nc; c++) {
-    ws[encCell(r, c)] = strCell(FLAT_COLS[c].label, headerS(FLAT_COLS[c].align));
-  }
-  r++;
+  // Row 2: Column headers
+  rows.push(FLAT_HEADERS);
 
-  // Data
+  // Data rows
   const total = flatItems.length;
   for (let i = 0; i < total; i++) {
     const item = flatItems[i];
@@ -240,36 +146,30 @@ async function buildFlatSheet(
     const valEx     = Math.max(0, Math.round((wost - discWost) * 100) / 100);
     const tax       = item.taxAmount || 0;
     const valIncl   = item.subTotal || Math.round((valEx + tax) * 100) / 100;
-    const alt       = i % 2 === 1;
 
-    const strs = [
-      item.locationName || "—",
-      item.brandName || "—",
-      item.divisionName || "—",
-      item.categoryName || "—",
-      item.silhouetteName || "—",
-      item.genderName || "—",
-      item.orderNumber || "—",
-      item.fbrInvoiceNumber || "—",
-      item.sku || "—",
-      item.barCode || "—",
-      item.description || "—",
-      item.sizeName || "—",
-      item.colorName || "—",
-    ];
-    const nums = [qty, uPrice, pWost, wost, disc, valEx, tax, valIncl];
-
-    for (let c = 0; c < strs.length; c++) {
-      ws[encCell(r, c)] = strCell(strs[c], plainS(FLAT_COLS[c].align, alt));
-    }
-    for (let c = 0; c < nums.length; c++) {
-      const ci = strs.length + c;
-      ws[encCell(r, ci)] = numCell(nums[c], FLAT_COLS[ci].numFmt, {
-        ...plainS(FLAT_COLS[ci].align, alt),
-        numFmt: FLAT_COLS[ci].numFmt,
-      });
-    }
-    r++;
+    rows.push([
+      item.locationName || "",
+      item.brandName || "",
+      item.divisionName || "",
+      item.categoryName || "",
+      item.silhouetteName || "",
+      item.genderName || "",
+      item.orderNumber || "",
+      item.fbrInvoiceNumber || "",
+      item.sku || "",
+      item.barCode || "",
+      item.description || "",
+      item.sizeName || "",
+      item.colorName || "",
+      qty,
+      uPrice,
+      pWost,
+      wost,
+      disc,
+      valEx,
+      tax,
+      valIncl,
+    ]);
 
     if (i % 300 === 0) {
       onProgress?.(5 + Math.round((i / Math.max(1, total)) * 75));
@@ -277,80 +177,88 @@ async function buildFlatSheet(
     }
   }
 
-  // Grand Total
-  const grandStrs = [
-    "GRAND TOTAL","","","","","","","","","","","","",
-  ];
-  const grandNums = [
-    gt.totalItems, 0, 0, gt.wostAmount, gt.discountAmount,
+  // Grand Total row
+  rows.push([
+    "GRAND TOTAL", "", "", "", "", "", "", "", "", "", "", "", "",
+    gt.totalItems,
+    "", "",
+    gt.wostAmount,
+    gt.discountAmount,
     gt.valueExSalesTax || gt.amountAfterDiscount || 0,
     gt.taxAmount,
     gt.valueInclSalesTax || gt.netAmount || 0,
-  ];
+  ]);
 
-  for (let c = 0; c < grandStrs.length; c++) {
-    ws[encCell(r, c)] = strCell(grandStrs[c], totalS(FLAT_COLS[c].align));
-  }
-  for (let c = 0; c < grandNums.length; c++) {
-    const ci = grandStrs.length + c;
-    const val = grandNums[c];
-    // Skip zeros for unit price / pWost placeholders
-    if (ci === 14 || ci === 15) {
-      ws[encCell(r, ci)] = strCell("", totalS(FLAT_COLS[ci].align));
-    } else {
-      ws[encCell(r, ci)] = numCell(val, FLAT_COLS[ci].numFmt, {
-        ...totalS(FLAT_COLS[ci].align),
-        numFmt: FLAT_COLS[ci].numFmt,
-      });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Apply number formats to numeric columns (indices 13–20, rows 2..end)
+  const numCols = [13, 14, 15, 16, 17, 18, 19, 20];
+  const numFmts: Record<number, string> = {
+    13: FMT_INT,
+    14: FMT_NUM, 15: FMT_NUM, 16: FMT_NUM, 17: FMT_NUM,
+    18: FMT_NUM, 19: FMT_NUM, 20: FMT_NUM,
+  };
+  const dataStartRow = 2; // row index 0=title, 1=headers, 2..=data
+  const lastRow = rows.length - 1;
+  for (let r = dataStartRow; r <= lastRow; r++) {
+    for (const c of numCols) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (ws[addr] && typeof ws[addr].v === "number") {
+        ws[addr].t = "n";
+        ws[addr].z = numFmts[c];
+      }
     }
   }
-  r++;
 
-  ws["!ref"]  = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r - 1, c: nc - 1 } });
-  ws["!cols"] = FLAT_COLS.map((col) => ({ wch: col.w }));
-  ws["!rows"] = [{ hpt: 28 }, { hpt: 22 }];
+  // Merge title row across all columns
+  ws["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: FLAT_HEADERS.length - 1 } },
+  ];
+
+  // Freeze header rows (title + column headers)
+  (ws as any)["!freeze"] = { xSplit: 0, ySplit: 2, topLeftCell: "A3", activePane: "bottomLeft" };
+
+  ws["!cols"] = FLAT_COL_W.map((w) => ({ wch: w }));
 
   XLSX.utils.book_append_sheet(wb, ws, "Flat Line Items");
 }
 
 // ─── HIERARCHICAL SHEET ───────────────────────────────────────────────────────
 
-const HIER_COLS = [
-  { label: "Product Hierarchy / Location",  w: 50, align: "left"  as const },
-  { label: "Qty",                            w: 10, align: "right" as const, numFmt: FMT_INT },
-  { label: "Unit Price (Rs.)",               w: 14, align: "right" as const, numFmt: FMT_NUM },
-  { label: "Price WOST",                     w: 14, align: "right" as const, numFmt: FMT_NUM },
-  { label: "Total Price WOST",               w: 18, align: "right" as const, numFmt: FMT_NUM },
-  { label: "Discount Amt (Rs.)",             w: 16, align: "right" as const, numFmt: FMT_NUM },
-  { label: "Value Excl. Sales Tax",          w: 18, align: "right" as const, numFmt: FMT_NUM },
-  { label: "Sales Tax (Rs.)",                w: 14, align: "right" as const, numFmt: FMT_NUM },
-  { label: "Value Incl. Tax / Revenue",      w: 22, align: "right" as const, numFmt: FMT_NUM },
+const HIER_HEADERS = [
+  "Product Hierarchy / Location",
+  "Qty",
+  "Unit Price (Rs.)",
+  "Price WOST",
+  "Total Price WOST",
+  "Discount Amt (Rs.)",
+  "Value Excl. Sales Tax",
+  "Sales Tax (Rs.)",
+  "Value Incl. Tax / Revenue",
 ];
+
+const HIER_COL_W = [50, 10, 14, 14, 18, 16, 18, 14, 22];
 
 async function buildHierarchicalSheet(
   wb: XLSX.WorkBook,
   treeData: GrossSalesSummaryTreeNode[],
   gt: GrossSalesSummaryTotals,
-  title: string,
+  locationNames: string,
+  dateRange: { from?: Date; to?: Date },
   onProgress?: (p: number) => void,
 ) {
-  const ws: any = {};
-  const nc = HIER_COLS.length;
-  let r = 0;
+  const rows: any[][] = [];
 
-  // Title
-  ws[encCell(r, 0)] = strCell(title, titleS());
-  ws["!merges"] = [{ s: { r, c: 0 }, e: { r, c: nc - 1 } }];
-  r++;
+  // Title row
+  const fromStr = dateRange.from ? format(dateRange.from, "dd MMM yyyy") : "";
+  const toStr = dateRange.to ? format(dateRange.to, "dd MMM yyyy") : "";
+  const title = `Gross Sales Summary — ${locationNames}${fromStr ? `  |  ${fromStr}` : ""}${toStr ? ` – ${toStr}` : ""}`;
+  rows.push([title]);
 
-  // Header
-  for (let c = 0; c < nc; c++) {
-    ws[encCell(r, c)] = strCell(HIER_COLS[c].label, headerS(HIER_COLS[c].align));
-  }
-  r++;
+  // Header row
+  rows.push(HIER_HEADERS);
 
   let nodeCount = 0;
-
   function countNodes(nodes: GrossSalesSummaryTreeNode[]): number {
     return nodes.reduce((s, n) => s + 1 + countNodes(n.children || []), 0);
   }
@@ -359,10 +267,9 @@ async function buildHierarchicalSheet(
   async function traverse(nodes: GrossSalesSummaryTreeNode[], depth: number) {
     for (const node of nodes) {
       nodeCount++;
-      const isLeaf   = node.level === "variant";
-      const indent   = "  ".repeat(depth);
-      const s        = levelS(node.level, "left");
 
+      const indent = "  ".repeat(depth);
+      const isLeaf = node.level === "variant";
       let label = `${indent}${node.value}`;
       if (node.level === "article" && node.sku) {
         label = `${indent}[${node.sku}] ${node.articleName || node.value}`;
@@ -378,32 +285,17 @@ async function buildHierarchicalSheet(
       const tax     = node.totals.taxAmount;
       const valIncl = node.totals.valueInclSalesTax || node.totals.netAmount || Math.round((valEx + tax) * 100) / 100;
 
-      // Column 0: label (always string)
-      ws[encCell(r, 0)] = strCell(label, s);
-
-      // Column 1: Qty
-      ws[encCell(r, 1)] = numCell(node.totals.totalItems, FMT_INT, { ...levelS(node.level, "right"), numFmt: FMT_INT });
-
-      // Column 2: Unit Price (only on leaf)
-      ws[encCell(r, 2)] = isLeaf && uPrice > 0
-        ? numCell(uPrice,  FMT_NUM, { ...levelS(node.level, "right"), numFmt: FMT_NUM })
-        : strCell("", s);
-
-      // Column 3: Price WOST (only on leaf)
-      ws[encCell(r, 3)] = isLeaf && pWost > 0
-        ? numCell(pWost,   FMT_NUM, { ...levelS(node.level, "right"), numFmt: FMT_NUM })
-        : strCell("", s);
-
-      // Columns 4-8: financial totals
-      const totals = [wost, disc, valEx, tax, valIncl];
-      for (let ci = 0; ci < totals.length; ci++) {
-        ws[encCell(r, 4 + ci)] = numCell(totals[ci], FMT_NUM, {
-          ...levelS(node.level, "right"),
-          numFmt: FMT_NUM,
-        });
-      }
-
-      r++;
+      rows.push([
+        label,
+        node.totals.totalItems,
+        isLeaf && uPrice > 0 ? uPrice : null,
+        isLeaf && pWost > 0  ? pWost  : null,
+        wost,
+        disc,
+        valEx,
+        tax,
+        valIncl,
+      ]);
 
       if (nodeCount % 200 === 0) {
         onProgress?.(5 + Math.round((nodeCount / totalNodes) * 75));
@@ -418,26 +310,46 @@ async function buildHierarchicalSheet(
 
   await traverse(treeData, 0);
 
-  // Grand Total
-  ws[encCell(r, 0)] = strCell("GRAND TOTAL", totalS("left"));
-  ws[encCell(r, 1)] = numCell(gt.totalItems, FMT_INT, { ...totalS("right"), numFmt: FMT_INT });
-  ws[encCell(r, 2)] = strCell("", totalS("right"));
-  ws[encCell(r, 3)] = strCell("", totalS("right"));
-  const gtNums = [
+  // Grand Total row
+  rows.push([
+    "GRAND TOTAL",
+    gt.totalItems,
+    null, null,
     gt.wostAmount,
     gt.discountAmount,
     gt.valueExSalesTax || gt.amountAfterDiscount || 0,
     gt.taxAmount,
     gt.valueInclSalesTax || gt.netAmount || 0,
-  ];
-  for (let ci = 0; ci < gtNums.length; ci++) {
-    ws[encCell(r, 4 + ci)] = numCell(gtNums[ci], FMT_NUM, { ...totalS("right"), numFmt: FMT_NUM });
-  }
-  r++;
+  ]);
 
-  ws["!ref"]  = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r - 1, c: nc - 1 } });
-  ws["!cols"] = HIER_COLS.map((col) => ({ wch: col.w }));
-  ws["!rows"] = [{ hpt: 28 }, { hpt: 22 }];
+  const ws = XLSX.utils.aoa_to_sheet(rows, { dense: false });
+
+  // Apply number formats to numeric columns (1–8, starting from data rows)
+  const numFmts: Record<number, string> = {
+    1: FMT_INT,
+    2: FMT_NUM, 3: FMT_NUM, 4: FMT_NUM,
+    5: FMT_NUM, 6: FMT_NUM, 7: FMT_NUM, 8: FMT_NUM,
+  };
+  const lastRow = rows.length - 1;
+  for (let r = 2; r <= lastRow; r++) {
+    for (const [c, fmt] of Object.entries(numFmts)) {
+      const addr = XLSX.utils.encode_cell({ r, c: Number(c) });
+      if (ws[addr] && ws[addr].v !== null && ws[addr].v !== undefined && typeof ws[addr].v === "number") {
+        ws[addr].t = "n";
+        ws[addr].z = fmt;
+      }
+    }
+  }
+
+  // Merge title
+  ws["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: HIER_HEADERS.length - 1 } },
+  ];
+
+  // Freeze header rows
+  (ws as any)["!freeze"] = { xSplit: 0, ySplit: 2, topLeftCell: "A3", activePane: "bottomLeft" };
+
+  ws["!cols"] = HIER_COL_W.map((w) => ({ wch: w }));
 
   XLSX.utils.book_append_sheet(wb, ws, "Matrix Summary");
 }
