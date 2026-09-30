@@ -863,6 +863,7 @@ export async function getGrossSalesSummaryResult(
 
 export async function queueNetSalesSummaryPreview(opts: {
     locationId?: string;
+    locationIds?: string[];
     startDate?: string;
     endDate?: string;
     cashierUserId?: string;
@@ -872,6 +873,8 @@ export async function queueNetSalesSummaryPreview(opts: {
     minAmount?: number;
     maxAmount?: number;
     fbrOnly?: boolean;
+    fiscalYear?: string;
+    year?: string | number;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const res = await authFetch("/pos-sales/reports/net-sales-summary/queue", {

@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { DateRange } from "@/components/ui/date-range-picker";
 import { FileSpreadsheet, Printer } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 import { getLocations } from "@/lib/actions/location";
 import { getUsers } from "@/lib/actions/users";
@@ -211,10 +212,19 @@ export function NetSalesSummaryView({
             ? selectedLocationIds.join(",")
             : undefined;
 
+          const locationIds = isPosLevel
+            ? (posLocationId ? [posLocationId] : undefined)
+            : selectedLocationIds.length > 0
+            ? selectedLocationIds
+            : undefined;
+
           const res = await queueNetSalesSummaryPreview({
             locationId,
+            locationIds,
             startDate,
             endDate,
+            fiscalYear: periodInfo.fiscalYear,
+            year: periodInfo.year,
             reportType,
           });
 
@@ -281,21 +291,29 @@ export function NetSalesSummaryView({
       hasFetchedJobIdRef.current = previewJobId;
       setIsFetchingResult(true);
 
-      getNetSalesSummaryResult(previewJobId)
-        .then((res) => {
-          if (res && res.status && res.data) {
-            setReportData(res.data);
-            toast.success("Net sales summary updated");
-          } else {
-            toast.error("Failed to load completed net sales summary dataset");
+      const fetchResultWithRetry = async (retries = 6, delay = 1000) => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            const res = await getNetSalesSummaryResult(previewJobId);
+            if (res && res.status && res.data) {
+              setReportData(res.data);
+              toast.success("Net sales summary updated");
+              return;
+            }
+          } catch (err) {
+            console.warn(`[NetSalesSummary] Attempt ${attempt} failed to retrieve result:`, err);
           }
-        })
-        .catch(() => {
-          toast.error("Error retrieving completed net sales summary preview");
-        })
-        .finally(() => {
-          setIsFetchingResult(false);
-        });
+          if (attempt < retries) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+        }
+        hasFetchedJobIdRef.current = null;
+        toast.error("Failed to load completed net sales summary dataset");
+      };
+
+      fetchResultWithRetry().finally(() => {
+        setIsFetchingResult(false);
+      });
     }
   }, [sseState.status, sseState.progressPercent, previewJobId]);
 
@@ -576,11 +594,25 @@ export function NetSalesSummaryView({
         isExportingPdf={isExportingPdf}
       />
 
+      {/* Real-time SSE Progress Banner */}
+      {(isQueueingJob || isFetchingResult || sseState.status === "processing" || sseState.status === "queued") && (
+        <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 space-y-2 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+            <span className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              {sseState.message || "Crunching sales and return data..."}
+            </span>
+            <span className="font-mono">{sseState.progressPercent || 10}%</span>
+          </div>
+          <Progress value={sseState.progressPercent || 10} className="h-2 bg-emerald-200/50" />
+        </div>
+      )}
+
       <NetSalesSummaryTable
         treeData={treeData}
         grandTotals={grandTotals}
         searchQuery={searchQuery}
-        isLoading={isPending || isQueueingJob || isFetchingResult}
+        isLoading={isPending || isQueueingJob || isFetchingResult || sseState.status === "processing" || sseState.status === "queued"}
       />
     </div>
   );
