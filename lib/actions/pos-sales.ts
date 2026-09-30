@@ -206,6 +206,8 @@ export async function queueNetSalesSummaryReportExport(filters: {
     showSilhouette?: boolean;
     showArticle?: boolean;
     showVariant?: boolean;
+    search?: string;
+    exportType?: "flat" | "hierarchical";
 }) {
     try {
         const res = await authFetch(`/pos-sales/reports/net-sales-summary/export/queue`, {
@@ -230,6 +232,7 @@ export async function getNetSalesSummaryReportExportStatus(jobId: string) {
     }
 }
 export const getNetSalesSummaryExportJobStatus = getNetSalesSummaryReportExportStatus;
+export const getNetSalesExportStatus = getNetSalesSummaryReportExportStatus;
 
 
 export async function queuePosSalesActivityExport(filters?: {

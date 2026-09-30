@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useTransition, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useTransition, useRef, useMemo, useCallback } from "react";
 import {
   NetSalesSummaryReportData,
+  NetSalesSummaryFlatRecord,
 } from "./types";
 import { NetSalesSummaryHeader } from "./net-sales-summary-header";
 import { NetSalesSummaryFilters } from "./net-sales-summary-filters";
@@ -15,17 +16,16 @@ import {
   queueNetSalesSummaryPreview,
   getNetSalesSummaryResult,
   queueNetSalesSummaryReportExport,
-  getNetSalesSummaryExportJobStatus,
+  getNetSalesExportStatus,
 } from "@/lib/actions/pos-sales";
-import { streamNetSalesSummaryResult } from "@/lib/stream-ndjson";
-import { getApiBaseUrl } from "@/lib/utils";
 import { toast } from "sonner";
 import { DateRange } from "@/components/ui/date-range-picker";
-import { FileSpreadsheet, Printer, Zap } from "lucide-react";
+import { FileSpreadsheet, Printer } from "lucide-react";
 
 import { getLocations } from "@/lib/actions/location";
 import { getUsers } from "@/lib/actions/users";
 import { useAuth } from "@/components/providers/auth-provider";
+import { getApiBaseUrl } from "@/lib/utils";
 
 // Helper: Calculate standard dates for Fiscal Years (Pakistan July 1 - June 30) & Calendar Years
 const getPresetPeriodInfo = (
@@ -112,11 +112,12 @@ export function NetSalesSummaryView({
           const [locRes, cashierRes] = await Promise.all([getLocations(), getUsers()]);
           const locData = Array.isArray(locRes) ? locRes : (locRes as any)?.data || [];
           const userList = Array.isArray(cashierRes) ? cashierRes : (cashierRes as any)?.data || [];
-          if (locations.length === 0 && Array.isArray(locData)) setLocations(locData);
-          if (cashiers.length === 0 && Array.isArray(userList)) setCashiers(userList);
+
+          if (Array.isArray(locData) && locData.length > 0) setLocations(locData);
+          if (Array.isArray(userList) && userList.length > 0) setCashiers(userList);
         }
       } catch (err) {
-        console.error("Failed to load filter options", err);
+        console.error("Failed to load options:", err);
       }
     }
     loadOptions();
@@ -152,20 +153,7 @@ export function NetSalesSummaryView({
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  // Progressive NDJSON streaming progress state
-  const [streamProgress, setStreamProgress] = useState<{
-    isStreaming: boolean;
-    loadedRecords: number;
-    totalRecords: number;
-    percent: number;
-  }>({
-    isStreaming: false,
-    loadedRecords: 0,
-    totalRecords: 0,
-    percent: 0,
-  });
-
-  // Floating background export progress
+  // Floating background export progress state
   const [exportProgressState, setExportProgressState] = useState<{
     isExporting: boolean;
     type: "excel" | "pdf";
@@ -181,8 +169,7 @@ export function NetSalesSummaryView({
   });
 
   const [isPending, startTransition] = useTransition();
-  const streamAbortControllerRef = useRef<AbortController | null>(null);
-  const hasStreamedJobIdRef = useRef<string | null>(null);
+  const hasFetchedJobIdRef = useRef<string | null>(null);
 
   const sseState = useReportSse(previewJobId, "net-sales-summary");
 
@@ -202,7 +189,7 @@ export function NetSalesSummaryView({
 
       setIsQueueingJob(true);
       setPreviewJobId(null);
-      hasStreamedJobIdRef.current = null;
+      hasFetchedJobIdRef.current = null;
 
       startTransition(async () => {
         try {
@@ -276,156 +263,39 @@ export function NetSalesSummaryView({
   };
 
   // When DateRange changes:
-  // If in custom mode, fetch custom range; otherwise, slices client-side within loaded year!
+  // Automatically switch to "custom" mode and fetch the custom range directly from the backend
+  // to avoid client-side slicing issues on large datasets that are truncated to preview items.
   const handleDateRangeChange = (range: DateRange) => {
     setDateRange(range);
-    if (periodPreset === "custom") {
-      handleFetchReport("custom", range);
-    }
+    setPeriodPreset("custom");
+    handleFetchReport("custom", range);
   };
 
-  // Progressive NDJSON Stream Ingestion upon SSE Completion
+  // Single API Fetch when Bull calculation completes via SSE (<100ms)
   useEffect(() => {
     if (
       (sseState.status === "completed" || sseState.progressPercent === 100) &&
-      previewJobId
+      previewJobId &&
+      hasFetchedJobIdRef.current !== previewJobId
     ) {
-      if (hasStreamedJobIdRef.current === previewJobId) {
-        return;
-      }
-      hasStreamedJobIdRef.current = previewJobId;
-
-      streamAbortControllerRef.current?.abort();
-      const abortController = new AbortController();
-      streamAbortControllerRef.current = abortController;
-
+      hasFetchedJobIdRef.current = previewJobId;
       setIsFetchingResult(true);
-      setStreamProgress({
-        isStreaming: true,
-        loadedRecords: 0,
-        totalRecords: 0,
-        percent: 0,
-      });
 
-      const accumulatedFlatItems: any[] = [];
-      const accumulatedCategories: any[] = [];
-      let initialMeta: any = null;
-      let lastProgressUpdate = 0;
-
-      streamNetSalesSummaryResult(
-        previewJobId,
-        {
-          onMeta: (meta) => {
-            initialMeta = meta;
-            setStreamProgress((prev) => ({
-              ...prev,
-              totalRecords: meta.totalRecords || 0,
-            }));
-          },
-          onBatch: (newCategories) => {
-            accumulatedCategories.push(...newCategories);
-          },
-          onFlatItemsBatch: (newFlatItems) => {
-            accumulatedFlatItems.push(...newFlatItems);
-            const count = accumulatedFlatItems.length;
-            const now = Date.now();
-            // Throttle React state updates to at most once every 120ms to prevent main-thread stutter
-            if (now - lastProgressUpdate > 120) {
-              lastProgressUpdate = now;
-              setStreamProgress((prev) => {
-                const total = prev.totalRecords || count;
-                return {
-                  ...prev,
-                  loadedRecords: count,
-                  percent: total > 0 ? Math.min(99, Math.round((count / total) * 100)) : 99,
-                };
-              });
-            }
-          },
-          onComplete: (totals, totalRecords) => {
-            setReportData({
-              reportType: initialMeta?.reportType || "merged",
-              dateRange: initialMeta?.dateRange || {},
-              locationNames: initialMeta?.locationNames || "",
-              locations: initialMeta?.locations || [],
-              categories: accumulatedCategories,
-              flatItems: accumulatedFlatItems,
-              grandTotals: totals || {},
-            });
-            setIsFetchingResult(false);
-            setStreamProgress((prev) => ({
-              ...prev,
-              isStreaming: false,
-              loadedRecords: totalRecords || accumulatedFlatItems.length,
-              percent: 100,
-            }));
+      getNetSalesSummaryResult(previewJobId)
+        .then((res) => {
+          if (res && res.status && res.data) {
+            setReportData(res.data);
             toast.success("Net sales summary updated");
-          },
-          onError: async (err) => {
-            if (err?.name === "AbortError") {
-              setIsFetchingResult(false);
-              setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
-              return;
-            }
-            console.warn("[NetSalesSummary Stream Fallback] Stream interrupted, attempting fallback fetch...", err);
-            
-            // If we already received items before interruption, render them safely
-            if (accumulatedFlatItems.length > 0) {
-              setReportData({
-                reportType: initialMeta?.reportType || "merged",
-                dateRange: initialMeta?.dateRange || {},
-                locationNames: initialMeta?.locationNames || "",
-                locations: initialMeta?.locations || [],
-                categories: accumulatedCategories,
-                flatItems: accumulatedFlatItems,
-                grandTotals: {} as any,
-              });
-              setIsFetchingResult(false);
-              setStreamProgress((prev) => ({
-                ...prev,
-                isStreaming: false,
-                loadedRecords: accumulatedFlatItems.length,
-                percent: 100,
-              }));
-              toast.success("Net sales summary loaded");
-              return;
-            }
-
-            // Otherwise, attempt direct standard JSON fallback from server
-            try {
-              const res = await getNetSalesSummaryResult(previewJobId);
-              if (res?.status && res?.data) {
-                const data = res.data;
-                setReportData({
-                  reportType: data.reportType || "merged",
-                  dateRange: data.dateRange || {},
-                  locationNames: data.locationNames || "",
-                  locations: data.locations || [],
-                  categories: data.categories || [],
-                  flatItems: data.flatItems || [],
-                  grandTotals: (data.grandTotals || {}) as any,
-                });
-                setIsFetchingResult(false);
-                setStreamProgress((prev) => ({
-                  ...prev,
-                  isStreaming: false,
-                  loadedRecords: data.flatItems?.length || 0,
-                  percent: 100,
-                }));
-                toast.success("Net sales summary loaded (fallback)");
-                return;
-              }
-            } catch (fallbackErr) {
-              console.error("[NetSalesSummary Fallback Error]", fallbackErr);
-            }
-
-            toast.error("Data stream interrupted. Please click Refresh to reload.");
-            setIsFetchingResult(false);
-            setStreamProgress((prev) => ({ ...prev, isStreaming: false }));
-          },
-        },
-        abortController.signal
-      );
+          } else {
+            toast.error("Failed to load completed net sales summary dataset");
+          }
+        })
+        .catch(() => {
+          toast.error("Error retrieving completed net sales summary preview");
+        })
+        .finally(() => {
+          setIsFetchingResult(false);
+        });
     }
   }, [sseState.status, sseState.progressPercent, previewJobId]);
 
@@ -444,6 +314,7 @@ export function NetSalesSummaryView({
     searchQuery,
   });
 
+  // Intelligent Export Handler: Instant Client (<2,500) vs Background Bull Queue (>2,500)
   const handleExportExcel = async (type: "flat" | "hierarchical") => {
     if (!reportData) return;
     setIsExportingExcel(true);
@@ -458,6 +329,7 @@ export function NetSalesSummaryView({
     const totalCount = filteredFlatItems.length;
 
     // Instant On-The-Fly Server Filtered Streaming Export
+    // Zero browser CPU lag, zero database re-querying, preserving current search & outlet filters.
     if (previewJobId) {
       try {
         setExportProgressState((prev) => ({
@@ -510,6 +382,7 @@ export function NetSalesSummaryView({
           endDate: dateRange.to?.toISOString(),
           cashierUserId: selectedCashierId,
           format: "xlsx",
+          search: searchQuery || undefined,
         });
 
         if (!queueRes.status || !queueRes.data?.jobId) {
@@ -522,7 +395,7 @@ export function NetSalesSummaryView({
         await new Promise<void>((resolve, reject) => {
           const pollInterval = setInterval(async () => {
             try {
-              const statusRes = await getNetSalesSummaryExportJobStatus(jobId);
+              const statusRes = await getNetSalesExportStatus(jobId);
               if (statusRes.status && statusRes.data) {
                 const { state, progress, message } = statusRes.data;
                 setExportProgressState((prev) => ({
@@ -695,44 +568,13 @@ export function NetSalesSummaryView({
         previewJobId={previewJobId}
         sseState={sseState}
         isQueueingJob={isQueueingJob}
-        isFetchingResult={isFetchingResult && !streamProgress.isStreaming}
+        isFetchingResult={isFetchingResult}
         onExportExcelFlat={() => handleExportExcel("flat")}
         onExportExcelHierarchy={() => handleExportExcel("hierarchical")}
         onExportPdf={handleExportPdf}
         isExportingExcel={isExportingExcel}
         isExportingPdf={isExportingPdf}
       />
-
-      {/* AI-Style Progressive Real-Time Streaming Progress Banner */}
-      {streamProgress.isStreaming && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-indigo-200/80 dark:border-indigo-900/60 bg-gradient-to-r from-indigo-50/90 via-sky-50/80 to-purple-50/90 dark:from-indigo-950/30 dark:via-sky-950/20 dark:to-purple-950/30 shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs animate-pulse shrink-0">
-              <Zap className="h-4 w-4" />
-            </div>
-            <div className="space-y-0.5">
-              <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <span>⚡ Live Streaming Net Sales Summary</span>
-                <span className="font-mono text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800 text-[11px]">
-                  {streamProgress.loadedRecords.toLocaleString()}
-                  {streamProgress.totalRecords > 0 ? ` / ${streamProgress.totalRecords.toLocaleString()}` : ""} items ({streamProgress.percent}%)
-                </span>
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Categories and line items are updating in real-time as data streams from the server
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-36 sm:w-56 bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-indigo-500 to-sky-500 h-full transition-all duration-150 rounded-full"
-                style={{ width: `${streamProgress.percent}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       <NetSalesSummaryTable
         treeData={treeData}
