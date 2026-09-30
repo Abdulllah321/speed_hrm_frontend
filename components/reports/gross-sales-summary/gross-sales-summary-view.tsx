@@ -387,13 +387,13 @@ export function GrossSalesSummaryView({
           format: "xlsx",
           exportType: type,
           search: searchQuery || undefined,
-          showCategory: groupingLevels.includes("category"),
-          showBrand: groupingLevels.includes("brand"),
-          showDivision: groupingLevels.includes("division"),
-          showGender: groupingLevels.includes("gender"),
-          showSilhouette: groupingLevels.includes("silhouette"),
-          showArticle: groupingLevels.includes("article"),
-          showVariant: groupingLevels.includes("variant"),
+          showCategory: !!groupingLevels.category,
+          showBrand: !!groupingLevels.brand,
+          showDivision: !!groupingLevels.division,
+          showGender: !!groupingLevels.gender,
+          showSilhouette: !!groupingLevels.silhouette,
+          showArticle: !!groupingLevels.article,
+          showVariant: !!groupingLevels.variant,
         });
 
         if (!queueRes.status || !queueRes.data?.jobId) {
@@ -456,7 +456,7 @@ export function GrossSalesSummaryView({
 
     // Instant browser export for small datasets
     try {
-      await generateGrossSalesSummaryExcel({
+      const { excelBuffer, fileName } = await generateGrossSalesSummaryExcel({
         exportType: type,
         treeData,
         flatItems: filteredFlatItems,
@@ -471,6 +471,20 @@ export function GrossSalesSummaryView({
           }));
         },
       });
+
+      // Trigger browser download from the returned ArrayBuffer
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
       toast.success("Excel exported successfully!");
     } catch (err: any) {
       toast.error("Failed to generate Excel file");
