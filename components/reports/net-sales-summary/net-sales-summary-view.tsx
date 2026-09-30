@@ -128,7 +128,7 @@ export function NetSalesSummaryView({
     initialReportData
   );
   const [reportType, setReportType] = useState<"merged" | "separate">(
-    initialReportData?.reportType || "merged"
+    initialReportData?.reportType || "separate"
   );
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>();

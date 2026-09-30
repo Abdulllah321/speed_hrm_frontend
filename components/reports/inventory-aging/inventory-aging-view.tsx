@@ -40,7 +40,7 @@ export function InventoryAgingView({ isPosLevel = false }: InventoryAgingViewPro
     }
   }, [isPosLevel, posLocationId]);
 
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [reportType, setReportType] = useState<"merged" | "separate">("separate");
   const [asOfPreset, setAsOfPreset] = useState<string>("today");
   const [asOfDate, setAsOfDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [dateRange, setDateRange] = useState<DateRange>({

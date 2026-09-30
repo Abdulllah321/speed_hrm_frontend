@@ -89,7 +89,7 @@ export function SalesReturnListView({ isPosLevel = false }: SalesReturnListViewP
   const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>(undefined);
   const [subTypeFilter, setSubTypeFilter] = useState<ReturnSubType>("ALL");
   const [refundModeFilter, setRefundModeFilter] = useState<string>("ALL");
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [reportType, setReportType] = useState<"merged" | "separate">("separate");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Period / Base Date Selection (Default: Current Fiscal Year 2026-2027)

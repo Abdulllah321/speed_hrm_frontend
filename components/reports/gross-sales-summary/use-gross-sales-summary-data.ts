@@ -59,7 +59,7 @@ export function useGrossSalesSummaryData(
     searchQuery: optionSearchQuery,
   } = options || {};
 
-  const [internalReportType, setInternalReportType] = useState<"merged" | "separate">("merged");
+  const [internalReportType, setInternalReportType] = useState<"merged" | "separate">("separate");
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [paymentModeFilter, setPaymentModeFilter] = useState("all");
   const [fbrOnlyFilter, setFbrOnlyFilter] = useState(false);

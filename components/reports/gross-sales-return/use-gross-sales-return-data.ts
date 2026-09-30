@@ -65,7 +65,7 @@ export function useGrossSalesReturnData(
     searchQuery: optionSearchQuery,
   } = options || {};
 
-  const [internalReportType, setInternalReportType] = useState<"merged" | "separate">("merged");
+  const [internalReportType, setInternalReportType] = useState<"merged" | "separate">("separate");
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [paymentModeFilter, setPaymentModeFilter] = useState("all");
   const [fbrOnlyFilter, setFbrOnlyFilter] = useState(false);
@@ -349,47 +349,6 @@ export function useGrossSalesReturnData(
           const backendLoc = reportData.locations.find((l: any) => l.locationName === locNode.value);
           if (backendLoc && backendLoc.totals) {
             locNode.totals = { ...backendLoc.totals };
-            
-            // Patch second level if it's brand or category
-            if (levels[1] === "brand" && backendLoc.categories) {
-              for (const brandNode of locNode.children) {
-                const brandCats = backendLoc.categories.filter((c: any) => c.brandName === brandNode.value);
-                if (brandCats.length > 0) {
-                  const patchedTotals = createEmptyTotals();
-                  for (const cat of brandCats) {
-                    if (cat.totals) addTotals(patchedTotals, cat.totals);
-                  }
-                  brandNode.totals = patchedTotals;
-                }
-              }
-            } else if (levels[1] === "category" && backendLoc.categories) {
-              for (const catNode of locNode.children) {
-                const backendCat = backendLoc.categories.find((c: any) => c.categoryName === catNode.value);
-                if (backendCat && backendCat.totals) {
-                  catNode.totals = { ...backendCat.totals };
-                }
-              }
-            }
-          }
-        }
-      } else if (!isSeparate && reportData.categories) {
-        if (levels[0] === "brand") {
-          for (const brandNode of root) {
-            const brandCats = reportData.categories.filter((c: any) => c.brandName === brandNode.value);
-            if (brandCats.length > 0) {
-              const patchedTotals = createEmptyTotals();
-              for (const cat of brandCats) {
-                if (cat.totals) addTotals(patchedTotals, cat.totals);
-              }
-              brandNode.totals = patchedTotals;
-            }
-          }
-        } else if (levels[0] === "category") {
-          for (const catNode of root) {
-            const backendCat = reportData.categories.find((c: any) => c.categoryName === catNode.value);
-            if (backendCat && backendCat.totals) {
-              catNode.totals = { ...backendCat.totals };
-            }
           }
         }
       }

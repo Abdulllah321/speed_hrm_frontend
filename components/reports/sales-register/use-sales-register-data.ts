@@ -22,7 +22,7 @@ const createEmptyTotals = (): SalesRegisterTotals => ({
 });
 
 export function useSalesRegisterData(reportData: SalesRegisterReportData | null) {
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [reportType, setReportType] = useState<"merged" | "separate">("separate");
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentModeFilter, setPaymentModeFilter] = useState("all");
   const [fbrOnlyFilter, setFbrOnlyFilter] = useState(false);

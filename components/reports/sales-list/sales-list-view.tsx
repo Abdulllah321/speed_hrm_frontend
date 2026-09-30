@@ -85,7 +85,7 @@ export function SalesListView({ isPosLevel = false }: SalesListViewProps) {
   // Client-Side Instant Filters State (0ms Latency)
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [selectedCashierId, setSelectedCashierId] = useState<string | undefined>(undefined);
-  const [reportType, setReportType] = useState<"merged" | "separate">("merged");
+  const [reportType, setReportType] = useState<"merged" | "separate">("separate");
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentModeFilter, setPaymentModeFilter] = useState("all");
   const [fbrOnlyFilter, setFbrOnlyFilter] = useState(false);
