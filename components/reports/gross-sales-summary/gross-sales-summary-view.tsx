@@ -330,7 +330,10 @@ export function GrossSalesSummaryView({
 
     // Instant On-The-Fly Server Filtered Streaming Export
     // Zero browser CPU lag, zero database re-querying, preserving current search & outlet filters.
-    if (previewJobId) {
+    // NOTE: We ONLY use this for "flat" exports because the backend streaming endpoint does not
+    // have the dynamic matrix aggregation logic. For "hierarchical", we will either use the Bull Queue
+    // (for large datasets) or the frontend generator (for small datasets).
+    if (previewJobId && type === "flat") {
       try {
         setExportProgressState((prev) => ({
           ...prev,
@@ -366,7 +369,7 @@ export function GrossSalesSummaryView({
       return;
     }
 
-    // For large un-previewed datasets, offload to Bull Queue streaming worker
+    // For large un-previewed datasets or large matrix datasets, offload to Bull Queue streaming worker
     if (totalCount > 2500) {
       try {
         setExportProgressState((prev) => ({
@@ -384,6 +387,13 @@ export function GrossSalesSummaryView({
           format: "xlsx",
           exportType: type,
           search: searchQuery || undefined,
+          showCategory: groupingLevels.includes("category"),
+          showBrand: groupingLevels.includes("brand"),
+          showDivision: groupingLevels.includes("division"),
+          showGender: groupingLevels.includes("gender"),
+          showSilhouette: groupingLevels.includes("silhouette"),
+          showArticle: groupingLevels.includes("article"),
+          showVariant: groupingLevels.includes("variant"),
         });
 
         if (!queueRes.status || !queueRes.data?.jobId) {
