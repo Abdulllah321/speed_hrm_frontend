@@ -1158,22 +1158,22 @@ export const menuData: MenuItem[] = [
           },
         ],
       },
-      {
-        title: "Exit Clearance",
-        icon: LogOut,
-        children: [
-          {
-            title: "Create",
-            href: "/hr/exit-clearance/create",
-            permissions: ["hr.exit-clearance.create"],
-          },
-          {
-            title: "List",
-            href: "/hr/exit-clearance/list",
-            permissions: ["hr.exit-clearance.read"],
-          },
-        ],
-      },
+      // {
+      //   title: "Exit Clearance",
+      //   icon: LogOut,
+      //   children: [
+      //     {
+      //       title: "Create",
+      //       href: "/hr/exit-clearance/create",
+      //       permissions: ["hr.exit-clearance.create"],
+      //     },
+      //     {
+      //       title: "List",
+      //       href: "/hr/exit-clearance/list",
+      //       permissions: ["hr.exit-clearance.read"],
+      //     },
+      //   ],
+      // },
     ],
   },
 
@@ -1296,51 +1296,51 @@ export const menuData: MenuItem[] = [
       },
     ],
   },
-  {
-    title: "Request Forwarding",
-    icon: Shield,
-    environment: "HR",
-    permissions: ["hr.request-forwarding.view", "request-forwarding.read"],
-    children: [
-      {
-        title: "Attendance",
-        href: "/hr/request-forwarding?type=attendance",
-        permissions: [
-          "hr.request-forwarding.attendance",
-          "request-forwarding.read",
-        ],
-      },
-      {
-        title: "Advance Salary",
-        href: "/hr/request-forwarding?type=advance-salary",
-        permissions: [
-          "hr.request-forwarding.advance-salary",
-          "request-forwarding.read",
-        ],
-      },
-      {
-        title: "Loan",
-        href: "/hr/request-forwarding?type=loan",
-        permissions: ["hr.request-forwarding.loan", "request-forwarding.read"],
-      },
-      {
-        title: "Leave Application",
-        href: "/hr/request-forwarding?type=leave-application",
-        permissions: [
-          "hr.request-forwarding.leave-application",
-          "request-forwarding.read",
-        ],
-      },
-      {
-        title: "Leave Encashment",
-        href: "/hr/request-forwarding?type=leave-encashment",
-        permissions: [
-          "hr.request-forwarding.leave-encashment",
-          "request-forwarding.read",
-        ],
-      },
-    ],
-  },
+  // {
+  //   title: "Request Forwarding",
+  //   icon: Shield,
+  //   environment: "HR",
+  //   permissions: ["hr.request-forwarding.view", "request-forwarding.read"],
+  //   children: [
+  //     {
+  //       title: "Attendance",
+  //       href: "/hr/request-forwarding?type=attendance",
+  //       permissions: [
+  //         "hr.request-forwarding.attendance",
+  //         "request-forwarding.read",
+  //       ],
+  //     },
+  //     {
+  //       title: "Advance Salary",
+  //       href: "/hr/request-forwarding?type=advance-salary",
+  //       permissions: [
+  //         "hr.request-forwarding.advance-salary",
+  //         "request-forwarding.read",
+  //       ],
+  //     },
+  //     {
+  //       title: "Loan",
+  //       href: "/hr/request-forwarding?type=loan",
+  //       permissions: ["hr.request-forwarding.loan", "request-forwarding.read"],
+  //     },
+  //     {
+  //       title: "Leave Application",
+  //       href: "/hr/request-forwarding?type=leave-application",
+  //       permissions: [
+  //         "hr.request-forwarding.leave-application",
+  //         "request-forwarding.read",
+  //       ],
+  //     },
+  //     {
+  //       title: "Leave Encashment",
+  //       href: "/hr/request-forwarding?type=leave-encashment",
+  //       permissions: [
+  //         "hr.request-forwarding.leave-encashment",
+  //         "request-forwarding.read",
+  //       ],
+  //     },
+  //   ],
+  // },
 
   {
     title: "Payroll Setup",
@@ -1425,22 +1425,22 @@ export const menuData: MenuItem[] = [
           },
         ],
       },
-      {
-        title: "Deduction",
-        permissions: ["hr.deduction.read", "hr.deduction.create"],
-        children: [
-          {
-            title: "Create",
-            href: "/hr/payroll-setup/deduction/create",
-            permissions: ["hr.deduction.create"],
-          },
-          {
-            title: "View",
-            href: "/hr/payroll-setup/deduction/view",
-            permissions: ["hr.deduction.read"],
-          },
-        ],
-      },
+      // {
+      //   title: "Deduction",
+      //   permissions: ["hr.deduction.read", "hr.deduction.create"],
+      //   children: [
+      //     {
+      //       title: "Create",
+      //       href: "/hr/payroll-setup/deduction/create",
+      //       permissions: ["hr.deduction.create"],
+      //     },
+      //     {
+      //       title: "View",
+      //       href: "/hr/payroll-setup/deduction/view",
+      //       permissions: ["hr.deduction.read"],
+      //     },
+      //   ],
+      // },
       {
         title: "Advance Salary",
         permissions: ["hr.advance-salary.read", "hr.advance-salary.create"],
@@ -1471,11 +1471,11 @@ export const menuData: MenuItem[] = [
             href: "/hr/loan-requests/view",
             permissions: ["hr.loan-request.read"],
           },
-          {
-            title: "Request Forwarding",
-            href: "/hr/request-forwarding?type=loan",
-            permissions: ["hr.request-forwarding.loan"],
-          },
+          // {
+          //   title: "Request Forwarding",
+          //   href: "/hr/request-forwarding?type=loan",
+          //   permissions: ["hr.request-forwarding.loan"],
+          // },
         ],
       },
       {
@@ -1534,28 +1534,28 @@ export const menuData: MenuItem[] = [
       //     },
       //   ],
       // },
-      {
-        title: "Leave Encashment",
-        icon: Coins,
-        permissions: ["hr.leave-encashment.read", "hr.leave-encashment.create"],
-        children: [
-          {
-            title: "Create",
-            href: "/hr/payroll-setup/leave-encashment/create",
-            permissions: ["hr.leave-encashment.create"],
-          },
-          {
-            title: "List",
-            href: "/hr/payroll-setup/leave-encashment/list",
-            permissions: ["hr.leave-encashment.read"],
-          },
-          {
-            title: "Request Forwarding",
-            href: "/hr/request-forwarding?type=leave-encashment",
-            permissions: ["hr.request-forwarding.leave-encashment"],
-          },
-        ],
-      },
+      // {
+      //   title: "Leave Encashment",
+      //   icon: Coins,
+      //   permissions: ["hr.leave-encashment.read", "hr.leave-encashment.create"],
+      //   children: [
+      //     {
+      //       title: "Create",
+      //       href: "/hr/payroll-setup/leave-encashment/create",
+      //       permissions: ["hr.leave-encashment.create"],
+      //     },
+      //     {
+      //       title: "List",
+      //       href: "/hr/payroll-setup/leave-encashment/list",
+      //       permissions: ["hr.leave-encashment.read"],
+      //     },
+      //     {
+      //       title: "Request Forwarding",
+      //       href: "/hr/request-forwarding?type=leave-encashment",
+      //       permissions: ["hr.request-forwarding.leave-encashment"],
+      //     },
+      //   ],
+      // },
 
       {
         title: "PF for Employee",
@@ -1983,7 +1983,7 @@ export const menuData: MenuItem[] = [
         title: "Sales & POS Analytics",
         icon: ShoppingCart,
         children: [
-        
+
           {
             title: "Gross Sales Summary",
             href: "/erp/reports/pos/gross-sales-summary",
@@ -1994,7 +1994,7 @@ export const menuData: MenuItem[] = [
             href: "/erp/reports/pos/gross-sales-return",
             permissions: ["erp.report.view"],
           },
-            {
+          {
             title: "Net Sales Summary",
             href: "/erp/reports/pos/net-sales-summary",
             permissions: ["erp.report.view"],
