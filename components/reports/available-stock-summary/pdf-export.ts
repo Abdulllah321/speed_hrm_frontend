@@ -82,6 +82,7 @@ export async function exportAvailableStockSummaryToPdf({
                         <td style="text-align: right;">${node.totals.quantity.toLocaleString()}</td>
                         <td style="text-align: right;">${node.totals.transit.toLocaleString()}</td>
                         <td style="text-align: right;">${node.totals.reserved.toLocaleString()}</td>
+                        <td style="text-align: right;">${node.totals.pendingInvoice.toLocaleString()}</td>
                         <td style="text-align: right; font-weight: bold;">${node.totals.total.toLocaleString()}</td>
                         <td style="text-align: right;">${node.totals.unitPrice ? "Rs. " + node.totals.unitPrice.toLocaleString() : "-"}</td>
                         <td style="text-align: right; font-weight: bold;">Rs. ${node.totals.value.toLocaleString()}</td>
@@ -119,6 +120,7 @@ export async function exportAvailableStockSummaryToPdf({
                         <td style="text-align: right; color: #059669; font-weight: 600;">${item.quantity.toLocaleString()}</td>
                         <td style="text-align: right; color: #D97706;">${item.transit.toLocaleString()}</td>
                         <td style="text-align: right; color: #9333EA;">${item.reserved.toLocaleString()}</td>
+                        <td style="text-align: right; color: #DB2777;">${item.pendingInvoice.toLocaleString()}</td>
                         <td style="text-align: right; font-weight: bold;">${item.total.toLocaleString()}</td>
                         <td style="text-align: right;">Rs. ${item.unitPrice.toLocaleString()}</td>
                         <td style="text-align: right; font-weight: bold;">Rs. ${item.value.toLocaleString()}</td>
@@ -146,6 +148,7 @@ export async function exportAvailableStockSummaryToPdf({
                 <th style="width: 8%; text-align: right;">Available Qty</th>
                 <th style="width: 7%; text-align: right;">In Transit</th>
                 <th style="width: 7%; text-align: right;">Reserved</th>
+                <th style="width: 7%; text-align: right;">Pending Inv</th>
                 <th style="width: 8%; text-align: right;">Total Balance</th>
                 <th style="width: 7%; text-align: right;">Selling Price</th>
                 <th style="width: 7%; text-align: right;">Selling Value</th>
@@ -164,6 +167,7 @@ export async function exportAvailableStockSummaryToPdf({
                 <th style="width: 5%; text-align: right;">Qty</th>
                 <th style="width: 5%; text-align: right;">Transit</th>
                 <th style="width: 5%; text-align: right;">Reserved</th>
+                <th style="width: 5%; text-align: right;">Pend Inv</th>
                 <th style="width: 5%; text-align: right;">Total</th>
                 <th style="width: 5%; text-align: right;">Price</th>
                 <th style="width: 7%; text-align: right;">Value</th>
@@ -212,6 +216,7 @@ export async function exportAvailableStockSummaryToPdf({
                             <td style="text-align: right; color: #34D399;">${grandTotals.quantity.toLocaleString()}</td>
                             <td style="text-align: right; color: #FBBF24;">${grandTotals.transit.toLocaleString()}</td>
                             <td style="text-align: right; color: #C084FC;">${grandTotals.reserved.toLocaleString()}</td>
+                            <td style="text-align: right; color: #F472B6;">${grandTotals.pendingInvoice.toLocaleString()}</td>
                             <td style="text-align: right; color: #38BDF8;">${grandTotals.total.toLocaleString()}</td>
                             <td style="text-align: right;"></td>
                             <td style="text-align: right; color: #818CF8;">Rs. ${grandTotals.value.toLocaleString()}</td>

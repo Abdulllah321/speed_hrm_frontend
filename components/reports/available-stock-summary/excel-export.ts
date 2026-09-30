@@ -53,6 +53,7 @@ export async function exportAvailableStockSummaryToExcel({
             "Available Qty",
             "In Transit",
             "Stock Reserved",
+            "Pending Invoice Qty",
             "Total Balance",
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
@@ -95,6 +96,7 @@ export async function exportAvailableStockSummaryToExcel({
                     node.totals.quantity,
                     node.totals.transit,
                     node.totals.reserved,
+                    node.totals.pendingInvoice,
                     node.totals.total,
                     node.totals.unitPrice || "",
                     node.totals.value,
@@ -126,6 +128,7 @@ export async function exportAvailableStockSummaryToExcel({
                         <td style="text-align: right; ${fontStyle}">${node.totals.quantity.toLocaleString()}</td>
                         <td style="text-align: right; ${fontStyle}">${node.totals.transit.toLocaleString()}</td>
                         <td style="text-align: right; ${fontStyle}">${node.totals.reserved.toLocaleString()}</td>
+                        <td style="text-align: right; ${fontStyle}">${node.totals.pendingInvoice.toLocaleString()}</td>
                         <td style="text-align: right; font-weight: bold; ${fontStyle}">${node.totals.total.toLocaleString()}</td>
                         <td style="text-align: right; ${fontStyle}">${node.totals.unitPrice ? "Rs. " + node.totals.unitPrice.toLocaleString() : "-"}</td>
                         <td style="text-align: right; font-weight: bold; ${fontStyle}">Rs. ${node.totals.value.toLocaleString()}</td>
@@ -147,6 +150,7 @@ export async function exportAvailableStockSummaryToExcel({
                 grandTotals.quantity,
                 grandTotals.transit,
                 grandTotals.reserved,
+                grandTotals.pendingInvoice,
                 grandTotals.total,
                 "",
                 grandTotals.value,
@@ -179,6 +183,7 @@ export async function exportAvailableStockSummaryToExcel({
             "Available Qty",
             "In Transit",
             "Stock Reserved",
+            "Pending Invoice Qty",
             "Total Balance",
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
@@ -210,6 +215,7 @@ export async function exportAvailableStockSummaryToExcel({
                     item.quantity,
                     item.transit,
                     item.reserved,
+                    item.pendingInvoice,
                     item.total,
                     item.unitPrice,
                     item.value,
@@ -232,6 +238,7 @@ export async function exportAvailableStockSummaryToExcel({
                         <td style="text-align: right; color: #059669; font-weight: 600;">${item.quantity.toLocaleString()}</td>
                         <td style="text-align: right; color: #D97706;">${item.transit.toLocaleString()}</td>
                         <td style="text-align: right; color: #9333EA;">${item.reserved.toLocaleString()}</td>
+                        <td style="text-align: right; color: #DB2777;">${item.pendingInvoice.toLocaleString()}</td>
                         <td style="text-align: right; font-weight: bold;">${item.total.toLocaleString()}</td>
                         <td style="text-align: right;">Rs. ${item.unitPrice.toLocaleString()}</td>
                         <td style="text-align: right; font-weight: bold;">Rs. ${item.value.toLocaleString()}</td>
@@ -261,6 +268,7 @@ export async function exportAvailableStockSummaryToExcel({
                 grandTotals.quantity,
                 grandTotals.transit,
                 grandTotals.reserved,
+                grandTotals.pendingInvoice,
                 grandTotals.total,
                 "",
                 grandTotals.value,

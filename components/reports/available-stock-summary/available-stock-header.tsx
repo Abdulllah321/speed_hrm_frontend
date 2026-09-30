@@ -18,8 +18,8 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
         <div className={cn(
             "grid gap-3 mb-4",
             isPosLevel
-                ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-6"
-                : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-7"
+                ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-7"
+                : "grid-cols-2 sm:grid-cols-4 lg:grid-cols-8"
         )}>
             <Card
                 className="bg-card border-border shadow-sm overflow-hidden"
@@ -85,6 +85,23 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
                     </div>
                     <p className="text-lg font-bold mt-1 text-purple-600 dark:text-purple-400">
                         {isLoading ? "..." : grandTotals.reserved.toLocaleString()}
+                    </p>
+                </CardContent>
+            </Card>
+
+            <Card
+                className="bg-card border-border shadow-sm overflow-hidden"
+                title={`Pending Invoice: ${grandTotals.pendingInvoice.toLocaleString()} pcs`}
+            >
+                <CardContent className="p-3">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Pending Inv</span>
+                        <div className="p-1.5 rounded-lg bg-pink-500/10 text-pink-600 dark:text-pink-400">
+                            <Store className="h-4 w-4" />
+                        </div>
+                    </div>
+                    <p className="text-lg font-bold mt-1 text-pink-600 dark:text-pink-400">
+                        {isLoading ? "..." : grandTotals.pendingInvoice.toLocaleString()}
                     </p>
                 </CardContent>
             </Card>
