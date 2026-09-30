@@ -55,18 +55,21 @@ export function EmployeeDashboardContent() {
 
             try {
                 // Fetch stats and profile in parallel
-                const statsPromise = dashboardApi.getEmployeeStats(authFetch);
+                const statsPromise = dashboardApi.getEmployeeStats();
                 const profilePromise = user.employee?.id
                     ? employeeApi.getProfile(user.employee.id, true)
                     : Promise.resolve({ status: false, data: null });
 
-                const [statsData, profileRes] = await Promise.all([
+                const [statsRes, profileRes] = await Promise.all([
                     statsPromise,
                     profilePromise
                 ]);
 
-                setStats(statsData);
-                if (profileRes.status && profileRes.data) {
+                if (statsRes?.status && statsRes?.data) {
+                    setStats(statsRes.data);
+                }
+                
+                if (profileRes?.status && profileRes?.data) {
                     setEmployeeProfile(profileRes.data);
                 }
             } catch (err) {
@@ -292,7 +295,7 @@ export function EmployeeDashboardContent() {
                                         </Link>
                                     </Button>
 
-                                    {!user?.role?.toLowerCase().includes("pos") && (
+                                    {!user?.role?.name?.toLowerCase().includes("pos") && (
                                         <Button asChild variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all group">
                                             <Link href="/hr/payroll-setup/payroll/payslips">
                                                 <div className="bg-purple-100 p-2 rounded-md mr-3 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 group-hover:scale-105 transition-transform">

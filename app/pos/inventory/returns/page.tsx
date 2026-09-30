@@ -654,13 +654,29 @@ export default function ReturnRequestsPage() {
                                                         <span className="text-sm font-semibold">{format(new Date(request.createdAt), "dd MMM yyyy HH:mm")}</span>
                                                     </div>
                                                 </div>
-
                                                 {request.notes && (
-                                                    <div className="bg-orange-50 dark:bg-orange-950/10 p-3 rounded-lg border border-orange-100 dark:border-orange-900/50">
+                                                    <div className="bg-orange-50 dark:bg-orange-950/10 p-3 rounded-lg border border-orange-100 dark:border-orange-900/50 mt-4">
                                                         <span className="text-[10px] font-bold uppercase tracking-widest text-orange-700 dark:text-orange-400 block mb-1">Return Reason</span>
                                                         <p className="text-sm text-orange-800 dark:text-orange-300">{request.notes}</p>
                                                     </div>
                                                 )}
+
+                                                <div className="mt-4">
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-2">Returned Items</span>
+                                                    <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                                                        {request.items.map((it, idx) => (
+                                                            <div key={idx} className="flex items-center justify-between bg-muted/30 p-2 rounded-md border border-border/50">
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <span className="text-sm font-semibold truncate text-foreground">{it.item?.description || 'Unknown Item'}</span>
+                                                                    <span className="text-xs text-muted-foreground font-mono">{it.item?.sku || 'N/A'}</span>
+                                                                </div>
+                                                                <div className="flex-none bg-orange-100 dark:bg-orange-950/40 px-2 py-1 rounded text-xs font-bold text-orange-700 dark:text-orange-400">
+                                                                    Qty: {it.quantity}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             <div className="w-full md:w-auto flex flex-col gap-2 flex-none">
