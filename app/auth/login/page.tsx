@@ -129,10 +129,38 @@ export default function LoginPage() {
 
         // Get port from current URL
         const port = window.location.port || "3001";
-        // Strip subdomain prefix from callback URL for the final URL
-        const finalPath = stripSubdomainPrefix(callbackUrl, targetSubdomain);
+        
+        let finalSubdomain = targetSubdomain;
+        let finalPath = stripSubdomainPrefix(callbackUrl, targetSubdomain);
+        
+        // Custom role-based routing
+        const roleStr = typeof result.user.role === "string" 
+            ? result.user.role.toLowerCase() 
+            : ((result.user as any).role?.name?.toLowerCase() || "");
+            
+        const perms = Array.isArray(result.user.permissions) 
+            ? result.user.permissions.map((p: any) => typeof p === 'string' ? p.toLowerCase() : (p.permission?.name?.toLowerCase() || "")) 
+            : [];
+            
+        const hasPos = roleStr.includes("pos") || perms.some(p => p.includes("pos"));
+        const hasErp = roleStr.includes("erp") || roleStr.includes("admin") || roleStr.includes("super") || perms.some(p => p.includes("erp") || p.includes("admin"));
+        
+        // Route based on rights (no HRM routing)
+        if (targetSubdomain === "hr" || callbackUrl === "/hr" || callbackUrl === "/") {
+            if (hasErp) {
+                finalSubdomain = "erp";
+                finalPath = "/";
+            } else if (hasPos) {
+                finalSubdomain = "pos";
+                finalPath = "/";
+            } else {
+                finalSubdomain = "erp";
+                finalPath = "/";
+            }
+        }
+        
         // Build redirect URL with correct subdomain and port
-        const redirectUrl = buildSubdomainUrl(targetSubdomain, finalPath, port);
+        const redirectUrl = buildSubdomainUrl(finalSubdomain, finalPath, port);
         // Use window.location for full page navigation to change subdomain
         window.location.href = redirectUrl;
       } else {
