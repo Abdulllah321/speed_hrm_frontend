@@ -215,7 +215,7 @@ export default function StockReceivingPage() {
                                                     {isAccepting === request.id ? "Accepting..." : "Accept"}
                                                 </Button>
                                                 <Button variant="outline" className="w-full md:w-40 h-10 font-semibold text-primary" asChild>
-                                                    <Link href={`/erp/inventory/transactions/stock-transfer/slip/${request.id}`} target="_blank">
+                                                    <Link href={`/pos/inventory/receiving/slip/${request.id}`} target="_blank">
                                                         <FileText className="h-4 w-4 mr-2" /> View Slip
                                                     </Link>
                                                 </Button>
