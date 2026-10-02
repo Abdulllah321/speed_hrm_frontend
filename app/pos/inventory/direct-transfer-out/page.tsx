@@ -43,6 +43,7 @@ import {
   DirectTransferBulkUploadModal,
   DirectTransferImportItem,
 } from "@/components/pos/inventory/direct-transfer-bulk-upload-modal";
+import { Autocomplete } from "@/components/ui/autocomplete";
 
 interface TransferItem {
   id: string;
@@ -144,9 +145,24 @@ function DirectTransferForm() {
     try {
       const res = await getLocations();
       if (res.status && res.data) {
+        // Find current location to get its registered brands
+        const currentLocation = res.data.find((l) => l.id === fromLocationId);
+        const currentBrandIds = currentLocation?.brands?.map((b) => b.id) || [];
+
         // Filter out current location and keep active locations
+        // Also only include locations that share at least one registered brand with the current location
         const filtered = res.data.filter(
-          (loc) => loc.id !== fromLocationId && loc.status === "active",
+          (loc) => {
+            if (loc.id === fromLocationId || loc.status !== "active") return false;
+            
+            // If current location has brands, filter by same brands
+            if (currentBrandIds.length > 0) {
+              const locBrandIds = loc.brands?.map((b) => b.id) || [];
+              return locBrandIds.some((id) => currentBrandIds.includes(id));
+            }
+            
+            return true; // Fallback if no brands are registered
+          }
         );
         setDestinations(filtered);
       } else {
@@ -865,26 +881,22 @@ function DirectTransferForm() {
                               <span>Loading outlets...</span>
                             </div>
                           ) : (
-                            <Select
+                            <Autocomplete
+                              options={destinations.map((dest) => ({
+                                value: dest.id,
+                                label: `${dest.name} (${dest.code})`,
+                              }))}
                               value={selectedDestId}
                               onValueChange={setSelectedDestId}
-                            >
-                              <SelectTrigger className="h-11 bg-muted/30">
-                                <SelectValue placeholder="Choose target outlet..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {destinations.map((dest) => (
-                                  <SelectItem key={dest.id} value={dest.id}>
-                                    {dest.name} ({dest.code})
-                                  </SelectItem>
-                                ))}
-                                {destinations.length === 0 && (
-                                  <SelectItem value="none" disabled>
-                                    No other active outlets found
-                                  </SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
+                              placeholder="Choose target outlet..."
+                              searchPlaceholder="Search outlets..."
+                              emptyMessage={
+                                destinations.length === 0
+                                  ? "No other active outlets found"
+                                  : "No outlet found matching search."
+                              }
+                              className="h-11 bg-muted/30"
+                            />
                           )}
                         </div>
 
