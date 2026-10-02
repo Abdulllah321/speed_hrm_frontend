@@ -197,7 +197,7 @@ export function ShiftGuard({ children }: { children: React.ReactNode }) {
                             )}
                             <div className="text-sm font-medium">
                                 {urgencyLevel === "low" && (
-                                    <span>Upcoming Shift Reconciliation: Please reconcile and close the shift before 12:00 AM (Midnight).</span>
+                                    <span>Upcoming Shift Reconciliation: Please reconcile the shift before 12:00 AM (Midnight).</span>
                                 )}
                                 {urgencyLevel === "medium" && (
                                     <span>
@@ -211,7 +211,7 @@ export function ShiftGuard({ children }: { children: React.ReactNode }) {
                                 )}
                                 {urgencyLevel === "overdue" && (
                                     <span>
-                                        SHIFT RECONCILIATION OVERDUE: The 12:00 AM deadline has passed. Please reconcile and close this shift as soon as possible.
+                                        SHIFT RECONCILIATION OVERDUE: The 12:00 AM deadline has passed. Please reconcile this shift as soon as possible.
                                     </span>
                                 )}
                             </div>
@@ -228,7 +228,7 @@ export function ShiftGuard({ children }: { children: React.ReactNode }) {
                                 )}
                                 onClick={() => router.push("/pos/shifts")}
                             >
-                                Reconcile & Close Shift
+                                Reconcile Shift
                             </Button>
                             {urgencyLevel !== "high" && urgencyLevel !== "overdue" && (
                                 <button

@@ -286,9 +286,9 @@ export default function ShiftsPage() {
                 fetchSession(); fetchHistory();
                 window.dispatchEvent(new Event("shift-session-updated"));
             } else {
-                toast.error(res.data?.message || "Failed to close shift");
+                toast.error(res.data?.message || "Failed to reconcile shift");
             }
-        } catch { toast.error("Failed to close shift"); }
+        } catch { toast.error("Failed to reconcile shift"); }
         finally { setIsSubmitting(false); }
     };
 
@@ -401,13 +401,13 @@ export default function ShiftsPage() {
                                 ) : (
                                     <Button onClick={() => {
                                         if (!canClose) {
-                                            toast.error("You do not have permission to close a shift. Please contact your manager.");
+                                            toast.error("You do not have permission to reconcile a shift. Please contact your manager.");
                                             return;
                                         }
                                         setActualCash(""); setCloseNote(""); setShowCloseModal(true);
                                     }}
                                         className="rounded-full px-8 bg-slate-800 hover:bg-slate-900 text-white shrink-0">
-                                        Close Shift
+                                        Reconcile Shift
                                     </Button>
                                 )}
                             </div>
@@ -527,11 +527,11 @@ export default function ShiftsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* CLOSE SHIFT MODAL */}
+            {/* RECONCILE SHIFT MODAL */}
             <Dialog open={showCloseModal} onOpenChange={setShowCloseModal}>
                 <DialogContent className="sm:max-w-[400px] rounded-3xl">
                     <DialogHeader>
-                        <DialogTitle className="text-xl">Close Shift</DialogTitle>
+                        <DialogTitle className="text-xl">Reconcile Shift</DialogTitle>
                         <DialogDescription>Count the cash and enter the actual amount in the drawer.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -546,7 +546,7 @@ export default function ShiftsPage() {
                                 className="rounded-xl h-12 text-lg px-4" placeholder="Enter counted amount..." />
                         </div>
                         <div className="space-y-2">
-                            <Label>Closing Note (Optional)</Label>
+                            <Label>Reconciliation Note (Optional)</Label>
                             <Textarea value={closeNote} onChange={(e) => setCloseNote(e.target.value)}
                                 className="rounded-xl resize-none" placeholder="Reason for variance or general note" rows={2} />
                         </div>
@@ -555,19 +555,19 @@ export default function ShiftsPage() {
                         <Button variant="ghost" onClick={() => setShowCloseModal(false)} className="rounded-full">Cancel</Button>
                         <Button onClick={handleCloseShift} disabled={isSubmitting}
                             className="rounded-full px-6 bg-slate-800 hover:bg-slate-900 text-white">
-                            Confirm & Close
+                            Confirm Reconciliation
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* POST-CLOSE SUMMARY MODAL */}
+            {/* POST-RECONCILIATION SUMMARY MODAL */}
             <Dialog open={showSummaryModal} onOpenChange={setShowSummaryModal}>
                 <DialogContent className="sm:max-w-[420px] rounded-3xl" showCloseButton={false}>
                     <div className="pt-6 pb-2 text-center">
                         <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto mb-3" />
-                        <h2 className="text-2xl font-bold mb-1">Shift Closed</h2>
-                        <p className="text-xs text-muted-foreground mb-4">Session close report generated.</p>
+                        <h2 className="text-2xl font-bold mb-1">Shift Reconciled</h2>
+                        <p className="text-xs text-muted-foreground mb-4">Session reconciliation report generated.</p>
                         
                         <div className="bg-muted/40 rounded-2xl p-4 text-left space-y-2.5 mb-5 border border-border text-sm">
                             <div className="flex justify-between text-xs text-muted-foreground border-b border-border pb-2">
