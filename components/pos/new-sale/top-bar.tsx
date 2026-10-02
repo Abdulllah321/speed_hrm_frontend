@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import {
     ScanBarcode,
@@ -32,11 +32,22 @@ export function NewSaleTopBar({
     searchInputRef,
 }: TopBarProps) {
     const [activeIndex, setActiveIndex] = useState<number>(-1);
+    const listRef = useRef<HTMLUListElement>(null);
 
     // Reset active index when search results or query change
     useEffect(() => {
         setActiveIndex(-1);
     }, [searchResults, searchQuery]);
+
+    // Scroll to active item when navigating with keyboard
+    useEffect(() => {
+        if (activeIndex >= 0 && listRef.current) {
+            const activeElement = listRef.current.children[activeIndex] as HTMLElement;
+            if (activeElement) {
+                activeElement.scrollIntoView({ block: "nearest" });
+            }
+        }
+    }, [activeIndex]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "ArrowDown" && searchResults.length > 0) {
@@ -95,7 +106,7 @@ export function NewSaleTopBar({
                                         Searching...
                                     </div>
                                 ) : (
-                                    <ul className="flex flex-col">
+                                    <ul className="flex flex-col" ref={listRef}>
                                         {searchResults.map((product, idx) => (
                                             <li
                                                 key={product.id}

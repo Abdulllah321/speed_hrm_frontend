@@ -288,8 +288,8 @@ export default function NewSalePage() {
         const timer = setTimeout(async () => {
             if (isScanningRef.current) return;
 
-            // 1. Try exact barcode/SKU scan if length >= 3
-            if (query.length >= 3) {
+            // 1. Try exact barcode/SKU scan if length >= 3 ONLY if it was scanner input
+            if (isScannerInputRef.current && query.length >= 3) {
                 try {
                     isScanningRef.current = true;
                     const scanRes = await authFetch(`/pos-sales/scan`, { params: { barcode: query } });
@@ -329,9 +329,74 @@ export default function NewSalePage() {
         return () => clearTimeout(timer);
     }, [searchQuery, addProductToCart]);
 
+    // ─── Global Barcode Scanner Listener ────────────────────────────
+    const globalScannerBuffer = useRef("");
+    const globalScannerLastCharTime = useRef(0);
+
+    useEffect(() => {
+        const handleGlobalKeyDown = async (e: KeyboardEvent) => {
+            const activeEl = document.activeElement;
+            const isInputFocused = activeEl && (
+                activeEl.tagName === "INPUT" || 
+                activeEl.tagName === "TEXTAREA" || 
+                activeEl.tagName === "SELECT" ||
+                activeEl.getAttribute("contenteditable") === "true"
+            );
+
+            // Don't interfere if they are actively typing in an input
+            if (isInputFocused) return;
+
+            // Only capture standard printable characters and Enter
+            if (e.key.length > 1 && e.key !== "Enter") return;
+
+            const now = Date.now();
+            
+            // If more than 100ms passed since last keystroke, reset the buffer
+            if (now - globalScannerLastCharTime.current > 100) {
+                globalScannerBuffer.current = "";
+            }
+            
+            globalScannerLastCharTime.current = now;
+
+            if (e.key === "Enter") {
+                if (globalScannerBuffer.current.length >= 3) {
+                    e.preventDefault();
+                    const barcode = globalScannerBuffer.current;
+                    globalScannerBuffer.current = "";
+                    
+                    if (isScanningRef.current) return;
+                    isScanningRef.current = true;
+                    
+                    try {
+                        const res = await authFetch(`/pos-sales/scan`, { params: { barcode } });
+                        if (res.ok && res.data?.status && res.data.data) {
+                            addProductToCart(res.data.data);
+                            toast.success(`Scanned: ${res.data.data.description || res.data.data.name || "Product"}`);
+                        } else {
+                            toast.error(res.data?.message || "Item not found");
+                        }
+                    } catch {
+                        toast.error("Failed to scan item. Check connection.");
+                    } finally {
+                        isScanningRef.current = false;
+                    }
+                } else {
+                    globalScannerBuffer.current = "";
+                }
+            } else {
+                globalScannerBuffer.current += e.key;
+            }
+        };
+
+        window.addEventListener("keydown", handleGlobalKeyDown);
+        return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    }, [addProductToCart]);
+
     // ─── Barcode scan / Search submit (fallback on Enter key) ───────
     const handleSearchSubmit = useCallback(async () => {
         if (!searchQuery.trim()) return;
+        if (isScanningRef.current) return;
+        isScanningRef.current = true;
         try {
             const res = await authFetch(`/pos-sales/scan`, { params: { barcode: searchQuery.trim() } });
             if (res.ok && res.data?.status && res.data.data) {
@@ -346,6 +411,8 @@ export default function NewSalePage() {
             }
         } catch {
             toast.error("Failed to scan item. Check connection.");
+        } finally {
+            isScanningRef.current = false;
         }
         setSearchQuery("");
         searchInputRef.current?.focus();
@@ -639,30 +706,6 @@ export default function NewSalePage() {
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [cartItems, isProcessing, showHoldOrders, showShortcutsHelp, focusedCartIndex, handleHold, loadHoldOrders, handleQuantityChange, handleRemoveItem, canHold, canViewHolds, handleCheckout]);
-
-    // ─── Debounced Live Search ──────────────────────────────────────
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (searchQuery.trim().length >= 2) {
-                setIsSearching(true);
-                try {
-                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: searchQuery.trim() } });
-                    if (res.ok && res.data?.status && res.data.data) {
-                        setSearchResults(res.data.data);
-                    } else {
-                        setSearchResults([]);
-                    }
-                } catch {
-                    setSearchResults([]);
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setSearchResults([]);
-            }
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
 
     // ─── Derived state ──────────────────────────────────────────────
     const totalQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0);
