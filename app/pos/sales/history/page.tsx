@@ -429,7 +429,7 @@ export default function SalesHistoryPage() {
             }
         } catch { toast.error("Failed to load sales history"); }
         finally { setIsLoading(false); }
-    }, [pagination.pageIndex, pagination.pageSize, search, dateRange]);
+    }, [pagination.pageIndex, pagination.pageSize, search, dateRange, user?.locationId]);
 
     useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [search, dateRange]);
     useEffect(() => { fetchOrders(); }, [fetchOrders]);

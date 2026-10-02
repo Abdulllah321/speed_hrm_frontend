@@ -652,7 +652,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
         } finally {
             setIsLoading(false);
         }
-    }, [pagination.pageIndex, pagination.pageSize, search, dateRange]);
+    }, [pagination.pageIndex, pagination.pageSize, search, dateRange, user?.locationId]);
 
     // Reset page when filters change
     useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [search, dateRange]);
