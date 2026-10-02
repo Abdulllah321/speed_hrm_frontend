@@ -830,10 +830,10 @@ export default function CheckoutPage() {
           !tenderSlip ||
           !tenderSlip.trim() ||
           tenderSlip.trim().length !== 6 ||
-          !/^\d+$/.test(tenderSlip)
+          !/^[a-zA-Z0-9]+$/.test(tenderSlip)
         ) {
           toast.error(
-            "Auth ID / Approval Code must be a 6-digit numeric code when Alliance is selected.",
+            "Auth ID / Approval Code must be a 6-character alphanumeric code when Alliance is selected.",
           );
           return;
         }
@@ -854,9 +854,9 @@ export default function CheckoutPage() {
       tenderSlip
     ) {
       const trimmed = tenderSlip.trim();
-      if (trimmed.length !== 6 || !/^\d+$/.test(trimmed)) {
+      if (trimmed.length !== 6 || !/^[a-zA-Z0-9]+$/.test(trimmed)) {
         toast.error(
-          "Auth ID / Approval Code must be exactly a 6-digit numeric code.",
+          "Auth ID / Approval Code must be exactly a 6-character alphanumeric code.",
         );
         return;
       }
@@ -1138,10 +1138,10 @@ export default function CheckoutPage() {
         if (
           !activeSlip ||
           activeSlip.trim().length !== 6 ||
-          !/^\d+$/.test(activeSlip)
+          !/^[a-zA-Z0-9]+$/.test(activeSlip)
         ) {
           toast.error(
-            "Auth ID / Approval Code must be a 6-digit numeric code for card payments when Alliance is selected.",
+            "Auth ID / Approval Code must be a 6-character alphanumeric code for card payments when Alliance is selected.",
           );
           return;
         }
@@ -1342,10 +1342,10 @@ export default function CheckoutPage() {
         if (
           !activeSlip ||
           activeSlip.trim().length !== 6 ||
-          !/^\d+$/.test(activeSlip)
+          !/^[a-zA-Z0-9]+$/.test(activeSlip)
         ) {
           toast.error(
-            "Auth ID / Approval Code must be a 6-digit numeric code for card payments when Alliance is selected.",
+            "Auth ID / Approval Code must be a 6-character alphanumeric code for card payments when Alliance is selected.",
           );
           return;
         }
