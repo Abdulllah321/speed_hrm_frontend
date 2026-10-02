@@ -855,8 +855,8 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
             cell: ({ row }) => {
                 const order = row.original;
                 const isHold = order.status === "hold";
-                const isToday = isSameDay(new Date(order.createdAt));
-                const canEditTender = isToday && order.status !== "voided" && order.status !== "hold";
+                const isWithin2Days = (new Date().getTime() - new Date(order.createdAt).getTime()) <= (2 * 24 * 60 * 60 * 1000);
+                const canEditTender = isWithin2Days && order.status !== "voided" && order.status !== "hold";
                 return (
                     <div className="flex items-center justify-end gap-1">
                         {isHold && canResumeHold && (
