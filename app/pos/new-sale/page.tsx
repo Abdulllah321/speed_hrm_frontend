@@ -230,6 +230,22 @@ export default function NewSalePage() {
     // ─── Add Product To Cart (shared by scan, click, enter) ───────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const addProductToCart = useCallback((product: any) => {
+        if (product.stockQty !== undefined && product.stockQty <= 0) {
+            toast.error(`${product.description || product.name || "Item"} is out of stock`);
+            setSearchQuery("");
+            setSearchResults([]);
+            searchInputRef.current?.focus();
+            return;
+        }
+        
+        if (product.inStock === false) {
+            toast.error(`${product.description || product.name || "Item"} is out of stock`);
+            setSearchQuery("");
+            setSearchResults([]);
+            searchInputRef.current?.focus();
+            return;
+        }
+
         const defTax = parseFloat(settings.defaultTaxPercent) || 0;
         setCartItems((prev) => {
             const existingIndex = prev.findIndex((i) => i.id === product.id);
@@ -246,6 +262,13 @@ export default function NewSalePage() {
                         : i
                 );
             }
+            
+            // Check if initial quantity of 1 exceeds stock
+            if (1 > product.stockQty) {
+                toast.error(`Only ${product.stockQty} units available in stock`);
+                return prev;
+            }
+
             setTimeout(() => setFocusedCartIndex(prev.length), 0);
             return [...prev, computeLineItem(product, 1, Number(product.effectiveDiscountPercent ?? product.discountRate) || 0, defTax)];
         });
