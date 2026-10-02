@@ -5,7 +5,7 @@ import { AllianceFormPage } from "./alliance-form-page";
 export default async function AllianceNewPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
     const sp = await searchParams;
     const [locationsRes, allianceRes] = await Promise.all([
-        getLocations(),
+        getLocations(true),
         sp.id ? getAllianceById(sp.id) : Promise.resolve({ status: true, data: undefined }),
     ]);
 
