@@ -21,6 +21,7 @@ import { getTransferRequests } from "@/lib/actions/transfer-request";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TransferItem {
     id: string;
@@ -87,6 +88,14 @@ const BrandBadge = ({ brand }: { brand?: string }) => {
     );
 };
 
+
+const BRANDS = [
+    "WATCHES", "TISSOT", "RADO", "GUESS", "USPA", "TIMEX", "TIMBERLAND", 
+    "TAG Heuer", "POLICE", "ORIS", "NAUTICA", "FENDI", "DIOR", "DANISH DESIGN", 
+    "PEDRO", "CHARLES & KEITH", "UNDER ARMOUR", "PUMA", "NIKE", "BIRKENSTOCK", 
+    "ASICS", "ADIDAS"
+];
+
 export default function StockReceiptPage() {
     const { user, hasPermission } = useAuth();
     const router = useRouter();
@@ -100,6 +109,7 @@ export default function StockReceiptPage() {
     const [search, setSearch] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
+    const [brandFilter, setBrandFilter] = useState("ALL");
     
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -115,7 +125,7 @@ export default function StockReceiptPage() {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            const res = await getLocationReceipts(locationId, { page: currentPage, limit: ITEMS_PER_PAGE, search, dateFrom, dateTo });
+            const res = await getLocationReceipts(locationId, { page: currentPage, limit: ITEMS_PER_PAGE, search, dateFrom, dateTo, brand: brandFilter });
             if (res.status) {
                 const fetchedTransfers = res.data || [];
                 fetchedTransfers.forEach((t: any, idx: number) => {
@@ -143,7 +153,7 @@ export default function StockReceiptPage() {
             fetchReceipts(); 
         }, 500);
         return () => clearTimeout(delayDebounceFn);
-    }, [locationId, currentPage, search, dateFrom, dateTo]);
+    }, [locationId, currentPage, search, dateFrom, dateTo, brandFilter]);
 
 
     const totalUnits = (t: Transfer) =>
@@ -355,6 +365,18 @@ export default function StockReceiptPage() {
                         <span className="text-muted-foreground text-xs font-medium px-1">TO</span>
                         <Input type="date" className="h-8 border-none shadow-none focus-visible:ring-0 text-xs w-[130px]" value={dateTo} onChange={e => setDateTo(e.target.value)} />
                     </div>
+
+                        <Select value={brandFilter} onValueChange={setBrandFilter}>
+                            <SelectTrigger className="w-[140px] bg-white shadow-sm border-black/10 h-10">
+                                <SelectValue placeholder="All Brands" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Brands</SelectItem>
+                                {BRANDS.map(b => (
+                                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                 </div>
             </header>
 

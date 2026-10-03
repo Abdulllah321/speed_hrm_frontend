@@ -72,6 +72,14 @@ const BrandBadge = ({ brand }: { brand?: string }) => {
     );
 };
 
+
+const BRANDS = [
+    "WATCHES", "TISSOT", "RADO", "GUESS", "USPA", "TIMEX", "TIMBERLAND", 
+    "TAG Heuer", "POLICE", "ORIS", "NAUTICA", "FENDI", "DIOR", "DANISH DESIGN", 
+    "PEDRO", "CHARLES & KEITH", "UNDER ARMOUR", "PUMA", "NIKE", "BIRKENSTOCK", 
+    "ASICS", "ADIDAS"
+];
+
 export default function StockReceivingPage() {
   const { user, hasPermission } = useAuth();
   const router = useRouter();
@@ -85,6 +93,7 @@ export default function StockReceivingPage() {
   const [searchQuery, setSearchQuery] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
+    const [brandFilter, setBrandFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("newest");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
@@ -308,7 +317,7 @@ export default function StockReceivingPage() {
         search: searchQuery,
         sortBy: sortBy,
         statusFilter: statusFilter
-      , dateFrom, dateTo });
+      , dateFrom, dateTo, brand: brandFilter });
       if (res.status) {
         setRequests(res.data || []);
         setTotalPages(res.meta?.totalPages || 1);
@@ -432,7 +441,19 @@ export default function StockReceivingPage() {
                             </div>
                         )}
             <div className="flex gap-2">
-              <Select value={sortBy} onValueChange={setSortBy}>
+              
+                        <Select value={brandFilter} onValueChange={setBrandFilter}>
+                            <SelectTrigger className="w-[140px] bg-white shadow-sm border-black/10 h-10">
+                                <SelectValue placeholder="All Brands" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Brands</SelectItem>
+                                {BRANDS.map(b => (
+                                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+<Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-[140px] bg-white border-dashed">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
