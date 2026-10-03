@@ -460,7 +460,7 @@ export default function StockReceiptPage() {
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            onClick={() => printReceipt(transfer)}
+                                                            onClick={() => handlePrint(transfer)}
                                                             disabled={printingId === transfer.id}
                                                             className="text-primary hover:text-primary hover:bg-primary/5 bg-white border-primary/20 shadow-sm transition-all"
                                                         >
