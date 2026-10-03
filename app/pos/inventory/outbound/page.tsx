@@ -352,7 +352,7 @@ export default function OutboundRequestsPage() {
     };
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col">
             {/* Header */}
             <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex items-center gap-4 w-full">
@@ -376,7 +376,7 @@ export default function OutboundRequestsPage() {
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 p-4 md:p-6 pb-20 overflow-auto">
+            <main className="flex-1 p-4 md:p-6 pb-20">
                 <div className="w-full space-y-6">
                     {/* Custom Modern Tabs */}
                     <div className="flex gap-2 p-1 bg-muted rounded-xl max-w-xs border shadow-sm">

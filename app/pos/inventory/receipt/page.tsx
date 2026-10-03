@@ -319,7 +319,7 @@ export default function StockReceiptPage() {
             </header>
 
             {/* List */}
-            <main className="flex-1 overflow-auto p-4 md:p-6 pb-20">
+            <main className="flex-1 p-4 md:p-6 pb-20">
                 <div className="mx-auto w-full space-y-6">
                     {isLoading ? (
                         <div className="space-y-4">

@@ -321,7 +321,7 @@ export default function StockReceivingPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       {/* Header */}
       <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
         <div className="flex items-center gap-4 mx-auto w-full">
@@ -353,7 +353,7 @@ export default function StockReceivingPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-6 pb-20 overflow-auto">
+      <main className="flex-1 p-4 md:p-6 pb-20">
         <div className="mx-auto w-full space-y-6">
           {/* Tabs */}
           <div className="flex bg-muted/30 p-1 rounded-xl border border-black/5">
