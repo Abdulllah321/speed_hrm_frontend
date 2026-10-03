@@ -180,3 +180,14 @@ export async function updateTransferDispatchDetails(id: string, dispatchData: {
         return { status: false, message: error instanceof Error ? error.message : "Failed to update dispatch details" };
     }
 }
+
+export async function getLocationReceipts(locationId: string, params?: { page?: number; limit?: number; search?: string }) {
+    try {
+        const queryParams = new URLSearchParams(params as any).toString();
+        const response = await authFetch(`/transfer-request/location-receipts?locationId=${locationId}&${queryParams}`);
+        return { status: response.status, data: response.data?.data || [], meta: response.data?.meta || null };
+    } catch (error) {
+        console.error("Get location receipts error:", error);
+        return { status: false, data: [], meta: null };
+    }
+}
