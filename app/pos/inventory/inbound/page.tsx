@@ -30,6 +30,30 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { SmartPagination } from "@/components/ui/smart-pagination";
 
+
+const getBrandColor = (brand: string) => {
+    const b = brand.toUpperCase();
+    if (['NIKE'].includes(b)) return 'bg-black text-white border-black shadow-sm';
+    if (['ADIDAS'].includes(b)) return 'bg-blue-600 text-white border-blue-600 shadow-sm';
+    if (['PUMA'].includes(b)) return 'bg-red-600 text-white border-red-600 shadow-sm';
+    if (['UNDER ARMOUR'].includes(b)) return 'bg-gray-800 text-white border-gray-800 shadow-sm';
+    if (['ASICS'].includes(b)) return 'bg-blue-800 text-white border-blue-800 shadow-sm';
+    if (['BIRKENSTOCK', 'TIMBERLAND'].includes(b)) return 'bg-amber-700 text-white border-amber-700 shadow-sm';
+    if (['CHARLES & KEITH', 'PEDRO', 'FENDI', 'DIOR'].includes(b)) return 'bg-stone-800 text-stone-100 border-stone-800 shadow-sm';
+    if (['TISSOT', 'RADO', 'TAG HEUER', 'ORIS', 'WATCHES'].includes(b)) return 'bg-slate-700 text-slate-100 border-slate-700 shadow-sm';
+    if (['GUESS', 'POLICE', 'NAUTICA', 'USPA', 'TIMEX', 'DANISH DESIGN'].includes(b)) return 'bg-indigo-700 text-white border-indigo-700 shadow-sm';
+    return 'bg-gray-200 text-gray-800 border-gray-300 shadow-sm';
+};
+
+const BrandBadge = ({ brand }: { brand?: string }) => {
+    if (!brand) return null;
+    return (
+        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-black tracking-widest uppercase ${getBrandColor(brand)}`}>
+            {brand}
+        </Badge>
+    );
+};
+
 export default function InboundRequestsPage() {
     const { user, hasPermission } = useAuth();
     const router = useRouter();
@@ -41,6 +65,8 @@ export default function InboundRequestsPage() {
     
     // Filters and Search
     const [searchQuery, setSearchQuery] = useState("");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
     const [sortBy, setSortBy] = useState("newest");
     const [statusFilter, setStatusFilter] = useState("ALL");
 
@@ -241,7 +267,7 @@ export default function InboundRequestsPage() {
                 search: searchQuery,
                 sortBy: sortBy,
                 statusFilter: statusFilter
-            });
+            , dateFrom, dateTo });
             if (res.status) {
                 setRequests(res.data || []);
                 setTotalPages(res.meta?.totalPages || 1);
@@ -341,15 +367,22 @@ export default function InboundRequestsPage() {
 
                     {/* Filters & Search UI */}
                     <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <div className="relative flex-1 w-full sm:w-auto">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
                             <Input
-                                placeholder="Search by transfer no, notes, or outlet..."
+                                placeholder="Search by SKU, Barcode, Reference..."
+                                className="pl-9 h-10 bg-white shadow-sm border-black/10"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 bg-white border-dashed focus-visible:ring-1 focus-visible:ring-green-500"
                             />
                         </div>
+                        {activeTab === 'history' && (
+                            <div className="flex items-center gap-1 w-full sm:w-auto shrink-0 bg-white p-1 rounded-lg border border-black/10 shadow-sm">
+                                <Input type="date" className="h-8 border-none shadow-none focus-visible:ring-0 text-xs w-[130px]" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                                <span className="text-muted-foreground text-xs font-medium px-1">TO</span>
+                                <Input type="date" className="h-8 border-none shadow-none focus-visible:ring-0 text-xs w-[130px]" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                            </div>
+                        )}
                         <div className="flex gap-2">
                             <Select value={sortBy} onValueChange={setSortBy}>
                                 <SelectTrigger className="w-[140px] bg-white border-dashed">
@@ -442,11 +475,14 @@ export default function InboundRequestsPage() {
                                                         </TableCell>
                                                         <TableCell>
                                                             <div className="flex flex-col">
-                                                                <span className="font-semibold text-sm leading-tight text-gray-800">
-                                                                    {totalItemsCount > 1
-                                                                      ? `Stock Transfer Note (${totalItemsCount} Products${brandName ? ` · ${brandName}` : ""})`
-                                                                      : firstItem?.description || "Incoming Items"}
-                                                                </span>
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-semibold text-sm leading-tight text-gray-800">
+                                                            {totalItemsCount > 1
+                                                              ? `Stock Transfer Note (${totalItemsCount} Products)`
+                                                              : firstItem?.description || "Incoming Items"}
+                                                        </span>
+                                                        <BrandBadge brand={brandName} />
+                                                    </div>
                                                                 {totalItemsCount > 1 ? (
                                                                     <div className="flex flex-col gap-1 mt-1.5 w-full">
                                                                         {(request.items || []).slice(0, 3).map((i: any, idx: number) => (

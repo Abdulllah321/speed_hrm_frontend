@@ -14,7 +14,7 @@ export async function getTransferRequests(params?: { warehouseId?: string; statu
     }
 }
 
-export async function getIncomingTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string }) {
+export async function getIncomingTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string; dateFrom?: string; dateTo?: string }) {
     try {
         const queryParams = new URLSearchParams(params as any).toString();
         const response = await authFetch(`/transfer-request/incoming?locationId=${locationId}&${queryParams}`);
@@ -35,7 +35,7 @@ export async function getReturnTransferRequests(locationId: string) {
     }
 }
 
-export async function getOutboundTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string }) {
+export async function getOutboundTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string; dateFrom?: string; dateTo?: string }) {
     try {
         const queryParams = new URLSearchParams(params as any).toString();
         const response = await authFetch(`/transfer-request/outbound-requests?locationId=${locationId}&${queryParams}`);
@@ -46,7 +46,7 @@ export async function getOutboundTransferRequests(locationId: string, params?: {
     }
 }
 
-export async function getInboundTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string }) {
+export async function getInboundTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string; dateFrom?: string; dateTo?: string }) {
     try {
         const queryParams = new URLSearchParams(params as any).toString();
         const response = await authFetch(`/transfer-request/inbound-requests?locationId=${locationId}&${queryParams}`);
@@ -181,7 +181,7 @@ export async function updateTransferDispatchDetails(id: string, dispatchData: {
     }
 }
 
-export async function getLocationReceipts(locationId: string, params?: { page?: number; limit?: number; search?: string }) {
+export async function getLocationReceipts(locationId: string, params?: { page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string }) {
     try {
         const queryParams = new URLSearchParams(params as any).toString();
         const response = await authFetch(`/transfer-request/location-receipts?locationId=${locationId}&${queryParams}`);

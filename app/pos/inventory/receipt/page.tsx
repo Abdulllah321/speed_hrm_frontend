@@ -31,6 +31,7 @@ interface TransferItem {
         unitPrice?: number;
         color?: { name: string };
         size?: { name: string };
+        brand?: { name: string };
     };
 }
 
@@ -43,8 +44,14 @@ interface Transfer {
     transferType: string;
     notes?: string;
     toLocationId?: string;
+    fromLocationId?: string;
     fromLocation?: { name: string };
     toLocation?: { id?: string; name: string };
+    fromWarehouse?: { name: string };
+    toWarehouse?: { name: string };
+    inboundNo?: string;
+    outboundNo?: string;
+    formattedSerialNo?: string;
     items: TransferItem[];
 }
 
@@ -55,6 +62,30 @@ function getCookie(name: string): string {
     if (parts.length === 2) return parts.pop()?.split(";").shift() || "";
     return "";
 }
+
+
+const getBrandColor = (brand: string) => {
+    const b = brand.toUpperCase();
+    if (['NIKE'].includes(b)) return 'bg-black text-white border-black shadow-sm';
+    if (['ADIDAS'].includes(b)) return 'bg-blue-600 text-white border-blue-600 shadow-sm';
+    if (['PUMA'].includes(b)) return 'bg-red-600 text-white border-red-600 shadow-sm';
+    if (['UNDER ARMOUR'].includes(b)) return 'bg-gray-800 text-white border-gray-800 shadow-sm';
+    if (['ASICS'].includes(b)) return 'bg-blue-800 text-white border-blue-800 shadow-sm';
+    if (['BIRKENSTOCK', 'TIMBERLAND'].includes(b)) return 'bg-amber-700 text-white border-amber-700 shadow-sm';
+    if (['CHARLES & KEITH', 'PEDRO', 'FENDI', 'DIOR'].includes(b)) return 'bg-stone-800 text-stone-100 border-stone-800 shadow-sm';
+    if (['TISSOT', 'RADO', 'TAG HEUER', 'ORIS', 'WATCHES'].includes(b)) return 'bg-slate-700 text-slate-100 border-slate-700 shadow-sm';
+    if (['GUESS', 'POLICE', 'NAUTICA', 'USPA', 'TIMEX', 'DANISH DESIGN'].includes(b)) return 'bg-indigo-700 text-white border-indigo-700 shadow-sm';
+    return 'bg-gray-200 text-gray-800 border-gray-300 shadow-sm';
+};
+
+const BrandBadge = ({ brand }: { brand?: string }) => {
+    if (!brand) return null;
+    return (
+        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-black tracking-widest uppercase ${getBrandColor(brand)}`}>
+            {brand}
+        </Badge>
+    );
+};
 
 export default function StockReceiptPage() {
     const { user, hasPermission } = useAuth();
@@ -67,6 +98,8 @@ export default function StockReceiptPage() {
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [printingId, setPrintingId] = useState<string | null>(null);
     const [search, setSearch] = useState("");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
     
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -82,7 +115,7 @@ export default function StockReceiptPage() {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            const res = await getLocationReceipts(locationId, { page: currentPage, limit: ITEMS_PER_PAGE, search });
+            const res = await getLocationReceipts(locationId, { page: currentPage, limit: ITEMS_PER_PAGE, search, dateFrom, dateTo });
             if (res.status) {
                 const fetchedTransfers = res.data || [];
                 fetchedTransfers.forEach((t: any, idx: number) => {
@@ -110,7 +143,7 @@ export default function StockReceiptPage() {
             fetchReceipts(); 
         }, 500);
         return () => clearTimeout(delayDebounceFn);
-    }, [locationId, currentPage, search]);
+    }, [locationId, currentPage, search, dateFrom, dateTo]);
 
 
     const totalUnits = (t: Transfer) =>
@@ -307,14 +340,21 @@ export default function StockReceiptPage() {
                         <RefreshCcw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                     </Button>
                 </div>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-                    <Input
-                        placeholder="Search by ref no, location, or SKU…"
-                        className="pl-9 h-10 bg-muted/30 border-border/50"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                        <Input
+                            placeholder="Search by ref no, location, or SKU..."
+                            className="pl-9 h-10 bg-white shadow-sm border-border/50"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 bg-white p-1 rounded-lg border shadow-sm">
+                        <Input type="date" className="h-8 border-none shadow-none focus-visible:ring-0 text-xs w-[130px]" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                        <span className="text-muted-foreground text-xs font-medium px-1">TO</span>
+                        <Input type="date" className="h-8 border-none shadow-none focus-visible:ring-0 text-xs w-[130px]" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                    </div>
                 </div>
             </header>
 
@@ -374,11 +414,14 @@ export default function StockReceiptPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2 flex-wrap">
                                                         <span className="font-semibold text-sm leading-tight text-gray-800">
                                                             {totalItemsCount > 1
-                                                              ? `Stock Transfer Note (${totalItemsCount} Products${brandName ? ` · ${brandName}` : ""})`
+                                                              ? `Stock Transfer Note (${totalItemsCount} Products)`
                                                               : firstItem?.description || "Transfer Items"}
                                                         </span>
+                                                        <BrandBadge brand={brandName} />
+                                                    </div>
                                                         {totalItemsCount > 1 ? (
                                                             <div className="flex flex-col gap-1 mt-1.5 w-full">
                                                                 {(transfer.items || []).slice(0, 3).map((i: any, idx: number) => (
