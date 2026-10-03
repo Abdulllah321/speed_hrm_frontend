@@ -14,13 +14,14 @@ export async function getTransferRequests(params?: { warehouseId?: string; statu
     }
 }
 
-export async function getIncomingTransferRequests(locationId: string) {
+export async function getIncomingTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string }) {
     try {
-        const response = await authFetch(`/transfer-request/incoming?locationId=${locationId}`);
-        return response.data ?? { status: false, data: [] };
+        const queryParams = new URLSearchParams(params as any).toString();
+        const response = await authFetch(`/transfer-request/incoming?locationId=${locationId}&${queryParams}`);
+        return { status: response.status, data: response.data?.data || [], meta: response.data?.meta || null };
     } catch (error) {
         console.error("Get incoming transfer requests error:", error);
-        return { status: false, data: [] };
+        return { status: false, data: [], meta: null };
     }
 }
 
@@ -34,25 +35,25 @@ export async function getReturnTransferRequests(locationId: string) {
     }
 }
 
-export async function getOutboundTransferRequests(locationId: string, status?: string) {
+export async function getOutboundTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string }) {
     try {
-        const query = status ? `&status=${status}` : '';
-        const response = await authFetch(`/transfer-request/outbound-requests?locationId=${locationId}${query}`);
-        return response.data ?? { status: false, data: [] };
+        const queryParams = new URLSearchParams(params as any).toString();
+        const response = await authFetch(`/transfer-request/outbound-requests?locationId=${locationId}&${queryParams}`);
+        return { status: response.status, data: response.data?.data || [], meta: response.data?.meta || null };
     } catch (error) {
         console.error("Get outbound transfer requests error:", error);
-        return { status: false, data: [] };
+        return { status: false, data: [], meta: null };
     }
 }
 
-export async function getInboundTransferRequests(locationId: string, status?: string) {
+export async function getInboundTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string }) {
     try {
-        const query = status ? `&status=${status}` : '';
-        const response = await authFetch(`/transfer-request/inbound-requests?locationId=${locationId}${query}`);
-        return response.data ?? { status: false, data: [] };
+        const queryParams = new URLSearchParams(params as any).toString();
+        const response = await authFetch(`/transfer-request/inbound-requests?locationId=${locationId}&${queryParams}`);
+        return { status: response.status, data: response.data?.data || [], meta: response.data?.meta || null };
     } catch (error) {
         console.error("Get inbound transfer requests error:", error);
-        return { status: false, data: [] };
+        return { status: false, data: [], meta: null };
     }
 }
 

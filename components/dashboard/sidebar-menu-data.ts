@@ -31,6 +31,8 @@ export type MenuItem = {
   environment?: "HR" | "ERP" | "BOTH" | "ADMIN" | "POS" | "MASTER";
   /** Which product module this master item belongs to — used for the badge in MASTER view */
   module?: "HR" | "ERP" | "POS";
+  /** Unique key to map dynamic notification counts (e.g., from an API) to this menu item */
+  badgeKey?: string;
 };
 
 export const masterMenuData: MenuItem[] = [
@@ -1818,21 +1820,25 @@ export const menuData: MenuItem[] = [
         title: "Warehouse Receiving",
         href: "/pos/inventory/receiving",
         permissions: ["pos.inventory.receiving.view"],
+        badgeKey: "warehouseReceiving",
       },
       {
         title: "Outlet Stock In",
         href: "/pos/inventory/inbound",
         permissions: ["pos.inventory.inbound.view"],
+        badgeKey: "outletStockIn",
       },
       {
         title: "Outlet Stock out",
         href: "/pos/inventory/outbound",
         permissions: ["pos.inventory.outbound.view"],
+        badgeKey: "outletStockOut",
       },
       {
         title: "Return Requests",
         href: "/pos/inventory/returns",
         permissions: ["pos.inventory.returns.view"],
+        badgeKey: "returnRequests",
       },
       {
         title: "Stock Ledger",
