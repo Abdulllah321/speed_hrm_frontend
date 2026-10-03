@@ -306,6 +306,21 @@ export default function StockReceivingPage() {
 
   const locationId = user?.terminal?.location?.id || user?.locationId;
 
+    const [locationBrands, setLocationBrands] = useState<string[]>(BRANDS);
+
+    useEffect(() => {
+        if (locationId) {
+            import("@/lib/actions/location").then(({ getLocationById }) => {
+                getLocationById(locationId).then(res => {
+                    if (res.status && res.data?.brands && res.data.brands.length > 0) {
+                        setLocationBrands(res.data.brands.map((b: any) => b.name));
+                    }
+                });
+            });
+        }
+    }, [locationId]);
+
+
   const fetchRequests = async () => {
     if (!locationId) return;
     setIsLoading(true);
@@ -448,7 +463,7 @@ export default function StockReceivingPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Brands</SelectItem>
-                                {BRANDS.map(b => (
+                                {locationBrands.map(b => (
                                     <SelectItem key={b} value={b}>{b}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -576,6 +591,14 @@ export default function StockReceivingPage() {
                                                                     </span>
                                                                 )}
                                                                 {request.notes && <span className="text-[10px] text-primary/70 font-medium line-clamp-1 mt-1 bg-primary/5 p-1 px-2 rounded w-fit" title={request.notes}>Notes: {request.notes}</span>}
+                                                                {(request.courierName || request.trackingNumber || request.vehicleNumber) && (
+                                                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                                                        {request.courierName && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Courier: {request.courierName}</span>}
+                                                                        {request.trackingNumber && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Track: {request.trackingNumber}</span>}
+                                                                        {request.vehicleNumber && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Veh: {request.vehicleNumber}</span>}
+                                                                        {request.riderName && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Rider: {request.riderName}</span>}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="text-xs font-medium">

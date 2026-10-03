@@ -126,11 +126,11 @@ export async function acceptTransferRequest(id: string, userId?: string) {
     }
 }
 
-export async function approveSourceTransferRequest(id: string, userId?: string, items?: { itemId: string; quantity: number }[]) {
+export async function approveSourceTransferRequest(id: string, userId?: string, items?: { itemId: string; quantity: number }[], dispatchDetails?: any) {
     try {
         const response = await authFetch(`/transfer-request/${id}/approve-source`, {
             method: "POST",
-            body: JSON.stringify({ userId, items }),
+            body: JSON.stringify({ userId, items, dispatchDetails }),
         });
         revalidatePath("/erp/inventory/transactions/stock-transfer");
         return response.data ?? { status: false, message: "Failed to approve source" };

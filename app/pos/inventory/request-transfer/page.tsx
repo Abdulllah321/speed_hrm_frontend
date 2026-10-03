@@ -909,6 +909,30 @@ function RequestTransferForm() {
   );
 }
 
+
+const getBrandColor = (brand: string) => {
+    const b = brand.toUpperCase();
+    if (['NIKE'].includes(b)) return 'bg-black text-white border-black shadow-sm';
+    if (['ADIDAS'].includes(b)) return 'bg-blue-600 text-white border-blue-600 shadow-sm';
+    if (['PUMA'].includes(b)) return 'bg-red-600 text-white border-red-600 shadow-sm';
+    if (['UNDER ARMOUR'].includes(b)) return 'bg-gray-800 text-white border-gray-800 shadow-sm';
+    if (['ASICS'].includes(b)) return 'bg-blue-800 text-white border-blue-800 shadow-sm';
+    if (['BIRKENSTOCK', 'TIMBERLAND'].includes(b)) return 'bg-amber-700 text-white border-amber-700 shadow-sm';
+    if (['CHARLES & KEITH', 'PEDRO', 'FENDI', 'DIOR'].includes(b)) return 'bg-stone-800 text-stone-100 border-stone-800 shadow-sm';
+    if (['TISSOT', 'RADO', 'TAG HEUER', 'ORIS', 'WATCHES'].includes(b)) return 'bg-slate-700 text-slate-100 border-slate-700 shadow-sm';
+    if (['GUESS', 'POLICE', 'NAUTICA', 'USPA', 'TIMEX', 'DANISH DESIGN'].includes(b)) return 'bg-indigo-700 text-white border-indigo-700 shadow-sm';
+    return 'bg-gray-200 text-gray-800 border-gray-300 shadow-sm';
+};
+
+const BrandBadge = ({ brand }: { brand?: string }) => {
+    if (!brand) return null;
+    return (
+        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-black tracking-widest uppercase ${getBrandColor(brand)}`}>
+            {brand}
+        </Badge>
+    );
+};
+
 export default function RequestTransferPage() {
   return (
     <Suspense

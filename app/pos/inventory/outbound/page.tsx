@@ -82,6 +82,7 @@ export default function OutboundRequestsPage() {
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
     const [editingRequest, setEditingRequest] = useState<any | null>(null);
     const [editedItems, setEditedItems] = useState<{ [itemId: string]: number }>({});
+    const [dispatchDetails, setDispatchDetails] = useState({ courierName: '', trackingNumber: '', vehicleNumber: '', riderName: '', dispatchNotes: '' });
     
     // Filters and Search
     const [searchQuery, setSearchQuery] = useState("");
@@ -277,6 +278,21 @@ export default function OutboundRequestsPage() {
 
     const locationId = user?.terminal?.location?.id || user?.locationId;
 
+    const [locationBrands, setLocationBrands] = useState<string[]>(BRANDS);
+
+    useEffect(() => {
+        if (locationId) {
+            import("@/lib/actions/location").then(({ getLocationById }) => {
+                getLocationById(locationId).then(res => {
+                    if (res.status && res.data?.brands && res.data.brands.length > 0) {
+                        setLocationBrands(res.data.brands.map((b: any) => b.name));
+                    }
+                });
+            });
+        }
+    }, [locationId]);
+
+
     const fetchRequests = async () => {
         if (!locationId) return;
         setIsLoading(true);
@@ -362,6 +378,10 @@ export default function OutboundRequestsPage() {
         }));
     };
 
+    const handleDispatchChange = (field: string, value: string) => {
+        setDispatchDetails(prev => ({ ...prev, [field]: value }));
+    };
+
     const handleConfirmEditAndApprove = async () => {
         if (!editingRequest) return;
         setIsApproving(editingRequest.id);
@@ -371,7 +391,7 @@ export default function OutboundRequestsPage() {
         }));
 
         try {
-            const res = await approveSourceTransferRequest(editingRequest.id, user?.id, requestItemsPayload);
+            const res = await approveSourceTransferRequest(editingRequest.id, user?.id, requestItemsPayload, dispatchDetails);
             if (res.status) {
                 toast.success("Source approval completed with adjusted quantities! Items released.");
                 setRequests(prev => prev.filter(r => r.id !== editingRequest.id));
@@ -471,7 +491,7 @@ export default function OutboundRequestsPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Brands</SelectItem>
-                                {BRANDS.map(b => (
+                                {locationBrands.map(b => (
                                     <SelectItem key={b} value={b}>{b}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -688,7 +708,7 @@ export default function OutboundRequestsPage() {
             </main>
 
             {/* Edit Quantities Dialog */}
-            <Dialog open={!!editingRequest} onOpenChange={(open) => !open && setEditingRequest(null)}>
+            <Dialog open={!!editingRequest} onOpenChange={(open) => { if(!open){ setEditingRequest(null); setDispatchDetails({ courierName: "", trackingNumber: "", vehicleNumber: "", riderName: "", dispatchNotes: "" }); } }}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2 text-blue-900">
@@ -749,6 +769,30 @@ export default function OutboundRequestsPage() {
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {editingRequest && (
+                        <div className="space-y-3 my-4 border-t pt-4">
+                            <h4 className="font-bold text-sm text-blue-900">Dispatch Details (Optional)</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-muted-foreground">Courier Name</label>
+                                    <Input placeholder="e.g. TCS, Leopard" value={dispatchDetails.courierName} onChange={e => handleDispatchChange('courierName', e.target.value)} className="h-8 text-xs" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-muted-foreground">Tracking Number</label>
+                                    <Input placeholder="Tracking No." value={dispatchDetails.trackingNumber} onChange={e => handleDispatchChange('trackingNumber', e.target.value)} className="h-8 text-xs" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-muted-foreground">Rider Name</label>
+                                    <Input placeholder="Name" value={dispatchDetails.riderName} onChange={e => handleDispatchChange('riderName', e.target.value)} className="h-8 text-xs" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-muted-foreground">Vehicle Number</label>
+                                    <Input placeholder="e.g. ABC-123" value={dispatchDetails.vehicleNumber} onChange={e => handleDispatchChange('vehicleNumber', e.target.value)} className="h-8 text-xs" />
+                                </div>
+                            </div>
                         </div>
                     )}
 

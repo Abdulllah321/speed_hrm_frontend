@@ -118,6 +118,21 @@ export default function StockReceiptPage() {
     const ITEMS_PER_PAGE = 20;
 
     const locationId = user?.terminal?.location?.id || (user as any)?.locationId;
+
+    const [locationBrands, setLocationBrands] = useState<string[]>(BRANDS);
+
+    useEffect(() => {
+        if (locationId) {
+            import("@/lib/actions/location").then(({ getLocationById }) => {
+                getLocationById(locationId).then(res => {
+                    if (res.status && res.data?.brands && res.data.brands.length > 0) {
+                        setLocationBrands(res.data.brands.map((b: any) => b.name));
+                    }
+                });
+            });
+        }
+    }, [locationId]);
+
     const locationName = user?.terminal?.location?.name || getCookie("locationName") || "Outlet";
     const companyName = getCookie("companyName") || "Store";
 
@@ -372,7 +387,7 @@ export default function StockReceiptPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Brands</SelectItem>
-                                {BRANDS.map(b => (
+                                {locationBrands.map(b => (
                                     <SelectItem key={b} value={b}>{b}</SelectItem>
                                 ))}
                             </SelectContent>
