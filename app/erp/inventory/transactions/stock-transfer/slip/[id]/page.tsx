@@ -71,14 +71,18 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
     loadTransferDetails();
   }, [id]);
 
-  const loadTransferDetails = async () => {
-    try {
-      const res = await getTransferRequests();
-      const req = res.data?.find((t: any) => t.id === id);
-      if (req) {
-        setTransfer(req);
-      }
-    } catch (error) {
+    const loadTransferDetails = async () => {
+        try {
+            const res = await getTransferRequests({ id });
+            // If backend returns a paginated list or plain array
+            const req = Array.isArray(res.data) 
+                ? res.data.find((t: any) => t.id === id) || res.data[0] 
+                : (res.data?.id === id ? res.data : null);
+
+            if (req) {
+                setTransfer(req);
+            }
+        } catch (error) {
       console.error('Failed to load transfer details', error);
     } finally {
       setLoading(false);
