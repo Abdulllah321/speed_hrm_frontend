@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Bell, Search, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle"; // Imported here
 import { PosClock } from "@/components/pos/pos-clock";
+import { AdminOutletSwitcher } from "@/components/pos/admin-outlet-switcher";
 
 export function PosHeader() {
   return (
@@ -21,6 +22,7 @@ export function PosHeader() {
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
+        <AdminOutletSwitcher />
         <PosClock />
         <ThemeToggle /> {/* Added here */}
         
