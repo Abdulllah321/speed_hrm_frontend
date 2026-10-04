@@ -193,6 +193,7 @@ export default function PosVouchersPage() {
     const [limit, setLimit] = useState(50);
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+    const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
     const [search, setSearch] = useState("");
     useEffect(() => {
         if (currentLocationId) {
@@ -232,6 +233,9 @@ export default function PosVouchersPage() {
                 if (res.data.pagination) {
                     setTotal(res.data.pagination.total);
                     setTotalPages(res.data.pagination.totalPages);
+                }
+                if (res.data.tabCounts) {
+                    setTabCounts(res.data.tabCounts);
                 }
             }
         } catch { toast.error("Failed to load vouchers"); }
@@ -567,23 +571,12 @@ export default function PosVouchersPage() {
 
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-3">
                     <TabsList className="w-full md:w-auto flex flex-wrap h-auto">
-                        <TabsTrigger value="ALL">All ({vouchers.length})</TabsTrigger>
-                        {VOUCHER_TYPES.map(({ value, label }) => {
-                            const count = vouchers.filter(v => {
-                                if (value === "EXCHANGE") {
-                                    return v.voucherType === "EXCHANGE" && !isClaimVoucher(v);
-                                }
-                                return v.voucherType === value;
-                            }).length;
-                            return (
-                                <TabsTrigger key={value} value={value}>
-                                    {label} ({count})
-                                </TabsTrigger>
-                            );
-                        })}
-                        <TabsTrigger value="CLAIM">
-                            Claim ({vouchers.filter(isClaimVoucher).length})
-                        </TabsTrigger>
+                        <TabsTrigger value="ALL">All ({tabCounts.ALL ?? 0})</TabsTrigger>
+                        {VOUCHER_TYPES.map(({ value, label }) => (
+                            <TabsTrigger key={value} value={value}>
+                                {label} ({tabCounts[value] ?? 0})
+                            </TabsTrigger>
+                        ))}
                     </TabsList>
                     
                     <div className="flex items-center gap-2 self-end md:self-auto px-1">
