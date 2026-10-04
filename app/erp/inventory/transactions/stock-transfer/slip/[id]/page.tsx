@@ -17,7 +17,7 @@ interface GroupedProduct {
   unitPrice: number;
   totalQty: number;
   totalValue: number;
-  sizes: { sizeName: string; quantity: number }[];
+  sizes: { sizeName: string; colorName: string; quantity: number }[];
 }
 interface GroupedSegment {
   segmentName: string;
@@ -129,6 +129,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
       const unitPrice  = Number(item.unitPrice || 0);
       const totalValue = qty * unitPrice;
       const sizeName   = item.size?.name || 'Free Size';
+      const colorName  = item.color?.name || 'N/A';
       const skuBase    = getBaseSku(item.sku, item.size?.name);
 
       if (!categories[categoryName]) {
@@ -149,9 +150,9 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
       if (!prod) { prod = { skuBase, description: item.description || '', unitPrice, totalQty: 0, totalValue: 0, sizes: [] }; seg.products.push(prod); }
       prod.totalQty += qty; prod.totalValue += totalValue;
 
-      const existingSize = prod.sizes.find((sz) => sz.sizeName === sizeName);
+      const existingSize = prod.sizes.find((sz) => sz.sizeName === sizeName && sz.colorName === colorName);
       if (existingSize) { existingSize.quantity += qty; }
-      else { prod.sizes.push({ sizeName, quantity: qty }); }
+      else { prod.sizes.push({ sizeName, colorName, quantity: qty }); }
     });
 
     return Object.values(categories);
@@ -515,7 +516,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
         <div className="w-full text-xs">
           <div className="grid grid-cols-12 font-bold border-b border-black pb-2 text-[11px] uppercase tracking-wider text-gray-700">
             <div className="col-span-5">GPC / Category / Product</div>
-            <div className="col-span-2 text-center">Size</div>
+            <div className="col-span-2 text-center">Size / Color</div>
             <div className="col-span-1 text-center">Quantity</div>
             <div className="col-span-2 text-right pr-4">Selling Price (Rs.)</div>
             <div className="col-span-2 text-right">Total Value (Rs.)</div>
@@ -581,11 +582,11 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                               </div>
                             </div>
 
-                            {/* Level 5: Sizes */}
-                            {prod.sizes.map((sz) => (
-                              <div key={sz.sizeName} className="grid grid-cols-12 text-gray-500 text-[11px] pl-6">
+                            {/* Level 5: Sizes & Colors */}
+                            {prod.sizes.map((sz, szIdx) => (
+                              <div key={`${sz.sizeName}-${sz.colorName}-${szIdx}`} className="grid grid-cols-12 text-gray-500 text-[11px] pl-6">
                                 <div className="col-span-5"></div>
-                                <div className="col-span-2 text-center font-mono font-semibold">{sz.sizeName}</div>
+                                <div className="col-span-2 text-center font-mono font-semibold truncate px-1">{sz.sizeName} / {sz.colorName}</div>
                                 <div className="col-span-1 text-center font-bold text-gray-800">{sz.quantity}</div>
                                 <div className="col-span-2"></div>
                                 <div className="col-span-2"></div>
