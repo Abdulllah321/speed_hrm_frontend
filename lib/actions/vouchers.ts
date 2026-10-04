@@ -3,7 +3,7 @@
 import { authFetch } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
-export type VoucherType = 'GIFT' | 'EXCHANGE' | 'CREDIT' | 'CORPORATE' | 'OUTLET_GIFT' | 'REFUND';
+export type VoucherType = 'GIFT' | 'EXCHANGE' | 'CREDIT' | 'CORPORATE' | 'OUTLET_GIFT' | 'REFUND' | 'CLAIM';
 
 export interface Voucher {
     id: string;

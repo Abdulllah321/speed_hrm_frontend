@@ -50,6 +50,8 @@ const VOUCHER_TYPES: { value: VoucherType; label: string; icon: React.ElementTyp
     { value: "CORPORATE",   label: "Corporate",   icon: Building2, color: "text-amber-600"   },
     { value: "OUTLET_GIFT", label: "Outlet Gift", icon: MapPin,    color: "text-rose-600"    },
     { value: "REFUND",      label: "Refund",      icon: Ticket,    color: "text-red-600"     },
+    { value: "CLAIM",       label: "Claim",       icon: Ticket,    color: "text-red-600"     },
+
 ];
 
 // Types available for manual issuance (Only GIFT vouchers can be manually issued)
@@ -417,7 +419,7 @@ export default function PosVouchersPage() {
             description: bulkDesc || undefined,
             companyName: bulkCo || undefined,
             companyGlCode: bulkCoGl || undefined,
-            customer: bulkSelectedCustomer ? { id: bulkSelectedCustomer.id, name: bulkSelectedCustomer.name, code: bulkSelectedCustomer.code, contactNo: bulkSelectedCustomer.contactNo } : null,
+            customer: bulkSelectedCustomer ? { id: bulkSelectedCustomer.id, name: bulkSelectedCustomer.name, code: bulkSelectedCustomer.code || "", contactNo: bulkSelectedCustomer.contactNo } : null,
             requireCustomerMatch: bulkSelectedCustomer ? bulkRequireMatch : false,
             expiresAt: bulkExp || undefined,
             createdAt: new Date().toISOString(),
@@ -547,13 +549,12 @@ export default function PosVouchersPage() {
                                 <SelectItem value="VOIDED">Voided</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Select value={filterLocationId} onValueChange={(val) => { setFilterLocationId(val); setPage(1); }}>
-                            <SelectTrigger className="w-full sm:w-[200px] bg-background">
+                        <Select value={filterLocationId} disabled>
+                            <SelectTrigger className="w-full sm:w-[200px] bg-background opacity-70 cursor-not-allowed">
                                 <SelectValue placeholder="Location" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ALL">All Locations</SelectItem>
-                                {locations.map(loc => (
+                                {locations.filter(l => l.id === currentLocationId).map(loc => (
                                     <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -674,7 +675,7 @@ export default function PosVouchersPage() {
                                                     {v.issuedByLocation ? (
                                                         <div className="space-y-0.5">
                                                             <div className="font-semibold text-foreground truncate max-w-40" title={v.issuedByLocation.name}>
-                                                                {v.issuedByLocation.shortCode || v.issuedByLocation.name}
+                                                                {(v.issuedByLocation as any).shortCode || v.issuedByLocation.name}
                                                             </div>
                                                             <div className="text-[10px] text-muted-foreground font-mono">{v.issuedByLocation.code}</div>
                                                         </div>
@@ -990,7 +991,7 @@ export default function PosVouchersPage() {
                                         value={singleCoGl} 
                                         onValueChange={val => {
                                             setSingleCoGl(val);
-                                            const cust = customers.find(c => c.code === val);
+                                            const cust = customers.find(c => (c.code || c.id) === val);
                                             if (cust) {
                                                 setSingleCo(cust.name);
                                             } else {
@@ -1008,8 +1009,8 @@ export default function PosVouchersPage() {
                                                 </div>
                                             )}
                                             {customers.map(c => (
-                                                <SelectItem key={c.id} value={c.code}>
-                                                    {c.name} ({c.code})
+                                                <SelectItem key={c.id} value={c.code || c.id}>
+                                                    {c.name} ({c.code || "N/A"})
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -1296,7 +1297,7 @@ export default function PosVouchersPage() {
                                         value={bulkCoGl} 
                                         onValueChange={val => {
                                             setBulkCoGl(val);
-                                            const cust = customers.find(c => c.code === val);
+                                            const cust = customers.find(c => (c.code || c.id) === val);
                                             if (cust) {
                                                 setBulkCo(cust.name);
                                             } else {
@@ -1314,8 +1315,8 @@ export default function PosVouchersPage() {
                                                 </div>
                                             )}
                                             {customers.map(c => (
-                                                <SelectItem key={c.id} value={c.code}>
-                                                    {c.name} ({c.code})
+                                                <SelectItem key={c.id} value={c.code || c.id}>
+                                                    {c.name} ({c.code || "N/A"})
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
