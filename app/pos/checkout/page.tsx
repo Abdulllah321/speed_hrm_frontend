@@ -912,7 +912,7 @@ export default function CheckoutPage() {
   const validateVoucherCode = useCallback(
     async (code: string) => {
       const trimmed = code.trim().toUpperCase();
-      const validFormat = /^[A-Z]{3}-[A-Z0-9-]{6,}$/.test(trimmed);
+      const validFormat = /^[A-Z]{3}-[A-Z0-9-]{5,}$/.test(trimmed);
       if (!validFormat) {
         setValidatedVoucher(null);
         setVoucherError(
