@@ -149,7 +149,7 @@ export default function PosVouchersPage() {
         const q = singleCustomerSearch.toLowerCase();
         return (
             c.name.toLowerCase().includes(q) ||
-            c.code.toLowerCase().includes(q) ||
+            (c.code && c.code.toLowerCase().includes(q)) ||
             (c.contactNo && c.contactNo.toLowerCase().includes(q))
         );
     });
@@ -159,7 +159,7 @@ export default function PosVouchersPage() {
         const q = bulkCustomerSearch.toLowerCase();
         return (
             c.name.toLowerCase().includes(q) ||
-            c.code.toLowerCase().includes(q) ||
+            (c.code && c.code.toLowerCase().includes(q)) ||
             (c.contactNo && c.contactNo.toLowerCase().includes(q))
         );
     });
@@ -192,7 +192,14 @@ export default function PosVouchersPage() {
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("ALL");
+    useEffect(() => {
+        if (currentLocationId) {
+            setFilterLocationId(currentLocationId);
+        }
+    }, [currentLocationId]);
+    const [statusFilter, setStatusFilter] = useState("ACTIVE");
+    const [filterLocationId, setFilterLocationId] = useState<string>("ALL");
+    const [searchQuery, setSearchQuery] = useState("");
 
     // ── Data ─────────────────────────────────────────────────────
     const fetchVouchers = useCallback(async () => {
@@ -202,8 +209,8 @@ export default function PosVouchersPage() {
             if (showVoided) {
                 query.append("includeVoided", "true");
             }
-            if (currentLocationId) {
-                query.append("locationId", currentLocationId);
+            if (filterLocationId !== "ALL") {
+                query.append("locationId", filterLocationId);
             }
             if (activeTab !== "ALL") {
                 query.append("voucherType", activeTab);
@@ -227,7 +234,7 @@ export default function PosVouchersPage() {
             }
         } catch { toast.error("Failed to load vouchers"); }
         finally { setIsLoading(false); }
-    }, [showVoided, currentLocationId, activeTab, statusFilter, search, page, limit]);
+    }, [showVoided, filterLocationId, activeTab, statusFilter, search, page, limit]);
 
     useEffect(() => {
         fetchVouchers();
@@ -509,6 +516,54 @@ export default function PosVouchersPage() {
 
             {/* Tabs + table */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                <div className="bg-muted/40 border rounded-lg p-3 mb-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <Input
+                                placeholder="Search by voucher code, description, or customer..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        setSearch(searchQuery);
+                                        setPage(1);
+                                    }
+                                }}
+                                className="pl-9 bg-background"
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                            </div>
+                        </div>
+                        <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+                            <SelectTrigger className="w-full sm:w-[160px] bg-background">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Statuses</SelectItem>
+                                <SelectItem value="ACTIVE">Active</SelectItem>
+                                <SelectItem value="REDEEMED">Redeemed</SelectItem>
+                                <SelectItem value="EXPIRED">Expired</SelectItem>
+                                <SelectItem value="VOIDED">Voided</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={filterLocationId} onValueChange={(val) => { setFilterLocationId(val); setPage(1); }}>
+                            <SelectTrigger className="w-full sm:w-[200px] bg-background">
+                                <SelectValue placeholder="Location" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Locations</SelectItem>
+                                {locations.map(loc => (
+                                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={() => { setSearch(searchQuery); setPage(1); }} className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0">
+                            Search
+                        </Button>
+                    </div>
+                </div>
+
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-3">
                     <TabsList className="w-full md:w-auto flex flex-wrap h-auto">
                         <TabsTrigger value="ALL">All ({vouchers.length})</TabsTrigger>
@@ -682,6 +737,32 @@ export default function PosVouchersPage() {
                             </Table>
                         )}
                     </div>
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/10 border-x border-b rounded-b-xl">
+                            <p className="text-sm text-muted-foreground">
+                                Showing page <span className="font-medium text-foreground">{page}</span> of <span className="font-medium text-foreground">{totalPages}</span> ({total} total vouchers)
+                            </p>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1 || isLoading}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages || isLoading}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </TabsContent>
             </Tabs>
 

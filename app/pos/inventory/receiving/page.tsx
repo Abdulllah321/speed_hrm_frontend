@@ -628,7 +628,7 @@ export default function StockReceivingPage() {
                                                         </TableCell>
                                                         <TableCell className="text-right">
                                                             <div className="flex justify-end gap-2">
-                                                                {activeTab === 'pending' && (request.status === 'APPROVED' || request.status === 'SOURCE_APPROVED') && (
+                                                                {activeTab === 'pending' && (request.status === 'APPROVED' || request.status === 'SOURCE_APPROVED' || request.status === 'PENDING') && (
                                                                     <Button
                                                                         size="sm"
                                                                         className="h-8 px-3 text-xs bg-primary hover:bg-primary/90"
