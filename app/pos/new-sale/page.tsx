@@ -429,6 +429,10 @@ export default function NewSalePage() {
                 // If only 1 item in search results, select it
                 addProductToCart(searchResults[0]);
                 toast.success(`Added: ${searchResults[0].description || "Product"}`);
+            } else if (searchResults.length > 1) {
+                // Do nothing, leave dropdown open for manual selection
+                isScanningRef.current = false;
+                return;
             } else {
                 toast.error(res.data?.message || "Item not found");
             }

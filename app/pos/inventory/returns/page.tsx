@@ -44,6 +44,7 @@ interface Warehouse {
 interface Item {
     id: string;
     sku: string;
+    barCode?: string;
     description: string;
     size?: { id: string; name: string };
     color?: { id: string; name: string };
@@ -179,6 +180,7 @@ export default function ReturnRequestsPage() {
                 const availableItems = (res.data || []).map((item: any) => ({
                     id: item.id,
                     sku: item.sku,
+                    barCode: item.barCode,
                     description: item.description,
                     size: item.size,
                     color: item.color,
@@ -192,6 +194,48 @@ export default function ReturnRequestsPage() {
             setIsSearching(false);
         }
     }, [locationId]);
+
+    const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = itemQuery.trim();
+            if (!query || !locationId) return;
+
+            if (searchResults.length === 1) {
+                addToCart(searchResults[0]);
+                return;
+            }
+
+            setIsSearching(true);
+            try {
+                const res = await inventoryApi.search(query, undefined, locationId);
+                if (res.status && res.data) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const availableItems = res.data.map((item: any) => ({
+                        id: item.id,
+                        sku: item.sku,
+                        barCode: item.barCode,
+                        description: item.description,
+                        size: item.size,
+                        color: item.color,
+                        totalQuantity: item.totalQuantity || 0
+                    })).filter((item: any) => item.totalQuantity > 0);
+                    
+                    if (availableItems.length === 1) {
+                        addToCart(availableItems[0]);
+                    } else if (availableItems.length > 1) {
+                        setSearchResults(availableItems);
+                    } else {
+                        toast.error("Item not found or out of stock at this location");
+                    }
+                }
+            } catch (error) {
+                toast.error("Failed to search item");
+            } finally {
+                setIsSearching(false);
+            }
+        }
+    };
 
     useEffect(() => {
         fetchRequests();
@@ -366,9 +410,10 @@ export default function ReturnRequestsPage() {
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                                         <Input
-                                            placeholder="Search by SKU or description..."
+                                            placeholder="Search by Barcode, SKU or description..."
                                             value={itemQuery}
                                             onChange={(e) => setItemQuery(e.target.value)}
+                                            onKeyDown={handleKeyDown}
                                             className="pl-9 h-11 bg-muted/20 border-border/50"
                                         />
                                     </div>
@@ -402,6 +447,11 @@ export default function ReturnRequestsPage() {
                                                                 <span className="font-mono text-[9px] font-bold bg-muted px-1.5 py-0.5 rounded text-muted-foreground group-hover:bg-orange-100 group-hover:text-orange-700 dark:group-hover:bg-orange-950/40 dark:group-hover:text-orange-300 transition-colors">
                                                                     {item.sku}
                                                                 </span>
+                                                                {item.barCode && (
+                                                                    <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium font-mono text-blue-600 bg-blue-50 border-blue-200">
+                                                                        {item.barCode}
+                                                                    </Badge>
+                                                                )}
                                                                 {item.size?.name && (
                                                                     <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium">
                                                                         Size: {item.size.name}
