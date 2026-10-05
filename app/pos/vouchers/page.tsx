@@ -50,6 +50,8 @@ const VOUCHER_TYPES: { value: VoucherType; label: string; icon: React.ElementTyp
     { value: "CORPORATE",   label: "Corporate",   icon: Building2, color: "text-amber-600"   },
     { value: "OUTLET_GIFT", label: "Outlet Gift", icon: MapPin,    color: "text-rose-600"    },
     { value: "REFUND",      label: "Refund",      icon: Ticket,    color: "text-red-600"     },
+    { value: "CLAIM",       label: "Claim",       icon: Ticket,    color: "text-red-600"     },
+
 ];
 
 // Types available for manual issuance (Only GIFT vouchers can be manually issued)
@@ -149,7 +151,7 @@ export default function PosVouchersPage() {
         const q = singleCustomerSearch.toLowerCase();
         return (
             c.name.toLowerCase().includes(q) ||
-            c.code.toLowerCase().includes(q) ||
+            (c.code && c.code.toLowerCase().includes(q)) ||
             (c.contactNo && c.contactNo.toLowerCase().includes(q))
         );
     });
@@ -159,7 +161,7 @@ export default function PosVouchersPage() {
         const q = bulkCustomerSearch.toLowerCase();
         return (
             c.name.toLowerCase().includes(q) ||
-            c.code.toLowerCase().includes(q) ||
+            (c.code && c.code.toLowerCase().includes(q)) ||
             (c.contactNo && c.contactNo.toLowerCase().includes(q))
         );
     });
@@ -191,8 +193,16 @@ export default function PosVouchersPage() {
     const [limit, setLimit] = useState(50);
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+    const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("ALL");
+    useEffect(() => {
+        if (currentLocationId) {
+            setFilterLocationId(currentLocationId);
+        }
+    }, [currentLocationId]);
+    const [statusFilter, setStatusFilter] = useState("ACTIVE");
+    const [filterLocationId, setFilterLocationId] = useState<string>("ALL");
+    const [searchQuery, setSearchQuery] = useState("");
 
     // ── Data ─────────────────────────────────────────────────────
     const fetchVouchers = useCallback(async () => {
@@ -202,8 +212,8 @@ export default function PosVouchersPage() {
             if (showVoided) {
                 query.append("includeVoided", "true");
             }
-            if (currentLocationId) {
-                query.append("locationId", currentLocationId);
+            if (filterLocationId !== "ALL") {
+                query.append("locationId", filterLocationId);
             }
             if (activeTab !== "ALL") {
                 query.append("voucherType", activeTab);
@@ -224,10 +234,13 @@ export default function PosVouchersPage() {
                     setTotal(res.data.pagination.total);
                     setTotalPages(res.data.pagination.totalPages);
                 }
+                if (res.data.tabCounts) {
+                    setTabCounts(res.data.tabCounts);
+                }
             }
         } catch { toast.error("Failed to load vouchers"); }
         finally { setIsLoading(false); }
-    }, [showVoided, currentLocationId, activeTab, statusFilter, search, page, limit]);
+    }, [showVoided, filterLocationId, activeTab, statusFilter, search, page, limit]);
 
     useEffect(() => {
         fetchVouchers();
@@ -410,7 +423,7 @@ export default function PosVouchersPage() {
             description: bulkDesc || undefined,
             companyName: bulkCo || undefined,
             companyGlCode: bulkCoGl || undefined,
-            customer: bulkSelectedCustomer ? { id: bulkSelectedCustomer.id, name: bulkSelectedCustomer.name, code: bulkSelectedCustomer.code, contactNo: bulkSelectedCustomer.contactNo } : null,
+            customer: bulkSelectedCustomer ? { id: bulkSelectedCustomer.id, name: bulkSelectedCustomer.name, code: bulkSelectedCustomer.code || "", contactNo: bulkSelectedCustomer.contactNo } : null,
             requireCustomerMatch: bulkSelectedCustomer ? bulkRequireMatch : false,
             expiresAt: bulkExp || undefined,
             createdAt: new Date().toISOString(),
@@ -509,25 +522,61 @@ export default function PosVouchersPage() {
 
             {/* Tabs + table */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                <div className="bg-muted/40 border rounded-lg p-3 mb-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <Input
+                                placeholder="Search by voucher code, description, or customer..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        setSearch(searchQuery);
+                                        setPage(1);
+                                    }
+                                }}
+                                className="pl-9 bg-background"
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+                            </div>
+                        </div>
+                        <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+                            <SelectTrigger className="w-full sm:w-[160px] bg-background">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Statuses</SelectItem>
+                                <SelectItem value="ACTIVE">Active</SelectItem>
+                                <SelectItem value="REDEEMED">Redeemed</SelectItem>
+                                <SelectItem value="EXPIRED">Expired</SelectItem>
+                                <SelectItem value="VOIDED">Voided</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={filterLocationId} disabled>
+                            <SelectTrigger className="w-full sm:w-[200px] bg-background opacity-70 cursor-not-allowed">
+                                <SelectValue placeholder="Location" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {locations.filter(l => l.id === currentLocationId).map(loc => (
+                                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={() => { setSearch(searchQuery); setPage(1); }} className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0">
+                            Search
+                        </Button>
+                    </div>
+                </div>
+
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-3">
                     <TabsList className="w-full md:w-auto flex flex-wrap h-auto">
-                        <TabsTrigger value="ALL">All ({vouchers.length})</TabsTrigger>
-                        {VOUCHER_TYPES.map(({ value, label }) => {
-                            const count = vouchers.filter(v => {
-                                if (value === "EXCHANGE") {
-                                    return v.voucherType === "EXCHANGE" && !isClaimVoucher(v);
-                                }
-                                return v.voucherType === value;
-                            }).length;
-                            return (
-                                <TabsTrigger key={value} value={value}>
-                                    {label} ({count})
-                                </TabsTrigger>
-                            );
-                        })}
-                        <TabsTrigger value="CLAIM">
-                            Claim ({vouchers.filter(isClaimVoucher).length})
-                        </TabsTrigger>
+                        <TabsTrigger value="ALL">All ({tabCounts.ALL ?? 0})</TabsTrigger>
+                        {VOUCHER_TYPES.map(({ value, label }) => (
+                            <TabsTrigger key={value} value={value}>
+                                {label} ({tabCounts[value] ?? 0})
+                            </TabsTrigger>
+                        ))}
                     </TabsList>
                     
                     <div className="flex items-center gap-2 self-end md:self-auto px-1">
@@ -619,7 +668,7 @@ export default function PosVouchersPage() {
                                                     {v.issuedByLocation ? (
                                                         <div className="space-y-0.5">
                                                             <div className="font-semibold text-foreground truncate max-w-40" title={v.issuedByLocation.name}>
-                                                                {v.issuedByLocation.shortCode || v.issuedByLocation.name}
+                                                                {(v.issuedByLocation as any).shortCode || v.issuedByLocation.name}
                                                             </div>
                                                             <div className="text-[10px] text-muted-foreground font-mono">{v.issuedByLocation.code}</div>
                                                         </div>
@@ -682,6 +731,32 @@ export default function PosVouchersPage() {
                             </Table>
                         )}
                     </div>
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/10 border-x border-b rounded-b-xl">
+                            <p className="text-sm text-muted-foreground">
+                                Showing page <span className="font-medium text-foreground">{page}</span> of <span className="font-medium text-foreground">{totalPages}</span> ({total} total vouchers)
+                            </p>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1 || isLoading}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages || isLoading}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </TabsContent>
             </Tabs>
 
@@ -909,7 +984,7 @@ export default function PosVouchersPage() {
                                         value={singleCoGl} 
                                         onValueChange={val => {
                                             setSingleCoGl(val);
-                                            const cust = customers.find(c => c.code === val);
+                                            const cust = customers.find(c => (c.code || c.id) === val);
                                             if (cust) {
                                                 setSingleCo(cust.name);
                                             } else {
@@ -927,8 +1002,8 @@ export default function PosVouchersPage() {
                                                 </div>
                                             )}
                                             {customers.map(c => (
-                                                <SelectItem key={c.id} value={c.code}>
-                                                    {c.name} ({c.code})
+                                                <SelectItem key={c.id} value={c.code || c.id}>
+                                                    {c.name} ({c.code || "N/A"})
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -1215,7 +1290,7 @@ export default function PosVouchersPage() {
                                         value={bulkCoGl} 
                                         onValueChange={val => {
                                             setBulkCoGl(val);
-                                            const cust = customers.find(c => c.code === val);
+                                            const cust = customers.find(c => (c.code || c.id) === val);
                                             if (cust) {
                                                 setBulkCo(cust.name);
                                             } else {
@@ -1233,8 +1308,8 @@ export default function PosVouchersPage() {
                                                 </div>
                                             )}
                                             {customers.map(c => (
-                                                <SelectItem key={c.id} value={c.code}>
-                                                    {c.name} ({c.code})
+                                                <SelectItem key={c.id} value={c.code || c.id}>
+                                                    {c.name} ({c.code || "N/A"})
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>

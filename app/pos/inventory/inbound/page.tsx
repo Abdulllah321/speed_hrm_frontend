@@ -9,10 +9,17 @@ import {
     CheckCircle2,
     FileText,
     Clock,
-    Printer
+    Printer,
+    Search,
+    Filter,
+    Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
 import { getInboundTransferRequests, acceptTransferRequest } from "@/lib/actions/transfer-request";
@@ -21,6 +28,39 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { SmartPagination } from "@/components/ui/smart-pagination";
+
+
+const getBrandColor = (brand: string) => {
+    const b = brand.toUpperCase();
+    if (['NIKE'].includes(b)) return 'bg-black text-white border-black shadow-sm';
+    if (['ADIDAS'].includes(b)) return 'bg-blue-600 text-white border-blue-600 shadow-sm';
+    if (['PUMA'].includes(b)) return 'bg-red-600 text-white border-red-600 shadow-sm';
+    if (['UNDER ARMOUR'].includes(b)) return 'bg-gray-800 text-white border-gray-800 shadow-sm';
+    if (['ASICS'].includes(b)) return 'bg-blue-800 text-white border-blue-800 shadow-sm';
+    if (['BIRKENSTOCK', 'TIMBERLAND'].includes(b)) return 'bg-amber-700 text-white border-amber-700 shadow-sm';
+    if (['CHARLES & KEITH', 'PEDRO', 'FENDI', 'DIOR'].includes(b)) return 'bg-stone-800 text-stone-100 border-stone-800 shadow-sm';
+    if (['TISSOT', 'RADO', 'TAG HEUER', 'ORIS', 'WATCHES'].includes(b)) return 'bg-slate-700 text-slate-100 border-slate-700 shadow-sm';
+    if (['GUESS', 'POLICE', 'NAUTICA', 'USPA', 'TIMEX', 'DANISH DESIGN'].includes(b)) return 'bg-indigo-700 text-white border-indigo-700 shadow-sm';
+    return 'bg-gray-200 text-gray-800 border-gray-300 shadow-sm';
+};
+
+const BrandBadge = ({ brand }: { brand?: string }) => {
+    if (!brand) return null;
+    return (
+        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-black tracking-widest uppercase ${getBrandColor(brand)}`}>
+            {brand}
+        </Badge>
+    );
+};
+
+
+const BRANDS = [
+    "WATCHES", "TISSOT", "RADO", "GUESS", "USPA", "TIMEX", "TIMBERLAND", 
+    "TAG Heuer", "POLICE", "ORIS", "NAUTICA", "FENDI", "DIOR", "DANISH DESIGN", 
+    "PEDRO", "CHARLES & KEITH", "UNDER ARMOUR", "PUMA", "NIKE", "BIRKENSTOCK", 
+    "ASICS", "ADIDAS"
+];
 
 export default function InboundRequestsPage() {
     const { user, hasPermission } = useAuth();
@@ -30,6 +70,38 @@ export default function InboundRequestsPage() {
     const [isAccepting, setIsAccepting] = useState<string | null>(null);
     const [printingId, setPrintingId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+    
+    // Filters and Search
+    const [searchQuery, setSearchQuery] = useState("");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
+    const [brandFilter, setBrandFilter] = useState("ALL");
+    const [sortBy, setSortBy] = useState("newest");
+    const [statusFilter, setStatusFilter] = useState("ALL");
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const ITEMS_PER_PAGE = 20;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, sortBy, statusFilter, activeTab]);
+
+    const groupedRequests = React.useMemo(() => {
+        const groups: { date: string; items: any[] }[] = [];
+        requests.forEach(request => {
+            const dateStr = format(new Date(request.createdAt), 'MMMM d, yyyy');
+            const lastGroup = groups[groups.length - 1];
+            if (lastGroup && lastGroup.date === dateStr) {
+                lastGroup.items.push(request);
+            } else {
+                groups.push({ date: dateStr, items: [request] });
+            }
+        });
+        return groups;
+    }, [requests]);
 
     const handlePrint = (request: any) => {
         setPrintingId(request.id);
@@ -193,13 +265,37 @@ export default function InboundRequestsPage() {
 
     const locationId = user?.terminal?.location?.id || user?.locationId;
 
+    const [locationBrands, setLocationBrands] = useState<string[]>(BRANDS);
+
+    useEffect(() => {
+        if (locationId) {
+            import("@/lib/actions/location").then(({ getLocationById }) => {
+                getLocationById(locationId).then(res => {
+                    if (res.status && res.data?.brands && res.data.brands.length > 0) {
+                        setLocationBrands(res.data.brands.map((b: any) => b.name));
+                    }
+                });
+            });
+        }
+    }, [locationId]);
+
+
     const fetchRequests = async () => {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            const res = await getInboundTransferRequests(locationId, activeTab);
+            const res = await getInboundTransferRequests(locationId, {
+                status: activeTab,
+                page: currentPage,
+                limit: ITEMS_PER_PAGE,
+                search: searchQuery,
+                sortBy: sortBy,
+                statusFilter: statusFilter
+            , dateFrom, dateTo, brand: brandFilter });
             if (res.status) {
                 setRequests(res.data || []);
+                setTotalPages(res.meta?.totalPages || 1);
+                setTotalRecords(res.meta?.total || 0);
             }
         } catch (error) {
             console.error("Failed to fetch inbound requests", error);
@@ -210,8 +306,12 @@ export default function InboundRequestsPage() {
     };
 
     useEffect(() => {
-        fetchRequests();
-    }, [locationId, activeTab]);
+        // debounce fetch to prevent rapid keystrokes from spamming API
+        const timeoutId = setTimeout(() => {
+            fetchRequests();
+        }, 300);
+        return () => clearTimeout(timeoutId);
+    }, [locationId, activeTab, currentPage, searchQuery, sortBy, statusFilter]);
 
     const handleAccept = async (requestId: string) => {
         setIsAccepting(requestId);
@@ -231,10 +331,10 @@ export default function InboundRequestsPage() {
     };
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col">
             {/* Header */}
             <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
-                <div className="flex items-center gap-4 max-w-5xl mx-auto w-full">
+                <div className="flex items-center gap-4 mx-auto w-full">
                     <Button variant="ghost" size="icon" onClick={() => router.back()}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
@@ -255,8 +355,8 @@ export default function InboundRequestsPage() {
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 p-4 md:p-6 pb-20 overflow-auto">
-                <div className="max-w-5xl mx-auto w-full space-y-6">
+            <main className="flex-1 p-4 md:p-6 pb-20">
+                <div className="mx-auto w-full space-y-6">
                     {/* Custom Modern Tabs */}
                     <div className="flex gap-2 p-1 bg-muted rounded-xl max-w-xs border shadow-sm">
                         <button
@@ -265,7 +365,11 @@ export default function InboundRequestsPage() {
                                     ? 'bg-white text-green-600 shadow-sm border border-black/5'
                                     : 'text-muted-foreground hover:text-foreground'
                             }`}
-                            onClick={() => setActiveTab('pending')}
+                            onClick={() => {
+                                setActiveTab('pending');
+                                setStatusFilter('ALL');
+                                setSearchQuery('');
+                            }}
                         >
                             Pending Actions
                         </button>
@@ -275,10 +379,71 @@ export default function InboundRequestsPage() {
                                     ? 'bg-white text-green-600 shadow-sm border border-black/5'
                                     : 'text-muted-foreground hover:text-foreground'
                             }`}
-                            onClick={() => setActiveTab('history')}
+                            onClick={() => {
+                                setActiveTab('history');
+                                setStatusFilter('ALL');
+                                setSearchQuery('');
+                            }}
                         >
                             Transfer History
                         </button>
+                    </div>
+
+                    {/* Filters & Search UI */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1 w-full sm:w-auto">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                            <Input
+                                placeholder="Search by SKU, Barcode, Reference..."
+                                className="pl-9 h-10 bg-white shadow-sm border-black/10"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        {activeTab === 'history' && (
+                            <div className="flex items-center gap-1 w-full sm:w-auto shrink-0 bg-white p-1 rounded-lg border border-black/10 shadow-sm">
+                                <Input type="date" className="h-8 border-none shadow-none focus-visible:ring-0 text-xs w-[130px]" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                                <span className="text-muted-foreground text-xs font-medium px-1">TO</span>
+                                <Input type="date" className="h-8 border-none shadow-none focus-visible:ring-0 text-xs w-[130px]" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                            </div>
+                        )}
+                        <div className="flex gap-2">
+                            
+                        <Select value={brandFilter} onValueChange={setBrandFilter}>
+                            <SelectTrigger className="w-[140px] bg-white shadow-sm border-black/10 h-10">
+                                <SelectValue placeholder="All Brands" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Brands</SelectItem>
+                                {locationBrands.map(b => (
+                                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+<Select value={sortBy} onValueChange={setSortBy}>
+                                <SelectTrigger className="w-[140px] bg-white border-dashed">
+                                    <SelectValue placeholder="Sort by" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="newest">Newest First</SelectItem>
+                                    <SelectItem value="oldest">Oldest First</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            
+                            {activeTab === 'history' && (
+                                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                    <SelectTrigger className="w-[140px] bg-white border-dashed">
+                                        <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL">All Status</SelectItem>
+                                        <SelectItem value="COMPLETED">Completed</SelectItem>
+                                        <SelectItem value="APPROVED">Approved</SelectItem>
+                                        <SelectItem value="REJECTED">Rejected</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        </div>
                     </div>
 
                     {isLoading ? (
@@ -297,138 +462,169 @@ export default function InboundRequestsPage() {
                             </h2>
                             <p className="max-w-xs mx-auto text-muted-foreground">
                                 {activeTab === 'pending' 
-                                    ? "No pending inbound transfers for this location." 
-                                    : "No completed or rejected inbound transfers found."}
+                                        ? "No pending inbound transfers for this location." 
+                                        : "No completed or rejected inbound transfers found."}
                             </p>
                             <Button variant="outline" className="mt-6" onClick={fetchRequests}>
                                 <RefreshCcw className="h-4 w-4 mr-2" /> Check Again
                             </Button>
                         </Card>
                     ) : (
-                        <div className="grid gap-4">
-                            {requests.map((request) => (
-                                <Card key={request.id} className="overflow-hidden border-2 hover:border-green-200 transition-all shadow-sm">
-                                    <div className="flex flex-col md:flex-row md:items-stretch">
-                                        {/* Status Sidebar */}
-                                        <div className="bg-green-50 p-4 md:w-48 flex flex-col justify-between border-b md:border-b-0 md:border-r border-green-200">
-                                            <div className="space-y-1">
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-green-700">Inbound Transfer</span>
-                                                <div className="font-mono text-sm font-bold truncate text-green-800">{request.requestNo}</div>
-                                                {(request.inboundNo || request.formattedSerialNo) && (
-                                                    <Badge variant="outline" className="text-[10px] bg-green-100/50 text-green-900 border-green-300 font-mono">
-                                                        TR #{request.inboundNo || request.formattedSerialNo}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <div className="mt-4 md:mt-0">
-                                                {request.status === 'PENDING' && (
-                                                	<Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100/80 border-blue-200 font-bold">
-                                                		<Clock className="h-3 w-3 mr-1" /> Awaiting Release
-                                                	</Badge>
-                                                )}
-                                                {request.status === 'SOURCE_APPROVED' && (
-                                                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200 font-bold">
-                                                        <Clock className="h-3 w-3 mr-1" /> Ready to Receive
-                                                    </Badge>
-                                                )}
-                                                {request.status === 'COMPLETED' && (
-                                                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200 font-bold">
-                                                        <CheckCircle2 className="h-3 w-3 mr-1" /> Completed
-                                                    </Badge>
-                                                )}
-                                                {request.status === 'REJECTED' && (
-                                                    <Badge variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200 font-bold">
-                                                        Rejected
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Content */}
-                                        <CardContent className="p-4 md:p-6 flex-1 flex flex-col md:flex-row items-center justify-between gap-6">
-                                            <div className="flex-1 w-full space-y-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="bg-green-100 p-2 rounded-lg text-green-600">
-                                                        <ArrowDown className="h-6 w-6" />
+                        <div className="bg-white border rounded-lg shadow-sm overflow-x-auto">
+                            <Table className="min-w-[1000px]">
+                                <TableHeader className="bg-muted/50">
+                                    <TableRow>
+                                        <TableHead className="w-[160px]">Request No</TableHead>
+                                        <TableHead className="w-[130px]">TR #</TableHead>
+                                        <TableHead className="min-w-[300px]">Description / Items</TableHead>
+                                        <TableHead className="w-[180px]">Source</TableHead>
+                                        <TableHead className="text-right w-[80px]">Qty</TableHead>
+                                        <TableHead className="text-center w-[120px]">Status</TableHead>
+                                        <TableHead className="text-right w-[160px]">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {groupedRequests.map((group) => (
+                                        <React.Fragment key={group.date}>
+                                            <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b">
+                                                <TableCell colSpan={7} className="py-2">
+                                                    <div className="flex items-center gap-2 font-bold text-xs text-muted-foreground uppercase tracking-wider">
+                                                        <Calendar className="h-3 w-3" /> {group.date}
                                                     </div>
-                                                     <div>
-                                                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                                                             <h3 className="font-bold text-lg leading-tight">
-                                                                 {request.items[0]?.item?.description || "Incoming Items"}
-                                                             </h3>
-                                                             {request.items[0]?.item?.size && (
-                                                                 <Badge variant="secondary" className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border-indigo-200">
-                                                                     Size: {request.items[0]?.item?.size.name || request.items[0]?.item?.size}
-                                                                 </Badge>
-                                                             )}
-                                                             {request.items[0]?.item?.color && (
-                                                                 <Badge variant="secondary" className="text-[10px] font-semibold bg-pink-50 text-pink-700 border-pink-200">
-                                                                     Color: {request.items[0]?.item?.color.name || request.items[0]?.item?.color}
-                                                                 </Badge>
-                                                             )}
-                                                         </div>
-                                                         <p className="text-sm text-muted-foreground font-medium">SKU: {request.items[0]?.item?.sku || "N/A"}</p>
-                                                     </div>
-                                                </div>
-
-                                                <div className="flex flex-wrap items-center gap-6">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Incoming Quantity</span>
-                                                        <span className="text-xl font-black text-green-600">{Number(request.items[0]?.quantity || 0)}</span>
+                                                </TableCell>
+                                            </TableRow>
+                                            {group.items.map((request) => {
+                                                const totalQty = (request.items || []).reduce((sum: number, i: any) => sum + Number(i.quantity || 0), 0);
+                                                const totalItemsCount = request.items?.length || 0;
+                                                const firstItem = request.items?.[0]?.item;
+                                                const brandName = request.brand?.name || firstItem?.brand?.name;
+                                                
+                                                return (
+                                                    <TableRow key={request.id} className="hover:bg-muted/30 group">
+                                                        <TableCell className="font-mono text-xs font-bold">{request.requestNo}</TableCell>
+                                                        <TableCell>
+                                                            {(request.inboundNo || request.formattedSerialNo) && (
+                                                                <Badge variant="outline" className="text-[10px] bg-green-100/50 text-green-900 border-green-300 font-mono">
+                                                                    TR #{request.inboundNo || request.formattedSerialNo}
+                                                                </Badge>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-semibold text-sm leading-tight text-gray-800">
+                                                            {totalItemsCount > 1
+                                                              ? `Stock Transfer Note (${totalItemsCount} Products)`
+                                                              : firstItem?.description || "Incoming Items"}
+                                                        </span>
+                                                        <BrandBadge brand={brandName} />
                                                     </div>
-                                                    <div className="h-10 w-px bg-border hidden sm:block" />
-                                                     <div className="flex flex-col">
-                                                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Source Location</span>
-                                                         <span className="text-sm font-semibold">{request.fromLocation?.name || request.fromWarehouse?.name || "Source Warehouse/Outlet"}</span>
-                                                     </div>
-                                                    <div className="h-10 w-px bg-border hidden sm:block" />
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-															{request.status === 'PENDING' ? 'Requested Date' : 'Approved Date'}
-														</span>
-                                                        <span className="text-sm font-semibold">{format(new Date(request.sourceApprovedAt || request.createdAt), "dd MMM yyyy HH:mm")}</span>
-                                                    </div>
-                                                </div>
-
-                                                {request.notes && (
-                                                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-green-700 block mb-1">Transfer Notes</span>
-                                                        <p className="text-sm text-green-800">{request.notes}</p>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="w-full md:w-auto flex flex-col gap-2">
-                                                {activeTab === 'pending' && request.status === 'SOURCE_APPROVED' && (
-                                                    <Button
-                                                        className="w-full md:w-40 h-14 text-lg font-bold gap-2 shadow-lg shadow-green-200 bg-green-600 hover:bg-green-700"
-                                                        disabled={isAccepting === request.id || !hasPermission('pos.inventory.inbound.accept')}
-                                                        onClick={() => handleAccept(request.id)}
-                                                    >
-                                                        {isAccepting === request.id ? (
-                                                            <RefreshCcw className="h-5 w-5 animate-spin" />
-                                                        ) : (
-                                                            <CheckCircle2 className="h-5 w-5" />
-                                                        )}
-                                                        {isAccepting === request.id ? "Accepting..." : "Accept Transfer"}
-                                                    </Button>
-                                                )}
-                                                <Button
-                                                    variant="outline"
-                                                    className="w-full md:w-40 h-10 font-bold gap-2 border-green-200 text-green-600 hover:bg-green-50"
-                                                    disabled={printingId === request.id}
-                                                    onClick={() => handlePrint(request)}
-                                                >
-                                                    <Printer className="h-4 w-4" /> Print Slip
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </div>
-                                </Card>
-                            ))}
+                                                                {totalItemsCount > 1 ? (
+                                                                    <div className="flex flex-col gap-1 mt-1.5 w-full">
+                                                                        {(request.items || []).slice(0, 3).map((i: any, idx: number) => (
+                                                                            <div key={i.id || idx} className="flex justify-between items-center text-[10px] bg-gray-50/80 p-1 px-1.5 rounded border border-gray-100">
+                                                                                <span className="truncate flex-1 mr-2 text-gray-600 font-medium" title={i.item?.description}>{i.item?.description || "Unknown Item"}</span>
+                                                                                <span className="font-bold text-gray-900 ml-2">x{i.quantity}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                        {totalItemsCount > 3 && (
+                                                                            <div className="text-[9px] text-center text-muted-foreground bg-gray-50/50 p-0.5 rounded border border-gray-50 font-medium">
+                                                                                + {totalItemsCount - 3} more line items
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                                                                        SKU: {firstItem?.sku || "N/A"}
+                                                                    </span>
+                                                                )}
+                                                                {request.notes && <span className="text-[10px] text-green-700 font-medium line-clamp-1 mt-1 bg-green-50 p-1 px-2 rounded w-fit" title={request.notes}>Notes: {request.notes}</span>}
+                                                                {(request.courierName || request.trackingNumber || request.vehicleNumber) && (
+                                                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                                                        {request.courierName && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Courier: {request.courierName}</span>}
+                                                                        {request.trackingNumber && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Track: {request.trackingNumber}</span>}
+                                                                        {request.vehicleNumber && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Veh: {request.vehicleNumber}</span>}
+                                                                        {request.riderName && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Rider: {request.riderName}</span>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-xs font-medium">
+                                                            {request.fromLocation?.name || request.fromWarehouse?.name || "Warehouse/Outlet"}
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-black text-green-600">
+                                                            {totalQty}
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            {request.status === 'PENDING' && (
+                                                                <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100/80 border-blue-200 text-[10px] font-bold">
+                                                                    Awaiting Release
+                                                                </Badge>
+                                                            )}
+                                                            {request.status === 'SOURCE_APPROVED' && (
+                                                                <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200 text-[10px] font-bold">
+                                                                    Ready
+                                                                </Badge>
+                                                            )}
+                                                            {request.status === 'COMPLETED' && (
+                                                                <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200 text-[10px] font-bold">
+                                                                    Completed
+                                                                </Badge>
+                                                            )}
+                                                            {request.status === 'REJECTED' && (
+                                                                <Badge variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200 text-[10px] font-bold">
+                                                                    Rejected
+                                                                </Badge>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                {activeTab === 'pending' && request.status === 'SOURCE_APPROVED' && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-8 px-3 text-xs bg-green-600 hover:bg-green-700"
+                                                                        disabled={isAccepting === request.id || !hasPermission('pos.inventory.inbound.accept')}
+                                                                        onClick={() => handleAccept(request.id)}
+                                                                    >
+                                                                        {isAccepting === request.id ? <RefreshCcw className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                                                                        Accept
+                                                                    </Button>
+                                                                )}
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-8 px-3 text-xs border-green-200 text-green-700 hover:bg-green-50"
+                                                                    disabled={printingId === request.id}
+                                                                    onClick={() => handlePrint(request)}
+                                                                >
+                                                                    <Printer className="h-3 w-3 mr-1" /> Print
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </React.Fragment>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
                     )}
-                </div>
+                    
+                    {/* Pagination Controls */}
+                    {!isLoading && totalPages > 1 && (
+                        <div className="flex items-center justify-between mt-6 pt-4 border-t border-black/5">
+                            <span className="text-sm text-muted-foreground font-medium">
+                                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, totalRecords)} of {totalRecords}
+                            </span>
+                            <SmartPagination 
+                                currentPage={currentPage} 
+                                totalPages={totalPages} 
+                                onPageChange={setCurrentPage} 
+                            />
+                        </div>
+                    )}
+                    </div>
             </main>
         </div>
     );

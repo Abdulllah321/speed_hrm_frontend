@@ -17,7 +17,7 @@ interface GroupedProduct {
   unitPrice: number;
   totalQty: number;
   totalValue: number;
-  sizes: { sizeName: string; quantity: number }[];
+  sizes: { sizeName: string; colorName: string; quantity: number }[];
 }
 interface GroupedSegment {
   segmentName: string;
@@ -50,6 +50,17 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
   const canCheck = isSuperAdmin || hasPermission('erp.inventory.transfer.check') || hasPermission('pos.inventory.transfer.check');
   const canAuthorize = isSuperAdmin || hasPermission('erp.inventory.transfer.authorize') || hasPermission('pos.inventory.transfer.authorize');
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      window.close();
+      setTimeout(() => {
+        router.push('/erp/inventory/transactions/stock-transfer');
+      }, 100);
+    }
+  };
+
   const handleStatusUpdate = async (newStatus: string) => {
     setSubmitting(true);
     try {
@@ -71,14 +82,18 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
     loadTransferDetails();
   }, [id]);
 
-  const loadTransferDetails = async () => {
-    try {
-      const res = await getTransferRequests();
-      const req = res.data?.find((t: any) => t.id === id);
-      if (req) {
-        setTransfer(req);
-      }
-    } catch (error) {
+    const loadTransferDetails = async () => {
+        try {
+            const res = await getTransferRequests({ id });
+            // If backend returns a paginated list or plain array
+            const req = Array.isArray(res.data) 
+                ? res.data.find((t: any) => t.id === id) || res.data[0] 
+                : (res.data?.id === id ? res.data : null);
+
+            if (req) {
+                setTransfer(req);
+            }
+        } catch (error) {
       console.error('Failed to load transfer details', error);
     } finally {
       setLoading(false);
@@ -125,6 +140,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
       const unitPrice  = Number(item.unitPrice || 0);
       const totalValue = qty * unitPrice;
       const sizeName   = item.size?.name || 'Free Size';
+      const colorName  = item.color?.name || 'N/A';
       const skuBase    = getBaseSku(item.sku, item.size?.name);
 
       if (!categories[categoryName]) {
@@ -145,9 +161,9 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
       if (!prod) { prod = { skuBase, description: item.description || '', unitPrice, totalQty: 0, totalValue: 0, sizes: [] }; seg.products.push(prod); }
       prod.totalQty += qty; prod.totalValue += totalValue;
 
-      const existingSize = prod.sizes.find((sz) => sz.sizeName === sizeName);
+      const existingSize = prod.sizes.find((sz) => sz.sizeName === sizeName && sz.colorName === colorName);
       if (existingSize) { existingSize.quantity += qty; }
-      else { prod.sizes.push({ sizeName, quantity: qty }); }
+      else { prod.sizes.push({ sizeName, colorName, quantity: qty }); }
     });
 
     return Object.values(categories);
@@ -166,7 +182,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
     return (
       <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
         <p className="text-rose-500 font-bold">Transfer Not Found</p>
-        <Button onClick={() => router.back()}>Go Back</Button>
+        <Button onClick={handleBack}>Go Back</Button>
       </div>
     );
   }
@@ -183,7 +199,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
 
       {/* Action Bar (hidden on print) */}
       <div className="print:hidden bg-white border p-4 flex justify-between items-center shadow-sm max-w-4xl mx-auto rounded-md mb-6">
-        <Button variant="outline" className="font-bold border-2" onClick={() => router.back()}>
+        <Button variant="outline" className="font-bold border-2" onClick={handleBack}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
         <Button className="bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={printSlip}>
@@ -398,8 +414,193 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* A4 Printable Area — same layout as SRN */}
-      <div className="bg-white p-10 max-w-4xl mx-auto shadow-md print:shadow-none print:max-w-none print:p-0 print:m-0 border print:border-0 rounded-md">
+            {/* ====== MODERN BROWSER UI (HIDDEN ON PRINT) ====== */}
+      <div className="print:hidden max-w-6xl mx-auto space-y-6 mb-12 px-4 md:px-0">
+        {/* Header summary cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-white shadow-sm border-slate-200">
+            <CardContent className="p-4 flex flex-col justify-center h-full">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">STN No.</span>
+              <span className="text-xl font-black text-slate-900 font-mono tracking-tight">{transfer.requestNo || '-'}</span>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-white shadow-sm border-slate-200">
+            <CardContent className="p-4 flex flex-col justify-center h-full">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">From Location</span>
+              <span className="text-base font-bold text-slate-800 line-clamp-2 leading-tight" title={transfer.fromWarehouse?.name || transfer.fromLocation?.name || transfer.stockRequisition?.fromWarehouse?.name || '-'}>
+                {transfer.fromWarehouse?.name || transfer.fromLocation?.name || transfer.stockRequisition?.fromWarehouse?.name || '-'}
+              </span>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-white shadow-sm border-slate-200">
+            <CardContent className="p-4 flex flex-col justify-center h-full">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">To Location</span>
+              <span className="text-base font-bold text-slate-800 line-clamp-2 leading-tight" title={transfer.toLocation?.name || '-'}>
+                {transfer.toLocation?.name || '-'}
+              </span>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm border-slate-200">
+            <CardContent className="p-4 flex flex-col justify-center h-full">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</span>
+              <div>
+                <span className={`inline-flex items-center font-bold uppercase tracking-wider text-[11px] px-3 py-1.5 rounded-md ${
+                  transfer.status === 'PENDING' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                  transfer.status === 'REJECTED' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                  transfer.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                  'bg-blue-100 text-blue-800 border border-blue-200'
+                }`}>
+                  {transfer.status.replace('_', ' ')}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Detailed Info Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="bg-white shadow-sm border-slate-200 lg:col-span-2">
+            <CardHeader className="border-b bg-slate-50/50 pb-4">
+              <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <div className="w-2 h-5 bg-indigo-600 rounded-sm"></div>
+                Transfer Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</p>
+                  <p className="text-sm font-semibold text-slate-800">{formatDate(transfer.createdAt)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</p>
+                  <p className="text-sm font-semibold text-slate-800">{transfer.transferType || '-'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Brand</p>
+                  <p className="text-sm font-semibold text-slate-800">{transfer.brand?.name || transfer.stockRequisition?.brand?.name || transfer.items?.[0]?.item?.brand?.name || transfer.items?.[0]?.brand?.name || 'GENERAL'}</p>
+                </div>
+                {transfer.stockRequisition && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ref SRN No</p>
+                    <p className="text-sm font-semibold text-slate-800">{transfer.stockRequisition?.requisitionNo || '-'}</p>
+                  </div>
+                )}
+                <div className="space-y-2 col-span-2 md:col-span-4 mt-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Remarks / Notes</p>
+                  <div className="text-sm font-medium text-slate-700 bg-slate-50 p-3 rounded-md border border-slate-100 min-h-[60px] leading-relaxed">
+                    {transfer.notes ? transfer.notes : <span className="text-slate-400 italic">No remarks provided.</span>}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm border-slate-200">
+            <CardHeader className="border-b bg-slate-50/50 pb-4">
+              <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <div className="w-2 h-5 bg-emerald-500 rounded-sm"></div>
+                Logistics & Dispatch
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="grid grid-cols-1 gap-y-3.5 p-5">
+                <div className="flex justify-between items-center border-b border-dashed border-slate-200 pb-2.5">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dispatch Mode</span>
+                  <span className="text-sm font-bold text-slate-800">{transfer.dispatchType || '-'}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-dashed border-slate-200 pb-2.5">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Courier</span>
+                  <span className="text-sm font-bold text-slate-800">{transfer.courierName || '-'}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-dashed border-slate-200 pb-2.5">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tracking / CN #</span>
+                  <span className="text-sm font-bold font-mono text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{transfer.trackingNumber || '-'}</span>
+                </div>
+                <div className="flex justify-between items-center pt-1">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Rider</span>
+                  <span className="text-sm font-bold text-slate-800 text-right">{transfer.riderName || '-'}<br/>{transfer.riderPhone && <span className="text-[10px] text-slate-500 font-medium">{transfer.riderPhone}</span>}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Browser View Table */}
+        <Card className="bg-white shadow-sm border-slate-200 overflow-hidden">
+          <CardHeader className="border-b bg-slate-50/50 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <div className="w-2 h-5 bg-blue-500 rounded-sm"></div>
+              Item Breakdown
+            </CardTitle>
+            <div className="flex flex-wrap items-center gap-4 text-sm bg-white p-2 border rounded-lg shadow-sm">
+              <div className="flex items-center gap-2 px-2">
+                <span className="text-slate-500 font-semibold text-xs uppercase tracking-wider">Total Items:</span>
+                <span className="font-black bg-blue-100 text-blue-800 px-2.5 py-1 rounded-md border border-blue-200">{grandTotalQty}</span>
+              </div>
+              <div className="w-px h-6 bg-slate-200 hidden sm:block"></div>
+              <div className="flex items-center gap-2 px-2">
+                <span className="text-slate-500 font-semibold text-xs uppercase tracking-wider">Total Value:</span>
+                <span className="font-black text-emerald-700">Rs. {grandTotalValue.toLocaleString()}</span>
+              </div>
+            </div>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider font-bold border-b border-slate-200">
+                <tr>
+                  <th className="py-3 px-4 w-12 text-center">#</th>
+                  <th className="py-3 px-4">Item Details</th>
+                  <th className="py-3 px-4 text-center">Size / Color</th>
+                  <th className="py-3 px-4 text-center">Qty</th>
+                  <th className="py-3 px-4 text-right">Price</th>
+                  <th className="py-3 px-4 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {transfer.items?.map((tItem: any, idx: number) => {
+                  if (!tItem.item) return null;
+                  return (
+                    <tr key={tItem.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4 text-center text-slate-400 font-medium text-xs">{idx + 1}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col">
+                          <span className="font-extrabold text-slate-800 text-sm tracking-tight">{tItem.item.sku}</span>
+                          <span className="text-xs text-slate-600 font-medium line-clamp-1 mt-0.5">{tItem.item.description}</span>
+                          <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{tItem.item.category?.name} &bull; {tItem.item.brand?.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="inline-flex flex-col items-center gap-0.5 bg-slate-50 border border-slate-200 rounded px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+                          <span>{tItem.item.size?.name || 'Free Size'}</span>
+                          <div className="w-full h-px bg-slate-200 my-0.5"></div>
+                          <span className="text-[10px] text-slate-500">{tItem.item.color?.name || 'N/A'}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-md border border-emerald-200 shadow-sm text-sm">{tItem.quantity}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-semibold text-slate-600">
+                        {Number(tItem.item.unitPrice || 0).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4 text-right font-black text-slate-900 text-base">
+                        {(Number(tItem.quantity) * Number(tItem.item.unitPrice || 0)).toLocaleString()}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+
+      {/* ====== A4 PRINTABLE AREA (HIDDEN ON SCREEN, ONLY VISIBLE ON PRINT) ====== */}
+      {/* A4 Printable Area */}
+      <div className="hidden print:block bg-white p-10 max-w-4xl mx-auto shadow-md print:shadow-none print:max-w-none print:p-0 print:m-0 border print:border-0 rounded-md">
 
         {/* Header — same as SRN / Purchase Order */}
         <div className="flex justify-between items-start border-b pb-4 mb-6">
@@ -511,7 +712,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
         <div className="w-full text-xs">
           <div className="grid grid-cols-12 font-bold border-b border-black pb-2 text-[11px] uppercase tracking-wider text-gray-700">
             <div className="col-span-5">GPC / Category / Product</div>
-            <div className="col-span-2 text-center">Size</div>
+            <div className="col-span-2 text-center">Size / Color</div>
             <div className="col-span-1 text-center">Quantity</div>
             <div className="col-span-2 text-right pr-4">Selling Price (Rs.)</div>
             <div className="col-span-2 text-right">Total Value (Rs.)</div>
@@ -577,11 +778,11 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                               </div>
                             </div>
 
-                            {/* Level 5: Sizes */}
-                            {prod.sizes.map((sz) => (
-                              <div key={sz.sizeName} className="grid grid-cols-12 text-gray-500 text-[11px] pl-6">
+                            {/* Level 5: Sizes & Colors */}
+                            {prod.sizes.map((sz, szIdx) => (
+                              <div key={`${sz.sizeName}-${sz.colorName}-${szIdx}`} className="grid grid-cols-12 text-gray-500 text-[11px] pl-6">
                                 <div className="col-span-5"></div>
-                                <div className="col-span-2 text-center font-mono font-semibold">{sz.sizeName}</div>
+                                <div className="col-span-2 text-center font-mono font-semibold truncate px-1">{sz.sizeName} / {sz.colorName}</div>
                                 <div className="col-span-1 text-center font-bold text-gray-800">{sz.quantity}</div>
                                 <div className="col-span-2"></div>
                                 <div className="col-span-2"></div>

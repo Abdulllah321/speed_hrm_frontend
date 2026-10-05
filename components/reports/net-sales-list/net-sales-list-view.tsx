@@ -34,6 +34,8 @@ interface NetSalesListViewProps {
 
 export function NetSalesListView({ isPosLevel = false }: NetSalesListViewProps) {
   const { user } = useAuth();
+  const posLocationId = user?.terminal?.location?.id || user?.locationId || (user as any)?.location?.id;
+
   const [locations, setLocations] = useState<Location[]>([]);
   const [cashiers, setCashiers] = useState<User[]>([]);
 
@@ -50,6 +52,12 @@ export function NetSalesListView({ isPosLevel = false }: NetSalesListViewProps) 
   const [docTypeFilter, setDocTypeFilter] = useState<NetSalesFilterDocType>("ALL");
   const [cashierUserId, setCashierUserId] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
+
+  useEffect(() => {
+    if (isPosLevel && posLocationId) {
+      setLocationId(posLocationId);
+    }
+  }, [isPosLevel, posLocationId]);
 
   // Report & SSE state
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);

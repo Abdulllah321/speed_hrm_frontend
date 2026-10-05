@@ -14,13 +14,14 @@ export async function getTransferRequests(params?: { warehouseId?: string; statu
     }
 }
 
-export async function getIncomingTransferRequests(locationId: string) {
+export async function getIncomingTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string; dateFrom?: string; dateTo?: string ;brand?: string; }) {
     try {
-        const response = await authFetch(`/transfer-request/incoming?locationId=${locationId}`);
-        return response.data ?? { status: false, data: [] };
+        const queryParams = new URLSearchParams(params as any).toString();
+        const response = await authFetch(`/transfer-request/incoming?locationId=${locationId}&${queryParams}`);
+        return { status: response.status, data: response.data?.data || [], meta: response.data?.meta || null };
     } catch (error) {
         console.error("Get incoming transfer requests error:", error);
-        return { status: false, data: [] };
+        return { status: false, data: [], meta: null };
     }
 }
 
@@ -34,25 +35,25 @@ export async function getReturnTransferRequests(locationId: string) {
     }
 }
 
-export async function getOutboundTransferRequests(locationId: string, status?: string) {
+export async function getOutboundTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string; dateFrom?: string; dateTo?: string ;brand?: string; }) {
     try {
-        const query = status ? `&status=${status}` : '';
-        const response = await authFetch(`/transfer-request/outbound-requests?locationId=${locationId}${query}`);
-        return response.data ?? { status: false, data: [] };
+        const queryParams = new URLSearchParams(params as any).toString();
+        const response = await authFetch(`/transfer-request/outbound-requests?locationId=${locationId}&${queryParams}`);
+        return { status: response.status, data: response.data?.data || [], meta: response.data?.meta || null };
     } catch (error) {
         console.error("Get outbound transfer requests error:", error);
-        return { status: false, data: [] };
+        return { status: false, data: [], meta: null };
     }
 }
 
-export async function getInboundTransferRequests(locationId: string, status?: string) {
+export async function getInboundTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string; dateFrom?: string; dateTo?: string ;brand?: string; }) {
     try {
-        const query = status ? `&status=${status}` : '';
-        const response = await authFetch(`/transfer-request/inbound-requests?locationId=${locationId}${query}`);
-        return response.data ?? { status: false, data: [] };
+        const queryParams = new URLSearchParams(params as any).toString();
+        const response = await authFetch(`/transfer-request/inbound-requests?locationId=${locationId}&${queryParams}`);
+        return { status: response.status, data: response.data?.data || [], meta: response.data?.meta || null };
     } catch (error) {
         console.error("Get inbound transfer requests error:", error);
-        return { status: false, data: [] };
+        return { status: false, data: [], meta: null };
     }
 }
 
@@ -125,11 +126,11 @@ export async function acceptTransferRequest(id: string, userId?: string) {
     }
 }
 
-export async function approveSourceTransferRequest(id: string, userId?: string, items?: { itemId: string; quantity: number }[]) {
+export async function approveSourceTransferRequest(id: string, userId?: string, items?: { itemId: string; quantity: number }[], dispatchDetails?: any) {
     try {
         const response = await authFetch(`/transfer-request/${id}/approve-source`, {
             method: "POST",
-            body: JSON.stringify({ userId, items }),
+            body: JSON.stringify({ userId, items, dispatchDetails }),
         });
         revalidatePath("/erp/inventory/transactions/stock-transfer");
         return response.data ?? { status: false, message: "Failed to approve source" };
@@ -177,5 +178,16 @@ export async function updateTransferDispatchDetails(id: string, dispatchData: {
     } catch (error) {
         console.error("Update transfer dispatch details error:", error);
         return { status: false, message: error instanceof Error ? error.message : "Failed to update dispatch details" };
+    }
+}
+
+export async function getLocationReceipts(locationId: string, params?: { page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; brand?: string; }) {
+    try {
+        const queryParams = new URLSearchParams(params as any).toString();
+        const response = await authFetch(`/transfer-request/location-receipts?locationId=${locationId}&${queryParams}`);
+        return { status: response.status, data: response.data?.data || [], meta: response.data?.meta || null };
+    } catch (error) {
+        console.error("Get location receipts error:", error);
+        return { status: false, data: [], meta: null };
     }
 }

@@ -44,6 +44,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
+import { authFetch } from "@/lib/auth";
 
 // ─── Flatten masterMenuData into navigable entries ────────────────────────────
 interface MasterEntry {
@@ -335,7 +336,7 @@ function isMenuItemActive(
   return false;
 }
 
-function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
+function SubMenuItem({ item, pathname, pendingCounts }: { item: MenuItem; pathname: string; pendingCounts?: Record<string, number> }) {
   const currentSubdomain = getCurrentSubdomain();
   const normalizedPathname = normalizePathForComparison(
     pathname,
@@ -378,7 +379,7 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
           <SidebarMenuSub className="mx-1.5 px-1">
             {item.children.map((child) => (
               <SidebarMenuSubItem key={child.title}>
-                <SubMenuItem item={child} pathname={pathname} />
+                <SubMenuItem item={child} pathname={pathname} pendingCounts={pendingCounts} />
               </SidebarMenuSubItem>
             ))}
           </SidebarMenuSub>
@@ -396,9 +397,13 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
         isActive && "bg-sidebar-accent/80 font-medium shadow-sm",
       )}
     >
-      <Link href={item.href || "#"} transitionTypes={["nav-forward"]}
-      >
+      <Link href={item.href || "#"} transitionTypes={["nav-forward"]} className="flex items-center justify-between w-full">
         <span>{item.title}</span>
+        {item.badgeKey && pendingCounts?.[item.badgeKey] ? (
+          <span className="ml-2 inline-flex items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm min-w-[20px]">
+            {pendingCounts[item.badgeKey]}
+          </span>
+        ) : null}
       </Link>
     </SidebarMenuSubButton>
   );
@@ -407,9 +412,11 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
 function MenuItemComponent({
   item,
   pathname,
+  pendingCounts,
 }: {
   item: MenuItem;
   pathname: string;
+  pendingCounts?: Record<string, number>;
 }) {
   const Icon = item.icon;
   const currentSubdomain = getCurrentSubdomain();
@@ -491,6 +498,7 @@ function MenuItemComponent({
                     key={child.title}
                     item={child}
                     pathname={pathname}
+                    pendingCounts={pendingCounts}
                   />
                 ))}
               </div>
@@ -527,7 +535,7 @@ function MenuItemComponent({
             <SidebarMenuSub className="mt-1 mx-2 px-1.5">
               {item.children.map((child) => (
                 <SidebarMenuSubItem key={child.title}>
-                  <SubMenuItem item={child} pathname={pathname} />
+                  <SubMenuItem item={child} pathname={pathname} pendingCounts={pendingCounts} />
                 </SidebarMenuSubItem>
               ))}
             </SidebarMenuSub>
@@ -549,17 +557,23 @@ function MenuItemComponent({
           "data-[active=true]:bg-sidebar-accent data-[active=true]:shadow-md",
         )}
       >
-        <Link href={item.href || "#"} transitionTypes={["nav-forward"]}
-        >
-          {Icon && (
-            <Icon
-              className={cn(
-                "h-4 w-4 transition-transform duration-200",
-                isActive && "scale-110",
-              )}
-            />
-          )}
-          <span className="relative z-10">{item.title}</span>
+        <Link href={item.href || "#"} transitionTypes={["nav-forward"]} className="flex items-center w-full justify-between pr-2">
+          <div className="flex items-center gap-2">
+            {Icon && (
+              <Icon
+                className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  isActive && "scale-110",
+                )}
+              />
+            )}
+            <span className="relative z-10">{item.title}</span>
+          </div>
+          {item.badgeKey && pendingCounts?.[item.badgeKey] ? (
+            <span className="inline-flex items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm min-w-[20px]">
+              {pendingCounts[item.badgeKey]}
+            </span>
+          ) : null}
           {isActive && (
             <div className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-3 rounded-r-full bg-primary transition-all duration-200 group-data-[state=collapsed]:hidden" />
           )}
@@ -575,9 +589,11 @@ function MenuItemComponent({
 function SubMenuItemInPopover({
   item,
   pathname,
+  pendingCounts,
 }: {
   item: MenuItem;
   pathname: string;
+  pendingCounts?: Record<string, number>;
 }) {
   const currentSubdomain = getCurrentSubdomain();
   const normalizedPathname = normalizePathForComparison(
@@ -645,6 +661,7 @@ function SubMenuItemInPopover({
                 key={child.title}
                 item={child}
                 pathname={pathname}
+                pendingCounts={pendingCounts}
               />
             ))}
           </div>
@@ -658,12 +675,17 @@ function SubMenuItemInPopover({
       href={item.href || "#"}
       transitionTypes={["nav-forward"]}
       className={`
-        block w-full rounded-sm px-2 py-1.5 text-sm
+        flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm
         hover:bg-accent hover:text-accent-foreground
         ${isActive ? "bg-accent text-accent-foreground font-medium" : ""}
       `}
     >
-      {item.title}
+      <span>{item.title}</span>
+      {item.badgeKey && pendingCounts?.[item.badgeKey] ? (
+        <span className="ml-2 inline-flex items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm min-w-[20px]">
+          {pendingCounts[item.badgeKey]}
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -676,6 +698,22 @@ export function AppSidebar({
   const router = useRouter();
   const { user, hasAnyPermission, hasAllPermissions, isAdmin } = useAuth();
   const { environment, setEnvironment } = useEnvironment();
+  const [pendingCounts, setPendingCounts] = React.useState<Record<string, number>>({});
+
+  React.useEffect(() => {
+    if (environment === "POS") {
+      const locId = user?.terminal?.location?.id || user?.locationId;
+      if (locId) {
+        authFetch(`/transfer-request/pending-counts/${locId}`)
+          .then((res: any) => {
+            if (res?.ok && res?.data?.status) {
+              setPendingCounts(res.data.data);
+            }
+          })
+          .catch(console.error);
+      }
+    }
+  }, [environment, user]);
 
   const { filteredMenu, hasHRAccess, hasERPAccess } = React.useMemo(() => {
     // In MASTER environment, use masterMenuData and show all accessible items
@@ -835,6 +873,7 @@ export function AppSidebar({
                     key={item.title}
                     item={item}
                     pathname={pathname}
+                    pendingCounts={pendingCounts}
                   />
                 ))}
               </SidebarMenu>

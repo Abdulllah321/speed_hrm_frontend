@@ -70,6 +70,11 @@ function DirectTransferForm() {
 
   const [items, setItems] = useState<TransferItem[]>([]);
   const [notes, setNotes] = useState("");
+  const [dispatchDetails, setDispatchDetails] = useState({ courierName: '', trackingNumber: '', vehicleNumber: '', riderName: '' });
+
+  const handleDispatchChange = (field: string, value: string) => {
+      setDispatchDetails(prev => ({ ...prev, [field]: value }));
+  };
   const [destinations, setDestinations] = useState<Location[]>([]);
   const [selectedDestId, setSelectedDestId] = useState<string>("");
   const [isLoadingDestinations, setIsLoadingDestinations] = useState(false);
@@ -358,6 +363,10 @@ function DirectTransferForm() {
           quantity: item.quantity,
         })),
         notes,
+        courierName: dispatchDetails.courierName,
+        trackingNumber: dispatchDetails.trackingNumber,
+        vehicleNumber: dispatchDetails.vehicleNumber,
+        riderName: dispatchDetails.riderName,
       });
 
       if (res.status) {
@@ -916,6 +925,28 @@ function DirectTransferForm() {
                           />
                         </div>
 
+                        <div className="space-y-3 pt-4 border-t border-border/50">
+                            <h4 className="font-bold text-sm text-emerald-900 dark:text-emerald-400">Dispatch / Courier Details (Optional)</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Courier Name</label>
+                                    <Input placeholder="e.g. TCS, Leopard" value={dispatchDetails.courierName} onChange={e => handleDispatchChange('courierName', e.target.value)} className="h-9 bg-muted/30 text-sm" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tracking Number</label>
+                                    <Input placeholder="Tracking No." value={dispatchDetails.trackingNumber} onChange={e => handleDispatchChange('trackingNumber', e.target.value)} className="h-9 bg-muted/30 text-sm" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rider Name</label>
+                                    <Input placeholder="Name" value={dispatchDetails.riderName} onChange={e => handleDispatchChange('riderName', e.target.value)} className="h-9 bg-muted/30 text-sm" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Vehicle Number</label>
+                                    <Input placeholder="e.g. ABC-123" value={dispatchDetails.vehicleNumber} onChange={e => handleDispatchChange('vehicleNumber', e.target.value)} className="h-9 bg-muted/30 text-sm" />
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex gap-3 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
                           <AlertCircle className="w-5 h-5 flex-none mt-0.5 text-emerald-600" />
                           <p className="leading-relaxed">
@@ -967,6 +998,30 @@ function DirectTransferForm() {
     </div>
   );
 }
+
+
+const getBrandColor = (brand: string) => {
+    const b = brand.toUpperCase();
+    if (['NIKE'].includes(b)) return 'bg-black text-white border-black shadow-sm';
+    if (['ADIDAS'].includes(b)) return 'bg-blue-600 text-white border-blue-600 shadow-sm';
+    if (['PUMA'].includes(b)) return 'bg-red-600 text-white border-red-600 shadow-sm';
+    if (['UNDER ARMOUR'].includes(b)) return 'bg-gray-800 text-white border-gray-800 shadow-sm';
+    if (['ASICS'].includes(b)) return 'bg-blue-800 text-white border-blue-800 shadow-sm';
+    if (['BIRKENSTOCK', 'TIMBERLAND'].includes(b)) return 'bg-amber-700 text-white border-amber-700 shadow-sm';
+    if (['CHARLES & KEITH', 'PEDRO', 'FENDI', 'DIOR'].includes(b)) return 'bg-stone-800 text-stone-100 border-stone-800 shadow-sm';
+    if (['TISSOT', 'RADO', 'TAG HEUER', 'ORIS', 'WATCHES'].includes(b)) return 'bg-slate-700 text-slate-100 border-slate-700 shadow-sm';
+    if (['GUESS', 'POLICE', 'NAUTICA', 'USPA', 'TIMEX', 'DANISH DESIGN'].includes(b)) return 'bg-indigo-700 text-white border-indigo-700 shadow-sm';
+    return 'bg-gray-200 text-gray-800 border-gray-300 shadow-sm';
+};
+
+const BrandBadge = ({ brand }: { brand?: string }) => {
+    if (!brand) return null;
+    return (
+        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-black tracking-widest uppercase ${getBrandColor(brand)}`}>
+            {brand}
+        </Badge>
+    );
+};
 
 export default function DirectTransferPage() {
   return (

@@ -12,6 +12,7 @@ import { HeaderNotifications } from "@/components/dashboard/header-notifications
 import { HeaderUserMenu } from "@/components/dashboard/header-user-menu";
 import { HeaderMasterMenu } from "@/components/dashboard/header-master-menu";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
+import { AdminOutletSwitcher } from "@/components/pos/admin-outlet-switcher";
 import { ModuleSwitcher } from "@/components/dashboard/module-switcher";
 import { SessionChecker } from "@/components/auth/session-checker";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -166,6 +167,7 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
               <HeaderSearch />
             </div>
             <HeaderMasterMenu />
+            <AdminOutletSwitcher />
             <ThemeToggle />
             <HeaderNotifications />
             <HeaderUserMenu />
