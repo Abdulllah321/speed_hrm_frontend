@@ -495,6 +495,90 @@ export default function ReturnRequestsPage() {
                     </tbody>
                 </table>
 
+                <div class="totals-bar">
+                    <div>Total Lines: ${request.items.length}</div>
+                    <div>
+                        <span style="margin-right: 8px;">Total Quantity:</span>
+                        <span class="double-underline">${totalQty}</span>
+                    </div>
+                </div>
+
+                ${notes ? `<div class="remarks-box"><div class="remarks-title">Remarks</div><div class="remarks-content">${notes}</div></div>` : ""}
+
+                <div class="signatures-grid">
+                    <div class="signature-card">SENT BY</div>
+                    <div class="signature-card">CHECKED BY</div>
+                    <div class="signature-card">WAREHOUSE MANAGER</div>
+                </div>
+                <script>
+                    window.onload = function() { window.print(); window.close(); };
+                </script>
+            </body>
+            </html>
+        `);
+        win.document.close();
+        win.focus();
+        setPrintingId(null);
+    };
+
+    return (
+        <div className="flex flex-col">
+            {/* Header */}
+            <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
+                <div className="flex items-center gap-4 mx-auto w-full">
+                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <div className="flex-1">
+                        <h1 className="text-2xl font-bold tracking-tight">Return Requests</h1>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium">
+                            Manage return requests to send items back to warehouse from
+                            <Badge variant="outline" className="ml-1 font-bold text-primary">
+                                {user?.terminal?.location?.name || "This Location"}
+                            </Badge>
+                        </p>
+                    </div>
+                    <Button variant="outline" size="icon" onClick={fetchRequests} disabled={isLoading}>
+                        <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    </Button>
+                    {(hasPermission('pos.inventory.transfer.create') || hasPermission('erp.inventory.transfer.create')) && (
+                        <Button className="bg-primary hover:bg-primary/90 text-white font-bold" onClick={() => setIsCreating(true)}>
+                            <Plus className="h-4 w-4 mr-2" /> New Return
+                        </Button>
+                    )}
+                </div>
+            </header>
+
+            {/* Main Content */}
+            <main className="flex-1 p-4 md:p-6 pb-20">
+                <div className="mx-auto w-full space-y-6">
+                    {isCreating ? (
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-bold tracking-tight">Create Return Request</h2>
+                                <Button variant="outline" size="sm" onClick={() => setIsCreating(false)}>Cancel</Button>
+                            </div>
+                            
+                            <Card className="border-border/50 shadow-sm">
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="text-md font-bold">Destination Warehouse</CardTitle>
+                                    <CardDescription className="text-xs">Select the warehouse where the items will be returned.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
+                                        <SelectTrigger className="w-full md:w-[300px]">
+                                            <SelectValue placeholder="Select Warehouse" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {warehouses.map(w => (
+                                                <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </CardContent>
+                            </Card>
+
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             {/* Item Search Card */}
                             <Card className="border-border/50 shadow-sm">
                                 <CardHeader className="pb-4">
@@ -693,59 +777,10 @@ export default function ReturnRequestsPage() {
                                     </div>
                                 </div>
                             </Card>
+                            </div>
                         </div>
-                    </div>
-                </div>
-
-                ${notes ? `<div class="remarks-box"><div class="remarks-title">Remarks</div><div class="remarks-content">${notes}</div></div>` : ""}
-
-                <div class="signatures-grid">
-                    <div class="signature-card">SENT BY</div>
-                    <div class="signature-card">CHECKED BY</div>
-                    <div class="signature-card">WAREHOUSE MANAGER</div>
-                </div>
-                <script>
-                    window.onload = function() { window.print(); window.close(); };
-                </script>
-            </body>
-            </html>
-        `);
-        win.document.close();
-        win.focus();
-        setPrintingId(null);
-    };
-
-    return (
-        <div className="flex flex-col">
-            {/* Header */}
-            <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
-                <div className="flex items-center gap-4 mx-auto w-full">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <div className="flex-1">
-                        <h1 className="text-2xl font-bold tracking-tight">Return Requests</h1>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium">
-                            Manage return requests to send items back to warehouse from
-                            <Badge variant="outline" className="ml-1 font-bold text-primary">
-                                {user?.terminal?.location?.name || "This Location"}
-                            </Badge>
-                        </p>
-                    </div>
-                    <Button variant="outline" size="icon" onClick={fetchRequests} disabled={isLoading}>
-                        <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    </Button>
-                    {(hasPermission('pos.inventory.transfer.create') || hasPermission('erp.inventory.transfer.create')) && (
-                        <Button className="bg-primary hover:bg-primary/90 text-white font-bold" onClick={() => setIsCreating(true)}>
-                            <Plus className="h-4 w-4 mr-2" /> New Return
-                        </Button>
-                    )}
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="flex-1 p-4 md:p-6 pb-20">
-                <div className="mx-auto w-full space-y-6">
+                    ) : (
+                        <>
                     {/* Tabs */}
                     <div className="flex bg-muted/30 p-1 rounded-xl border border-black/5">
                         <button
@@ -979,6 +1014,8 @@ export default function ReturnRequestsPage() {
                             </span>
                             <SmartPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                         </div>
+                    )}
+                        </>
                     )}
                 </div>
             </main>
