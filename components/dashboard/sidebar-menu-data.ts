@@ -889,7 +889,6 @@ export const menuData: MenuItem[] = [
           "erp.inventory.delivery-note.read",
           "erp.inventory.stock-transfer.read",
           "erp.inventory.transfer.create",
-          "erp.inventory.claims.acknowledge",
         ],
         children: [
           {
@@ -941,11 +940,6 @@ export const menuData: MenuItem[] = [
               "erp.inventory.warehouse.stock-transfer",
               "erp.inventory.transfer.create",
             ],
-          },
-          {
-            title: "PLM Claims",
-            href: "/erp/inventory/transactions/plm-claims",
-            permissions: ["erp.inventory.claims.acknowledge"],
           },
         ],
       },
@@ -1057,7 +1051,6 @@ export const menuData: MenuItem[] = [
       "erp.sales.order.read",
       "erp.sales.dc.read",
       "erp.sales.invoice.read",
-      "erp.claims.read",
     ],
     children: [
       {
@@ -1117,10 +1110,26 @@ export const menuData: MenuItem[] = [
           },
         ],
       },
+    ],
+  },
+  {
+    title: "PLM Claims",
+    icon: FileText,
+    environment: "ERP",
+    permissions: [
+      "erp.claims.read",
+      "erp.inventory.claims.acknowledge",
+    ],
+    children: [
       {
-        title: "Return Claims",
+        title: "Inspection Return Claims",
         href: "/erp/claims",
         permissions: ["erp.claims.read"],
+      },
+      {
+        title: "Acknowledge Claims",
+        href: "/erp/inventory/transactions/plm-claims",
+        permissions: ["erp.inventory.claims.acknowledge"],
       },
     ],
   },
