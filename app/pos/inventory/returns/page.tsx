@@ -111,6 +111,7 @@ export default function ReturnRequestsPage() {
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const debouncedQuery = useDebounce(itemQuery, 300);
+    const searchInputRef = React.useRef<HTMLInputElement>(null);
 
     // Filters and Search
     const [searchQuery, setSearchQuery] = useState("");
@@ -301,6 +302,11 @@ export default function ReturnRequestsPage() {
         });
         setItemQuery('');
         setSearchResults([]);
+        
+        // Return focus to scanner input for continuous scanning
+        if (searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
     };
 
     const updateCartQuantity = (itemId: string, newQty: number) => {
@@ -579,23 +585,32 @@ export default function ReturnRequestsPage() {
                             </Card>
 
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            {/* Item Search Card */}
-                            <Card className="border-border/50 shadow-sm">
-                                <CardHeader className="pb-4">
-                                    <CardTitle className="text-md font-bold flex items-center gap-2 text-foreground">
-                                        <Search className="h-5 w-5 text-orange-600" />
-                                        Search Items
-                                    </CardTitle>
-                                    <CardDescription className="text-xs">Find items with available stock at this outlet.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                                        <Input
-                                            placeholder="Search by Barcode, SKU or description..."
-                                            value={itemQuery}
-                                            onChange={(e) => setItemQuery(e.target.value)}
-                                            onKeyDown={handleKeyDown}
+                                {/* Left Column: Item Search Card */}
+                                <div className="md:col-span-1 flex flex-col gap-4">
+                                    <Card className="border-border/50 shadow-sm">
+                                        <CardHeader className="pb-4">
+                                            <CardTitle className="text-md font-bold flex items-center justify-between text-foreground">
+                                                <div className="flex items-center gap-2">
+                                                    <Search className="h-5 w-5 text-orange-600" />
+                                                    Search Items
+                                                </div>
+                                                <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 gap-1 text-[10px] py-0">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                    Scanner Ready
+                                                </Badge>
+                                            </CardTitle>
+                                            <CardDescription className="text-xs">Scan barcode to quick-add, or find items with available stock at this outlet.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                                <Input
+                                                    ref={searchInputRef}
+                                                    autoFocus
+                                                    placeholder="Scan barcode or type SKU..."
+                                                    value={itemQuery}
+                                                    onChange={(e) => setItemQuery(e.target.value)}
+                                                    onKeyDown={handleKeyDown}
                                             className="pl-9 h-11 bg-muted/20 border-border/50"
                                         />
                                     </div>
@@ -777,9 +792,10 @@ export default function ReturnRequestsPage() {
                                     </div>
                                 </div>
                             </Card>
-                            </div>
                         </div>
-                    ) : (
+                    </div>
+                </div>
+            ) : (
                         <>
                     {/* Tabs */}
                     <div className="flex bg-muted/30 p-1 rounded-xl border border-black/5">
