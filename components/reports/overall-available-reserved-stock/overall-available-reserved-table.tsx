@@ -104,6 +104,7 @@ export function OverallAvailableReservedTable({
                         <div className="w-20 text-right shrink-0">Reserved</div>
                         <div className="w-24 text-right shrink-0">Total Bal</div>
                         <div className="w-28 text-right shrink-0">Price</div>
+                        <div className="w-24 text-right shrink-0">Disc. %</div>
                         <div className="w-32 text-right shrink-0">Value</div>
                         {!isPosLevel && (
                             <>
@@ -222,6 +223,14 @@ export function OverallAvailableReservedTable({
                                         {item.unitPrice ? formatCurrency(item.unitPrice) : "-"}
                                     </div>
 
+                                    {/* Discount */}
+                                    <div
+                                        className="w-24 text-right shrink-0 text-amber-600 dark:text-amber-400"
+                                        title={item.discountRate ? `Discount Rate: ${item.discountRate}%` : undefined}
+                                    >
+                                        {item.discountRate ? `${item.discountRate}%` : "-"}
+                                    </div>
+
                                     {/* Selling Value */}
                                     <div
                                         className="w-32 text-right shrink-0 font-semibold text-foreground"
@@ -312,6 +321,7 @@ export function OverallAvailableReservedTable({
                             {grandTotals.total.toLocaleString()}
                         </div>
                         <div className="w-28 text-right shrink-0 text-muted-foreground/40">-</div>
+                        <div className="w-24 text-right shrink-0 text-muted-foreground/40">-</div>
                         <div
                             className="w-32 text-right shrink-0 text-indigo-600 dark:text-indigo-400 font-bold"
                             title={`Grand Total Selling Value: ${formatCurrency(grandTotals.value)}`}

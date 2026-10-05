@@ -2,20 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-    RotateCcw,
-    ArrowLeft,
-    RefreshCcw,
-    Package,
-    CheckCircle2,
-    FileText,
-    AlertTriangle,
-    Plus,
-    Minus,
-    Trash2,
-    Search,
-    Send,
-    ShoppingCart,
-    Building2
+    RotateCcw, ArrowLeft, RefreshCcw, Package, CheckCircle2, FileText,
+    AlertTriangle, Plus, Minus, Trash2, Search, Send, ShoppingCart, Building2,
+    Calendar, PackageCheck, Printer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -27,7 +16,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import Link from "next/link";
+import { SmartPagination } from "@/components/ui/smart-pagination";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -101,12 +91,14 @@ const BrandBadge = ({ brand }: { brand?: string }) => {
     );
 };
 
+const BRANDS = ["WATCHES", "TISSOT", "RADO", "GUESS", "USPA", "TIMEX", "TIMBERLAND", "TAG Heuer", "POLICE", "ORIS", "NAUTICA", "FENDI", "DIOR", "DANISH DESIGN", "PEDRO", "CHARLES & KEITH", "UNDER ARMOUR", "PUMA", "NIKE", "BIRKENSTOCK", "ASICS", "ADIDAS"];
 export default function ReturnRequestsPage() {
     const { user, hasPermission } = useAuth();
     const router = useRouter();
-    const [requests, setRequests] = useState<ReturnRequest[]>([]);
+    const [requests, setRequests] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAccepting, setIsAccepting] = useState<string | null>(null);
+    const [printingId, setPrintingId] = useState<string | null>(null);
 
     // Create Mode States
     const [isCreating, setIsCreating] = useState(false);
@@ -118,32 +110,57 @@ export default function ReturnRequestsPage() {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const debouncedQuery = useDebounce(itemQuery, 300);
+
+    // Filters and Search
+    const [searchQuery, setSearchQuery] = useState("");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
+    const [brandFilter, setBrandFilter] = useState("ALL");
+    const [sortBy, setSortBy] = useState("newest");
+    const [statusFilter, setStatusFilter] = useState("ALL");
+    const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const ITEMS_PER_PAGE = 20;
 
     const locationId = user?.terminal?.location?.id || user?.locationId;
-    const debouncedQuery = useDebounce(itemQuery, 300);
+    const [locationBrands, setLocationBrands] = useState<string[]>(BRANDS);
+
+    useEffect(() => {
+        if (locationId) {
+            import("@/lib/actions/location").then(({ getLocationById }) => {
+                getLocationById(locationId).then(res => {
+                    if (res.status && res.data?.brands && res.data.brands.length > 0) {
+                        setLocationBrands(res.data.brands.map((b: any) => b.name));
+                    }
+                });
+            });
+        }
+    }, [locationId]);
 
     const fetchRequests = useCallback(async () => {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            const res = await getReturnTransferRequests(locationId);
+            const res = await getReturnTransferRequests(locationId, {
+                status: activeTab === 'history' ? 'history' : undefined,
+                page: currentPage,
+                limit: ITEMS_PER_PAGE,
+                search: searchQuery,
+                sortBy: sortBy,
+                statusFilter: statusFilter,
+                dateFrom,
+                dateTo,
+                brand: brandFilter
+            });
             if (res.status) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const mappedRequests = (res.data || []).map((req: any) => ({
-                    id: req.id,
-                    requestNo: req.requestNo,
-                    status: req.status,
-                    createdAt: req.createdAt,
-                    notes: req.notes,
-                    fromWarehouse: req.fromWarehouse ? { name: req.fromWarehouse.name } : undefined,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    items: (req.items || []).map((it: any) => ({
-                        id: it.id,
-                        quantity: Number(it.quantity || 0),
-                        item: it.item ? { sku: it.item.sku, description: it.item.description } : undefined
-                    }))
-                }));
-                setRequests(mappedRequests);
+                setRequests(res.data || []);
+                setTotalPages(res.meta?.totalPages || 1);
+                setTotalRecords(res.meta?.total || 0);
             }
         } catch (error) {
             console.error("Failed to fetch return requests", error);
@@ -151,7 +168,32 @@ export default function ReturnRequestsPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [locationId]);
+    }, [locationId, activeTab, currentPage, searchQuery, sortBy, statusFilter, dateFrom, dateTo, brandFilter]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, sortBy, statusFilter, activeTab, brandFilter]);
+
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            fetchRequests();
+        }, 300);
+        return () => clearTimeout(timeoutId);
+    }, [fetchRequests]);
+
+    const groupedRequests = React.useMemo(() => {
+        const groups: { date: string; items: any[] }[] = [];
+        requests.forEach(request => {
+            const dateStr = format(new Date(request.createdAt), 'MMMM d, yyyy');
+            const lastGroup = groups[groups.length - 1];
+            if (lastGroup && lastGroup.date === dateStr) {
+                lastGroup.items.push(request);
+            } else {
+                groups.push({ date: dateStr, items: [request] });
+            }
+        });
+        return groups;
+    }, [requests]);
 
     const fetchWarehouses = useCallback(async () => {
         try {
@@ -176,7 +218,6 @@ export default function ReturnRequestsPage() {
         try {
             const res = await inventoryApi.search(query, undefined, locationId);
             if (res.status) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const availableItems = (res.data || []).map((item: any) => ({
                     id: item.id,
                     sku: item.sku,
@@ -184,8 +225,9 @@ export default function ReturnRequestsPage() {
                     description: item.description,
                     size: item.size,
                     color: item.color,
-                    totalQuantity: item.totalQuantity || 0
-                })).filter((item) => item.totalQuantity > 0);
+                    totalQuantity: item.totalQuantity || 0,
+                    brand: item.brand
+                })).filter((item: any) => item.totalQuantity > 0);
                 setSearchResults(availableItems);
             }
         } catch (error) {
@@ -238,19 +280,11 @@ export default function ReturnRequestsPage() {
     };
 
     useEffect(() => {
-        fetchRequests();
-    }, [fetchRequests]);
-
-    useEffect(() => {
-        if (isCreating) {
-            fetchWarehouses();
-        }
+        if (isCreating) fetchWarehouses();
     }, [isCreating, fetchWarehouses]);
 
     useEffect(() => {
-        if (isCreating) {
-            handleSearch(debouncedQuery);
-        }
+        if (isCreating) handleSearch(debouncedQuery);
     }, [debouncedQuery, isCreating, handleSearch]);
 
     const addToCart = (item: Item) => {
@@ -301,11 +335,8 @@ export default function ReturnRequestsPage() {
         try {
             const res = await createReturnTransferRequest({
                 fromLocationId: locationId,
-                fromWarehouseId: selectedWarehouseId,
-                items: cart.map(i => ({
-                    itemId: i.item.id,
-                    quantity: i.quantity
-                })),
+                toWarehouseId: selectedWarehouseId,
+                items: cart.map(i => ({ itemId: i.item.id, quantity: i.quantity })),
                 notes: notes,
                 createdById: user?.id
             });
@@ -318,9 +349,8 @@ export default function ReturnRequestsPage() {
             } else {
                 toast.error(res.message || "Failed to submit return request");
             }
-        } catch (error) {
-            const err = error as { message?: string };
-            toast.error(err.message || "Failed to submit return request");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to submit return request");
         } finally {
             setIsSubmitting(false);
         }
@@ -332,70 +362,138 @@ export default function ReturnRequestsPage() {
             const res = await acceptTransferRequest(requestId, user?.id);
             if (res.status) {
                 toast.success("Return request approved! Items returned to warehouse.");
-                setRequests(prev => prev.filter(r => r.id !== requestId));
+                fetchRequests();
             } else {
                 toast.error(res.message || "Failed to approve return");
             }
-        } catch (error) {
-            const err = error as { message?: string };
-            toast.error(err.message || "Failed to approve return");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to approve return");
         } finally {
             setIsAccepting(null);
         }
     };
 
-    if (isCreating) {
-        return (
-            <div className="flex flex-col h-full -m-4 sm:-m-6 lg:-m-8">
-                {/* Header */}
-                <header className="flex-none p-4 md:p-6 border-b bg-muted/20 backdrop-blur-xl sticky top-0 z-10 border-border/50">
-                    <div className="flex items-center gap-4 max-w-5xl mx-auto w-full">
-                        <Button variant="ghost" size="icon" onClick={() => setIsCreating(false)}>
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                        <div className="flex-1">
-                            <h1 className="text-2xl font-bold tracking-tight">Create Return Request</h1>
-                            <div className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium mt-0.5">
-                                Return items from
-                                <Badge variant="outline" className="font-bold text-orange-600 border-orange-200 bg-orange-50">
-                                    {user?.terminal?.location?.name || "This Location"}
-                                </Badge>
-                                to a warehouse
-                            </div>
+    const handlePrint = (request: any) => {
+        setPrintingId(request.id);
+        const win = window.open("", "_blank");
+        if (!win) {
+            toast.error("Allow popups to print");
+            setPrintingId(null);
+            return;
+        }
+
+        const dateStr = format(new Date(request.createdAt), "dd/MM/yyyy HH:mm");
+        const sourceLoc = user?.terminal?.location?.name || "This Location";
+        const destLoc = request.fromWarehouse?.name || request.warehouse?.name || "Warehouse";
+        const refNo = request.requestNo || "N/A";
+        const notes = request.notes || "";
+        const totalQty = request.items?.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0) || 0;
+
+        win.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Return Request - ${refNo}</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #000; font-size: 10px; padding: 20px; line-height: 1.3; }
+                    @media print {
+                        @page { margin: 0.7cm; }
+                        body { padding: 0; }
+                    }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+                    .logo-box { width: 20%; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+                    .logo-img { width: 70px; height: auto; object-fit: contain; }
+                    .title-box { width: 35%; background-color: #eef2f6; text-align: center; padding: 6px 4px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .title-main { font-size: 16px; font-weight: 800; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; letter-spacing: 0.5px; }
+                    .title-sub { font-size: 16px; font-weight: 800; letter-spacing: 0.5px; }
+                    .meta-box { width: 45%; background-color: #f8fafc; border: 1px solid #d1d5db; padding: 5px 8px; font-size: 9.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; display: flex; flex-direction: column; justify-content: center; }
+                    .meta-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+                    .meta-row:last-child { margin-bottom: 0; }
+                    .meta-label { font-weight: 700; }
+                    .meta-val { font-weight: 600; }
+
+                    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 9.5px; table-layout: fixed; }
+                    thead tr { border-top: 2px solid #000; border-bottom: 2px solid #000; }
+                    th { padding: 3px 4px; text-align: left; font-weight: 700; }
+                    th.text-right { text-align: right; }
+                    th.text-center { text-align: center; }
+                    td { padding: 3px 4px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+                    td.text-right { text-align: right; }
+                    td.text-center { text-align: center; }
+                    .font-bold { font-weight: 700; }
+                    .uppercase { text-transform: uppercase; }
+
+                    .totals-bar { width: 100%; border-top: 2px solid #000; padding: 4px 0; display: flex; justify-content: space-between; align-items: flex-start; font-size: 9.5px; font-weight: 700; margin-top: 0; }
+                    .double-underline { border-bottom: 3px double #000; padding-bottom: 1px; }
+
+                    .remarks-box { margin-top: 8px; margin-bottom: 8px; font-size: 9.5px; }
+                    .remarks-title { font-weight: 700; font-size: 10px; }
+                    .remarks-content { color: #374151; margin-top: 1px; }
+
+                    .signatures-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; page-break-inside: avoid; break-inside: avoid; }
+                    .signature-card { border: 1px solid #000; height: 75px; padding: 4px; text-align: center; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="logo-box">
+                        <img src="${window.location.origin}/image.png" alt="Logo" class="logo-img" />
+                    </div>
+                    <div class="title-box">
+                        <div class="title-main">Return Transfer</div>
+                        <div class="title-sub">Return Request Note</div>
+                    </div>
+                    <div class="meta-box">
+                        <div class="meta-row">
+                            <span class="meta-label">Transfer Number:</span>
+                            <span class="meta-val">${refNo}</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Date:</span>
+                            <span class="meta-val">${dateStr}</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Location (Source):</span>
+                            <span class="meta-val">${sourceLoc}</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Warehouse (Destination):</span>
+                            <span class="meta-val">${destLoc}</span>
                         </div>
                     </div>
-                </header>
+                </div>
 
-                {/* Main Form */}
-                <main className="flex-1 p-4 md:p-6 pb-20 overflow-auto">
-                    <div className="max-w-5xl mx-auto w-full grid grid-cols-1 md:grid-cols-5 gap-6">
-                        {/* Left Column: Warehouse Selection & Item Search */}
-                        <div className="md:col-span-2 space-y-6">
-                            {/* Warehouse Selection Card */}
-                            <Card className="border-border/50 shadow-sm">
-                                <CardHeader className="pb-4">
-                                    <CardTitle className="text-md font-bold flex items-center gap-2 text-foreground">
-                                        <Building2 className="h-5 w-5 text-orange-600" />
-                                        Destination Warehouse
-                                    </CardTitle>
-                                    <CardDescription className="text-xs">Select the warehouse to return stock to.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="warehouse-select" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Warehouse</Label>
-                                        <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
-                                            <SelectTrigger id="warehouse-select" className="h-11 bg-muted/30">
-                                                <SelectValue placeholder="Select Destination Warehouse" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {warehouses.map(w => (
-                                                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 6%;">S.No</th>
+                            <th style="width: 22%;">SKU / Code</th>
+                            <th style="width: 42%;">Description</th>
+                            <th class="text-center" style="width: 15%;">Size / Color</th>
+                            <th class="text-right" style="width: 15%;">Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${request.items
+                          .map((item: any, idx: number) => {
+                            const sku = item.item?.sku || "—";
+                            const desc = item.item?.description || "Item";
+                            const sizeStr = item.item?.size?.name || item.item?.size || "—";
+                            const colorStr = item.item?.color?.name || item.item?.color || "—";
+                            return `
+                                <tr>
+                                    <td>${idx + 1}</td>
+                                    <td class="font-bold">${sku}</td>
+                                    <td class="uppercase">${desc}</td>
+                                    <td class="text-center">${sizeStr} / ${colorStr}</td>
+                                    <td class="text-right font-bold">${Number(item.quantity)}</td>
+                                </tr>
+                            `;
+                          })
+                          .join("")}
+                    </tbody>
+                </table>
 
                             {/* Item Search Card */}
                             <Card className="border-border/50 shadow-sm">
@@ -597,36 +695,48 @@ export default function ReturnRequestsPage() {
                             </Card>
                         </div>
                     </div>
-                </main>
-            </div>
-        );
-    }
+                </div>
+
+                ${notes ? `<div class="remarks-box"><div class="remarks-title">Remarks</div><div class="remarks-content">${notes}</div></div>` : ""}
+
+                <div class="signatures-grid">
+                    <div class="signature-card">SENT BY</div>
+                    <div class="signature-card">CHECKED BY</div>
+                    <div class="signature-card">WAREHOUSE MANAGER</div>
+                </div>
+                <script>
+                    window.onload = function() { window.print(); window.close(); };
+                </script>
+            </body>
+            </html>
+        `);
+        win.document.close();
+        win.focus();
+        setPrintingId(null);
+    };
 
     return (
-        <div className="flex flex-col h-full -m-4 sm:-m-6 lg:-m-8">
+        <div className="flex flex-col">
             {/* Header */}
-            <header className="flex-none p-4 md:p-6 border-b bg-muted/20 backdrop-blur-xl sticky top-0 z-10 border-border/50">
-                <div className="flex items-center gap-4 max-w-5xl mx-auto w-full">
+            <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
+                <div className="flex items-center gap-4 mx-auto w-full">
                     <Button variant="ghost" size="icon" onClick={() => router.back()}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div className="flex-1">
                         <h1 className="text-2xl font-bold tracking-tight">Return Requests</h1>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium mt-0.5">
-                            Approve return requests to send items back to warehouse from
-                            <Badge variant="outline" className="ml-1 font-bold text-orange-600 border-orange-200 bg-orange-50">
+                        <p className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium">
+                            Manage return requests to send items back to warehouse from
+                            <Badge variant="outline" className="ml-1 font-bold text-primary">
                                 {user?.terminal?.location?.name || "This Location"}
                             </Badge>
-                        </div>
+                        </p>
                     </div>
-                    <Button variant="outline" size="icon" onClick={fetchRequests} disabled={isLoading} className="border-border/50">
+                    <Button variant="outline" size="icon" onClick={fetchRequests} disabled={isLoading}>
                         <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                     </Button>
                     {(hasPermission('pos.inventory.transfer.create') || hasPermission('erp.inventory.transfer.create')) && (
-                        <Button
-                            className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
-                            onClick={() => setIsCreating(true)}
-                        >
+                        <Button className="bg-primary hover:bg-primary/90 text-white font-bold" onClick={() => setIsCreating(true)}>
                             <Plus className="h-4 w-4 mr-2" /> New Return
                         </Button>
                     )}
@@ -634,149 +744,240 @@ export default function ReturnRequestsPage() {
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 p-4 md:p-6 pb-20 overflow-auto">
-                <div className="max-w-5xl mx-auto w-full space-y-6">
+            <main className="flex-1 p-4 md:p-6 pb-20">
+                <div className="mx-auto w-full space-y-6">
+                    {/* Tabs */}
+                    <div className="flex bg-muted/30 p-1 rounded-xl border border-black/5">
+                        <button
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                                activeTab === 'pending'
+                                    ? 'bg-white text-primary shadow-sm border border-black/5'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                            onClick={() => { setActiveTab('pending'); setStatusFilter('ALL'); setSearchQuery(''); }}
+                        >
+                            Pending Returns
+                        </button>
+                        <button
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                                activeTab === 'history'
+                                    ? 'bg-white text-primary shadow-sm border border-black/5'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                            onClick={() => { setActiveTab('history'); setStatusFilter('ALL'); setSearchQuery(''); }}
+                        >
+                            Return History
+                        </button>
+                    </div>
+
+                    {/* Filters & Search UI */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1 w-full sm:w-auto">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                            <Input
+                                placeholder="Search by SKU, Reference..."
+                                className="pl-9 h-10 bg-white shadow-sm border-black/10"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        {activeTab === 'history' && (
+                            <div className="flex items-center gap-1 w-full sm:w-auto shrink-0 bg-white p-1 rounded-lg border border-black/10 shadow-sm">
+                                <Input type="date" className="h-8 border-none shadow-none focus-visible:ring-0 text-xs w-[130px]" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                                <span className="text-muted-foreground text-xs font-medium px-1">TO</span>
+                                <Input type="date" className="h-8 border-none shadow-none focus-visible:ring-0 text-xs w-[130px]" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                            </div>
+                        )}
+                        <div className="flex gap-2">
+                            <Select value={brandFilter} onValueChange={setBrandFilter}>
+                                <SelectTrigger className="w-[140px] bg-white shadow-sm border-black/10 h-10">
+                                    <SelectValue placeholder="All Brands" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">All Brands</SelectItem>
+                                    {locationBrands.map(b => (
+                                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={sortBy} onValueChange={setSortBy}>
+                                <SelectTrigger className="w-[140px] bg-white border-dashed">
+                                    <SelectValue placeholder="Sort by" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="newest">Newest First</SelectItem>
+                                    <SelectItem value="oldest">Oldest First</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {activeTab === 'history' && (
+                                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                    <SelectTrigger className="w-[140px] bg-white border-dashed">
+                                        <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL">All Status</SelectItem>
+                                        <SelectItem value="COMPLETED">Completed</SelectItem>
+                                        <SelectItem value="APPROVED">Approved</SelectItem>
+                                        <SelectItem value="REJECTED">Rejected</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        </div>
+                    </div>
+
                     {isLoading ? (
                         <div className="space-y-4">
-                            {[1, 2, 3].map(i => (
+                            {[1, 2, 3].map((i) => (
                                 <Skeleton key={i} className="h-32 w-full rounded-xl" />
                             ))}
                         </div>
                     ) : requests.length === 0 ? (
-                        <Card className="border-dashed h-[400px] flex flex-col items-center justify-center text-center p-8 bg-muted/5 border-border/50">
-                            <div className="h-20 w-20 rounded-full bg-orange-100 dark:bg-orange-950/20 flex items-center justify-center mb-4">
-                                <RotateCcw className="h-10 w-10 text-orange-600/60" />
+                        <Card className="border-dashed h-[400px] flex flex-col items-center justify-center text-center p-8 bg-muted/5">
+                            <div className="h-20 w-20 rounded-full bg-muted/20 flex items-center justify-center mb-4">
+                                <RotateCcw className="h-10 w-10 text-muted-foreground/40" />
                             </div>
-                            <CardTitle className="text-xl mb-2 text-muted-foreground">No Return Requests</CardTitle>
+                            <CardTitle className="text-xl mb-2 text-muted-foreground">
+                                {activeTab === 'pending' ? "No Pending Returns" : "No Return History"}
+                            </CardTitle>
                             <CardDescription className="max-w-xs mx-auto">
-                                No pending return requests for this location. Click &quot;New Return&quot; to create one.
+                                {activeTab === 'pending' 
+                                    ? "There are no pending returns. Click New Return to initiate a return to the warehouse."
+                                    : "No completed or rejected return transfers found."}
                             </CardDescription>
-                            <div className="flex gap-3 mt-6">
-                                <Button variant="outline" onClick={fetchRequests} className="border-border/50">
-                                    <RefreshCcw className="h-4 w-4 mr-2" /> Check Again
-                                </Button>
-                                {(hasPermission('pos.inventory.transfer.create') || hasPermission('erp.inventory.transfer.create')) && (
-                                    <Button
-                                        className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
-                                        onClick={() => setIsCreating(true)}
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" /> New Return
-                                    </Button>
-                                )}
-                            </div>
+                            <Button variant="outline" className="mt-6" onClick={fetchRequests}>
+                                <RefreshCcw className="h-4 w-4 mr-2" /> Check Again
+                            </Button>
                         </Card>
                     ) : (
-                        <div className="grid gap-4">
-                            {requests.map((request) => (
-                                <Card key={request.id} className="overflow-hidden border-border/50 hover:border-orange-200 dark:hover:border-orange-950 transition-all shadow-sm">
-                                    <div className="flex flex-col md:flex-row md:items-stretch">
-                                        {/* Status Sidebar */}
-                                        <div className="bg-orange-50 dark:bg-orange-950/20 p-4 md:w-48 flex flex-col justify-between border-b md:border-b-0 md:border-r border-orange-100 dark:border-orange-950">
-                                            <div className="space-y-1">
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-orange-700 dark:text-orange-400">Return Request</span>
-                                                <div className="font-mono text-sm font-bold truncate text-orange-800 dark:text-orange-300">{request.requestNo}</div>
-                                            </div>
-                                            <div className="mt-4 md:mt-0">
-                                                {request.status === 'APPROVED' ? (
-                                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100/80 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900">
-                                                        <CheckCircle2 className="h-3 w-3 mr-1" /> Approved
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100/80 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-900">
-                                                        <AlertTriangle className="h-3 w-3 mr-1" /> Pending Approval
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Content */}
-                                        <CardContent className="p-4 md:p-6 flex-1 flex flex-col md:flex-row items-center justify-between gap-6">
-                                            <div className="flex-1 w-full space-y-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="bg-orange-100 dark:bg-orange-950/30 p-2 rounded-lg text-orange-600 flex-none">
-                                                        <RotateCcw className="h-6 w-6" />
+                        <div className="bg-white border rounded-lg shadow-sm overflow-x-auto">
+                            <Table className="min-w-[1000px]">
+                                <TableHeader className="bg-muted/50">
+                                    <TableRow>
+                                        <TableHead className="w-[160px]">Request No</TableHead>
+                                        <TableHead className="w-[130px]">Status</TableHead>
+                                        <TableHead className="min-w-[300px]">Description / Items</TableHead>
+                                        <TableHead className="w-[180px]">Destination</TableHead>
+                                        <TableHead className="text-right w-[80px]">Qty</TableHead>
+                                        <TableHead className="text-right w-[160px]">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {groupedRequests.map((group) => (
+                                        <React.Fragment key={group.date}>
+                                            <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b">
+                                                <TableCell colSpan={6} className="py-2">
+                                                    <div className="flex items-center gap-2 font-bold text-xs text-muted-foreground uppercase tracking-wider">
+                                                        <Calendar className="h-3 w-3" /> {group.date}
                                                     </div>
-                                                    <div className="min-w-0">
-                                                        <h3 className="font-bold text-lg leading-tight truncate">
-                                                            {request.items.length > 1
-                                                                ? `Multiple Items (${request.items.length})`
-                                                                : request.items[0]?.item?.description || "Return Items"}
-                                                        </h3>
-                                                        <p className="text-sm text-muted-foreground font-medium truncate">
-                                                            {request.items.length > 1
-                                                                ? `SKU: ${request.items[0]?.item?.sku || 'N/A'} and ${request.items.length - 1} more`
-                                                                : `SKU: ${request.items[0]?.item?.sku || "N/A"}`}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-wrap items-center gap-6">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Return Quantity</span>
-                                                        <span className="text-xl font-black text-orange-600">
-                                                            {request.items.reduce((acc: number, item) => acc + Number(item.quantity || 0), 0)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="h-10 w-px bg-border hidden sm:block" />
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Destination</span>
-                                                        <span className="text-sm font-semibold">{request.fromWarehouse?.name || "Main Warehouse"}</span>
-                                                    </div>
-                                                    <div className="h-10 w-px bg-border hidden sm:block" />
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Request Date</span>
-                                                        <span className="text-sm font-semibold">{format(new Date(request.createdAt), "dd MMM yyyy HH:mm")}</span>
-                                                    </div>
-                                                </div>
-                                                {request.notes && (
-                                                    <div className="bg-orange-50 dark:bg-orange-950/10 p-3 rounded-lg border border-orange-100 dark:border-orange-900/50 mt-4">
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-orange-700 dark:text-orange-400 block mb-1">Return Reason</span>
-                                                        <p className="text-sm text-orange-800 dark:text-orange-300">{request.notes}</p>
-                                                    </div>
-                                                )}
-
-                                                <div className="mt-4">
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-2">Returned Items</span>
-                                                    <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
-                                                        {request.items.map((it, idx) => (
-                                                            <div key={idx} className="flex items-center justify-between bg-muted/30 p-2 rounded-md border border-border/50">
-                                                                <div className="flex flex-col min-w-0">
-                                                                    <span className="text-sm font-semibold truncate text-foreground">{it.item?.description || 'Unknown Item'}</span>
-<BrandBadge brand={it.item?.brand?.name} />
-                                                                    <span className="text-xs text-muted-foreground font-mono">{it.item?.sku || 'N/A'}</span>
+                                                </TableCell>
+                                            </TableRow>
+                                            {group.items.map((request) => {
+                                                const totalQty = (request.items || []).reduce((sum: number, i: any) => sum + Number(i.quantity || 0), 0);
+                                                const totalItemsCount = request.items?.length || 0;
+                                                const firstItem = request.items?.[0]?.item;
+                                                const brandName = request.brand?.name || firstItem?.brand?.name;
+                                                
+                                                return (
+                                                    <TableRow key={request.id} className="hover:bg-muted/30 group">
+                                                        <TableCell className="font-mono text-xs font-bold">{request.requestNo}</TableCell>
+                                                        <TableCell>
+                                                            {request.status === 'COMPLETED' ? (
+                                                                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100/80 border-emerald-200 text-[10px] font-bold">
+                                                                    Completed
+                                                                </Badge>
+                                                            ) : request.status === 'APPROVED' || request.status === 'SOURCE_APPROVED' ? (
+                                                                <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100/80 border-blue-200 text-[10px] font-bold">
+                                                                    Approved
+                                                                </Badge>
+                                                            ) : request.status === 'REJECTED' ? (
+                                                                <Badge variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200 text-[10px] font-bold">
+                                                                    Rejected
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100/80 border-orange-200 text-[10px] font-bold">
+                                                                    Pending
+                                                                </Badge>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-semibold text-sm leading-tight text-gray-800">
+                                                                        {totalItemsCount > 1
+                                                                          ? `Return Transfer Note (${totalItemsCount} Products)`
+                                                                          : firstItem?.description || "Return Items"}
+                                                                    </span>
+                                                                    <BrandBadge brand={brandName} />
                                                                 </div>
-                                                                <div className="flex-none bg-orange-100 dark:bg-orange-950/40 px-2 py-1 rounded text-xs font-bold text-orange-700 dark:text-orange-400">
-                                                                    Qty: {it.quantity}
-                                                                </div>
+                                                                {totalItemsCount > 1 ? (
+                                                                    <div className="flex flex-col gap-1 mt-1.5 w-full">
+                                                                        {(request.items || []).slice(0, 3).map((i: any, idx: number) => (
+                                                                            <div key={i.id || idx} className="flex justify-between items-center text-[10px] bg-gray-50/80 p-1 px-1.5 rounded border border-gray-100">
+                                                                                <span className="truncate flex-1 mr-2 text-gray-600 font-medium" title={i.item?.description}>{i.item?.description || "Unknown Item"}</span>
+                                                                                <span className="font-bold text-gray-900 ml-2">x{i.quantity}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                        {totalItemsCount > 3 && (
+                                                                            <div className="text-[9px] text-center text-muted-foreground bg-gray-50/50 p-0.5 rounded border border-gray-50 font-medium">
+                                                                                + {totalItemsCount - 3} more line items
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                                                                        SKU: {firstItem?.sku || "N/A"}
+                                                                    </span>
+                                                                )}
+                                                                {request.notes && <span className="text-[10px] text-primary/70 font-medium line-clamp-1 mt-1 bg-primary/5 p-1 px-2 rounded w-fit" title={request.notes}>Notes: {request.notes}</span>}
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="w-full md:w-auto flex flex-col gap-2 flex-none">
-                                                <Button
-                                                    className="w-full md:w-40 h-14 text-lg font-bold gap-2 shadow-lg shadow-orange-100 dark:shadow-none bg-orange-600 hover:bg-orange-700 text-white"
-                                                    disabled={isAccepting === request.id || !hasPermission('pos.inventory.returns.approve')}
-                                                    onClick={() => handleAccept(request.id)}
-                                                >
-                                                    {isAccepting === request.id ? (
-                                                        <RefreshCcw className="h-5 w-5 animate-spin" />
-                                                    ) : (
-                                                        <CheckCircle2 className="h-5 w-5" />
-                                                    )}
-                                                    {isAccepting === request.id ? "Approving..." : "Approve Return"}
-                                                </Button>
-                                                <Button variant="outline" className="w-full md:w-40 h-10 font-semibold text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-900 hover:bg-orange-50 dark:hover:bg-orange-950/20" asChild>
-                                                    <Link href={`/erp/inventory/transactions/return-transfer/slip/${request.id}`} target="_blank">
-                                                        <FileText className="h-4 w-4 mr-2" /> View Details
-                                                    </Link>
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </div>
-                                </Card>
-                            ))}
+                                                        </TableCell>
+                                                        <TableCell className="text-xs font-medium">
+                                                            {request.fromWarehouse?.name || request.warehouse?.name || "Main Warehouse"}
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-black text-primary">
+                                                            {totalQty}
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                {activeTab === 'pending' && (request.status === 'PENDING') && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-8 px-3 text-xs bg-primary hover:bg-primary/90"
+                                                                        disabled={isAccepting === request.id || !hasPermission('pos.inventory.returns.approve')}
+                                                                        onClick={() => handleAccept(request.id)}
+                                                                    >
+                                                                        {isAccepting === request.id ? <RefreshCcw className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                                                                        Approve
+                                                                    </Button>
+                                                                )}
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-8 px-3 text-xs"
+                                                                    disabled={printingId === request.id}
+                                                                    onClick={() => handlePrint(request)}
+                                                                >
+                                                                    <Printer className="h-3 w-3 mr-1" /> Print
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </React.Fragment>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                    
+                    {/* Pagination Controls */}
+                    {!isLoading && totalPages > 1 && (
+                        <div className="flex items-center justify-between mt-6 pt-4 border-t border-black/5">
+                            <span className="text-sm text-muted-foreground font-medium">
+                                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, totalRecords)} of {totalRecords}
+                            </span>
+                            <SmartPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                         </div>
                     )}
                 </div>

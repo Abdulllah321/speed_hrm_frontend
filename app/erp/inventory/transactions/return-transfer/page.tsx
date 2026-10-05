@@ -171,7 +171,7 @@ export default function ReturnTransferPage() {
         try {
             await createReturnTransferRequest({
                 fromLocationId: selectedLocationId,
-                fromWarehouseId: selectedWarehouseId,
+                toWarehouseId: selectedWarehouseId,
                 items: [{
                     itemId: selectedItem.id,
                     quantity: returnQty

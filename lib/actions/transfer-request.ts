@@ -25,13 +25,14 @@ export async function getIncomingTransferRequests(locationId: string, params?: {
     }
 }
 
-export async function getReturnTransferRequests(locationId: string) {
+export async function getReturnTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string; dateFrom?: string; dateTo?: string ;brand?: string; }) {
     try {
-        const response = await authFetch(`/transfer-request/return-requests?locationId=${locationId}`);
-        return response.data ?? { status: false, data: [] };
+        const queryParams = new URLSearchParams(params as any).toString();
+        const response = await authFetch(`/transfer-request/return-requests?locationId=${locationId}&${queryParams}`);
+        return { status: response.status, data: response.data?.data || response.data || [], meta: response.data?.meta || null };
     } catch (error) {
         console.error("Get return transfer requests error:", error);
-        return { status: false, data: [] };
+        return { status: false, data: [], meta: null };
     }
 }
 
@@ -73,7 +74,7 @@ export async function createTransferRequest(data: any) {
 
 export async function createReturnTransferRequest(data: {
     fromLocationId: string;
-    fromWarehouseId: string;
+    toWarehouseId: string;
     items: { itemId: string; quantity: number }[];
     notes?: string;
     createdById?: string;

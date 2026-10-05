@@ -23,6 +23,7 @@ export interface FlatItemRecord {
     value: number;
     unitCost: number;
     costingValue: number;
+    discountRate?: number;
     quantity: number; // Available Stock Qty
     transit: number;  // In Transit Qty
     reserved: number; // Reserved Qty
