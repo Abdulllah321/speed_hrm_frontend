@@ -25,11 +25,48 @@ import { Label } from "@/components/ui/label";
 import { useDebounce } from "@/hooks/use-debounce";
 import { warehouseApi, inventoryApi } from "@/lib/api";
 
-interface Warehouse { id: string; name: string; isActive: boolean; }
-interface Item { id: string; sku: string; description: string; size?: { id: string; name: string }; color?: { id: string; name: string }; totalQuantity: number; brand?: { name: string }; }
-interface CartItem { item: Item; quantity: number; }
-interface RequestItem { id: string; quantity: number; item?: { sku: string; description: string; brand?: { name: string }; size?: { name: string }; color?: { name: string }; }; }
-interface ReturnRequest { id: string; requestNo: string; status: string; createdAt: string; notes?: string; fromWarehouse?: { name: string; code?: string }; items: RequestItem[]; }
+interface Warehouse {
+    id: string;
+    name: string;
+    isActive: boolean;
+}
+
+interface Item {
+    id: string;
+    sku: string;
+    barCode?: string;
+    description: string;
+    size?: { id: string; name: string };
+    color?: { id: string; name: string };
+    totalQuantity: number;
+}
+
+interface CartItem {
+    item: Item;
+    quantity: number;
+}
+
+interface RequestItem {
+    id: string;
+    quantity: number;
+    item?: {
+        sku: string;
+        description: string;
+    };
+}
+
+interface ReturnRequest {
+    id: string;
+    requestNo: string;
+    status: string;
+    createdAt: string;
+    notes?: string;
+    fromWarehouse?: {
+        name: string;
+    };
+    items: RequestItem[];
+}
+
 
 const getBrandColor = (brand: string) => {
     const b = brand.toUpperCase();
@@ -184,6 +221,7 @@ export default function ReturnRequestsPage() {
                 const availableItems = (res.data || []).map((item: any) => ({
                     id: item.id,
                     sku: item.sku,
+                    barCode: item.barCode,
                     description: item.description,
                     size: item.size,
                     color: item.color,
@@ -198,6 +236,48 @@ export default function ReturnRequestsPage() {
             setIsSearching(false);
         }
     }, [locationId]);
+
+    const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = itemQuery.trim();
+            if (!query || !locationId) return;
+
+            if (searchResults.length === 1) {
+                addToCart(searchResults[0]);
+                return;
+            }
+
+            setIsSearching(true);
+            try {
+                const res = await inventoryApi.search(query, undefined, locationId);
+                if (res.status && res.data) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const availableItems = res.data.map((item: any) => ({
+                        id: item.id,
+                        sku: item.sku,
+                        barCode: item.barCode,
+                        description: item.description,
+                        size: item.size,
+                        color: item.color,
+                        totalQuantity: item.totalQuantity || 0
+                    })).filter((item: any) => item.totalQuantity > 0);
+                    
+                    if (availableItems.length === 1) {
+                        addToCart(availableItems[0]);
+                    } else if (availableItems.length > 1) {
+                        setSearchResults(availableItems);
+                    } else {
+                        toast.error("Item not found or out of stock at this location");
+                    }
+                }
+            } catch (error) {
+                toast.error("Failed to search item");
+            } finally {
+                setIsSearching(false);
+            }
+        }
+    };
 
     useEffect(() => {
         if (isCreating) fetchWarehouses();
@@ -415,11 +495,205 @@ export default function ReturnRequestsPage() {
                     </tbody>
                 </table>
 
-                <div class="totals-bar">
-                    <div>Total Lines: ${request.items.length}</div>
-                    <div>
-                        <span style="margin-right: 8px;">Total Quantity:</span>
-                        <span class="double-underline">${totalQty}</span>
+                            {/* Item Search Card */}
+                            <Card className="border-border/50 shadow-sm">
+                                <CardHeader className="pb-4">
+                                    <CardTitle className="text-md font-bold flex items-center gap-2 text-foreground">
+                                        <Search className="h-5 w-5 text-orange-600" />
+                                        Search Items
+                                    </CardTitle>
+                                    <CardDescription className="text-xs">Find items with available stock at this outlet.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                        <Input
+                                            placeholder="Search by Barcode, SKU or description..."
+                                            value={itemQuery}
+                                            onChange={(e) => setItemQuery(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            className="pl-9 h-11 bg-muted/20 border-border/50"
+                                        />
+                                    </div>
+
+                                    {/* Search Results */}
+                                    <ScrollArea className="h-[250px] rounded-lg border border-border/50 bg-muted/5">
+                                        {isSearching ? (
+                                            <div className="p-4 space-y-2">
+                                                {[1, 2, 3].map(i => (
+                                                    <Skeleton key={i} className="h-12 w-full rounded-md" />
+                                                ))}
+                                            </div>
+                                        ) : searchResults.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-[200px] text-center p-4">
+                                                <Package className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                                                <p className="text-xs font-medium text-muted-foreground">
+                                                    {itemQuery ? "No matching items with stock found" : "Type to search available stock"}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="divide-y divide-border/50">
+                                                {searchResults.map((item) => (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        onClick={() => addToCart(item)}
+                                                        className="w-full text-left p-3 hover:bg-orange-50/50 dark:hover:bg-orange-950/20 transition-colors flex items-center justify-between gap-4 group"
+                                                    >
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-center flex-wrap gap-1.5 mb-1">
+                                                                <span className="font-mono text-[9px] font-bold bg-muted px-1.5 py-0.5 rounded text-muted-foreground group-hover:bg-orange-100 group-hover:text-orange-700 dark:group-hover:bg-orange-950/40 dark:group-hover:text-orange-300 transition-colors">
+                                                                    {item.sku}
+                                                                </span>
+                                                                {item.barCode && (
+                                                                    <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium font-mono text-blue-600 bg-blue-50 border-blue-200">
+                                                                        {item.barCode}
+                                                                    </Badge>
+                                                                )}
+                                                                {item.size?.name && (
+                                                                    <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium">
+                                                                        Size: {item.size.name}
+                                                                    </Badge>
+                                                                )}
+                                                                {item.color?.name && (
+                                                                    <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium">
+                                                                        Color: {item.color.name}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs font-semibold truncate text-foreground">{item.description}</p>
+                                                        </div>
+                                                        <div className="text-right flex-none">
+                                                            <span className="text-[9px] block font-bold text-muted-foreground uppercase tracking-wider">Available</span>
+                                                            <span className="text-xs font-bold text-emerald-600">{item.totalQuantity} units</span>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </ScrollArea>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Right Column: Return Cart */}
+                        <div className="md:col-span-3">
+                            <Card className="border-border/50 shadow-sm h-full flex flex-col min-h-[450px]">
+                                <CardHeader className="pb-4 border-b border-border/50 flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-md font-bold flex items-center gap-2 text-foreground">
+                                            <ShoppingCart className="h-5 w-5 text-orange-600" />
+                                            Return List
+                                        </CardTitle>
+                                        <CardDescription className="text-xs">Items selected for return.</CardDescription>
+                                    </div>
+                                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100/80 dark:bg-orange-950/40 dark:text-orange-300 font-bold">
+                                        {cart.length} {cart.length === 1 ? 'item' : 'items'}
+                                    </Badge>
+                                </CardHeader>
+
+                                <div className="flex-1 flex flex-col justify-between">
+                                    {/* Cart Items */}
+                                    <ScrollArea className="flex-1 max-h-[300px]">
+                                        {cart.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center py-20 text-center p-6">
+                                                <ShoppingCart className="h-12 w-12 text-muted-foreground/20 mb-3" />
+                                                <h4 className="font-bold text-muted-foreground text-sm">Return List is Empty</h4>
+                                                <p className="text-xs text-muted-foreground/60 max-w-xs mt-1">
+                                                    Search and select items on the left to add them to your return request.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="divide-y divide-border/50">
+                                                {cart.map(({ item, quantity }) => (
+                                                    <div key={item.id} className="p-4 flex items-center justify-between gap-4">
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="font-mono text-xs font-bold text-orange-600 mb-0.5">{item.sku}</p>
+                                                            <h4 className="text-sm font-semibold text-foreground truncate">{item.description}</h4>
+                                                            <div className="flex items-center gap-2 mt-1.5">
+                                                                {item.size?.name && (
+                                                                    <span className="text-[10px] text-muted-foreground">Size: <span className="font-bold text-foreground">{item.size.name}</span></span>
+                                                                )}
+                                                                {item.color?.name && (
+                                                                    <span className="text-[10px] text-muted-foreground">Color: <span className="font-bold text-foreground">{item.color.name}</span></span>
+                                                                )}
+                                                                <span className="text-[10px] text-muted-foreground">Available: <span className="font-bold text-emerald-600">{item.totalQuantity}</span></span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-4 flex-none">
+                                                            {/* Quantity Selector */}
+                                                            <div className="flex items-center border border-border/50 rounded-lg overflow-hidden bg-background shadow-sm h-9">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-full w-8 rounded-none border-r border-border/50 hover:bg-muted"
+                                                                    onClick={() => updateCartQuantity(item.id, quantity - 1)}
+                                                                    disabled={quantity <= 1}
+                                                                >
+                                                                    <Minus className="h-3 w-3" />
+                                                                </Button>
+                                                                <span className="w-10 text-center font-mono text-xs font-bold">{quantity}</span>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-full w-8 rounded-none border-l border-border/50 hover:bg-muted"
+                                                                    onClick={() => updateCartQuantity(item.id, quantity + 1)}
+                                                                    disabled={quantity >= item.totalQuantity}
+                                                                >
+                                                                    <Plus className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+
+                                                            {/* Delete Button */}
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-9 w-9 rounded-lg"
+                                                                onClick={() => removeFromCart(item.id)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </ScrollArea>
+
+                                    {/* Footer & Notes */}
+                                    <div className="p-4 md:p-6 border-t border-border/50 bg-muted/5 space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="return-notes" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Return Reason / Notes</Label>
+                                            <Textarea
+                                                id="return-notes"
+                                                placeholder="Specify the reason for returning these items..."
+                                                value={notes}
+                                                onChange={(e) => setNotes(e.target.value)}
+                                                rows={2}
+                                                className="bg-background resize-none border-border/50"
+                                            />
+                                        </div>
+
+                                        <Button
+                                            onClick={handleSubmitReturn}
+                                            className="w-full h-12 text-md font-bold gap-2 shadow-lg shadow-orange-100 dark:shadow-none bg-orange-600 hover:bg-orange-700 text-white"
+                                            disabled={isSubmitting || cart.length === 0}
+                                        >
+                                            {isSubmitting ? (
+                                                <RefreshCcw className="h-5 w-5 animate-spin" />
+                                            ) : (
+                                                <Send className="h-5 w-5" />
+                                            )}
+                                            {isSubmitting ? "Submitting..." : "Submit Return Request"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
                     </div>
                 </div>
 

@@ -132,8 +132,13 @@ export function NewSaleTopBar({
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span className="text-xs text-muted-foreground mt-0.5 font-mono">
-                                                        SKU: <strong className="font-bold text-foreground tracking-wide">{product.sku || product.barCode || '-'}</strong>
+                                                    <span className="text-xs text-muted-foreground mt-0.5 font-mono flex items-center gap-2">
+                                                        <span>SKU: <strong className="font-bold text-foreground tracking-wide">{product.sku || '-'}</strong></span>
+                                                        {product.barCode && (
+                                                            <span className="text-[10px] font-medium font-mono text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                                                                {product.barCode}
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1">
