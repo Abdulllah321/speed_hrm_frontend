@@ -74,7 +74,7 @@ export async function createTransferRequest(data: any) {
 
 export async function createReturnTransferRequest(data: {
     fromLocationId: string;
-    fromWarehouseId: string;
+    toWarehouseId: string;
     items: { itemId: string; quantity: number }[];
     notes?: string;
     createdById?: string;

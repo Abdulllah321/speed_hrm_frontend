@@ -808,7 +808,7 @@ function StockTransferContent() {
                 } else if (transferMode === 'OUTLET_TO_WAREHOUSE') {
                     await createReturnTransferRequest({
                         fromLocationId: destLocationId,
-                        fromWarehouseId: selectedWarehouseId,
+                        toWarehouseId: selectedWarehouseId,
                         items: itemsToTransfer,
                         notes: globalNotes,
                         ...dispatchPayload

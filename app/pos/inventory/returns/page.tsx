@@ -335,7 +335,7 @@ export default function ReturnRequestsPage() {
         try {
             const res = await createReturnTransferRequest({
                 fromLocationId: locationId,
-                fromWarehouseId: selectedWarehouseId,
+                toWarehouseId: selectedWarehouseId,
                 items: cart.map(i => ({ itemId: i.item.id, quantity: i.quantity })),
                 notes: notes,
                 createdById: user?.id
