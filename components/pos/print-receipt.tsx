@@ -443,6 +443,10 @@ export function PrintReceipt({
             typeof oi.item?.size === "object"
               ? oi.item?.size?.name
               : oi.item?.size || oi.size || "",
+          color:
+            typeof oi.item?.color === "object"
+              ? oi.item?.color?.name
+              : oi.item?.color || oi.color || "",
           price: Number(oi.unitPrice),
           quantity: Number(oi.quantity),
           discountPercent: Number(oi.discountPercent ?? 0),
@@ -1115,13 +1119,16 @@ function ReceiptBody({
       <div className="space-y-0.5 text-[11px]">
         <Row label="Receipt No." value={order?.orderNumber ?? ""} bold />
         {(() => {
-          const extRef =
-            order?.externalOrderNo ||
-            (order?.notes && order.notes.includes("EZCommerce Order")
-              ? order.notes.split("|")[0].replace("EZCommerce Order", "").trim()
-              : null);
+          let extRef = order?.externalOrderNo;
+          if (!extRef && order?.notes) {
+            if (order.notes.includes("EZCommerce Order")) {
+              extRef = order.notes.split("|")[0].replace("EZCommerce Order", "").trim();
+            } else if (order.notes.includes("Online Order:")) {
+              extRef = order.notes.replace("Online Order:", "").trim();
+            }
+          }
           return extRef ? (
-            <Row label="Original Order Ref #" value={extRef} bold />
+            <Row label="Order ID" value={extRef} bold />
           ) : null;
         })()}
         {order?.paymentStatus && (
