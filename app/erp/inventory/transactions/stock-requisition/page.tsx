@@ -788,12 +788,18 @@ export default function StockRequisitionPage() {
   const completedCount = requisitions.filter((r) => r.status === 'COMPLETED').length;
 
   const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
-  const locationOptions = locations
-    .filter((l: any) => l.isStockLocation || l.warehouseId || (l.name && l.name.toLowerCase().includes('warehouse')))
-    .map((l: any) => ({
-      value: l.id,
-      label: l.code ? `${l.code} · ${l.name}` : l.name,
-    }));
+  const locationOptions = [
+    ...locations
+      .filter((l: any) => l.isStockLocation || l.warehouseId || (l.name && l.name.toLowerCase().includes('warehouse')))
+      .map((l: any) => ({
+        value: l.id,
+        label: l.code ? `[OUTLET] ${l.code} · ${l.name}` : `[OUTLET] ${l.name}`,
+      })),
+    ...warehouses.map((w: any) => ({
+      value: w.id,
+      label: w.code ? `[WAREHOUSE] ${w.code} · ${w.name}` : `[WAREHOUSE] ${w.name}`,
+    }))
+  ];
   const brandOptions = [
     { value: 'none', label: 'No Brand Filter' },
     ...brands.map((b) => ({ value: b.id, label: b.name })),
