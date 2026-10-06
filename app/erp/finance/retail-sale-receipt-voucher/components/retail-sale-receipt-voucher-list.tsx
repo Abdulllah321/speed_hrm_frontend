@@ -278,7 +278,11 @@ export function RetailSaleReceiptVoucherList({
             ),
         },
         {
-            accessorKey: "outlet",
+            id: "outlet",
+            accessorFn: (row) => {
+                const outletTag = row.details?.find(d => d.tagAccountCode || d.tagAccountName);
+                return outletTag?.tagAccountName || outletTag?.tagAccountCode || "";
+            },
             header: "Outlet / Location",
             cell: ({ row }) => {
                 const outletTag = row.original.details?.find(d => d.tagAccountCode || d.tagAccountName);
