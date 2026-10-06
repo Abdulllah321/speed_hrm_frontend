@@ -24,7 +24,7 @@ const formatVal = (val: number | string | null | undefined, isRate: boolean = fa
     if (isNaN(num)) return val.toString();
     if (num === 0) return "-";
     if (isRate) return num.toFixed(3);
-    return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return Math.round(num).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 };
 
 // Reusable A4 / Thermal Reconciliation Sheet component matching exact POS template
@@ -211,6 +211,12 @@ const ReconciliationSheet = ({
                                         <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
                                     </div>
                                 ))}
+                                {activeReport.issuedVouchers?.exchangeAndClaims?.length > 0 && (
+                                    <div className="flex justify-between border-t border-dashed border-black/10 pt-0.5 mt-0.5 font-bold text-gray-700">
+                                        <span className="pl-2">EXCHANGE SUBTOTAL:</span>
+                                        <span>{formatVal(issuedExchangeSubtotal)}</span>
+                                    </div>
+                                )}
                                 {activeReport.issuedVouchers?.creditVouchers?.map((v: any, i: number) => (
                                     <div key={`iss-cv-${i}`} className="flex justify-between items-start">
                                         <div className="flex flex-col w-[65%]">
@@ -510,6 +516,16 @@ const ReconciliationSheet = ({
                                 <td className="py-1 px-1 text-center">-</td>
                             </tr>
                         ))}
+                        {activeReport.issuedVouchers?.exchangeAndClaims?.length > 0 && (
+                            <tr className="font-bold border-b border-gray-200">
+                                <td className="py-1 px-1 text-left pl-4"></td>
+                                <td className="py-1 px-1 text-right border-t border-dashed border-black/60">{formatVal(issuedExchangeSubtotal)}</td>
+                                <td className="py-1 px-1 text-right"></td>
+                                <td className="py-1 px-1 text-right"></td>
+                                <td className="py-1 px-1 text-center"></td>
+                                <td className="py-1 px-1 text-center"></td>
+                            </tr>
+                        )}
                         {activeReport.issuedVouchers?.creditVouchers?.map((v: any, i: number) => (
                             <tr key={`iss-cv-${i}`} className="border-b border-gray-100 text-gray-700 hover:bg-gray-50/50">
                                 <td className="py-1 px-1 text-left pl-4 font-medium">{v.type}</td>
