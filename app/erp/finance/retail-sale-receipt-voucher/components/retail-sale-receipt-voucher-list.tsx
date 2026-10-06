@@ -30,8 +30,11 @@ export function RetailSaleReceiptVoucherList({
     };
 }) {
     const [statusTab, setStatusTab] = useState<string>("all");
-    const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
-    const [toDate, setToDate] = useState<Date | undefined>(undefined);
+    const [fromDate, setFromDate] = useState<Date | undefined>(() => {
+        const d = new Date();
+        return new Date(d.getFullYear(), d.getMonth(), 1);
+    });
+    const [toDate, setToDate] = useState<Date | undefined>(() => new Date());
     const [vouchers, setVouchers] = useState<ReceiptVoucher[]>(initialData);
     const [printingVoucher, setPrintingVoucher] = useState<ReceiptVoucher | null>(null);
     const [isExporting, setIsExporting] = useState(false);
@@ -157,11 +160,16 @@ export function RetailSaleReceiptVoucherList({
 
             if (fromDate) {
                 const vDate = new Date(v.rvDate);
-                if (vDate < fromDate) return false;
+                const from = new Date(fromDate);
+                from.setHours(0, 0, 0, 0);
+                vDate.setHours(0, 0, 0, 0);
+                if (vDate < from) return false;
             }
             if (toDate) {
                 const vDate = new Date(v.rvDate);
-                if (vDate > toDate) return false;
+                const to = new Date(toDate);
+                to.setHours(23, 59, 59, 999);
+                if (vDate > to) return false;
             }
 
             if (q) {
@@ -169,12 +177,14 @@ export function RetailSaleReceiptVoucherList({
                 const matchFolio = v.folio?.toLowerCase().includes(q);
                 const matchDesc = v.description?.toLowerCase().includes(q);
                 const matchRemarks = v.remarks?.toLowerCase().includes(q);
+                const matchStatus = st.includes(q);
+                const matchAmount = v.debitAmount?.toString().includes(q);
                 const matchOutlet = v.details?.some(d =>
                     d.tagAccountName?.toLowerCase().includes(q) ||
                     d.tagAccountCode?.toLowerCase().includes(q) ||
                     d.narration?.toLowerCase().includes(q)
                 );
-                if (!matchRvNo && !matchFolio && !matchDesc && !matchRemarks && !matchOutlet) {
+                if (!matchRvNo && !matchFolio && !matchDesc && !matchRemarks && !matchOutlet && !matchStatus && !matchAmount) {
                     return false;
                 }
             }
@@ -319,7 +329,7 @@ export function RetailSaleReceiptVoucherList({
                 const total = row.original.details?.reduce((sum, d) => sum + (Number(d.debit) || 0), 0) || row.original.debitAmount || 0;
                 return (
                     <div className="text-right font-semibold text-xs tabular-nums">
-                        {total.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                        {Math.round(total).toLocaleString("en-PK")}
                     </div>
                 );
             },
