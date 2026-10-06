@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/breadcrumb";
 
 function fmt(n: number) {
-  return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Math.round(n).toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function folio(id: string) {
