@@ -234,10 +234,14 @@ export default function ReceivingSlipPage({ params }: { params: { id: string } }
                     <div className="flex flex-col md:flex-row justify-between items-end gap-8 mb-16">
                         {/* Terms or Notes */}
                         <div className="flex-1 text-sm text-gray-500">
-                            <p className="font-bold text-gray-900 mb-1">Important Notes:</p>
-                            <p className="leading-relaxed text-gray-500 max-w-sm">
-                                Please ensure all quantities are verified against this document upon receipt. Discrepancies must be reported immediately.
-                            </p>
+                            {request.remarks || request.notes ? (
+                                <>
+                                    <p className="font-bold text-gray-900 mb-1">Important Notes:</p>
+                                    <p className="leading-relaxed text-gray-500 max-w-sm whitespace-pre-wrap">
+                                        {request.remarks || request.notes}
+                                    </p>
+                                </>
+                            ) : null}
                         </div>
                         
                         {/* Total Box */}
