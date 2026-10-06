@@ -754,7 +754,7 @@ export default function ErpReconciliationReportPage() {
 
     useEffect(() => {
         setMounted(true);
-        getLocations().then((res: any) => {
+        getLocations(true).then((res: any) => {
             if (Array.isArray(res)) setLocations(res);
             else if (res?.status && Array.isArray(res?.data)) setLocations(res.data);
         }).catch(console.error);
