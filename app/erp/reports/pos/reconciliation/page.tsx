@@ -6,7 +6,8 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { getLocations, Location } from "@/lib/actions/location";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { format } from "date-fns";
 import { authFetch } from "@/lib/auth";
 import { getApiBaseUrl, cn } from "@/lib/utils";
 import {
@@ -79,7 +80,7 @@ const ReconciliationSheet = ({
                     </div>
                     <div className="flex justify-between text-[7.5px] font-bold tracking-tight">
                         <span>DOC ID: #{activeReport.documentNumber}</span>
-                        <span>DATE: {new Date(selectedDate).toLocaleDateString('en-GB')}</span>
+                        <span>DATE: {new Date(selectedDate.split(',')[0]).toLocaleDateString('en-GB')}</span>
                     </div>
                 </div>
 
@@ -213,7 +214,7 @@ const ReconciliationSheet = ({
                                 ))}
                                 {activeReport.issuedVouchers?.exchangeAndClaims?.length > 0 && (
                                     <div className="flex justify-between border-t border-dashed border-black/10 pt-0.5 mt-0.5 font-bold text-gray-700">
-                                        <span className="pl-2">EXCHANGE SUBTOTAL:</span>
+                                        <span className="pl-2">EXCHANGE & CLAIM SUBTOTAL:</span>
                                         <span>{formatVal(issuedExchangeSubtotal)}</span>
                                     </div>
                                 )}
@@ -259,6 +260,12 @@ const ReconciliationSheet = ({
                                     </div>
                                 ))}
                             </div>
+                            {activeReport.issuedVouchers?.refundVouchers?.length > 0 && (
+                                <div className="flex justify-between border-t border-dashed border-black/10 pt-0.5 mt-0.5 font-bold text-gray-700">
+                                    <span className="pl-2">REFUND SUBTOTAL:</span>
+                                    <span>{formatVal(issuedRefundSubtotal)}</span>
+                                </div>
+                            )}
                             <div className={cn("flex justify-between border-t border-dashed border-black/20 pt-1 mt-1.5 font-bold", textSizeClass)}>
                                 <span>ISSUED SUBTOTAL:</span>
                                 <span>{formatVal(totalIssuedSubtotal)}</span>
@@ -586,6 +593,16 @@ const ReconciliationSheet = ({
                                 <td className="py-1 px-1 text-center">-</td>
                             </tr>
                         ))}
+                        {activeReport.issuedVouchers?.refundVouchers?.length > 0 && (
+                            <tr className="font-bold border-b border-gray-200">
+                                <td className="py-1 px-1 text-left pl-4"></td>
+                                <td className="py-1 px-1 text-right border-t border-dashed border-black/60">{formatVal(issuedRefundSubtotal)}</td>
+                                <td className="py-1 px-1 text-right"></td>
+                                <td className="py-1 px-1 text-right"></td>
+                                <td className="py-1 px-1 text-center"></td>
+                                <td className="py-1 px-1 text-center"></td>
+                            </tr>
+                        )}
 
                         {/* Total Issued */}
                         <tr className="font-black border-y-2 border-black text-gray-900 bg-gray-50">
@@ -759,7 +776,17 @@ export default function ErpReconciliationReportPage() {
         return `${year}-${month}-${day}`;
     };
 
-    const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
+    const [dateRange, setDateRange] = useState<DateRange>({
+        from: new Date(),
+        to: new Date()
+    });
+
+    const dateParam = useMemo(() => {
+        const fromStr = dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : getTodayString();
+        const toStr = dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : fromStr;
+        return fromStr === toStr ? fromStr : `${fromStr},${toStr}`;
+    }, [dateRange]);
+
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [layout, setLayout] = useState<"thermal" | "desktop">("desktop");
@@ -789,10 +816,10 @@ export default function ErpReconciliationReportPage() {
     }, [selectedLocationIds, locations]);
 
     const fetchDetails = async () => {
-        if (!selectedDate) return;
+        if (!dateParam) return;
         setLoading(true);
         try {
-            const url = `/pos-session/reconciliation/daywise?date=${selectedDate}&locationId=${encodeURIComponent(locationParam)}`;
+            const url = `/pos-session/reconciliation/daywise?date=${dateParam}&locationId=${encodeURIComponent(locationParam)}`;
             const res = await authFetch(url);
             if (res.ok) {
                 setData(res.data);
@@ -810,7 +837,7 @@ export default function ErpReconciliationReportPage() {
 
     useEffect(() => {
         fetchDetails();
-    }, [selectedDate, locationParam]);
+    }, [dateParam, locationParam]);
 
     const handlePrint = () => {
         if (!data) return;
@@ -842,7 +869,7 @@ export default function ErpReconciliationReportPage() {
                 });
 
                 pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
-                pdf.save(`reconciliation-${selectedDate}.pdf`);
+                pdf.save(`reconciliation-${dateParam.replace(',', '_')}.pdf`);
                 toast.success("PDF downloaded successfully", { id: toastId });
             } else {
                 toast.error("Failed to capture report content", { id: toastId });
@@ -856,13 +883,13 @@ export default function ErpReconciliationReportPage() {
     };
 
     const handleDownloadExcel = async () => {
-        if (!selectedDate) return;
+        if (!dateParam) return;
         setExportState("queueing");
         setExportProgress(0);
         const toastId = toast.loading("Queueing Excel export job...");
         try {
             const apiBase = getApiBaseUrl();
-            const queueRes = await fetch(`${apiBase}/pos-session/reconciliation/daywise/export/queue?date=${selectedDate}&locationId=${encodeURIComponent(locationParam)}`, {
+            const queueRes = await fetch(`${apiBase}/pos-session/reconciliation/daywise/export/queue?date=${dateParam}&locationId=${encodeURIComponent(locationParam)}`, {
                 method: "POST",
                 credentials: "include"
             });
@@ -1043,11 +1070,13 @@ export default function ErpReconciliationReportPage() {
                     <div className="flex flex-col gap-1.5 min-w-[200px]">
                         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5 text-primary" />
-                            Reconciliation Date
+                            Reconciliation Period
                         </span>
-                        <DatePicker
-                            value={selectedDate}
-                            onChange={(d: string) => setSelectedDate(d)}
+                        <DateRangePicker
+                            initialDateFrom={dateRange.from}
+                            initialDateTo={dateRange.to}
+                            onUpdate={(range) => setDateRange(range.range)}
+                            align="start"
                         />
                     </div>
 
@@ -1115,11 +1144,11 @@ export default function ErpReconciliationReportPage() {
                             )}>
                                 {layout === "thermal" ? (
                                     <div className="shadow-2xl border border-gray-200/60 rounded-md overflow-hidden bg-white">
-                                        <ReconciliationSheet activeReport={data?.merged || data} layout="thermal" selectedDate={selectedDate} />
+                                        <ReconciliationSheet activeReport={data?.merged || data} layout="thermal" selectedDate={dateParam} />
                                     </div>
                                 ) : (
                                     <div className="shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-200/70 rounded-sm overflow-hidden w-full bg-white">
-                                        <ReconciliationSheet activeReport={data?.merged || data} layout="desktop" selectedDate={selectedDate} />
+                                        <ReconciliationSheet activeReport={data?.merged || data} layout="desktop" selectedDate={dateParam} />
                                     </div>
                                 )}
                             </div>
@@ -1134,11 +1163,11 @@ export default function ErpReconciliationReportPage() {
                                 >
                                     {layout === "thermal" ? (
                                         <div className="shadow-2xl border border-gray-200/60 rounded-md overflow-hidden bg-white">
-                                            <ReconciliationSheet activeReport={rep} layout="thermal" selectedDate={selectedDate} />
+                                            <ReconciliationSheet activeReport={rep} layout="thermal" selectedDate={dateParam} />
                                         </div>
                                     ) : (
                                         <div className="shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-200/70 rounded-sm overflow-hidden w-full bg-white">
-                                            <ReconciliationSheet activeReport={rep} layout="desktop" selectedDate={selectedDate} />
+                                            <ReconciliationSheet activeReport={rep} layout="desktop" selectedDate={dateParam} />
                                         </div>
                                     )}
                                 </div>
@@ -1226,11 +1255,11 @@ export default function ErpReconciliationReportPage() {
                         <div key={rep?.locationId || idx} className={cn("mb-8", idx > 0 && "page-break-before")}>
                             {layout === "thermal" ? (
                                 <div className="print-layout-thermal font-mono text-[9px] text-black">
-                                    <ReconciliationSheet activeReport={rep} layout="thermal" selectedDate={selectedDate} isPrint={true} />
+                                    <ReconciliationSheet activeReport={rep} layout="thermal" selectedDate={dateParam} isPrint={true} />
                                 </div>
                             ) : (
                                 <div className="print-layout-desktop text-black bg-white font-sans text-[10px] leading-tight">
-                                    <ReconciliationSheet activeReport={rep} layout="desktop" selectedDate={selectedDate} isPrint={true} />
+                                    <ReconciliationSheet activeReport={rep} layout="desktop" selectedDate={dateParam} isPrint={true} />
                                 </div>
                             )}
                         </div>
