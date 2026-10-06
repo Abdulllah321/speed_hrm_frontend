@@ -37,6 +37,7 @@ import {
   RequestTransferBulkUploadModal,
   RequestTransferImportItem,
 } from "@/components/pos/inventory/request-transfer-bulk-upload-modal";
+import { Badge } from "@/components/ui/badge";
 
 interface RequestItem {
   id: string;
