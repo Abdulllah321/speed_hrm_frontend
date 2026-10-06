@@ -38,6 +38,7 @@ import { toast } from 'sonner';
 
 interface SkippedItem {
   sku: string;
+  barcode?: string;
   description?: string;
   requestedQty: number;
   availableStock: number;
@@ -145,7 +146,7 @@ export function SrnItemsBulkImportModal({
     try {
       const res = await stockRequisitionApi.uploadExcel(formData, warehouseId);
       if (res.status && res.data) {
-        const payloadData = res.data;
+        const payloadData = res.data as any;
         const validList = Array.isArray(payloadData) ? payloadData : (payloadData.validItems || []);
         const skippedList: SkippedItem[] = Array.isArray(payloadData) ? [] : (payloadData.skippedItems || []);
         const sum: ImportSummary = Array.isArray(payloadData)
