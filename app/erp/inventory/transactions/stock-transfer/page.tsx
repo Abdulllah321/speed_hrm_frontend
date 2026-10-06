@@ -745,9 +745,14 @@ function StockTransferContent() {
             return;
         }
 
-        const hasInvalidQty = selectedItems.some(item => item.quantity <= 0);
+        const hasInvalidQty = activeRequisitionId 
+            ? selectedItems.some(item => item.quantity < 0)
+            : selectedItems.some(item => item.quantity <= 0);
+            
         if (hasInvalidQty) {
-            toast.error('All items must have a quantity greater than 0');
+            toast.error(activeRequisitionId 
+                ? 'Quantities cannot be negative' 
+                : 'All items must have a quantity greater than 0');
             return;
         }
 
