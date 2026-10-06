@@ -1876,6 +1876,7 @@ function StockTransferContent() {
                                             <TableHead className="font-bold">Date</TableHead>
                                             <TableHead className="font-bold">From Warehouse</TableHead>
                                             <TableHead className="font-bold">To Location</TableHead>
+                                            <TableHead className="font-bold">Remark</TableHead>
                                             <TableHead className="text-right font-bold">Action</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -1886,6 +1887,7 @@ function StockTransferContent() {
                                                 <TableCell>{new Date(req.requisitionDate).toLocaleDateString()}</TableCell>
                                                 <TableCell className="font-medium text-xs">{req.fromLocation?.name || req.fromWarehouse?.name || '—'}</TableCell>
                                                 <TableCell className="font-medium text-xs">{req.toLocation?.name}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{req.remarks || '—'}</TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <Button
