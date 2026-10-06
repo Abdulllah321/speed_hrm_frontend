@@ -63,6 +63,15 @@ const ReconciliationSheet = ({
     const totalIssuedSubtotal = issuedExchangeSubtotal + issuedGiftSubtotal + issuedRefundSubtotal;
     const fbrSubtotal = activeReport.fbrCharges?.reduce((acc: number, f: any) => acc + f.amount, 0) || 0;
 
+    const groupedReceivedVouchers: Record<string, { items: any[], total: number }> = {};
+    if (activeReport.receivedVouchers) {
+        activeReport.receivedVouchers.forEach((v: any) => {
+            if (!groupedReceivedVouchers[v.type]) groupedReceivedVouchers[v.type] = { items: [], total: 0 };
+            groupedReceivedVouchers[v.type].items.push(v);
+            groupedReceivedVouchers[v.type].total += v.amount;
+        });
+    }
+
     if (layout === "thermal") {
         const textSizeClass = isPrint ? "text-[8px]" : "text-[9px]";
         const headerTitleSize = isPrint ? "text-[10px]" : "text-[11px]";
@@ -160,14 +169,22 @@ const ReconciliationSheet = ({
                         RECEIVED PAYMENTS
                     </div>
                     <div className={cn("space-y-1.5", textSizeClass)}>
-                        {activeReport.receivedVouchers?.map((v: any, i: number) => (
-                            <div key={`rec-v-${i}`} className="flex justify-between items-start">
-                                <div className="flex flex-col w-[65%]">
-                                    <span className="font-semibold">{v.type}</span>
-                                    {v.from && v.from !== "-" && <span className="text-[7.5px] text-gray-600 font-mono font-bold">FROM: {v.from}</span>}
+                        {Object.entries(groupedReceivedVouchers).map(([type, group], groupIdx) => (
+                            <React.Fragment key={`rec-group-${groupIdx}`}>
+                                {group.items.map((v: any, i: number) => (
+                                    <div key={`rec-v-${groupIdx}-${i}`} className="flex justify-between items-start">
+                                        <div className="flex flex-col w-[65%]">
+                                            <span className="font-semibold">{v.type}</span>
+                                            {v.from && v.from !== "-" && <span className="text-[7.5px] text-gray-600 font-mono font-bold">FROM: {v.from}</span>}
+                                        </div>
+                                        <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
+                                    </div>
+                                ))}
+                                <div className="flex justify-between border-t border-dashed border-black/10 pt-0.5 mt-0.5 mb-2 font-bold text-gray-700">
+                                    <span className="pl-2 uppercase">{type} SUBTOTAL:</span>
+                                    <span>{formatVal(group.total)}</span>
                                 </div>
-                                <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
-                            </div>
+                            </React.Fragment>
                         ))}
                     </div>
                     <div className={cn("flex justify-between border-t border-dashed border-black/20 pt-1 mt-1.5 font-bold", textSizeClass)}>
@@ -463,15 +480,27 @@ const ReconciliationSheet = ({
                         <tr className="font-extrabold text-black bg-gray-100/60 border-b border-black/40">
                             <td className="py-1.5 px-1 text-left" colSpan={6}>Received</td>
                         </tr>
-                        {activeReport.receivedVouchers?.map((v: any, i: number) => (
-                            <tr key={`rec-${i}`} className="border-b border-gray-100 text-gray-700 hover:bg-gray-50/50">
-                                <td className="py-1 px-1 text-left pl-4 font-medium">{v.type}</td>
-                                <td className="py-1 px-1 text-right">{formatVal(v.amount)}</td>
-                                <td className="py-1 px-1 text-right">-</td>
-                                <td className="py-1 px-1 text-right">-</td>
-                                <td className="py-1 px-1 text-center font-mono">{v.from && v.from !== "-" ? v.from : "-"}</td>
-                                <td className="py-1 px-1 text-center">-</td>
-                            </tr>
+                        {Object.entries(groupedReceivedVouchers).map(([type, group], groupIdx) => (
+                            <React.Fragment key={`rec-group-desk-${groupIdx}`}>
+                                {group.items.map((v: any, i: number) => (
+                                    <tr key={`rec-${groupIdx}-${i}`} className="border-b border-gray-100 text-gray-700 hover:bg-gray-50/50">
+                                        <td className="py-1 px-1 text-left pl-4 font-medium">{v.type}</td>
+                                        <td className="py-1 px-1 text-right">{formatVal(v.amount)}</td>
+                                        <td className="py-1 px-1 text-right">-</td>
+                                        <td className="py-1 px-1 text-right">-</td>
+                                        <td className="py-1 px-1 text-center font-mono">{v.from && v.from !== "-" ? v.from : "-"}</td>
+                                        <td className="py-1 px-1 text-center">-</td>
+                                    </tr>
+                                ))}
+                                <tr className="font-bold border-b border-gray-200">
+                                    <td className="py-1 px-1 text-left pl-4"></td>
+                                    <td className="py-1 px-1 text-right border-t border-dashed border-black/60">{formatVal(group.total)}</td>
+                                    <td className="py-1 px-1 text-right"></td>
+                                    <td className="py-1 px-1 text-right"></td>
+                                    <td className="py-1 px-1 text-center"></td>
+                                    <td className="py-1 px-1 text-center"></td>
+                                </tr>
+                            </React.Fragment>
                         ))}
                         <tr className="font-bold border-b border-gray-200">
                             <td className="py-1 px-1 text-left pl-4"></td>
