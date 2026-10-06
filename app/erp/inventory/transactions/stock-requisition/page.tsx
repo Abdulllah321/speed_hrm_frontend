@@ -64,6 +64,7 @@ import { SrnItemsBulkImportModal } from '@/components/inventory/srn-items-bulk-i
 interface SRNItem {
   itemId: string;
   sku: string;
+  barcode?: string | null;
   description: string;
   color?: string | null;
   size?: string | null;
@@ -361,6 +362,7 @@ export default function StockRequisitionPage() {
         const newItem: SRNItem = {
       itemId: item.id,
       sku: item.sku,
+      barcode: item.barCode || item.barcode || null,
       description: item.description || '',
       color: item.color?.name || null,
       size: item.size?.name || null,
@@ -416,6 +418,7 @@ export default function StockRequisitionPage() {
           const parsedItems: SRNItem[] = validList.map((item: any) => ({
             itemId: item.itemId,
             sku: item.sku,
+            barcode: item.barcode || null,
             description: item.description || '',
             color: item.color || null,
             size: item.size || null,
@@ -569,6 +572,7 @@ export default function StockRequisitionPage() {
       req.items.map((item: any) => ({
         itemId: item.itemId,
         sku: item.item.sku,
+        barcode: item.item.barCode || item.item.barcode || null,
         description: item.item.description || '',
         color: item.item.color?.name || null,
         size: item.item.size?.name || null,
@@ -1325,6 +1329,7 @@ export default function StockRequisitionPage() {
                       <TableHeader className="bg-gray-50/50">
                         <TableRow>
                           <TableHead className="font-bold">SKU</TableHead>
+                          <TableHead className="font-bold">Barcode</TableHead>
                           <TableHead className="font-bold">Description</TableHead>
                           <TableHead className="font-bold">Color/Size</TableHead>
                           <TableHead className="font-bold w-[150px]">Req Quantity</TableHead>
@@ -1335,6 +1340,7 @@ export default function StockRequisitionPage() {
                         {requisitionItems.map((item) => (
                           <TableRow key={item.itemId} className="hover:bg-gray-50/40">
                             <TableCell className="font-bold text-gray-800">{item.sku}</TableCell>
+                            <TableCell className="font-medium text-gray-700">{item.barcode || '—'}</TableCell>
                             <TableCell className="max-w-[250px] truncate">{item.description}</TableCell>
                             <TableCell>
                               <div className="flex gap-1.5">
@@ -1445,6 +1451,7 @@ export default function StockRequisitionPage() {
                     <TableHeader className="bg-gray-100/60">
                       <TableRow>
                         <TableHead className="font-bold">SKU</TableHead>
+                        <TableHead className="font-bold">Barcode</TableHead>
                         <TableHead className="font-bold">Description</TableHead>
                         <TableHead className="font-bold w-[120px] text-center">Req Qty</TableHead>
                         {selectedRequisition.status !== 'PENDING' && (
@@ -1465,6 +1472,7 @@ export default function StockRequisitionPage() {
                         return (
                           <TableRow key={item.id}>
                             <TableCell className="font-semibold">{item.item?.sku}</TableCell>
+                            <TableCell className="font-medium text-gray-700">{item.item?.barCode || item.item?.barcode || '—'}</TableCell>
                             <TableCell className="max-w-[200px] truncate">{item.item?.description}</TableCell>
                             <TableCell className="text-center font-semibold">{originalQty}</TableCell>
                             {selectedRequisition.status !== 'PENDING' && (
@@ -1906,6 +1914,7 @@ export default function StockRequisitionPage() {
           const parsedItems: SRNItem[] = importedList.map((item: any) => ({
             itemId: item.itemId,
             sku: item.sku,
+            barcode: item.barcode || null,
             description: item.description || '',
             color: item.color || null,
             size: item.size || null,
