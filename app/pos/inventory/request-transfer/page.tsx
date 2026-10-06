@@ -578,8 +578,10 @@ function RequestTransferForm() {
                               key={item.id}
                               className="flex justify-between text-[11px]"
                             >
-                              <span className="truncate max-w-[200px] text-foreground">
+                              <span className="truncate max-w-[200px] text-foreground" title={`${item.sku} - ${item.description}`}>
                                 {item.sku} - {item.description}
+                                {item.barCode && ` (${item.barCode})`}
+                                {item.uniqueNo && ` (${item.uniqueNo})`}
                               </span>
                               <span className="font-bold text-foreground flex-none ml-2">
                                 {item.quantity} Units
@@ -753,6 +755,8 @@ function RequestTransferForm() {
                                   <span className="font-bold text-foreground text-sm tracking-tight">
                                     {item.sku}
                                   </span>
+                                  {item.barCode && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 font-mono">{item.barCode}</span>}
+                                  {item.uniqueNo && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 font-mono">{item.uniqueNo}</span>}
                                   {item.size && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 ring-1 ring-inset ring-indigo-700/10 dark:ring-indigo-300/20">
                                       Size: {item.size}

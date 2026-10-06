@@ -199,7 +199,7 @@ function MasterSidebarContent({
                       : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                   )}
                 >
-                  <span className="truncate">{entry.title}</span>
+                  <span className="truncate flex-1 min-w-0">{entry.title}</span>
                   {isActive && (
                     <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
                   )}
@@ -371,7 +371,7 @@ function SubMenuItem({ item, pathname, pendingCounts }: { item: MenuItem; pathna
             "cursor-pointer w-full flex items-center justify-between pr-2 min-w-0",
             hasActiveChild && "font-semibold text-sidebar-foreground",
           )}>
-            <span className="truncate flex-1 text-left">{item.title}</span>
+            <span className="truncate flex-1 min-w-0 text-left">{item.title}</span>
             <ChevronRight className="shrink-0 h-4 w-4 transition-transform group-data-[state=open]/submenu:rotate-90" />
           </SidebarMenuSubButton>
         </CollapsibleTrigger>
@@ -398,7 +398,7 @@ function SubMenuItem({ item, pathname, pendingCounts }: { item: MenuItem; pathna
       )}
     >
       <Link href={item.href || "#"} transitionTypes={["nav-forward"]} className="flex items-center justify-between w-full min-w-0 gap-2">
-        <span className="truncate flex-1 text-left">{item.title}</span>
+        <span className="truncate flex-1 min-w-0 text-left">{item.title}</span>
         {item.badgeKey && pendingCounts?.[item.badgeKey] ? (
           <span className="ml-2 inline-flex items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm min-w-[20px]">
             {pendingCounts[item.badgeKey]}
@@ -527,7 +527,7 @@ function MenuItemComponent({
                   hasActiveChild && "text-primary",
                 )} />
               )}
-              <span className="truncate flex-1 text-left">{item.title}</span>
+              <span className="truncate flex-1 min-w-0 text-left">{item.title}</span>
               <ChevronRight className="shrink-0 ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
             </SidebarMenuButton>
           </CollapsibleTrigger>
@@ -567,7 +567,7 @@ function MenuItemComponent({
                 )}
               />
             )}
-            <span className="relative z-10 truncate flex-1 text-left">{item.title}</span>
+            <span className="relative z-10 truncate flex-1 min-w-0 text-left">{item.title}</span>
           </div>
           {item.badgeKey && pendingCounts?.[item.badgeKey] ? (
             <span className="inline-flex items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm min-w-[20px]">

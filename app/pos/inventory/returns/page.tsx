@@ -649,6 +649,11 @@ export default function ReturnRequestsPage() {
                                                                         {item.barCode}
                                                                     </Badge>
                                                                 )}
+                                                                {item.uniqueNo && (
+                                                                    <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium font-mono text-purple-600 bg-purple-50 border-purple-200">
+                                                                        {item.uniqueNo}
+                                                                    </Badge>
+                                                                )}
                                                                 {item.size?.name && (
                                                                     <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium">
                                                                         Size: {item.size.name}
@@ -707,7 +712,11 @@ export default function ReturnRequestsPage() {
                                                 {cart.map(({ item, quantity }) => (
                                                     <div key={item.id} className="p-4 flex items-center justify-between gap-4">
                                                         <div className="min-w-0 flex-1">
-                                                            <p className="font-mono text-xs font-bold text-orange-600 mb-0.5">{item.sku}</p>
+                                                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                                                <p className="font-mono text-xs font-bold text-orange-600">{item.sku}</p>
+                                                                {item.barCode && <span className="text-[10px] text-blue-600 font-medium px-1 bg-blue-50 rounded border border-blue-200 font-mono">{item.barCode}</span>}
+                                                                {item.uniqueNo && <span className="text-[10px] text-purple-600 font-medium px-1 bg-purple-50 rounded border border-purple-200 font-mono">{item.uniqueNo}</span>}
+                                                            </div>
                                                             <h4 className="text-sm font-semibold text-foreground truncate">{item.description}</h4>
                                                             <div className="flex items-center gap-2 mt-1.5">
                                                                 {item.size?.name && (
@@ -964,7 +973,10 @@ export default function ReturnRequestsPage() {
                                                                     <div className="flex flex-col gap-1 mt-1.5 w-full">
                                                                         {(request.items || []).slice(0, 3).map((i: any, idx: number) => (
                                                                             <div key={i.id || idx} className="flex justify-between items-center text-[10px] bg-gray-50/80 p-1 px-1.5 rounded border border-gray-100">
-                                                                                <span className="truncate flex-1 mr-2 text-gray-600 font-medium" title={i.item?.description}>{i.item?.description || "Unknown Item"}</span>
+                                                                                <span className="truncate flex-1 mr-2 text-gray-600 font-medium" title={i.item?.description}>
+                                                                                    {i.item?.description || "Unknown Item"}
+                                                                                    {i.item?.uniqueNo ? ` (${i.item.uniqueNo})` : i.item?.barCode ? ` (${i.item.barCode})` : ''}
+                                                                                </span>
                                                                                 <span className="font-bold text-gray-900 ml-2">x{i.quantity}</span>
                                                                             </div>
                                                                         ))}
