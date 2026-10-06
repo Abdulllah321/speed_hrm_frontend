@@ -290,51 +290,105 @@ export function OnlineOrderList() {
 
             {/* View Items Dialog */}
             <Dialog open={!!viewItemsOrder} onOpenChange={(o) => !o && setViewItemsOrder(null)}>
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[90vw] md:max-w-4xl lg:max-w-6xl max-h-[90vh] flex flex-col overflow-hidden p-4 md:p-6">
                     <DialogHeader>
-                        <DialogTitle>Order Items - {viewItemsOrder?.orderNumber}</DialogTitle>
+                        <DialogTitle className="flex items-center justify-between">
+                            <span>Order Details - {viewItemsOrder?.orderNumber}</span>
+                            {viewItemsOrder?.items?.[0]?.itemStatus && (
+                                <span className="bg-primary/10 text-primary px-2 py-1 rounded text-sm">
+                                    {viewItemsOrder.items[0].itemStatus}
+                                </span>
+                            )}
+                        </DialogTitle>
                         <DialogDescription>
-                            Viewing items for customer {viewItemsOrder?.customerName}
+                            Viewing complete order details
                         </DialogDescription>
                     </DialogHeader>
                     {viewItemsOrder && (
-                        <div className="mt-4">
-                            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                        <div className="mt-4 flex-1 overflow-hidden flex flex-col gap-4">
+                            {/* Order Info Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/20 rounded-lg border text-sm">
+                                <div>
+                                    <p className="text-muted-foreground text-xs">Customer</p>
+                                    <p className="font-medium">{viewItemsOrder.customerName || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground text-xs">Phone</p>
+                                    <p className="font-medium">{viewItemsOrder.items?.[0]?.phone || 'N/A'}</p>
+                                </div>
+                                <div className="md:col-span-2 overflow-hidden">
+                                    <p className="text-muted-foreground text-xs">Email</p>
+                                    <p className="font-medium break-all">{viewItemsOrder.items?.[0]?.email || 'N/A'}</p>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <p className="text-muted-foreground text-xs">Address</p>
+                                    <p className="font-medium">{viewItemsOrder.items?.[0]?.address || 'N/A'}, {viewItemsOrder.city}</p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground text-xs">Marketplace / Channel</p>
+                                    <p className="font-medium">{viewItemsOrder.items?.[0]?.marketplace || 'N/A'} / {viewItemsOrder.items?.[0]?.channel || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground text-xs">Order Date</p>
+                                    <p className="font-medium">
+                                        {viewItemsOrder.items?.[0]?.orderedAt ? new Date(viewItemsOrder.items[0].orderedAt).toLocaleDateString() : 'N/A'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground text-xs">Payment Method</p>
+                                    <p className="font-medium">{viewItemsOrder.items?.[0]?.paymentMethod || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground text-xs">Tracking Number</p>
+                                    <p className="font-medium">{viewItemsOrder.items?.[0]?.trackingNumber || 'N/A'}</p>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <p className="text-muted-foreground text-xs">Note</p>
+                                    <p className="font-medium">{viewItemsOrder.items?.[0]?.note || 'N/A'}</p>
+                                </div>
+                            </div>
+
+                            <p className="font-semibold text-sm">Order Items</p>
+                            <div className="space-y-3 flex-1 overflow-y-auto pr-2">
                                 {viewItemsOrder.items?.map((item: any, i: number) => (
-                                    <div key={i} className="flex items-center justify-between bg-muted/30 p-3 rounded-lg border shadow-sm">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-10 w-10 bg-muted rounded-md flex items-center justify-center text-xs text-muted-foreground overflow-hidden">
+                                    <div key={i} className="flex items-start justify-between bg-muted/30 p-3 rounded-lg border shadow-sm gap-3 w-full">
+                                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                                            <div className="h-10 w-10 flex-shrink-0 bg-muted/50 border rounded-md flex items-center justify-center text-[10px] font-bold text-muted-foreground overflow-hidden">
                                                 {item.brand ? item.brand.substring(0, 3).toUpperCase() : 'SKU'}
                                             </div>
-                                            <div>
-                                                <p className="font-medium text-sm">{item.name || item.sku || 'Unknown Item'}</p>
-                                                <div className="flex gap-2 text-xs text-muted-foreground mt-1">
-                                                    <span className="bg-background border px-1.5 py-0.5 rounded">SKU: {item.sku}</span>
-                                                    {item.size && <span className="bg-background border px-1.5 py-0.5 rounded">Size: {item.size}</span>}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-semibold text-sm truncate">{item.name || item.sku || 'Unknown Item'}</p>
+                                                <div className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground mt-1.5">
+                                                    <span className="bg-background/80 border px-1.5 py-0.5 rounded break-words">SKU: {item.sku}</span>
+                                                    {item.barcode && <span className="bg-background/80 border px-1.5 py-0.5 rounded text-blue-600 break-all">BC: {item.barcode}</span>}
+                                                    {item.systemSku && <span className="bg-background/80 border px-1.5 py-0.5 rounded break-words">Sys SKU: {item.systemSku}</span>}
+                                                    {item.size && <span className="bg-background/80 border px-1.5 py-0.5 rounded">Size: {item.size}</span>}
+                                                    {item.couponCode && <span className="bg-background/80 border px-1.5 py-0.5 rounded text-green-600 font-medium">Coupon: {item.couponCode}</span>}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-semibold text-sm">Rs {item.price?.toLocaleString() || 0} <span className="text-muted-foreground font-normal text-xs">x {item.qty}</span></p>
-                                            {item.skuDiscounted > 0 && (
-                                                <p className="text-xs text-destructive">Disc: -Rs {item.skuDiscounted}</p>
+                                        <div className="text-right flex-shrink-0 whitespace-nowrap pt-0.5">
+                                            <p className="font-bold text-sm">Rs {Number(item.price || 0).toLocaleString()} <span className="text-muted-foreground font-medium text-xs ml-0.5">x {item.qty}</span></p>
+                                            <p className="text-[11px] text-muted-foreground mt-0.5">SubTotal: Rs {Number(item.subTotalPrice || 0).toLocaleString()}</p>
+                                            {Number(item.skuDiscounted || 0) > 0 && (
+                                                <p className="text-[11px] font-medium text-destructive">Disc: -Rs {Number(item.skuDiscounted).toLocaleString()}</p>
                                             )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            <div className="mt-5 pt-4 border-t flex justify-end gap-6 text-sm bg-muted/10 rounded-b-lg">
+                            <div className="pt-4 border-t flex flex-wrap justify-end gap-6 text-sm bg-muted/10 rounded-b-lg p-4">
                                 <div className="text-right">
                                     <p className="text-muted-foreground">Subtotal</p>
-                                    <p className="font-medium">Rs {viewItemsOrder.items?.reduce((sum: number, item: any) => sum + (item.subTotalPrice || 0), 0).toLocaleString()}</p>
+                                    <p className="font-medium">Rs {viewItemsOrder.items?.reduce((sum: number, item: any) => sum + Number(item.subTotalPrice || 0), 0).toLocaleString()}</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-muted-foreground">Shipping</p>
-                                    <p className="font-medium">Rs {viewItemsOrder.items?.[0]?.shippingCharges || 0}</p>
+                                    <p className="font-medium">Rs {Number(viewItemsOrder.items?.[0]?.shippingCharges || 0).toLocaleString()}</p>
                                 </div>
                                 <div className="text-right pl-4 border-l">
                                     <p className="text-muted-foreground">Grand Total</p>
-                                    <p className="font-bold text-lg text-primary">Rs {viewItemsOrder.orderTotal?.toLocaleString() || 0}</p>
+                                    <p className="font-bold text-lg text-primary">Rs {Number(viewItemsOrder.orderTotal || 0).toLocaleString()}</p>
                                 </div>
                             </div>
                         </div>
