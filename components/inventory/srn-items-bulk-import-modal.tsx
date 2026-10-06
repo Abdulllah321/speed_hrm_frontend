@@ -409,7 +409,10 @@ export function SrnItemsBulkImportModal({
                           <TableBody>
                             {skippedItems.map((item, idx) => (
                               <TableRow key={idx} className="hover:bg-rose-50/30 text-xs">
-                                <TableCell className="font-mono font-bold text-rose-700">{item.sku}</TableCell>
+                                <TableCell className="font-mono font-bold text-rose-700">
+                                  <div>{item.sku}</div>
+                                  {item.barcode && <div className="text-[10px] font-normal text-muted-foreground">{item.barcode}</div>}
+                                </TableCell>
                                 <TableCell className="max-w-[200px] truncate text-gray-700">{item.description || '—'}</TableCell>
                                 <TableCell className="text-center font-bold">{item.requestedQty || 0}</TableCell>
                                 <TableCell className="text-center font-bold text-rose-600">{item.availableStock || 0}</TableCell>
