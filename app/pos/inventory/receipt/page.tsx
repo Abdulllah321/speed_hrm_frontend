@@ -294,13 +294,15 @@ export default function StockReceiptPage() {
                     <tbody>
                         ${transfer.items.map((item: any, idx: number) => {
                             const sku = item.item?.sku || "—";
+                            const barCodeHtml = item.item?.barCode ? `<br><span style="color:#2563eb; font-size: 8px;">${item.item.barCode}</span>` : "";
+                            const uniqueNoHtml = item.item?.uniqueNo ? `<br><span style="color:#9333ea; font-size: 8px;">${item.item.uniqueNo}</span>` : "";
                             const desc = item.item?.description || "Item";
                             const sizeStr = item.item?.size?.name || item.item?.size || "—";
                             const colorStr = item.item?.color?.name || item.item?.color || "—";
                             return `
                                 <tr>
                                     <td>${idx + 1}</td>
-                                    <td class="font-bold">${sku}</td>
+                                    <td class="font-bold">${sku}${barCodeHtml}${uniqueNoHtml}</td>
                                     <td class="uppercase">${desc}</td>
                                     <td class="text-center">${sizeStr} / ${colorStr}</td>
                                     <td class="text-right font-bold">${Number(item.quantity)}</td>
@@ -463,7 +465,10 @@ export default function StockReceiptPage() {
                                                             <div className="flex flex-col gap-1 mt-1.5 w-full">
                                                                 {(transfer.items || []).slice(0, 3).map((i: any, idx: number) => (
                                                                     <div key={i.id || idx} className="flex justify-between items-center text-[10px] bg-gray-50/80 p-1 px-1.5 rounded border border-gray-100">
-                                                                        <span className="truncate flex-1 mr-2 text-gray-600 font-medium" title={i.item?.description}>{i.item?.description || "Unknown Item"}</span>
+                                                                        <span className="truncate flex-1 mr-2 text-gray-600 font-medium" title={i.item?.description}>
+                                                                            {i.item?.description || "Unknown Item"}
+                                                                            {i.item?.uniqueNo ? ` (${i.item.uniqueNo})` : i.item?.barCode ? ` (${i.item.barCode})` : ''}
+                                                                        </span>
                                                                         <span className="font-bold text-gray-900 ml-2">x{i.quantity}</span>
                                                                     </div>
                                                                 ))}
@@ -474,8 +479,10 @@ export default function StockReceiptPage() {
                                                                 )}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-[10px] text-muted-foreground mt-0.5 font-medium">
-                                                                SKU: {firstItem?.sku || "N/A"}
+                                                            <span className="text-[10px] text-muted-foreground mt-0.5 font-medium flex items-center gap-2 flex-wrap">
+                                                                <span>SKU: {firstItem?.sku || "N/A"}</span>
+                                                                {firstItem?.barCode && <span className="text-blue-600 bg-blue-50 px-1 rounded border border-blue-100">{firstItem.barCode}</span>}
+                                                                {firstItem?.uniqueNo && <span className="text-purple-600 bg-purple-50 px-1 rounded border border-purple-100">{firstItem.uniqueNo}</span>}
                                                             </span>
                                                         )}
                                                         {transfer.notes && <span className="text-[10px] text-green-700 font-medium line-clamp-1 mt-1 bg-green-50 p-1 px-2 rounded w-fit" title={transfer.notes}>Notes: {transfer.notes}</span>}

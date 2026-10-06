@@ -200,69 +200,69 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/unit-of-measurement/list" },
     ],
   },
-  {
-    title: "Demand Type",
-    environment: "MASTER",
-    module: "ERP",
-    permissions: ["master.demand-type.read", "master.demand-type.create"],
-    children: [
-      { title: "Add", href: "/master/demand-type/add" },
-      { title: "View", href: "/master/demand-type/list" },
-    ],
-  },
-  {
-    title: "Warehouse",
-    environment: "MASTER",
-    module: "ERP",
-    permissions: ["master.warehouse.read", "master.warehouse.create"],
-    children: [
-      { title: "Add", href: "/master/warehouse/add" },
-      { title: "View", href: "/master/warehouse/list" },
-    ],
-  },
-  {
-    title: "Salesman",
-    environment: "MASTER",
-    module: "ERP",
-    permissions: ["master.salesman.read", "master.salesman.create"],
-    children: [
-      { title: "Add", href: "/master/salesman/add" },
-      { title: "View", href: "/master/salesman/list" },
-    ],
-  },
-  {
-    title: "Cluster",
-    environment: "MASTER",
-    module: "ERP",
-    permissions: ["master.cluster.read", "master.cluster.create"],
-    children: [
-      { title: "Add", href: "/master/cluster/add" },
-      { title: "View", href: "/master/cluster/list" },
-    ],
-  },
-  {
-    title: "Opening Inventory",
-    environment: "MASTER",
-    module: "ERP",
-    permissions: [
-      "master.opening-inventory.read",
-      "master.opening-inventory.create",
-    ],
-    children: [
-      { title: "Add", href: "/master/opening-inventory/add" },
-      { title: "View", href: "/master/opening-inventory/list" },
-    ],
-  },
-  {
-    title: "Vendor Opening",
-    environment: "MASTER",
-    module: "ERP",
-    permissions: ["master.vendor-opening.read", "master.vendor-opening.create"],
-    children: [
-      { title: "Add", href: "/master/vendor-opening/add" },
-      { title: "View", href: "/master/vendor-opening/list" },
-    ],
-  },
+  // {
+  //   title: "Demand Type",
+  //   environment: "MASTER",
+  //   module: "ERP",
+  //   permissions: ["master.demand-type.read", "master.demand-type.create"],
+  //   children: [
+  //     { title: "Add", href: "/master/demand-type/add" },
+  //     { title: "View", href: "/master/demand-type/list" },
+  //   ],
+  // },
+  // {
+  //   title: "Warehouse",
+  //   environment: "MASTER",
+  //   module: "ERP",
+  //   permissions: ["master.warehouse.read", "master.warehouse.create"],
+  //   children: [
+  //     { title: "Add", href: "/master/warehouse/add" },
+  //     { title: "View", href: "/master/warehouse/list" },
+  //   ],
+  // },
+  // {
+  //   title: "Salesman",
+  //   environment: "MASTER",
+  //   module: "ERP",
+  //   permissions: ["master.salesman.read", "master.salesman.create"],
+  //   children: [
+  //     { title: "Add", href: "/master/salesman/add" },
+  //     { title: "View", href: "/master/salesman/list" },
+  //   ],
+  // },
+  // {
+  //   title: "Cluster",
+  //   environment: "MASTER",
+  //   module: "ERP",
+  //   permissions: ["master.cluster.read", "master.cluster.create"],
+  //   children: [
+  //     { title: "Add", href: "/master/cluster/add" },
+  //     { title: "View", href: "/master/cluster/list" },
+  //   ],
+  // },
+  // {
+  //   title: "Opening Inventory",
+  //   environment: "MASTER",
+  //   module: "ERP",
+  //   permissions: [
+  //     "master.opening-inventory.read",
+  //     "master.opening-inventory.create",
+  //   ],
+  //   children: [
+  //     { title: "Add", href: "/master/opening-inventory/add" },
+  //     { title: "View", href: "/master/opening-inventory/list" },
+  //   ],
+  // },
+  // {
+  //   title: "Vendor Opening",
+  //   environment: "MASTER",
+  //   module: "ERP",
+  //   permissions: ["master.vendor-opening.read", "master.vendor-opening.create"],
+  //   children: [
+  //     { title: "Add", href: "/master/vendor-opening/add" },
+  //     { title: "View", href: "/master/vendor-opening/list" },
+  //   ],
+  // },
   {
     title: "Tax Rate",
     environment: "MASTER",
@@ -748,7 +748,7 @@ export const menuData: MenuItem[] = [
         ],
       },
       {
-        title: "Retail Sale Receipt Voucher (RSRV)",
+        title: "RSRV",
         permissions: ["erp.finance.receipt-voucher.read"],
         children: [
           {
@@ -905,7 +905,7 @@ export const menuData: MenuItem[] = [
             ],
           },
           {
-            title: "Delivery Note",
+            title: "STN",
             href: "/erp/inventory/transactions/delivery-note",
             permissions: [
               "erp.inventory.delivery-note.read",

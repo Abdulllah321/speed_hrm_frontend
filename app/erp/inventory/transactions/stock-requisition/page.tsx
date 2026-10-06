@@ -788,10 +788,12 @@ export default function StockRequisitionPage() {
   const completedCount = requisitions.filter((r) => r.status === 'COMPLETED').length;
 
   const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
-  const locationOptions = locations.map((l) => ({
-    value: l.id,
-    label: l.code ? `${l.code} · ${l.name}` : l.name,
-  }));
+  const locationOptions = locations
+    .filter((l: any) => l.isStockLocation || l.warehouseId || (l.name && l.name.toLowerCase().includes('warehouse')))
+    .map((l: any) => ({
+      value: l.id,
+      label: l.code ? `${l.code} · ${l.name}` : l.name,
+    }));
   const brandOptions = [
     { value: 'none', label: 'No Brand Filter' },
     ...brands.map((b) => ({ value: b.id, label: b.name })),
@@ -1074,7 +1076,7 @@ export default function StockRequisitionPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Destination Location (Shop/Outlet)</Label>
+                  <Label>Destination Location (Shop / Warehouse)</Label>
                   <Autocomplete
                     options={locationOptions}
                     value={destLocationId}
