@@ -690,16 +690,22 @@ export default function CheckoutPage() {
     orderDiscount = appliedCoupon.discountAmount;
   } else if (discountMode === "manual") {
     if (manualDiscountType === "percent") {
-      // Cap at 50%
-      const cappedPct = Math.min(manualDiscountValue, 50);
-      orderDiscount = Math.round(subtotal * (cappedPct / 100) * 100) / 100;
+      // Cap at 100%
+      const cappedPct = Math.min(manualDiscountValue, 100);
+      // Calculate what 10% of WOST is (e.g. 10% of 26400 = 2640)
+      const targetDiscountOnGrandTotal = Math.round(subtotal * (cappedPct / 100) * 100) / 100;
+      // To reduce the Grand Total by 2640, we must apply a proportionally smaller discount to WOST
+      if (grandTotalBeforeManual > 0) {
+        orderDiscount = Math.round(targetDiscountOnGrandTotal * (subtotal / grandTotalBeforeManual) * 100) / 100;
+      } else {
+        orderDiscount = 0;
+      }
     } else {
-      // Flat amount (WST) capped at 50% of grand total before manual discount
-      const maxFlat = Math.round(grandTotalBeforeManual * 0.5 * 100) / 100;
+      // Flat amount off the Grand Total
+      const maxFlat = Math.round(grandTotalBeforeManual * 1.0 * 100) / 100;
       const cappedWstDiscount = Math.min(manualDiscountValue, maxFlat);
-      const totalWstPrice = cartItems.reduce((acc, i) => acc + i.price * i.quantity, 0);
-      if (totalWstPrice > 0) {
-        orderDiscount = Math.round(cappedWstDiscount * (subtotal / totalWstPrice) * 100) / 100;
+      if (grandTotalBeforeManual > 0) {
+        orderDiscount = Math.round(cappedWstDiscount * (subtotal / grandTotalBeforeManual) * 100) / 100;
       } else {
         orderDiscount = 0;
       }
