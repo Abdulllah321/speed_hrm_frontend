@@ -1305,7 +1305,7 @@ function ReceiptBody({
                   gap: "0 4px",
                 }}
               >
-                <span className="text-zinc-955 truncate">{uniqueNo}</span>
+                <span className="text-zinc-955 break-all">{uniqueNo}</span>
                 <span style={{ textAlign: "center" }}>{item.size || "—"}</span>
                 <span style={{ textAlign: "center", fontWeight: "bold" }}>
                   {item.quantity}

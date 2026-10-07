@@ -33,6 +33,7 @@ interface OrderSummaryProps {
     onCustomerChange: (val: string) => void;
     onCustomerSearch: (val: string) => void;
     onAddCustomer: () => void;
+    onEditCustomer: () => void;
     onClearCustomer: () => void;
     // Cart items
     cartItems: CartItem[];
@@ -46,7 +47,7 @@ export function OrderSummary({
     cashiers, selectedCashierId, isLoadingCashiers, onCashierChange, salesmanError,
     customers, selectedCustomer, customerSearch, isLoadingCustomers,
     requireCustomer, canAddCustomer, onCustomerChange, onCustomerSearch,
-    onAddCustomer, onClearCustomer,
+    onAddCustomer, onEditCustomer, onClearCustomer,
     cartItems, discountMode, orderDiscount, allianceSharePerItem, fmtCurrency,
 }: OrderSummaryProps) {
     const [showDropdown, setShowDropdown] = React.useState(false);
@@ -248,12 +249,21 @@ export function OrderSummary({
                                 <p className="text-[10px] text-muted-foreground mt-1 truncate">{selectedCustomer.contactNo}</p>
                             )}
                         </div>
-                        <button
-                            onClick={onClearCustomer}
-                            className="text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                            <Trash2 className="h-3 w-3" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={onEditCustomer}
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                                title="Edit Customer"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            </button>
+                            <button
+                                onClick={onClearCustomer}
+                                className="text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                                <Trash2 className="h-3 w-3" />
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

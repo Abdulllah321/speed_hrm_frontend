@@ -144,7 +144,13 @@ export function PaymentPanel({
                             className="mt-1 font-mono"
                             placeholder={`${fmtCurrency(balanceDue)}`}
                             value={tenderAmount || ""}
-                            onChange={(e) => onTenderAmountChange(parseFloat(e.target.value) || 0)}
+                            onChange={(e) => {
+                                let val = parseFloat(e.target.value) || 0;
+                                if (tenderMethod !== "cash" && val > balanceDue) {
+                                    val = balanceDue;
+                                }
+                                onTenderAmountChange(val);
+                            }}
                             onKeyDown={(e) => e.key === "Enter" && onAddTender()}
                         />
                     </div>

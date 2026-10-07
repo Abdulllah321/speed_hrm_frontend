@@ -104,11 +104,13 @@ function AddCustomerModal({
   onOpenChange,
   onSuccess,
   existingCustomers = [],
+  initialData,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (customer: Customer) => void;
   existingCustomers?: Customer[];
+  initialData?: Customer | null;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -125,12 +127,23 @@ function AddCustomerModal({
 
   // Reset form when modal opens/closes
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      if (initialData) {
+        setFormData({
+          name: initialData.name || "",
+          contactNo: initialData.contactNo || "",
+          email: initialData.email || "",
+          cnicNo: initialData.cnicNo || "",
+        });
+      } else {
+        setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
+      }
+    } else {
       setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
       setContactSuggestions([]);
       setShowSuggestions(false);
     }
-  }, [open]);
+  }, [open, initialData]);
 
   // Click outside suggestions popover
   useEffect(() => {
@@ -220,12 +233,15 @@ function AddCustomerModal({
       if (formData.email?.trim()) payload.email = formData.email.trim();
       if (formData.cnicNo?.trim()) payload.cnicNo = formData.cnicNo.trim();
 
-      const res = await authFetch("/pos-sales/customers", {
-        method: "POST",
+      const method = initialData ? "PUT" : "POST";
+      const url = initialData ? `/pos-sales/customers/${initialData.id}` : "/pos-sales/customers";
+
+      const res = await authFetch(url, {
+        method,
         body: payload,
       });
       if (res.ok && res.data?.status) {
-        toast.success("Customer added successfully");
+        toast.success(initialData ? "Customer updated successfully" : "Customer added successfully");
         onSuccess(res.data.data);
         onOpenChange(false);
         setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
@@ -243,7 +259,7 @@ function AddCustomerModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add New Customer</DialogTitle>
+          <DialogTitle>{initialData ? "Edit Customer" : "Add New Customer"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
@@ -376,7 +392,7 @@ function AddCustomerModal({
               ) : (
                 <Plus className="h-4 w-4 mr-2" />
               )}
-              Create Customer
+              {initialData ? "Save Changes" : "Create Customer"}
             </Button>
           </DialogFooter>
         </form>
@@ -441,6 +457,7 @@ export default function CheckoutPage() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
   // ── Discount state ─────────────────────────────────────────────────
   const [discountMode, setDiscountMode] = useState<DiscountMode>("none");
@@ -801,11 +818,14 @@ export default function CheckoutPage() {
   const addTender = () => {
     if (!tenderAmount || tenderAmount <= 0) return;
 
-    // Prevent total tender from exceeding the invoice amount
+    // Prevent total tender from exceeding the invoice amount (except for cash where change is given)
     const alreadyPaid = tenders.reduce((a, t) => a + t.amount, 0);
-    if (alreadyPaid + tenderAmount > grandTotal) {
+    const roundedTender = Math.round(tenderAmount * 1000) / 1000;
+    const roundedBalance = Math.round(Math.max(0, grandTotal - alreadyPaid) * 1000) / 1000;
+
+    if (tenderMethod !== "cash" && roundedTender > roundedBalance) {
       toast.error(
-        `Tender amount exceeds the invoice total of ${fmtCurrency(grandTotal)}. Maximum allowed: ${fmtCurrency(Math.max(0, grandTotal - alreadyPaid))}.`,
+        `Tender amount exceeds the remaining balance. Maximum allowed: ${fmtCurrency(roundedBalance)}.`
       );
       return;
     }
@@ -1776,14 +1796,17 @@ export default function CheckoutPage() {
           onBack={() => router.push("/pos/new-sale")}
         />
 
-        {/* Add Customer Modal */}
+        {/* Add/Edit Customer Modal */}
         <AddCustomerModal
           open={showAddCustomer}
           onOpenChange={setShowAddCustomer}
           existingCustomers={customers}
+          initialData={editingCustomer}
           onSuccess={(c) => {
             setCustomers((prev) => {
-              if (prev.some((x) => x.id === c.id)) return prev;
+              if (prev.some((x) => x.id === c.id)) {
+                return prev.map((x) => (x.id === c.id ? c : x));
+              }
               return [c, ...prev];
             });
             setSelectedCustomer(c);
@@ -1816,7 +1839,16 @@ export default function CheckoutPage() {
               }
             }}
             onCustomerSearch={setCustomerSearch}
-            onAddCustomer={() => setShowAddCustomer(true)}
+            onAddCustomer={() => {
+              setEditingCustomer(null);
+              setShowAddCustomer(true);
+            }}
+            onEditCustomer={() => {
+              if (selectedCustomer) {
+                setEditingCustomer(selectedCustomer);
+                setShowAddCustomer(true);
+              }
+            }}
             onClearCustomer={() => setSelectedCustomer(null)}
             cartItems={cartItems}
             discountMode={discountMode}
