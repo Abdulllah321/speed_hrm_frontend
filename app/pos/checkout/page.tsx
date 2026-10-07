@@ -660,17 +660,19 @@ export default function CheckoutPage() {
 
   if (discountMode === "alliance" && selectedAlliance) {
     let allianceDiscount = 0;
-    const allianceBase = subtotal;
+    
+    // Calculate what the target Alliance discount SHOULD be on the final Grand Total (WST)
+    const targetDiscountOnWST = Math.round(grandTotalBeforeManual * (Number(selectedAlliance.discountPercent) / 100));
+    
+    let cappedTarget = targetDiscountOnWST;
     if (selectedAlliance.maxDiscount) {
-      allianceDiscount = Math.min(
-        allianceBase * (Number(selectedAlliance.discountPercent) / 100),
-        Number(selectedAlliance.maxDiscount),
-      );
-    } else {
-      allianceDiscount =
-        allianceBase * (Number(selectedAlliance.discountPercent) / 100);
+      cappedTarget = Math.min(targetDiscountOnWST, Number(selectedAlliance.maxDiscount));
     }
-    allianceDiscount = Math.round(allianceDiscount * 100) / 100;
+
+    // Scale it down to WOST to prevent extra tax relief for the customer
+    if (grandTotalBeforeManual > 0) {
+      allianceDiscount = Math.round(cappedTarget * (subtotal / grandTotalBeforeManual) * 100) / 100;
+    }
 
     if (allianceDiscount >= itemDiscounts) {
       orderDiscount = allianceDiscount;
@@ -692,14 +694,8 @@ export default function CheckoutPage() {
     if (manualDiscountType === "percent") {
       // Cap at 100%
       const cappedPct = Math.min(manualDiscountValue, 100);
-      // Calculate what 10% of WOST is (e.g. 10% of 26400 = 2640)
-      const targetDiscountOnGrandTotal = Math.round(subtotal * (cappedPct / 100) * 100) / 100;
-      // To reduce the Grand Total by 2640, we must apply a proportionally smaller discount to WOST
-      if (grandTotalBeforeManual > 0) {
-        orderDiscount = Math.round(targetDiscountOnGrandTotal * (subtotal / grandTotalBeforeManual) * 100) / 100;
-      } else {
-        orderDiscount = 0;
-      }
+      // For percentage, just apply directly to WOST. A 10% discount on WOST naturally results in a 10% reduction in Grand Total.
+      orderDiscount = Math.round(subtotal * (cappedPct / 100) * 100) / 100;
     } else {
       // Flat amount off the Grand Total
       const maxFlat = Math.round(grandTotalBeforeManual * 1.0 * 100) / 100;
