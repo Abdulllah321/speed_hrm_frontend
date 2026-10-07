@@ -101,10 +101,10 @@ export async function generateSalesListExcel(opts: {
 
       const qty = item.quantity || 0;
       const unitPrice = item.unitPrice || 0;
-      const unitPriceWost = Number((item.priceWost !== undefined ? item.priceWost : unitPrice / 1.18).toFixed(2));
+      const unitPriceWost = Number((item.priceWost !== undefined ? item.priceWost : unitPrice / (1 + (item.taxPercent ?? 18) / 100)).toFixed(2));
       const valExcl = Number((item.valueExcl !== undefined ? item.valueExcl : qty * unitPriceWost).toFixed(2));
       const disc = item.discountAmount || 0;
-      const discWost = Number((item.discountAmountWost !== undefined ? item.discountAmountWost : disc / 1.18).toFixed(2));
+      const discWost = Number((item.discountAmountWost !== undefined ? item.discountAmountWost : disc / (1 + (item.taxPercent ?? 18) / 100)).toFixed(2));
       const amtAfterDisc = Number((item.amountAfterDiscount !== undefined ? item.amountAfterDiscount : Math.max(0, valExcl - discWost)).toFixed(2));
       const tax = item.taxAmount || 0;
       const valIncl = Number((item.valueIncl !== undefined ? item.valueIncl : (item.subTotal || 0)).toFixed(2));
@@ -365,7 +365,7 @@ export async function generateSalesListExcel(opts: {
       const invValExcl = Number((t.wostAmount !== undefined ? t.wostAmount : (invGross / 1.18)).toFixed(2));
       const invUnitPriceWost = invQty > 0 ? Number((invValExcl / invQty).toFixed(2)) : 0;
       const invDisc = t.discountAmount || 0;
-      const invDiscWost = Number((t.discountWostAmount !== undefined ? t.discountWostAmount : (inv.discountDetails?.wostDiscount || invDisc / 1.18)).toFixed(2));
+      const invDiscWost = Number((t.discountWostAmount !== undefined ? t.discountWostAmount : (inv.discountDetails?.wostDiscount || invdisc / (1 + (item.taxPercent ?? 18) / 100))).toFixed(2));
       const invAmtAfterDisc = Number((t.amountAfterDiscount !== undefined ? t.amountAfterDiscount : Math.max(0, invValExcl - invDiscWost)).toFixed(2));
       const invTax = t.taxAmount || 0;
       const invValIncl = t.netAmount || 0;
@@ -425,7 +425,7 @@ export async function generateSalesListExcel(opts: {
     const grandValExcl = Number((grandTotals.wostAmount !== undefined ? grandTotals.wostAmount : (grandGross / 1.18)).toFixed(2));
     const grandUnitPriceWost = grandQty > 0 ? Number((grandValExcl / grandQty).toFixed(2)) : 0;
     const grandDisc = grandTotals.discountAmount || 0;
-    const grandDiscWost = Number((grandTotals.discountWostAmount !== undefined ? grandTotals.discountWostAmount : (grandDisc / 1.18)).toFixed(2));
+    const grandDiscWost = Number((grandTotals.discountWostAmount !== undefined ? grandTotals.discountWostAmount : (granddisc / (1 + (item.taxPercent ?? 18) / 100))).toFixed(2));
     const grandAmtAfterDisc = Number((grandTotals.amountAfterDiscount !== undefined ? grandTotals.amountAfterDiscount : Math.max(0, grandValExcl - grandDiscWost)).toFixed(2));
 
     dataRows.push([

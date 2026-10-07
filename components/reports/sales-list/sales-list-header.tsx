@@ -130,8 +130,8 @@ export function SalesListHeader({ totals }: SalesListHeaderProps) {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Sales (WOST): ${formatCurr(totals.wostAmount ?? totals.grossAmount / 1.18)} | Retail: ${formatCurr(totals.grossAmount)}`}>
-                {formatCurr(totals.wostAmount ?? totals.grossAmount / 1.18)}
+              <p className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono truncate" title={`Gross Sales (WOST): ${formatCurr(totals.wostAmount ?? totals.grossAmount - (totals.taxAmount || 0))} | Retail: ${formatCurr(totals.grossAmount)}`}>
+                {formatCurr(totals.wostAmount ?? totals.grossAmount - (totals.taxAmount || 0))}
               </p>
               <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate" title={`Retail Gross: ${formatCurr(totals.grossAmount)}`}>
                 Retail: {formatCurr(totals.grossAmount)}
@@ -162,8 +162,8 @@ export function SalesListHeader({ totals }: SalesListHeaderProps) {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <p className="text-base font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Total Discounts (WOST): ${formatCurr(totals.discountWostAmount ?? totals.discountAmount / 1.18)} | Retail: ${formatCurr(totals.discountAmount)}`}>
-                {formatCurr(totals.discountWostAmount ?? totals.discountAmount / 1.18)}
+              <p className="text-base font-bold text-amber-900 dark:text-amber-100 mt-1 font-mono truncate" title={`Total Discounts (WOST): ${formatCurr(totals.discountWostAmount ?? totals.discountAmount - ((totals.discountAmount / (totals.grossAmount || 1)) * (totals.taxAmount || 0)))} | Retail: ${formatCurr(totals.discountAmount)}`}>
+                {formatCurr(totals.discountWostAmount ?? totals.discountAmount - ((totals.discountAmount / (totals.grossAmount || 1)) * (totals.taxAmount || 0)))}
               </p>
               <p className="text-[10px] text-amber-700/80 dark:text-amber-400 font-mono mt-0.5 truncate" title={`Retail Discount: ${formatCurr(totals.discountAmount)}`}>
                 Retail: {formatCurr(totals.discountAmount)}

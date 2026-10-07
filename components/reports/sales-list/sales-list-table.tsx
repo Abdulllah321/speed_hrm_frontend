@@ -82,11 +82,11 @@ function SaleInspectorDialog({
   const items = invoice.items || [];
 
   const grossVal = t.grossAmount || 0;
-  const valExcl = t.wostAmount !== undefined ? t.wostAmount : grossVal / 1.18;
+  const valExcl = t.wostAmount !== undefined ? t.wostAmount : (grossVal - (t.taxAmount || 0));
   const qty = t.totalItems || 0;
   const unitPriceWost = qty > 0 ? valExcl / qty : 0;
   const discVal = t.discountAmount || 0;
-  const discWost = disc?.wostDiscount ?? (t.discountWostAmount !== undefined ? t.discountWostAmount : discVal / 1.18);
+  const discWost = disc?.wostDiscount ?? (t.discountWostAmount !== undefined ? t.discountWostAmount : (discVal - ((discVal / (grossVal || 1)) * (t.taxAmount || 0))));
   const amtAfterDisc = t.amountAfterDiscount !== undefined ? t.amountAfterDiscount : Math.max(0, valExcl - discWost);
   const taxVal = t.taxAmount || 0;
   const valIncl = t.netAmount || 0;
@@ -548,7 +548,8 @@ function SaleInspectorDialog({
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[11px]">
                     {items.map((item, idx) => {
-                      const itemPriceWost = item.priceWost !== undefined ? item.priceWost : (item.unitPrice || 0) / 1.18;
+                      const taxDivisor = 1 + (item.taxPercent ?? 18) / 100;
+                      const itemPriceWost = item.priceWost !== undefined ? item.priceWost : (item.unitPrice || 0) / taxDivisor;
                       return (
                         <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 font-mono">
                           <td className="py-2 px-3 font-semibold text-slate-800 dark:text-slate-200">
@@ -1180,9 +1181,9 @@ export function SalesListTable({
 
   // Compute Grand Total Financial Calculations
   const grandGross = grandTotals.grossAmount || 0;
-  const grandValExcl = grandTotals.wostAmount !== undefined ? grandTotals.wostAmount : grandGross / 1.18;
+  const grandValExcl = grandTotals.wostAmount !== undefined ? grandTotals.wostAmount : (grandGross - (grandTotals.taxAmount || 0));
   const grandDisc = grandTotals.discountAmount || 0;
-  const grandDiscWost = grandTotals.discountWostAmount !== undefined ? grandTotals.discountWostAmount : grandDisc / 1.18;
+  const grandDiscWost = grandTotals.discountWostAmount !== undefined ? grandTotals.discountWostAmount : (grandDisc - ((grandDisc / (grandGross || 1)) * (grandTotals.taxAmount || 0)));
   const grandAmtAfterDisc = grandTotals.amountAfterDiscount !== undefined ? grandTotals.amountAfterDiscount : Math.max(0, grandValExcl - grandDiscWost);
   const grandTax = grandTotals.taxAmount || 0;
   const grandValIncl = grandTotals.netAmount || 0;
@@ -1538,16 +1539,17 @@ export function SalesListTable({
                   const rowUnitPrice = isItem
                     ? (item.unitPrice !== undefined && item.unitPrice !== null ? item.unitPrice : (qty > 0 ? rowGross / qty : 0))
                     : (qty > 0 ? rowGross / qty : 0);
+                  const taxDivisor = 1 + ((isItem ? item.taxPercent : undefined) ?? 18) / 100;
                   const rowUnitPriceWost = isItem
-                    ? (item.priceWost !== undefined ? item.priceWost : (item.unitPrice || 0) / 1.18)
-                    : (qty > 0 ? ((t.wostAmount !== undefined ? t.wostAmount : rowGross / 1.18) / qty) : 0);
+                    ? (item.priceWost !== undefined ? item.priceWost : (item.unitPrice || 0) / taxDivisor)
+                    : (qty > 0 ? ((t.wostAmount !== undefined ? t.wostAmount : (rowGross - (t.taxAmount || 0))) / qty) : 0);
                   const rowValExcl = isItem
                     ? (item.valueExcl !== undefined ? item.valueExcl : qty * rowUnitPriceWost)
-                    : (t.wostAmount !== undefined ? t.wostAmount : rowGross / 1.18);
+                    : (t.wostAmount !== undefined ? t.wostAmount : (rowGross - (t.taxAmount || 0)));
                   const rowDisc = isItem ? (item.discountAmount || 0) : t.discountAmount;
                   const rowDiscWost = isItem
-                    ? (item.discountAmountWost !== undefined ? item.discountAmountWost : rowDisc / 1.18)
-                    : (t.discountWostAmount !== undefined ? t.discountWostAmount : (disc?.wostDiscount ?? rowDisc / 1.18));
+                    ? (item.discountAmountWost !== undefined ? item.discountAmountWost : (rowDisc - ((rowDisc / (rowGross || 1)) * (t.taxAmount || 0))))
+                    : (t.discountWostAmount !== undefined ? t.discountWostAmount : (disc?.wostDiscount ?? (rowDisc - ((rowDisc / (rowGross || 1)) * (t.taxAmount || 0)))));
                   const rowAmtAfterDisc = isItem
                     ? (item.amountAfterDiscount !== undefined ? item.amountAfterDiscount : Math.max(0, rowValExcl - rowDiscWost))
                     : (t.amountAfterDiscount !== undefined ? t.amountAfterDiscount : Math.max(0, rowValExcl - rowDiscWost));
@@ -1597,7 +1599,7 @@ export function SalesListTable({
                   // Extract Manual Discount Details
                   const manualType = disc?.manualDiscountType === "PERCENT" ? "% Rate" : disc?.manualDiscountType === "FLAT_PKR" ? "Flat Amount" : (disc?.hasManualDiscount ? "Manual" : "-");
                   const manualVal = disc?.manualDiscountAmount ? disc.manualDiscountAmount.toLocaleString() : (disc?.manualDiscountPercent ? `${disc.manualDiscountPercent}%` : "-");
-                  const manualWost = disc?.manualDiscountAmount ? (disc.manualDiscountAmount / 1.18).toFixed(1) : "-";
+                  const manualWost = disc?.manualDiscountAmount ? (disc.manualDiscountAmount - (((disc.manualDiscountAmount || 0) / (rowGross || 1)) * (t.taxAmount || 0))).toFixed(1) : "-";
                   const manualNote = disc?.manualDiscountNote || "-";
 
                   // Extract Alliance Details
