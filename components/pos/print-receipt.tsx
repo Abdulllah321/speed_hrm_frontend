@@ -1282,7 +1282,9 @@ function ReceiptBody({
           valueIncludingTax = amtAfterDisc + tax;
         }
 
-        const uniqueNo = item.sku || item.upc || "—";
+        const uniqueNoBase = item.uniqueNo || item.sku || item.upc || "—";
+        const barCode = item.barCode || "";
+        const uniqueNo = barCode && barCode !== uniqueNoBase ? `${uniqueNoBase} / ${barCode}` : uniqueNoBase;
 
         return (
           <div
@@ -1736,12 +1738,16 @@ function A4InvoiceBody({
               const retailPrice = item.price;
               const wostPerUnit = retailPrice / (1 + taxPct / 100);
               const totalWost = wostPerUnit * item.quantity;
-              const uniqueNo = item.sku || item.upc || "—";
+              const uniqueNo = item.uniqueNo || item.sku || item.upc || "—";
+              const barCode = item.barCode || "";
 
               return (
                 <tr key={item.id ?? idx} className="align-top">
                   <td className="py-1.5 px-1 font-mono text-[10px]">
-                    {uniqueNo}
+                    <div>{uniqueNo}</div>
+                    {barCode && barCode !== uniqueNo && (
+                      <div className="text-[9px] text-zinc-500">{barCode}</div>
+                    )}
                   </td>
                   <td className="py-1.5 px-1">{item.name}</td>
                   {!isGiftReceipt && (
