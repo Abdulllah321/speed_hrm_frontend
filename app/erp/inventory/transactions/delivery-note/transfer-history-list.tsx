@@ -471,12 +471,28 @@ export function StockTransferHistoryList({
             cell: ({ row }) => {
                 const transfer = row.original;
                 return (
-                    <div className="font-mono font-bold text-sm flex items-center gap-2">
-                        {transfer.transferType === 'OUTLET_TO_WAREHOUSE' && (
-                            <RotateCcw className="h-4 w-4 text-orange-600 shrink-0" title="Outlet Return" />
-                        )}
-                        <HighlightText text={transfer.requestNo || ""} />
-                    </div>
+                    <div>
+                        <div className="font-mono font-bold text-sm flex items-center gap-2">
+                            {transfer.transferType === 'OUTLET_TO_WAREHOUSE' && (
+                                <RotateCcw className="h-4 w-4 text-orange-600 shrink-0" title="Outlet Return" />
+                            )}
+                            <HighlightText text={transfer.requestNo || ""} />
+                        </div>
+                        {(transfer.outboundNo || transfer.inboundNo) && (
+                            <div className="flex flex-col gap-0.5 mt-1">
+                            {transfer.outboundNo && (
+                                <span className="text-[11px] font-mono font-semibold text-orange-600 bg-orange-50 px-1 py-0.5 rounded w-fit">
+                                    OUT: {transfer.outboundNo}
+                                </span>
+                            )}
+                            {transfer.inboundNo && (
+                                <span className="text-[11px] font-mono font-semibold text-teal-600 bg-teal-50 px-1 py-0.5 rounded w-fit">
+                                    IN: {transfer.inboundNo}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
                 );
             },
         },
