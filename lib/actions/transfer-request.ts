@@ -99,6 +99,21 @@ export async function createOutletToOutletTransferRequest(data: {
     });
 }
 
+export async function createWarehouseToWarehouseTransferRequest(data: {
+    fromWarehouseId: string;
+    toWarehouseId: string;
+    items: { itemId: string; quantity: number }[];
+    notes?: string;
+    createdById?: string;
+}) {
+    return createTransferRequest({
+        ...data,
+        transferType: "WAREHOUSE_TO_WAREHOUSE",
+        fromLocationId: null,
+        toLocationId: null,
+    });
+}
+
 export async function updateTransferRequestStatus(id: string, status: string) {
     try {
         const response = await authFetch(`/transfer-request/${id}/status`, {
@@ -190,5 +205,15 @@ export async function getLocationReceipts(locationId: string, params?: { page?: 
     } catch (error) {
         console.error("Get location receipts error:", error);
         return { status: false, data: [], meta: null };
+    }
+}
+
+export async function getPendingCounts(locationId: string) {
+    try {
+        const response = await authFetch(`/transfer-request/pending-counts/${locationId}`);
+        return response.data ?? { status: false, data: {} };
+    } catch (error) {
+        console.error("Get pending counts error:", error);
+        return { status: false, data: {} };
     }
 }

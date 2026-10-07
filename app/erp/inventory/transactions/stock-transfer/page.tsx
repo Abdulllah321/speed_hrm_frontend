@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { warehouseApi, inventoryApi, locationApi, brandApi, categoryApi, silhouetteApi, genderApi, Warehouse, WarehouseLocation, stockRequisitionApi, transferRequestApi } from '@/lib/api';
-import { createTransferRequest, createReturnTransferRequest, createOutletToOutletTransferRequest } from '@/lib/actions/transfer-request';
+import { createTransferRequest, createReturnTransferRequest, createOutletToOutletTransferRequest, createWarehouseToWarehouseTransferRequest } from '@/lib/actions/transfer-request';
 import { getStockTransfers } from '@/lib/actions/stock-transfer';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History, RotateCcw, Trash2, Plus, CheckCircle2, Info, Loader2, WarehouseIcon, ArrowDown, Filter, X, ChevronDown, ChevronRight, ScanBarcode, Volume2, VolumeX, Keyboard, Sparkles, Printer, Truck, Bike, User } from 'lucide-react';
@@ -38,7 +38,8 @@ function StockTransferContent() {
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
     const [sourceLocationId, setSourceLocationId] = useState<string>('unassigned');
     const [destLocationId, setDestLocationId] = useState<string>('');
-    const [transferMode, setTransferMode] = useState<'WAREHOUSE_TO_OUTLET' | 'OUTLET_TO_WAREHOUSE' | 'OUTLET_TO_OUTLET'>('WAREHOUSE_TO_OUTLET');
+    const [destWarehouseId, setDestWarehouseId] = useState<string>('');
+    const [transferMode, setTransferMode] = useState<'WAREHOUSE_TO_OUTLET' | 'OUTLET_TO_WAREHOUSE' | 'OUTLET_TO_OUTLET' | 'WAREHOUSE_TO_WAREHOUSE'>('WAREHOUSE_TO_OUTLET');
     const [nextTransferNumber, setNextTransferNumber] = useState<string>('');
 
     // Dispatch & Courier State
@@ -735,8 +736,18 @@ function StockTransferContent() {
     };
 
     const handleTransfer = async () => {
-        if (selectedItems.length === 0 || !selectedWarehouseId || !destLocationId) {
-            toast.error('Please complete all fields and select at least one item');
+        if (selectedItems.length === 0 || !selectedWarehouseId) {
+            toast.error('Please select at least one item and a source');
+            return;
+        }
+
+        if (transferMode === 'WAREHOUSE_TO_WAREHOUSE' && !destWarehouseId) {
+            toast.error('Please select destination warehouse');
+            return;
+        }
+
+        if (transferMode !== 'WAREHOUSE_TO_WAREHOUSE' && !destLocationId) {
+            toast.error('Please complete all fields and select a destination');
             return;
         }
 
@@ -828,6 +839,15 @@ function StockTransferContent() {
                         ...dispatchPayload
                     });
                     toast.success('Outlet transfer request created! Awaiting dual approval.');
+                } else if (transferMode === 'WAREHOUSE_TO_WAREHOUSE') {
+                    await createWarehouseToWarehouseTransferRequest({
+                        fromWarehouseId: selectedWarehouseId,
+                        toWarehouseId: destWarehouseId,
+                        items: itemsToTransfer,
+                        notes: globalNotes,
+                        ...dispatchPayload
+                    });
+                    toast.success('Warehouse transfer request created! Awaiting dual approval.');
                 }
             }
 
@@ -862,14 +882,17 @@ function StockTransferContent() {
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">
                             {transferMode === 'WAREHOUSE_TO_OUTLET' ? 'Stock Transfer' :
-                                transferMode === 'OUTLET_TO_WAREHOUSE' ? 'Return Transfer' : 'Outlet Transfer'}
+                                transferMode === 'OUTLET_TO_WAREHOUSE' ? 'Return Transfer' : 
+                                transferMode === 'WAREHOUSE_TO_WAREHOUSE' ? 'Warehouse Transfer' : 'Outlet Transfer'}
                         </h1>
                         <p className="text-muted-foreground">
                             {transferMode === 'WAREHOUSE_TO_OUTLET'
                                 ? 'Move stock from warehouse to outlets.'
                                 : transferMode === 'OUTLET_TO_WAREHOUSE'
                                     ? 'Return stock from outlets to warehouse.'
-                                    : 'Transfer stock between outlets with dual approval.'
+                                    : transferMode === 'WAREHOUSE_TO_WAREHOUSE'
+                                        ? 'Transfer stock between two warehouses.'
+                                        : 'Transfer stock between outlets with dual approval.'
                             }
                         </p>
                     </div>
@@ -912,6 +935,19 @@ function StockTransferContent() {
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>Transfer stock between two outlets (requires dual approval)</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant={transferMode === 'WAREHOUSE_TO_WAREHOUSE' ? 'default' : 'outline'}
+                                onClick={() => { setTransferMode('WAREHOUSE_TO_WAREHOUSE'); setSelectedItems([]); }}
+                                className="font-bold"
+                            >
+                                <WarehouseIcon className="h-4 w-4 mr-2" /> Warehouse Transfer
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Transfer stock between two warehouses</TooltipContent>
                     </Tooltip>
 
                     <Tooltip>
@@ -1066,6 +1102,40 @@ function StockTransferContent() {
                                     <p className="text-xs text-orange-600 mt-1">
                                         Returned items will be restocked here
                                     </p>
+                                </div>
+                            </>
+                        ) : transferMode === 'WAREHOUSE_TO_WAREHOUSE' ? (
+                            <>
+                                <div className="space-y-1 p-3 bg-primary/5 rounded-md border border-primary/10">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Source (From)</Label>
+                                    <div className="flex items-center gap-2 font-semibold mb-2">
+                                        <WarehouseIcon className="h-4 w-4 text-primary" />
+                                        <span>Warehouse</span>
+                                    </div>
+                                    <Autocomplete
+                                        options={warehouseOptions}
+                                        value={selectedWarehouseId}
+                                        onValueChange={(val) => {
+                                            setSelectedWarehouseId(val);
+                                            loadLocations(val);
+                                            setSelectedItems([]);
+                                        }}
+                                        placeholder="Search source warehouse..."
+                                    />
+                                </div>
+
+                                <div className="flex justify-center py-1">
+                                    <ArrowRightLeft className="h-5 w-5 text-muted-foreground rotate-90" />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Destination Warehouse (To)</Label>
+                                    <Autocomplete
+                                        options={warehouseOptions.filter(w => w.value !== selectedWarehouseId)}
+                                        value={destWarehouseId}
+                                        onValueChange={setDestWarehouseId}
+                                        placeholder="Search destination warehouse..."
+                                    />
                                 </div>
                             </>
                         ) : (

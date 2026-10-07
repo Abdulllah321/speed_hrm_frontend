@@ -44,7 +44,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { authFetch } from "@/lib/auth";
+import { getPendingCounts } from "@/lib/actions/transfer-request";
 
 // ─── Flatten masterMenuData into navigable entries ────────────────────────────
 interface MasterEntry {
@@ -704,10 +704,10 @@ export function AppSidebar({
     if (environment === "POS") {
       const locId = user?.terminal?.location?.id || user?.locationId;
       if (locId) {
-        authFetch(`/transfer-request/pending-counts/${locId}`)
+        getPendingCounts(locId)
           .then((res: any) => {
-            if (res?.ok && res?.data?.status) {
-              setPendingCounts(res.data.data);
+            if (res?.status) {
+              setPendingCounts(res.data);
             }
           })
           .catch(console.error);
