@@ -397,8 +397,9 @@ export function useSalesListData(
               ? line.unitPrice * line.quantity
               : lineSubTotal + (line.discountAmount || 0);
 
-            const itemPriceWost = line.priceWost !== undefined ? line.priceWost : (line.unitPrice || 0) / 1.18;
-            const itemDiscWost = line.discountAmountWost !== undefined ? line.discountAmountWost : (line.discountAmount || 0) / 1.18;
+            const taxDivisor = 1 + (line.taxPercent ?? 18) / 100;
+            const itemPriceWost = line.priceWost !== undefined ? line.priceWost : (line.unitPrice || 0) / taxDivisor;
+            const itemDiscWost = line.discountAmountWost !== undefined ? line.discountAmountWost : (line.discountAmount || 0) / taxDivisor;
             const itemValueExcl = (line.quantity || 1) * itemPriceWost;
             const itemAmtAfterDisc = Math.max(0, itemValueExcl - itemDiscWost);
 
