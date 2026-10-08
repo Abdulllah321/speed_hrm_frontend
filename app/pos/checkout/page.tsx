@@ -636,13 +636,19 @@ export default function CheckoutPage() {
 
   const subtotalAfterItems = subtotal - itemDiscounts;
 
+  const totalWost = cartItems.reduce((acc, i) => {
+    const taxDivisor = 1 + i.taxPercent / 100;
+    const wostPerUnit = i.price / taxDivisor;
+    return acc + (wostPerUnit * i.quantity);
+  }, 0);
+
   const defaultItemTax = cartItems.reduce((acc, i) => {
     const taxDivisor = 1 + i.taxPercent / 100;
     const wostPerUnit = i.price / taxDivisor;
-    const totalWost = wostPerUnit * i.quantity;
+    const itemWost = wostPerUnit * i.quantity;
     const discountPercent = i.overrideDiscountPercent ?? i.discountPercent;
-    const discountAmount = totalWost * (discountPercent / 100);
-    const afterDiscount = totalWost - discountAmount;
+    const discountAmount = itemWost * (discountPercent / 100);
+    const afterDiscount = itemWost - discountAmount;
     return acc + Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100;
   }, 0);
 
@@ -651,28 +657,20 @@ export default function CheckoutPage() {
   );
   const activeFbrFee = hasFbrInfo ? FBR_POS_FEE : 0;
 
-  const grandTotalBeforeManual = Math.round(
-    subtotal - itemDiscounts + defaultItemTax + activeFbrFee,
-  );
-
   let orderDiscount = 0;
   let finalItemDiscounts = itemDiscounts;
 
   if (discountMode === "alliance" && selectedAlliance) {
     let allianceDiscount = 0;
     
-    // Calculate what the target Alliance discount SHOULD be on the final Grand Total (WST)
-    const targetDiscountOnWST = Math.round(grandTotalBeforeManual * (Number(selectedAlliance.discountPercent) / 100));
+    const targetDiscountOnWST = Math.round(totalWost * (Number(selectedAlliance.discountPercent) / 100));
     
     let cappedTarget = targetDiscountOnWST;
     if (selectedAlliance.maxDiscount) {
       cappedTarget = Math.min(targetDiscountOnWST, Number(selectedAlliance.maxDiscount));
     }
 
-    // Scale it down to WOST to prevent extra tax relief for the customer
-    if (grandTotalBeforeManual > 0) {
-      allianceDiscount = Math.round(cappedTarget * (subtotal / grandTotalBeforeManual) * 100) / 100;
-    }
+    allianceDiscount = cappedTarget;
 
     if (allianceDiscount >= itemDiscounts) {
       orderDiscount = allianceDiscount;
@@ -692,21 +690,11 @@ export default function CheckoutPage() {
     orderDiscount = appliedCoupon.discountAmount;
   } else if (discountMode === "manual") {
     if (manualDiscountType === "percent") {
-      // Cap at 100%
       const cappedPct = Math.min(manualDiscountValue, 100);
-      // For percentage, just apply directly to WOST. A 10% discount on WOST naturally results in a 10% reduction in Grand Total.
-      orderDiscount = Math.round(subtotal * (cappedPct / 100) * 100) / 100;
+      orderDiscount = Math.round(totalWost * (cappedPct / 100) * 100) / 100;
     } else {
-      // Flat amount off the Grand Total
-      const maxFlat = Math.round(grandTotalBeforeManual * 1.0 * 100) / 100;
-      const cappedWstDiscount = Math.min(manualDiscountValue, maxFlat);
-      if (grandTotalBeforeManual > 0) {
-        orderDiscount = Math.round(cappedWstDiscount * (subtotal / grandTotalBeforeManual) * 100) / 100;
-      } else {
-        orderDiscount = 0;
-      }
+      orderDiscount = manualDiscountValue;
     }
-    // Manual discount replaces item-level discounts
     finalItemDiscounts = 0;
   }
 
@@ -720,13 +708,13 @@ export default function CheckoutPage() {
   // Alliance/Coupon/Manual distribution per item (calculated first for use in tax)
   const allianceSharePerItem: number[] = [];
   if (isOrderDiscountApplied && cartItems.length > 0) {
-    const base = subtotal > 0 ? subtotal : 1;
+    const baseWost = totalWost > 0 ? totalWost : 1;
     let distributed = 0;
     const rawShares = cartItems.map((item) => {
       const taxDivisor = 1 + item.taxPercent / 100;
       const wostPerUnit = item.price / taxDivisor;
       const itemWost = wostPerUnit * item.quantity;
-      const share = Math.floor((orderDiscount * itemWost) / base);
+      const share = Math.floor((orderDiscount * itemWost) / baseWost);
       distributed += share;
       return share;
     });
@@ -747,23 +735,28 @@ export default function CheckoutPage() {
   }
 
   let itemTax = 0;
+  let wostAfterDiscountTotal = 0;
   if (isOrderDiscountApplied) {
     cartItems.forEach((i, idx) => {
       const taxDivisor = 1 + i.taxPercent / 100;
       const wostPerUnit = i.price / taxDivisor;
-      const totalWost = wostPerUnit * i.quantity;
+      const itemWost = wostPerUnit * i.quantity;
       const share = allianceSharePerItem[idx];
-      const afterDiscount = totalWost - share;
+      const afterDiscount = itemWost - share;
+      wostAfterDiscountTotal += afterDiscount;
       itemTax += Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100;
     });
   } else {
     itemTax = defaultItemTax;
+    wostAfterDiscountTotal = totalWost - itemDiscounts;
   }
 
   // Grand total includes FBR POS Fee
   const grandTotal = Math.round(
-    Math.max(0, subtotal - totalDiscount + itemTax) + activeFbrFee,
+    Math.max(0, wostAfterDiscountTotal + itemTax) + activeFbrFee,
   );
+  // Used only for capping flat manual discount in UI (50% of WOST)
+  const grandTotalBeforeManual = totalWost;
   const totalPaid = tenders.reduce((a, t) => a + t.amount, 0);
   const balanceDue = Math.max(0, grandTotal - totalPaid);
   const changeAmount = Math.max(0, totalPaid - grandTotal);
