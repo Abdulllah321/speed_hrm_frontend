@@ -691,9 +691,18 @@ export default function CheckoutPage() {
   } else if (discountMode === "manual") {
     if (manualDiscountType === "percent") {
       const cappedPct = Math.min(manualDiscountValue, 100);
+      // Percentage applied directly on WOST
       orderDiscount = Math.round(totalWost * (cappedPct / 100) * 100) / 100;
     } else {
-      orderDiscount = manualDiscountValue;
+      // User enters a RETAIL (tax-inclusive) flat amount → convert to WOST
+      // e.g. user enters 8,250 with 25% tax → WOST discount = 8,250 × (WOST / Retail)
+      const wostBase = subtotal - itemDiscounts;
+      const retailBase = wostBase + defaultItemTax + activeFbrFee;
+      if (retailBase > 0) {
+        orderDiscount = Math.round(
+          Math.min(manualDiscountValue, retailBase) * (wostBase / retailBase) * 100,
+        ) / 100;
+      }
     }
     finalItemDiscounts = 0;
   }
@@ -755,8 +764,10 @@ export default function CheckoutPage() {
   const grandTotal = Math.round(
     Math.max(0, wostAfterDiscountTotal + itemTax) + activeFbrFee,
   );
-  // Used only for capping flat manual discount in UI (50% of WOST)
-  const grandTotalBeforeManual = totalWost;
+  // Retail total before manual discount — used for the 50% flat-discount cap in the UI
+  const grandTotalBeforeManual = Math.round(
+    ((subtotal - itemDiscounts) + defaultItemTax + activeFbrFee) * 100,
+  ) / 100;
   const totalPaid = tenders.reduce((a, t) => a + t.amount, 0);
   const balanceDue = Math.max(0, grandTotal - totalPaid);
   const changeAmount = Math.max(0, totalPaid - grandTotal);
