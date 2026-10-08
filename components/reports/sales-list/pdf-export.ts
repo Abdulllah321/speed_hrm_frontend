@@ -40,10 +40,10 @@ export async function generateSalesListPdf(opts: {
       const gross = inv.totals?.grossAmount || 0;
       const qty = inv.totals?.totalItems || 0;
       const unitPrice = qty > 0 ? gross / qty : 0;
-      const valExcl = inv.totals?.wostAmount !== undefined ? inv.totals.wostAmount : (gross / 1.18);
+      const valExcl = inv.totals?.wostAmount !== undefined ? inv.totals.wostAmount : (gross - (inv.totals.taxAmount || 0));
       const unitPriceWost = qty > 0 ? valExcl / qty : 0;
       const disc = inv.totals?.discountAmount || 0;
-      const discWost = inv.totals?.discountWostAmount !== undefined ? inv.totals.discountWostAmount : (inv.discountDetails?.wostDiscount || disc / 1.18);
+      const discWost = inv.totals?.discountWostAmount !== undefined ? inv.totals.discountWostAmount : (inv.discountDetails?.wostDiscount || disc - (inv.totals.taxAmount || 0));
       const amtAfterDisc = inv.totals?.amountAfterDiscount !== undefined ? inv.totals.amountAfterDiscount : Math.max(0, valExcl - discWost);
       const tax = inv.totals?.taxAmount || 0;
       const valIncl = inv.totals?.netAmount || 0;
@@ -96,10 +96,10 @@ export async function generateSalesListPdf(opts: {
   const grandGross = grandTotals.grossAmount || 0;
   const grandQty = grandTotals.totalItems || 0;
   const grandUnitPrice = grandQty > 0 ? grandGross / grandQty : 0;
-  const grandValExcl = grandTotals.wostAmount !== undefined ? grandTotals.wostAmount : (grandGross / 1.18);
+  const grandValExcl = grandTotals.wostAmount !== undefined ? grandTotals.wostAmount : (grandGross - (inv.totals.taxAmount || 0));
   const grandUnitPriceWost = grandQty > 0 ? grandValExcl / grandQty : 0;
   const grandDisc = grandTotals.discountAmount || 0;
-  const grandDiscWost = grandTotals.discountWostAmount !== undefined ? grandTotals.discountWostAmount : (grandDisc / 1.18);
+  const grandDiscWost = grandTotals.discountWostAmount !== undefined ? grandTotals.discountWostAmount : (grandDisc - (inv.totals.taxAmount || 0));
   const grandAmtAfterDisc = grandTotals.amountAfterDiscount !== undefined ? grandTotals.amountAfterDiscount : Math.max(0, grandValExcl - grandDiscWost);
   const grandTax = grandTotals.taxAmount || 0;
   const grandValIncl = grandTotals.netAmount || 0;

@@ -104,11 +104,13 @@ function AddCustomerModal({
   onOpenChange,
   onSuccess,
   existingCustomers = [],
+  initialData,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (customer: Customer) => void;
   existingCustomers?: Customer[];
+  initialData?: Customer | null;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -125,12 +127,23 @@ function AddCustomerModal({
 
   // Reset form when modal opens/closes
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      if (initialData) {
+        setFormData({
+          name: initialData.name || "",
+          contactNo: initialData.contactNo || "",
+          email: initialData.email || "",
+          cnicNo: initialData.cnicNo || "",
+        });
+      } else {
+        setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
+      }
+    } else {
       setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
       setContactSuggestions([]);
       setShowSuggestions(false);
     }
-  }, [open]);
+  }, [open, initialData]);
 
   // Click outside suggestions popover
   useEffect(() => {
@@ -220,12 +233,15 @@ function AddCustomerModal({
       if (formData.email?.trim()) payload.email = formData.email.trim();
       if (formData.cnicNo?.trim()) payload.cnicNo = formData.cnicNo.trim();
 
-      const res = await authFetch("/pos-sales/customers", {
-        method: "POST",
+      const method = initialData ? "PUT" : "POST";
+      const url = initialData ? `/pos-sales/customers/${initialData.id}` : "/pos-sales/customers";
+
+      const res = await authFetch(url, {
+        method,
         body: payload,
       });
       if (res.ok && res.data?.status) {
-        toast.success("Customer added successfully");
+        toast.success(initialData ? "Customer updated successfully" : "Customer added successfully");
         onSuccess(res.data.data);
         onOpenChange(false);
         setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
@@ -243,7 +259,7 @@ function AddCustomerModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add New Customer</DialogTitle>
+          <DialogTitle>{initialData ? "Edit Customer" : "Add New Customer"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
@@ -376,7 +392,7 @@ function AddCustomerModal({
               ) : (
                 <Plus className="h-4 w-4 mr-2" />
               )}
-              Create Customer
+              {initialData ? "Save Changes" : "Create Customer"}
             </Button>
           </DialogFooter>
         </form>
@@ -441,6 +457,7 @@ export default function CheckoutPage() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
   // ── Discount state ─────────────────────────────────────────────────
   const [discountMode, setDiscountMode] = useState<DiscountMode>("none");
@@ -619,13 +636,19 @@ export default function CheckoutPage() {
 
   const subtotalAfterItems = subtotal - itemDiscounts;
 
+  const totalWost = cartItems.reduce((acc, i) => {
+    const taxDivisor = 1 + i.taxPercent / 100;
+    const wostPerUnit = i.price / taxDivisor;
+    return acc + (wostPerUnit * i.quantity);
+  }, 0);
+
   const defaultItemTax = cartItems.reduce((acc, i) => {
     const taxDivisor = 1 + i.taxPercent / 100;
     const wostPerUnit = i.price / taxDivisor;
-    const totalWost = wostPerUnit * i.quantity;
+    const itemWost = wostPerUnit * i.quantity;
     const discountPercent = i.overrideDiscountPercent ?? i.discountPercent;
-    const discountAmount = totalWost * (discountPercent / 100);
-    const afterDiscount = totalWost - discountAmount;
+    const discountAmount = itemWost * (discountPercent / 100);
+    const afterDiscount = itemWost - discountAmount;
     return acc + Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100;
   }, 0);
 
@@ -634,26 +657,20 @@ export default function CheckoutPage() {
   );
   const activeFbrFee = hasFbrInfo ? FBR_POS_FEE : 0;
 
-  const grandTotalBeforeManual = Math.round(
-    subtotal - itemDiscounts + defaultItemTax + activeFbrFee,
-  );
-
   let orderDiscount = 0;
   let finalItemDiscounts = itemDiscounts;
 
   if (discountMode === "alliance" && selectedAlliance) {
     let allianceDiscount = 0;
-    const allianceBase = subtotal;
+    
+    const targetDiscountOnWST = Math.round(totalWost * (Number(selectedAlliance.discountPercent) / 100));
+    
+    let cappedTarget = targetDiscountOnWST;
     if (selectedAlliance.maxDiscount) {
-      allianceDiscount = Math.min(
-        allianceBase * (Number(selectedAlliance.discountPercent) / 100),
-        Number(selectedAlliance.maxDiscount),
-      );
-    } else {
-      allianceDiscount =
-        allianceBase * (Number(selectedAlliance.discountPercent) / 100);
+      cappedTarget = Math.min(targetDiscountOnWST, Number(selectedAlliance.maxDiscount));
     }
-    allianceDiscount = Math.round(allianceDiscount * 100) / 100;
+
+    allianceDiscount = cappedTarget;
 
     if (allianceDiscount >= itemDiscounts) {
       orderDiscount = allianceDiscount;
@@ -673,21 +690,20 @@ export default function CheckoutPage() {
     orderDiscount = appliedCoupon.discountAmount;
   } else if (discountMode === "manual") {
     if (manualDiscountType === "percent") {
-      // Cap at 50%
-      const cappedPct = Math.min(manualDiscountValue, 50);
-      orderDiscount = Math.round(subtotal * (cappedPct / 100) * 100) / 100;
+      const cappedPct = Math.min(manualDiscountValue, 100);
+      // Percentage applied directly on WOST
+      orderDiscount = Math.round(totalWost * (cappedPct / 100) * 100) / 100;
     } else {
-      // Flat amount (WST) capped at 50% of grand total before manual discount
-      const maxFlat = Math.round(grandTotalBeforeManual * 0.5 * 100) / 100;
-      const cappedWstDiscount = Math.min(manualDiscountValue, maxFlat);
-      const totalWstPrice = cartItems.reduce((acc, i) => acc + i.price * i.quantity, 0);
-      if (totalWstPrice > 0) {
-        orderDiscount = Math.round(cappedWstDiscount * (subtotal / totalWstPrice) * 100) / 100;
-      } else {
-        orderDiscount = 0;
+      // User enters a RETAIL (tax-inclusive) flat amount → convert to WOST
+      // e.g. user enters 8,250 with 25% tax → WOST discount = 8,250 × (WOST / Retail)
+      const wostBase = subtotal - itemDiscounts;
+      const retailBase = wostBase + defaultItemTax + activeFbrFee;
+      if (retailBase > 0) {
+        orderDiscount = Math.round(
+          Math.min(manualDiscountValue, retailBase) * (wostBase / retailBase) * 100,
+        ) / 100;
       }
     }
-    // Manual discount replaces item-level discounts
     finalItemDiscounts = 0;
   }
 
@@ -701,13 +717,13 @@ export default function CheckoutPage() {
   // Alliance/Coupon/Manual distribution per item (calculated first for use in tax)
   const allianceSharePerItem: number[] = [];
   if (isOrderDiscountApplied && cartItems.length > 0) {
-    const base = subtotal > 0 ? subtotal : 1;
+    const baseWost = totalWost > 0 ? totalWost : 1;
     let distributed = 0;
     const rawShares = cartItems.map((item) => {
       const taxDivisor = 1 + item.taxPercent / 100;
       const wostPerUnit = item.price / taxDivisor;
       const itemWost = wostPerUnit * item.quantity;
-      const share = Math.floor((orderDiscount * itemWost) / base);
+      const share = Math.floor((orderDiscount * itemWost) / baseWost);
       distributed += share;
       return share;
     });
@@ -728,23 +744,30 @@ export default function CheckoutPage() {
   }
 
   let itemTax = 0;
+  let wostAfterDiscountTotal = 0;
   if (isOrderDiscountApplied) {
     cartItems.forEach((i, idx) => {
       const taxDivisor = 1 + i.taxPercent / 100;
       const wostPerUnit = i.price / taxDivisor;
-      const totalWost = wostPerUnit * i.quantity;
+      const itemWost = wostPerUnit * i.quantity;
       const share = allianceSharePerItem[idx];
-      const afterDiscount = totalWost - share;
+      const afterDiscount = itemWost - share;
+      wostAfterDiscountTotal += afterDiscount;
       itemTax += Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100;
     });
   } else {
     itemTax = defaultItemTax;
+    wostAfterDiscountTotal = totalWost - itemDiscounts;
   }
 
   // Grand total includes FBR POS Fee
   const grandTotal = Math.round(
-    Math.max(0, subtotal - totalDiscount + itemTax) + activeFbrFee,
+    Math.max(0, wostAfterDiscountTotal + itemTax) + activeFbrFee,
   );
+  // Retail total before manual discount — used for the 50% flat-discount cap in the UI
+  const grandTotalBeforeManual = Math.round(
+    ((subtotal - itemDiscounts) + defaultItemTax + activeFbrFee) * 100,
+  ) / 100;
   const totalPaid = tenders.reduce((a, t) => a + t.amount, 0);
   const balanceDue = Math.max(0, grandTotal - totalPaid);
   const changeAmount = Math.max(0, totalPaid - grandTotal);
@@ -801,11 +824,14 @@ export default function CheckoutPage() {
   const addTender = () => {
     if (!tenderAmount || tenderAmount <= 0) return;
 
-    // Prevent total tender from exceeding the invoice amount
+    // Prevent total tender from exceeding the invoice amount (except for cash where change is given)
     const alreadyPaid = tenders.reduce((a, t) => a + t.amount, 0);
-    if (alreadyPaid + tenderAmount > grandTotal) {
+    const roundedTender = Math.round(tenderAmount * 1000) / 1000;
+    const roundedBalance = Math.round(Math.max(0, grandTotal - alreadyPaid) * 1000) / 1000;
+
+    if (tenderMethod !== "cash" && roundedTender > roundedBalance) {
       toast.error(
-        `Tender amount exceeds the invoice total of ${fmtCurrency(grandTotal)}. Maximum allowed: ${fmtCurrency(Math.max(0, grandTotal - alreadyPaid))}.`,
+        `Tender amount exceeds the remaining balance. Maximum allowed: ${fmtCurrency(roundedBalance)}.`
       );
       return;
     }
@@ -1776,14 +1802,17 @@ export default function CheckoutPage() {
           onBack={() => router.push("/pos/new-sale")}
         />
 
-        {/* Add Customer Modal */}
+        {/* Add/Edit Customer Modal */}
         <AddCustomerModal
           open={showAddCustomer}
           onOpenChange={setShowAddCustomer}
           existingCustomers={customers}
+          initialData={editingCustomer}
           onSuccess={(c) => {
             setCustomers((prev) => {
-              if (prev.some((x) => x.id === c.id)) return prev;
+              if (prev.some((x) => x.id === c.id)) {
+                return prev.map((x) => (x.id === c.id ? c : x));
+              }
               return [c, ...prev];
             });
             setSelectedCustomer(c);
@@ -1816,7 +1845,16 @@ export default function CheckoutPage() {
               }
             }}
             onCustomerSearch={setCustomerSearch}
-            onAddCustomer={() => setShowAddCustomer(true)}
+            onAddCustomer={() => {
+              setEditingCustomer(null);
+              setShowAddCustomer(true);
+            }}
+            onEditCustomer={() => {
+              if (selectedCustomer) {
+                setEditingCustomer(selectedCustomer);
+                setShowAddCustomer(true);
+              }
+            }}
             onClearCustomer={() => setSelectedCustomer(null)}
             cartItems={cartItems}
             discountMode={discountMode}

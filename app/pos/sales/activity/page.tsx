@@ -35,6 +35,13 @@ function fmtDate(dateStr?: string | null): string {
     return d.toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function getLocalISODate(date?: Date | null): string | undefined {
+    if (!date) return undefined;
+    const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+    const localDate = new Date(date.getTime() - offsetMs);
+    return localDate.toISOString().split('T')[0];
+}
+
 function fmtTime(dateStr?: string | null): string {
     if (!dateStr) return "";
     const d = new Date(dateStr);
@@ -110,8 +117,8 @@ export default function SalesActivityPage() {
         try {
             const res = await queuePosSalesActivityExport({
                 search: search.trim() || undefined,
-                startDate: dateRange.from?.toISOString(),
-                endDate: dateRange.to?.toISOString(),
+                startDate: getLocalISODate(dateRange.from),
+                endDate: getLocalISODate(dateRange.to),
                 activityType: activityType === "all" ? undefined : activityType,
             });
 
@@ -161,8 +168,8 @@ export default function SalesActivityPage() {
             page: currentPage,
             limit: pageSize,
             search: search.trim() || undefined,
-            startDate: dateRange.from?.toISOString(),
-            endDate: dateRange.to?.toISOString(),
+            startDate: getLocalISODate(dateRange.from),
+            endDate: getLocalISODate(dateRange.to),
             activityType: activityType === "all" ? undefined : activityType,
         }),
         placeholderData: keepPreviousData,

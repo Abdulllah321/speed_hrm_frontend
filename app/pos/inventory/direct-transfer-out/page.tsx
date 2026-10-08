@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -48,6 +49,8 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 interface TransferItem {
   id: string;
   sku: string;
+  uniqueNo?: string;
+  barCode?: string;
   description: string;
   size?: string;
   color?: string;
@@ -748,12 +751,24 @@ function DirectTransferForm() {
                                         </span>
                                       )}
                                     </div>
-                                    <span className="text-xs text-muted-foreground mt-0.5 font-mono">
-                                      SKU:{" "}
-                                      <strong className="font-bold text-foreground">
-                                        {product.sku || product.barCode || "-"}
-                                      </strong>
-                                    </span>
+                                    <div className="flex flex-col gap-0.5 mt-0.5">
+                                      <span className="text-xs text-muted-foreground font-mono">
+                                        SKU:{" "}
+                                        <strong className="font-bold text-foreground">
+                                          {product.sku || product.barCode || "-"}
+                                        </strong>
+                                      </span>
+                                      {product.uniqueNo && (
+                                        <span className="text-[10px] text-purple-600 font-mono">
+                                          Unique No: <strong className="font-bold">{product.uniqueNo}</strong>
+                                        </span>
+                                      )}
+                                      {product.barCode && product.barCode !== product.sku && (
+                                        <span className="text-[10px] text-blue-600 font-mono">
+                                          Barcode: <strong className="font-bold">{product.barCode}</strong>
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                   <div className="flex flex-col items-end gap-1">
                                     <span className="text-sm font-bold">
@@ -1003,29 +1018,6 @@ function DirectTransferForm() {
   );
 }
 
-
-const getBrandColor = (brand: string) => {
-    const b = brand.toUpperCase();
-    if (['NIKE'].includes(b)) return 'bg-black text-white border-black shadow-sm';
-    if (['ADIDAS'].includes(b)) return 'bg-blue-600 text-white border-blue-600 shadow-sm';
-    if (['PUMA'].includes(b)) return 'bg-red-600 text-white border-red-600 shadow-sm';
-    if (['UNDER ARMOUR'].includes(b)) return 'bg-gray-800 text-white border-gray-800 shadow-sm';
-    if (['ASICS'].includes(b)) return 'bg-blue-800 text-white border-blue-800 shadow-sm';
-    if (['BIRKENSTOCK', 'TIMBERLAND'].includes(b)) return 'bg-amber-700 text-white border-amber-700 shadow-sm';
-    if (['CHARLES & KEITH', 'PEDRO', 'FENDI', 'DIOR'].includes(b)) return 'bg-stone-800 text-stone-100 border-stone-800 shadow-sm';
-    if (['TISSOT', 'RADO', 'TAG HEUER', 'ORIS', 'WATCHES'].includes(b)) return 'bg-slate-700 text-slate-100 border-slate-700 shadow-sm';
-    if (['GUESS', 'POLICE', 'NAUTICA', 'USPA', 'TIMEX', 'DANISH DESIGN'].includes(b)) return 'bg-indigo-700 text-white border-indigo-700 shadow-sm';
-    return 'bg-gray-200 text-gray-800 border-gray-300 shadow-sm';
-};
-
-const BrandBadge = ({ brand }: { brand?: string }) => {
-    if (!brand) return null;
-    return (
-        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-black tracking-widest uppercase ${getBrandColor(brand)}`}>
-            {brand}
-        </Badge>
-    );
-};
 
 export default function DirectTransferPage() {
   return (

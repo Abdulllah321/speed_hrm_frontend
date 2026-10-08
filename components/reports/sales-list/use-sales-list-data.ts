@@ -40,10 +40,10 @@ export const addTotals = (target: SalesListTotals, source: SalesListTotals) => {
   target.orderCount += source.orderCount;
   target.totalItems += source.totalItems;
   target.grossAmount += source.grossAmount;
-  target.wostAmount = (target.wostAmount || 0) + (source.wostAmount || (source.grossAmount ? source.grossAmount / 1.18 : 0));
+  target.wostAmount = (target.wostAmount || 0) + (source.wostAmount || (source.grossAmount ? (source.grossAmount - (source.taxAmount || 0)) : 0));
   target.discountAmount += source.discountAmount;
-  target.discountWostAmount = (target.discountWostAmount || 0) + (source.discountWostAmount || (source.discountAmount ? source.discountAmount / 1.18 : 0));
-  target.amountAfterDiscount = (target.amountAfterDiscount || 0) + (source.amountAfterDiscount || Math.max(0, (source.wostAmount || source.grossAmount / 1.18) - (source.discountWostAmount || source.discountAmount / 1.18)));
+  target.discountWostAmount = (target.discountWostAmount || 0) + (source.discountWostAmount || (source.discountAmount ? (source.discountAmount - ((source.discountAmount / (source.grossAmount || 1)) * (source.taxAmount || 0))) : 0));
+  target.amountAfterDiscount = (target.amountAfterDiscount || 0) + (source.amountAfterDiscount || Math.max(0, (source.wostAmount || (source.grossAmount - (source.taxAmount || 0))) - (source.discountWostAmount || (source.discountAmount - ((source.discountAmount / (source.grossAmount || 1)) * (source.taxAmount || 0))))));
   target.netAmount += source.netAmount;
   target.taxAmount += source.taxAmount;
   target.paidAmount += source.paidAmount;
@@ -397,8 +397,9 @@ export function useSalesListData(
               ? line.unitPrice * line.quantity
               : lineSubTotal + (line.discountAmount || 0);
 
-            const itemPriceWost = line.priceWost !== undefined ? line.priceWost : (line.unitPrice || 0) / 1.18;
-            const itemDiscWost = line.discountAmountWost !== undefined ? line.discountAmountWost : (line.discountAmount || 0) / 1.18;
+            const taxDivisor = 1 + (line.taxPercent ?? 18) / 100;
+            const itemPriceWost = line.priceWost !== undefined ? line.priceWost : (line.unitPrice || 0) / taxDivisor;
+            const itemDiscWost = line.discountAmountWost !== undefined ? line.discountAmountWost : (line.discountAmount || 0) / taxDivisor;
             const itemValueExcl = (line.quantity || 1) * itemPriceWost;
             const itemAmtAfterDisc = Math.max(0, itemValueExcl - itemDiscWost);
 
@@ -573,10 +574,10 @@ export function useSalesListData(
         colorName: "-",
         quantity: inv.totals?.totalItems || 1,
         unitPrice: inv.totals?.grossAmount || 0,
-        priceWost: inv.totals?.wostAmount !== undefined ? inv.totals.wostAmount / (inv.totals?.totalItems || 1) : (inv.totals?.grossAmount || 0) / 1.18,
+        priceWost: inv.totals?.wostAmount !== undefined ? inv.totals.wostAmount / (inv.totals?.totalItems || 1) : (inv.totals?.grossAmount || 0) - (inv.totals?.taxAmount || 0),
         discountPercent: 0,
         discountAmount: inv.totals?.discountAmount || 0,
-        discountAmountWost: inv.totals?.discountWostAmount !== undefined ? inv.totals.discountWostAmount : (inv.totals?.discountAmount || 0) / 1.18,
+        discountAmountWost: inv.totals?.discountWostAmount !== undefined ? inv.totals.discountWostAmount : (inv.totals?.discountAmount || 0) - (((inv.totals?.discountAmount || 0) / (inv.totals?.grossAmount || 1)) * (inv.totals?.taxAmount || 0)),
         taxPercent: 18,
         taxAmount: inv.totals?.taxAmount || 0,
         lineTotal: inv.totals?.netAmount || 0,
