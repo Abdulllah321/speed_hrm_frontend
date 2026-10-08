@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -60,6 +60,8 @@ import {
 import Link from 'next/link';
 import { SrnBulkUploadModal } from '@/components/inventory/srn-bulk-upload-modal';
 import { SrnItemsBulkImportModal } from '@/components/inventory/srn-items-bulk-import-modal';
+import DataTable from '@/components/common/data-table';
+import { ColumnDef } from '@tanstack/react-table';
 
 interface SRNItem {
   itemId: string;
@@ -793,17 +795,138 @@ export default function StockRequisitionPage() {
       .filter((l: any) => l.isStockLocation || l.warehouseId || (l.name && l.name.toLowerCase().includes('warehouse')))
       .map((l: any) => ({
         value: l.id,
-        label: l.code ? `[OUTLET] ${l.code} · ${l.name}` : `[OUTLET] ${l.name}`,
+        label: l.code ? `${l.name} - ${l.code}` : l.name,
       })),
     ...warehouses.map((w: any) => ({
       value: w.id,
-      label: w.code ? `[WAREHOUSE] ${w.code} · ${w.name}` : `[WAREHOUSE] ${w.name}`,
+      label: w.code ? `${w.name} - ${w.code} (Warehouse)` : `${w.name} (Warehouse)`,
     }))
   ];
   const brandOptions = [
     { value: 'none', label: 'No Brand Filter' },
     ...brands.map((b) => ({ value: b.id, label: b.name })),
   ];
+
+  const columns: ColumnDef<any>[] = useMemo(() => [
+    {
+      accessorKey: 'requisitionNo',
+      header: 'Requisition No',
+      cell: ({ row }) => <span className="font-bold text-indigo-600 font-mono">{row.original.requisitionNo}</span>,
+    },
+    {
+      accessorKey: 'requisitionDate',
+      header: 'Date',
+      cell: ({ row }) => <span className="text-xs">{new Date(row.original.requisitionDate).toLocaleDateString()}</span>,
+    },
+    {
+      accessorKey: 'fromWarehouse',
+      header: 'From Warehouse',
+      cell: ({ row }) => <span className="font-medium text-xs">{row.original.fromLocation?.name || row.original.fromWarehouse?.name || '—'}</span>,
+    },
+    {
+      accessorKey: 'toLocation',
+      header: 'To Location',
+      cell: ({ row }) => <span className="font-medium text-xs">{row.original.toLocation?.name}</span>,
+    },
+    {
+      accessorKey: 'brand',
+      header: 'Brand',
+      cell: ({ row }) => <span className="text-xs">{row.original.brand?.name || '-'}</span>,
+    },
+    {
+      accessorKey: 'documentType',
+      header: 'Type',
+      cell: ({ row }) => (
+        <Badge variant="outline" className="border-indigo-300 text-indigo-700 bg-indigo-50/50 text-[11px]">
+          {row.original.documentType}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => getStatusBadge(row.original.status),
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right font-bold whitespace-nowrap">Actions</div>,
+      cell: ({ row }) => {
+        const req = row.original;
+        return (
+          <div className="flex justify-end items-center gap-2 flex-nowrap whitespace-nowrap">
+            {req.status === 'DRAFT' && (
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold h-8 text-xs"
+                disabled={approvingId === req.id}
+                onClick={() => handleApproveRequisition(req.id)}
+              >
+                {approvingId === req.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                ) : (
+                  <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                )}
+                Approve
+              </Button>
+            )}
+            {req.status === 'PENDING' && (
+              <Button
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs"
+                asChild
+              >
+                <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${req.id}`}>
+                  <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Transfer Stock
+                </Link>
+              </Button>
+            )}
+            {req.status === 'DRAFT' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs font-semibold"
+                onClick={() => handleStartEdit(req)}
+              >
+                Edit
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs font-semibold"
+              onClick={() => openDetailSheet(req)}
+            >
+              View Detail
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              asChild
+            >
+              <Link
+                href={`/erp/inventory/transactions/stock-requisition/slip/${req.id}`}
+                target="_blank"
+                title="Print Slip"
+              >
+                <Printer className="h-4 w-4 text-gray-600" />
+              </Link>
+            </Button>
+            {(req.status === 'PENDING' || req.status === 'DRAFT') && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-8 text-xs font-semibold"
+                onClick={() => handleCancelRequisition(req.id)}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
+  ], [approvingId]);
 
   return (
     <PermissionGuard permissions={["erp.inventory.stock-requisition.read", "erp.inventory.stock-requisition.create"]}>
@@ -929,121 +1052,13 @@ export default function StockRequisitionPage() {
                     : 'No stock requisition notes found. Click "New Requisition" to create one.'}
                 </div>
               ) : (
-                <div className="border rounded-md overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                        <TableHead className="font-bold">Requisition No</TableHead>
-                        <TableHead className="font-bold">Date</TableHead>
-                        <TableHead className="font-bold">From Warehouse</TableHead>
-                        <TableHead className="font-bold">To Location</TableHead>
-                        <TableHead className="font-bold">Brand</TableHead>
-                        <TableHead className="font-bold">Type</TableHead>
-                        <TableHead className="font-bold">Status</TableHead>
-                        <TableHead className="text-right font-bold">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredRequisitions.map((req) => (
-                        <TableRow key={req.id} className="hover:bg-indigo-50/20 transition-colors">
-                          <TableCell className="font-bold text-indigo-600 font-mono">{req.requisitionNo}</TableCell>
-                          <TableCell className="text-xs">{new Date(req.requisitionDate).toLocaleDateString()}</TableCell>
-                          <TableCell className="font-medium text-xs">{req.fromLocation?.name || req.fromWarehouse?.name || '—'}</TableCell>
-                          <TableCell className="font-medium text-xs">{req.toLocation?.name}</TableCell>
-                          <TableCell className="text-xs">{req.brand?.name || '-'}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="border-indigo-300 text-indigo-700 bg-indigo-50/50 text-[11px]">
-                              {req.documentType}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{getStatusBadge(req.status)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end items-center gap-1.5 flex-wrap">
-                              {/* If DRAFT: Show Approve button */}
-                              {req.status === 'DRAFT' && (
-                                <Button
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700 text-white font-bold h-8 text-xs"
-                                  disabled={approvingId === req.id}
-                                  onClick={() => handleApproveRequisition(req.id)}
-                                >
-                                  {approvingId === req.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                                  ) : (
-                                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                                  )}
-                                  Approve
-                                </Button>
-                              )}
-
-                              {/* If PENDING: Show Transfer Stock button */}
-                              {req.status === 'PENDING' && (
-                                <Button
-                                  size="sm"
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs"
-                                  asChild
-                                >
-                                  <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${req.id}`}>
-                                    <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Transfer Stock
-                                  </Link>
-                                </Button>
-                              )}
-
-                              {/* If DRAFT: Show Edit button */}
-                              {req.status === 'DRAFT' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 text-xs font-semibold"
-                                  onClick={() => handleStartEdit(req)}
-                                >
-                                  Edit
-                                </Button>
-                              )}
-
-                              {/* View Detail button */}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 text-xs font-semibold"
-                                onClick={() => openDetailSheet(req)}
-                              >
-                                View Detail
-                              </Button>
-
-                              {/* Print Slip */}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                                asChild
-                              >
-                                <Link
-                                  href={`/erp/inventory/transactions/stock-requisition/slip/${req.id}`}
-                                  target="_blank"
-                                  title="Print Slip"
-                                >
-                                  <Printer className="h-4 w-4 text-gray-600" />
-                                </Link>
-                              </Button>
-
-                              {/* Cancel */}
-                              {(req.status === 'PENDING' || req.status === 'DRAFT') && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  className="h-8 text-xs font-semibold"
-                                  onClick={() => handleCancelRequisition(req.id)}
-                                >
-                                  Cancel
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <div className="bg-white">
+                  <DataTable
+                    columns={columns}
+                    data={filteredRequisitions}
+                    searchFields={[{ key: "requisitionNo", label: "Requisition No" }]}
+                    virtualized
+                  />
                 </div>
               )}
             </CardContent>
