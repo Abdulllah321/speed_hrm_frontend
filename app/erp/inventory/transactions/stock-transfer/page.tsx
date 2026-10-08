@@ -877,7 +877,7 @@ function StockTransferContent() {
     return (
         <PermissionGuard permissions="erp.inventory.transfer.create">
             <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">
@@ -897,7 +897,7 @@ function StockTransferContent() {
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button

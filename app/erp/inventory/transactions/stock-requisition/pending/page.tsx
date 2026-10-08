@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -24,6 +24,8 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import Link from 'next/link';
+import DataTable from '@/components/common/data-table';
+import { ColumnDef } from '@tanstack/react-table';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function StockRequisitionPendingPage() {
@@ -94,6 +96,99 @@ export default function StockRequisitionPendingPage() {
     (sum, r) => sum + (r.items?.reduce((iSum: number, item: any) => iSum + Number(item.quantity || 0), 0) || 0),
     0
   );
+
+  const columns: ColumnDef<any>[] = useMemo(() => [
+    {
+      accessorKey: 'requisitionNo',
+      header: 'Requisition No',
+      cell: ({ row }) => <span className="font-bold text-indigo-600 font-mono">{row.original.requisitionNo}</span>,
+    },
+    {
+      accessorKey: 'requisitionDate',
+      header: 'Date',
+      cell: ({ row }) => <span className="text-xs">{new Date(row.original.requisitionDate).toLocaleDateString()}</span>,
+    },
+    {
+      accessorKey: 'fromWarehouse',
+      header: 'From Warehouse',
+      cell: ({ row }) => <span className="font-medium text-xs">{row.original.fromLocation?.name || row.original.fromWarehouse?.name || '—'}</span>,
+    },
+    {
+      accessorKey: 'toLocation',
+      header: 'To Location',
+      cell: ({ row }) => <span className="font-medium text-xs">{row.original.toLocation?.name}</span>,
+    },
+    {
+      id: 'itemsUnits',
+      header: () => <div className="text-center font-bold">Items / Units</div>,
+      cell: ({ row }) => {
+        const req = row.original;
+        const reqTotalUnits = req.items?.reduce((s: number, i: any) => s + Number(i.quantity || 0), 0) || 0;
+        return (
+          <div className="text-center">
+            <Badge variant="outline" className="font-mono text-[11px] bg-gray-50">
+              {req.items?.length || 0} items ({reqTotalUnits} pcs)
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'remarks',
+      header: 'Remarks',
+      cell: ({ row }) => <div className="max-w-[180px] truncate text-xs">{row.original.remarks || '-'}</div>,
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right font-bold whitespace-nowrap">Actions</div>,
+      cell: ({ row }) => {
+        const req = row.original;
+        return (
+          <div className="flex justify-end items-center gap-2 flex-nowrap whitespace-nowrap">
+            <Button
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs shadow-sm"
+              asChild
+            >
+              <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${req.id}`}>
+                <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Transfer Stock
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs font-semibold"
+              onClick={() => openDetailSheet(req)}
+            >
+              View Detail
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              asChild
+            >
+              <Link
+                href={`/erp/inventory/transactions/stock-requisition/slip/${req.id}`}
+                target="_blank"
+                title="Print Slip"
+              >
+                <Printer className="h-4 w-4 text-gray-600" />
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-8 text-xs font-semibold"
+              onClick={() => handleCancelRequisition(req.id)}
+            >
+              Cancel
+            </Button>
+          </div>
+        );
+      },
+    },
+  ], []);
 
   return (
     <PermissionGuard
@@ -197,82 +292,13 @@ export default function StockRequisitionPendingPage() {
               {searchQuery ? 'No pending requisitions matching search query.' : 'No pending stock requisitions at the moment.'}
             </div>
           ) : (
-            <div className="border rounded-md overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50/50">
-                    <TableHead className="font-bold">Requisition No</TableHead>
-                    <TableHead className="font-bold">Date</TableHead>
-                    <TableHead className="font-bold">From Warehouse</TableHead>
-                    <TableHead className="font-bold">To Location</TableHead>
-                    <TableHead className="font-bold text-center">Items / Units</TableHead>
-                    <TableHead className="font-bold">Remarks</TableHead>
-                    <TableHead className="text-right font-bold">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRequisitions.map((req) => {
-                    const reqTotalUnits = req.items?.reduce((s: number, i: any) => s + Number(i.quantity || 0), 0) || 0;
-                    return (
-                      <TableRow key={req.id} className="hover:bg-indigo-50/20 transition-colors">
-                        <TableCell className="font-bold text-indigo-600 font-mono">{req.requisitionNo}</TableCell>
-                        <TableCell className="text-xs">{new Date(req.requisitionDate).toLocaleDateString()}</TableCell>
-                        <TableCell className="font-medium text-xs">{req.fromLocation?.name || req.fromWarehouse?.name || '—'}</TableCell>
-                        <TableCell className="font-medium text-xs">{req.toLocation?.name}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="font-mono text-[11px] bg-gray-50">
-                            {req.items?.length || 0} items ({reqTotalUnits} pcs)
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[180px] truncate text-xs">{req.remarks || '-'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end items-center gap-1.5 flex-wrap">
-                            <Button
-                              size="sm"
-                              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs shadow-sm"
-                              asChild
-                            >
-                              <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${req.id}`}>
-                                <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Transfer Stock
-                              </Link>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs font-semibold"
-                              onClick={() => openDetailSheet(req)}
-                            >
-                              View Detail
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              asChild
-                            >
-                              <Link
-                                href={`/erp/inventory/transactions/stock-requisition/slip/${req.id}`}
-                                target="_blank"
-                                title="Print Slip"
-                              >
-                                <Printer className="h-4 w-4 text-gray-600" />
-                              </Link>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="h-8 text-xs font-semibold"
-                              onClick={() => handleCancelRequisition(req.id)}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <div className="bg-white">
+              <DataTable
+                columns={columns}
+                data={filteredRequisitions}
+                searchFields={[{ key: "requisitionNo", label: "Requisition No" }]}
+                virtualized
+              />
             </div>
           )}
         </CardContent>
