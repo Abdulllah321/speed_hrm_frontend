@@ -534,6 +534,7 @@ export default function CheckoutPage() {
   const [tenderSlip, setTenderSlip] = useState("");
   const [tenderRemarks, setTenderRemarks] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitRef = useRef(false);
   const [completedOrder, setCompletedOrder] = useState<any>(null);
   const [isGiftReceipt, setIsGiftReceipt] = useState(false);
   const [showGiftReceiptAfterSales, setShowGiftReceiptAfterSales] =
@@ -1183,6 +1184,9 @@ export default function CheckoutPage() {
       );
       return;
     }
+
+    if (submitRef.current) return;
+    submitRef.current = true;
     setIsSubmitting(true);
     try {
       const orderItems = cartItems.map((item) => ({
@@ -1285,6 +1289,7 @@ export default function CheckoutPage() {
     } catch {
       toast.error("Checkout failed. Check connection.");
     } finally {
+      submitRef.current = false;
       setIsSubmitting(false);
     }
   }, [

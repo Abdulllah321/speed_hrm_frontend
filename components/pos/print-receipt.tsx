@@ -1098,7 +1098,14 @@ function ReceiptBody({
           <p className="font-bold text-sm tracking-widest uppercase">
             Sales Tax Invoice
           </p>
-          <p className="font-black text-2xl tracking-wider">
+          <p
+            className={cn(
+              "font-black",
+              order?.orderNumber && order.orderNumber.length > 15
+                ? "text-xl tracking-tight break-all"
+                : "text-2xl tracking-wider",
+            )}
+          >
             *{order?.orderNumber ?? ""}*
           </p>
           {order?.orderNumber && (
