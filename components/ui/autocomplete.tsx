@@ -36,6 +36,7 @@ export interface AutocompleteProps {
   emptyMessage?: React.ReactNode
   disabled?: boolean
   className?: string
+  popoverClassName?: string
   isLoading?: boolean
   onCreate?: (value: string) => void
 }
@@ -97,6 +98,7 @@ export function Autocomplete({
   emptyMessage = "No results found.",
   disabled = false,
   className,
+  popoverClassName,
   isLoading = false,
   onCreate,
 }: AutocompleteProps) {
@@ -177,7 +179,7 @@ export function Autocomplete({
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        className={cn("w-[var(--radix-popover-trigger-width)] p-0", popoverClassName)}
         align="start"
         sideOffset={4}
       >
