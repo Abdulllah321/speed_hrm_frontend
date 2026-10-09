@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useCallback, useTransition, useMemo } from "react";
+import { useState, useCallback, useTransition, useMemo, useEffect } from "react";
 import { ColumnDef, PaginationState } from "@tanstack/react-table";
 import DataTable from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Eye, Plus, Printer, Repeat, ClipboardList, ChevronDown, Check } from "lucide-react";
+import { Eye, Plus, Printer, Repeat, ClipboardList, ChevronDown, Check, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { getStockAdjustments } from "@/lib/actions/stock-adjustment";
+import { getLocations } from "@/lib/actions/location";
 import { printStockAdjustmentNote } from "@/lib/utils/print-stock-adjustment";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -297,6 +298,26 @@ export function StockAdjustmentList({ initialEntries, initialMeta }: StockAdjust
     const [filterColors, setFilterColors] = useState<Set<string>>(new Set());
     const [filterLocations, setFilterLocations] = useState<Set<string>>(new Set());
 
+    const [stockLocations, setStockLocations] = useState<string[]>([]);
+
+    useEffect(() => {
+        async function fetchLocs() {
+            try {
+                const res = await getLocations(true);
+                let locs = [];
+                if (Array.isArray(res)) {
+                    locs = res.map(r => r.name);
+                } else if (res && res.status && res.data) {
+                    locs = res.data.map(r => r.name);
+                }
+                setStockLocations(locs.sort());
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        fetchLocs();
+    }, []);
+
     const fetchPage = useCallback(
         (pagination: PaginationState, status?: string) => {
             startTransition(async () => {
@@ -373,7 +394,7 @@ export function StockAdjustmentList({ initialEntries, initialMeta }: StockAdjust
         });
 
         return {
-            locations: Array.from(locations).sort(),
+            locations: stockLocations.length > 0 ? stockLocations : Array.from(locations).sort(),
             brands: Array.from(brands).sort(),
             divisions: Array.from(divisions).sort(),
             categories: Array.from(categories).sort(),
@@ -382,7 +403,7 @@ export function StockAdjustmentList({ initialEntries, initialMeta }: StockAdjust
             sizes: Array.from(sizes).sort(),
             colors: Array.from(colors).sort(),
         };
-    }, [entries]);
+    }, [entries, stockLocations]);
 
     const toggleFilter = (set: Set<string>, setter: (s: Set<string>) => void, val: string) => {
         const next = new Set(set);
@@ -462,9 +483,12 @@ export function StockAdjustmentList({ initialEntries, initialMeta }: StockAdjust
 
     return (
         <div className="space-y-4">
-            <div className="p-3 rounded-2xl border border-border bg-card shadow-sm space-y-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-sm font-semibold text-muted-foreground mr-2">Advanced Filters:</div>
+            <div className="p-4 rounded-2xl border border-border/50 bg-gradient-to-br from-card to-muted/20 shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 mr-2">
+                        <SlidersHorizontal className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-bold text-foreground">Smart Filters</span>
+                    </div>
                     <FilterDropdown
                         label="Outlet / Location"
                         options={attributeOptions.locations}

@@ -27,7 +27,7 @@ export default async function NewStockAdjustmentPage() {
             <div className="flex-1 space-y-4 p-8 pt-6">
                 <NewStockAdjustmentForm
                     warehouses={activeWarehouses}
-                    locations={activeLocations}
+                    locations={locationsResult}
                 />
             </div>
         </PermissionGuard>
