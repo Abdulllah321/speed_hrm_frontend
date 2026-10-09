@@ -126,6 +126,22 @@ export function OnlineOrderList() {
             cell: ({ row }) => <span className="font-semibold"><HighlightText text={row.original.orderNumber} /></span>,
         },
         {
+            header: "SKU",
+            accessorKey: "sku",
+            cell: ({ row }) => {
+                const skus = Array.from(new Set(row.original.items?.map((i: any) => i.sku).filter(Boolean)));
+                return (
+                    <div className="flex flex-col gap-1">
+                        {skus.map((sku: any, idx: number) => (
+                            <span key={idx} className="text-[11px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border whitespace-nowrap" title={sku}>
+                                {sku}
+                            </span>
+                        ))}
+                    </div>
+                );
+            },
+        },
+        {
             header: "Date",
             accessorKey: "orderedAt",
             cell: ({ row }) => row.original.orderedAt ? format(new Date(row.original.orderedAt), 'MMM dd, yyyy') : '—',
@@ -139,6 +155,11 @@ export function OnlineOrderList() {
             header: "City",
             accessorKey: "city",
             cell: ({ row }) => <HighlightText text={row.original.city || '—'} />,
+        },
+        {
+            header: "Payment Mode",
+            accessorKey: "paymentMethod",
+            cell: ({ row }) => <span className="text-gray-600">{row.original.paymentMethod || '—'}</span>,
         },
         {
             header: "Total",
