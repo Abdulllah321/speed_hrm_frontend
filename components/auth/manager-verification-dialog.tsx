@@ -45,7 +45,7 @@ export function ManagerVerificationDialog({
 
     useEffect(() => {
         if (open) {
-            setEmailOrId(user?.email || user?.employee?.employeeId|| "");
+            setEmailOrId(user?.email || user?.employeeId|| "");
             setPassword("");
             setNote("");
         }
