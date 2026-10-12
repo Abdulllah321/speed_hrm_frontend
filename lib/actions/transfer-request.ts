@@ -163,6 +163,8 @@ export async function acknowledgeClaimTransfer(id: string, userId?: string) {
             body: JSON.stringify({ userId }),
         });
         revalidatePath("/erp/inventory/transactions/plm-claims");
+        revalidatePath("/erp/inventory/transactions/stock-transfer");
+        revalidatePath("/erp/inventory/transactions/stock-transfer/history");
         return response.data ?? { status: false, message: "Failed to acknowledge claim" };
     } catch (error) {
         console.error("Acknowledge claim transfer error:", error);

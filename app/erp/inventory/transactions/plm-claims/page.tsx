@@ -62,7 +62,7 @@ export default function PLMClaimsPage() {
                 );
 
                 const pending = claimTransfers.filter((req: TransferRequest) => req.status === 'PENDING');
-                const completed = claimTransfers.filter((req: TransferRequest) => req.status === 'COMPLETED');
+                const completed = claimTransfers.filter((req: TransferRequest) => req.status === 'COMPLETED' || req.status === 'APPROVED');
 
                 setPendingRequests(pending);
                 setCompletedRequests(completed);

@@ -198,6 +198,7 @@ export function AvailableStockSummaryView({
         filterColors,
         reportType,
         groupingLevels,
+        locations,
     });
 
     // Handle instant client-side Excel Export

@@ -41,6 +41,7 @@ export function useAvailableStockData({
     filterColors,
     reportType,
     groupingLevels,
+    locations,
 }: {
     rawItems: FlatItemRecord[];
     selectedLocationIds: string[];
@@ -55,8 +56,23 @@ export function useAvailableStockData({
     filterColors: Set<string>;
     reportType: "merged" | "separate";
     groupingLevels: GroupingLevels;
+    locations?: Array<{ id: string; warehouseId?: string | null }>;
 }) {
     const deferredSearchQuery = useDeferredValue(searchQuery);
+
+    // Map selected warehouses to any associated locations (e.g. PLM warehouse -> PLM location C20001)
+    const whMatchingLocIds = useMemo(() => {
+        const set = new Set<string>();
+        if (selectedWarehouseIds.length > 0 && locations) {
+            for (const loc of locations) {
+                if (loc.warehouseId && selectedWarehouseIds.includes(loc.warehouseId)) {
+                    set.add(loc.id);
+                }
+            }
+        }
+        return set;
+    }, [selectedWarehouseIds, locations]);
+
     // 1. Extract distinct attribute options from rawItems for filter dropdowns
     const attributeOptions = useMemo(() => {
         const brands = new Set<string>();
@@ -98,7 +114,9 @@ export function useAvailableStockData({
         return rawItems.filter((item) => {
             // Location/Warehouse filtering
             if (hasLocFilter) {
-                const matchLoc = item.locationId && selLocs.has(item.locationId);
+                const matchLoc =
+                    item.locationId &&
+                    (selLocs.has(item.locationId) || whMatchingLocIds.has(item.locationId));
                 const matchWh = item.warehouseId && selWhs.has(item.warehouseId);
                 if (!matchLoc && !matchWh) return false;
             }
