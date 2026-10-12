@@ -221,6 +221,12 @@ export function StockTransferHistoryList({
                         <CheckCircle2 className="h-3 w-3" /> completed
                     </Badge>
                 );
+            case 'APPROVED':
+                return (
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200 gap-1 capitalize">
+                        <CheckCircle2 className="h-3 w-3" /> approved
+                    </Badge>
+                );
             case 'REJECTED':
             case 'CANCELLED':
                 return (
@@ -235,7 +241,7 @@ export function StockTransferHistoryList({
 
     // Calculate metrics for KPI summary cards
     const totalCount = meta.total;
-    const completedCount = entries.filter((e) => e.status === "COMPLETED").length;
+    const completedCount = entries.filter((e) => e.status === "COMPLETED" || e.status === "APPROVED").length;
     const pendingCount = entries.filter((e) => e.status?.includes("PENDING")).length;
     const totalQtyTransferred = entries.reduce((sum, e) => {
         return sum + (e.items?.reduce((iSum: number, item: any) => iSum + Number(item.quantity || 0), 0) || 0);
@@ -337,16 +343,19 @@ export function StockTransferHistoryList({
             header: () => <div className="text-right">Actions</div>,
             cell: ({ row }) => {
                 const transfer = row.original;
+                const slipUrl = transfer.transferType === 'CLAIM_TO_PLM'
+                    ? `/erp/inventory/transactions/claim-transfer/slip/${transfer.id}`
+                    : `/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`;
                 return (
                     <div className="flex justify-end gap-1.5">
                         <Button variant="outline" size="sm" asChild className="h-8">
-                            <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`}>
+                            <Link href={slipUrl}>
                                 <Eye className="h-3.5 w-3.5 mr-1" />
                                 View
                             </Link>
                         </Button>
                         <Button variant="outline" size="sm" asChild className="h-8">
-                            <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`} target="_blank">
+                            <Link href={slipUrl} target="_blank">
                                 <Printer className="h-3.5 w-3.5 mr-1" />
                                 Print
                             </Link>

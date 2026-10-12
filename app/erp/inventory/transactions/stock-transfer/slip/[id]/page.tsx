@@ -209,6 +209,36 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
 
       {/* Visual Approval Stepper (hidden on print) */}
       {!loading && transfer && (
+        transfer.transferType === 'CLAIM_TO_PLM' ? (
+          <div className="print:hidden max-w-4xl mx-auto mb-6">
+            <Card className="bg-gradient-to-r from-slate-900/90 to-slate-950/95 text-white border-slate-800 shadow-xl overflow-hidden relative backdrop-blur-md">
+              <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]" />
+              <CardContent className="relative p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Package className="h-5 w-5 text-indigo-400" />
+                      <span className="text-base font-bold text-white">POS Claim Return to PLM</span>
+                      <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">Direct Flow (No Maker/Checker Required)</Badge>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      {transfer.status === 'COMPLETED' || transfer.status === 'APPROVED'
+                        ? '✅ Claim acknowledged by PLM. Inventory has been updated.'
+                        : '⚠️ This transfer is awaiting acknowledgment at PLM Claims. Inventory will be updated immediately upon acknowledgment.'}
+                    </p>
+                  </div>
+                  {transfer.status === 'PENDING' && (
+                    <Button asChild className="bg-emerald-600 hover:bg-emerald-700 font-bold shrink-0">
+                      <Link href="/erp/inventory/transactions/plm-claims">
+                        Acknowledge in PLM Claims
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
         <div className="print:hidden max-w-4xl mx-auto mb-6">
           <Card className="bg-gradient-to-r from-slate-900/90 to-slate-950/95 text-white border-slate-800 shadow-xl overflow-hidden relative backdrop-blur-md">
             <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]" />
@@ -309,6 +339,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
             </CardContent>
           </Card>
         </div>
+        )
       )}
 
       {/* Pending Approval Action Card (only shown when PENDING_CHECKER or PENDING_AUTHORIZER) */}
