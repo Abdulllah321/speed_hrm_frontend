@@ -4,6 +4,8 @@ import { authFetch } from "@/lib/auth";
 
 export async function getStockTransfers(filters?: {
     warehouseId?: string;
+    fromLocationId?: string;
+    toLocationId?: string;
     status?: string;
     transferType?: string;
     dispatchType?: string;
@@ -18,6 +20,8 @@ export async function getStockTransfers(filters?: {
     try {
         const queryParams = new URLSearchParams();
         if (filters?.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
+        if (filters?.fromLocationId) queryParams.append("fromLocationId", filters.fromLocationId);
+        if (filters?.toLocationId) queryParams.append("toLocationId", filters.toLocationId);
         if (filters?.status) queryParams.append("status", filters.status);
         if (filters?.transferType) queryParams.append("transferType", filters.transferType);
         if (filters?.dispatchType) queryParams.append("dispatchType", filters.dispatchType);
@@ -52,6 +56,8 @@ export async function getStockTransfers(filters?: {
 export async function queueDeliveryNotesExport(filters?: {
     reportType?: 'summary' | 'detailed';
     warehouseId?: string;
+    fromLocationId?: string;
+    toLocationId?: string;
     status?: string;
     transferType?: string;
     dispatchType?: string;
@@ -63,6 +69,8 @@ export async function queueDeliveryNotesExport(filters?: {
         const queryParams = new URLSearchParams();
         if (filters?.reportType) queryParams.append("reportType", filters.reportType);
         if (filters?.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
+        if (filters?.fromLocationId) queryParams.append("fromLocationId", filters.fromLocationId);
+        if (filters?.toLocationId) queryParams.append("toLocationId", filters.toLocationId);
         if (filters?.status) queryParams.append("status", filters.status);
         if (filters?.transferType) queryParams.append("transferType", filters.transferType);
         if (filters?.dispatchType) queryParams.append("dispatchType", filters.dispatchType);

@@ -193,6 +193,66 @@ export async function logoutClient(): Promise<{ status: boolean; message: string
   }
 }
 
+// Clear all terminal-related cookies as well as auth cookies directly from browser
+export function clearTerminalCookies() {
+  const cookies = [
+    "accessToken",
+    "refreshToken",
+    "sessionId",
+    "user",
+    "userRole",
+    "posTerminalToken",
+    "terminal",
+    "terminalId",
+    "posSessionId",
+    "pos_remembered_terminal",
+    "currentCompany",
+    "companyCode",
+    "companyId",
+    "bid",
+    "tenantCode",
+    "tenantId",
+    "app-environment",
+    "app-theme",
+  ];
+
+  const host = window.location.hostname;
+  const parts = host.split(".");
+  const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(host);
+  const baseDomain = (!isIP && parts.length >= 2) ? `.${parts.slice(-2).join(".")}` : host;
+
+  cookies.forEach((name) => {
+    // 1. Clear for current domain + path
+    document.cookie = `${name}=; Max-Age=-99999999; path=/;`;
+    
+    // 2. Clear for base domain if applicable
+    if (!isIP && parts.length >= 2) {
+      document.cookie = `${name}=; Max-Age=-99999999; path=/; domain=${baseDomain};`;
+      document.cookie = `${name}=; Max-Age=-99999999; path=/; domain=${parts.slice(-2).join(".")};`;
+    }
+  });
+}
+
+// Client-side complete POS terminal logout & deregister function
+export async function logoutTerminalClient(): Promise<{ status: boolean; message: string }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/pos/logout-terminal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+      credentials: "include",
+    });
+
+    const data = await res.json().catch(() => ({ status: true, message: "Logged out" }));
+    clearTerminalCookies();
+    return { status: data.status, message: data.message };
+  } catch (error) {
+    console.error("Terminal logout error:", error);
+    clearTerminalCookies();
+    return { status: false, message: "Terminal logout failed" };
+  }
+}
+
 // Client-side endpoint to explicitely verify the validity of an open POS session
 export async function verifyPosSessionClient(): Promise<any> {
   try {

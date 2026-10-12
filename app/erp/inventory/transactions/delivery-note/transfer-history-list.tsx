@@ -27,7 +27,13 @@ import {
     Save,
     TrendingUp,
     AlertCircle,
-    CheckCheck
+    CheckCheck,
+    Building2,
+    Store,
+    ArrowRight,
+    X,
+    MapPin,
+    Boxes
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -37,7 +43,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
@@ -59,6 +67,7 @@ import { useRouter } from "next/navigation";
 import { getStockTransfers, queueDeliveryNotesExport, checkDeliveryNotesExportStatus } from "@/lib/actions/stock-transfer";
 import { updateTransferDispatchDetails } from "@/lib/actions/transfer-request";
 import { Warehouse } from "@/lib/actions/warehouse";
+import { Location } from "@/lib/actions/location";
 import { cn } from "@/lib/utils";
 import DataTable, { HighlightText } from "@/components/common/data-table";
 import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
@@ -72,8 +81,11 @@ interface StockTransferHistoryListProps {
         totalPages: number;
     };
     warehouses?: Warehouse[];
+    locations?: Location[];
     initialFilters?: {
         warehouseId?: string;
+        fromLocationId?: string;
+        toLocationId?: string;
         status?: string;
         transferType?: string;
         dispatchType?: string;
@@ -103,6 +115,7 @@ export function StockTransferHistoryList({
     initialEntries,
     initialMeta,
     warehouses = [],
+    locations = [],
     initialFilters
 }: StockTransferHistoryListProps) {
     const router = useRouter();
@@ -125,12 +138,57 @@ export function StockTransferHistoryList({
     const [exportJobId, setExportJobId] = React.useState<string | null>(null);
     const [exportProgress, setExportProgress] = React.useState<number>(0);
 
+    // Unified Location / Facility Model combining Warehouses and Outlets into one seamless pool
+    const unifiedFacilities = React.useMemo(() => {
+        const list: Array<{
+            id: string;
+            name: string;
+            code: string;
+            type: "WAREHOUSE" | "OUTLET";
+            city?: string;
+            label: string;
+        }> = [];
+
+        warehouses.forEach((w) => {
+            list.push({
+                id: w.id,
+                name: w.name,
+                code: w.code,
+                type: "WAREHOUSE",
+                label: `${w.name} (${w.code})`,
+            });
+        });
+
+        locations.forEach((loc) => {
+            list.push({
+                id: loc.id,
+                name: loc.name,
+                code: loc.code || loc.shortCode || "",
+                type: "OUTLET",
+                city: loc.city?.name,
+                label: `${loc.name}${loc.code ? ` (${loc.code})` : ""}${loc.city?.name ? ` - ${loc.city.name}` : ""}`,
+            });
+        });
+
+        return list;
+    }, [warehouses, locations]);
+
+    const warehouseFacilities = React.useMemo(
+        () => unifiedFacilities.filter((f) => f.type === "WAREHOUSE"),
+        [unifiedFacilities]
+    );
+    const outletFacilities = React.useMemo(
+        () => unifiedFacilities.filter((f) => f.type === "OUTLET"),
+        [unifiedFacilities]
+    );
+
     // Filter states
     const [search, setSearch] = React.useState(initialFilters?.search || "");
     const [status, setStatus] = React.useState(initialFilters?.status || "all");
     const [transferType, setTransferType] = React.useState(initialFilters?.transferType || "all");
     const [dispatchTypeFilter, setDispatchTypeFilter] = React.useState(initialFilters?.dispatchType || "all");
-    const [warehouseId, setWarehouseId] = React.useState(initialFilters?.warehouseId || "all");
+    const [fromLocationId, setFromLocationId] = React.useState(initialFilters?.fromLocationId || initialFilters?.warehouseId || "all");
+    const [toLocationId, setToLocationId] = React.useState(initialFilters?.toLocationId || "all");
     const [dateFrom, setDateFrom] = React.useState(initialFilters?.dateFrom || "");
     const [dateTo, setDateTo] = React.useState(initialFilters?.dateTo || "");
     const [sorting, setSorting] = React.useState<SortingState>(
@@ -138,6 +196,24 @@ export function StockTransferHistoryList({
             ? [{ id: initialFilters.sortBy, desc: initialFilters.sortOrder === "desc" }]
             : []
     );
+
+    // Active route metadata
+    const fromFacility = React.useMemo(
+        () => unifiedFacilities.find((f) => f.id === fromLocationId),
+        [unifiedFacilities, fromLocationId]
+    );
+    const toFacility = React.useMemo(
+        () => unifiedFacilities.find((f) => f.id === toLocationId),
+        [unifiedFacilities, toLocationId]
+    );
+    const isRouteActive = fromLocationId !== "all" || toLocationId !== "all";
+
+    const handleSwapLocations = () => {
+        const prevFrom = fromLocationId;
+        const prevTo = toLocationId;
+        setFromLocationId(prevTo);
+        setToLocationId(prevFrom);
+    };
 
     // Dispatch Modal State
     const [isDispatchModalOpen, setIsDispatchModalOpen] = React.useState(false);
@@ -202,7 +278,8 @@ export function StockTransferHistoryList({
             const activeStatus = extraFilters?.status !== undefined ? extraFilters.status : status;
             const activeTransferType = extraFilters?.transferType !== undefined ? extraFilters.transferType : transferType;
             const activeDispatchType = extraFilters?.dispatchType !== undefined ? extraFilters.dispatchType : dispatchTypeFilter;
-            const activeWarehouseId = extraFilters?.warehouseId !== undefined ? extraFilters.warehouseId : warehouseId;
+            const activeFromLocationId = extraFilters?.fromLocationId !== undefined ? extraFilters.fromLocationId : fromLocationId;
+            const activeToLocationId = extraFilters?.toLocationId !== undefined ? extraFilters.toLocationId : toLocationId;
             const activeDateFrom = extraFilters?.dateFrom !== undefined ? extraFilters.dateFrom : dateFrom;
             const activeDateTo = extraFilters?.dateTo !== undefined ? extraFilters.dateTo : dateTo;
             const activeSorting = extraFilters?.sorting !== undefined ? extraFilters.sorting : sorting;
@@ -212,7 +289,8 @@ export function StockTransferHistoryList({
                 status: activeStatus !== "all" ? activeStatus : undefined,
                 transferType: activeTransferType !== "all" ? activeTransferType : undefined,
                 dispatchType: activeDispatchType !== "all" ? activeDispatchType : undefined,
-                warehouseId: activeWarehouseId !== "all" ? activeWarehouseId : undefined,
+                fromLocationId: activeFromLocationId !== "all" ? activeFromLocationId : undefined,
+                toLocationId: activeToLocationId !== "all" ? activeToLocationId : undefined,
                 dateFrom: activeDateFrom || undefined,
                 dateTo: activeDateTo || undefined,
                 page: targetPage,
@@ -233,7 +311,8 @@ export function StockTransferHistoryList({
                 if (activeFilters.status) params.set("status", activeFilters.status);
                 if (activeFilters.transferType) params.set("transferType", activeFilters.transferType);
                 if (activeFilters.dispatchType) params.set("dispatchType", activeFilters.dispatchType);
-                if (activeFilters.warehouseId) params.set("warehouseId", activeFilters.warehouseId);
+                if (activeFilters.fromLocationId) params.set("fromLocationId", activeFilters.fromLocationId);
+                if (activeFilters.toLocationId) params.set("toLocationId", activeFilters.toLocationId);
                 if (activeFilters.dateFrom) params.set("dateFrom", activeFilters.dateFrom);
                 if (activeFilters.dateTo) params.set("dateTo", activeFilters.dateTo);
                 if (activeFilters.sortBy) params.set("sortBy", activeFilters.sortBy);
@@ -264,7 +343,8 @@ export function StockTransferHistoryList({
         setStatus("all");
         setTransferType("all");
         setDispatchTypeFilter("all");
-        setWarehouseId("all");
+        setFromLocationId("all");
+        setToLocationId("all");
         setDateFrom("");
         setDateTo("");
         setSorting([]);
@@ -273,7 +353,8 @@ export function StockTransferHistoryList({
             status: "all",
             transferType: "all",
             dispatchType: "all",
-            warehouseId: "all",
+            fromLocationId: "all",
+            toLocationId: "all",
             dateFrom: "",
             dateTo: "",
             sorting: [],
@@ -360,7 +441,8 @@ export function StockTransferHistoryList({
                 status: status !== "all" ? status : undefined,
                 transferType: transferType !== "all" ? transferType : undefined,
                 dispatchType: dispatchTypeFilter !== "all" ? dispatchTypeFilter : undefined,
-                warehouseId: warehouseId !== "all" ? warehouseId : undefined,
+                fromLocationId: fromLocationId !== "all" ? fromLocationId : undefined,
+                toLocationId: toLocationId !== "all" ? toLocationId : undefined,
                 dateFrom: dateFrom || undefined,
                 dateTo: dateTo || undefined,
             };
@@ -404,6 +486,36 @@ export function StockTransferHistoryList({
                 );
             default:
                 return <Badge variant="outline" className="capitalize">{statusStr.toLowerCase()}</Badge>;
+        }
+    };
+
+    const getTransferTypeBadge = (type: string) => {
+        switch (type) {
+            case 'OUTLET_TO_WAREHOUSE':
+                return (
+                    <Badge variant="outline" className="bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 text-[10px] gap-1 font-semibold py-0.5 w-fit">
+                        <RotateCcw className="h-3 w-3 text-amber-600 shrink-0" /> Outlet ➔ WH (Return)
+                    </Badge>
+                );
+            case 'WAREHOUSE_TO_WAREHOUSE':
+                return (
+                    <Badge variant="outline" className="bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 text-[10px] gap-1 font-semibold py-0.5 w-fit">
+                        <Building2 className="h-3 w-3 text-purple-600 shrink-0" /> Inter-Warehouse
+                    </Badge>
+                );
+            case 'OUTLET_TO_OUTLET':
+                return (
+                    <Badge variant="outline" className="bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300 border-teal-200 text-[10px] gap-1 font-semibold py-0.5 w-fit">
+                        <Store className="h-3 w-3 text-teal-600 shrink-0" /> Outlet ➔ Outlet
+                    </Badge>
+                );
+            case 'WAREHOUSE_TO_OUTLET':
+            default:
+                return (
+                    <Badge variant="outline" className="bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 text-[10px] gap-1 font-semibold py-0.5 w-fit">
+                        <Building2 className="h-3 w-3 text-blue-600 shrink-0" /> Warehouse ➔ Outlet
+                    </Badge>
+                );
         }
     };
 
@@ -506,52 +618,51 @@ export function StockTransferHistoryList({
             ),
         },
         {
-            id: "fromLocation",
-            header: "From Location",
+            id: "route",
+            header: "Transfer Route (From ➔ To)",
             cell: ({ row }) => {
                 const transfer = row.original;
-                let name: string;
-                if (transfer.transferType === "OUTLET_TO_WAREHOUSE" || transfer.transferType === "OUTLET_TO_OUTLET") {
-                    name = transfer.fromLocation?.name || "Outlet";
-                } else {
-                    // WAREHOUSE_TO_OUTLET or others
-                    name = transfer.fromWarehouse?.name || transfer.fromLocation?.name || "—";
-                }
+                const originName = transfer.transferType === 'OUTLET_TO_WAREHOUSE'
+                    ? (transfer.fromLocation?.name || 'Outlet')
+                    : (transfer.fromWarehouse?.name || transfer.fromLocation?.name || 'Warehouse');
+                const originCode = transfer.transferType === 'OUTLET_TO_WAREHOUSE'
+                    ? transfer.fromLocation?.code
+                    : (transfer.fromWarehouse?.code || transfer.fromLocation?.code);
+                const isOriginOutlet = transfer.transferType === 'OUTLET_TO_WAREHOUSE' || transfer.transferType === 'OUTLET_TO_OUTLET';
+
+                const destName = transfer.transferType === 'OUTLET_TO_WAREHOUSE'
+                    ? (transfer.toWarehouse?.name || transfer.fromWarehouse?.name || 'Warehouse')
+                    : (transfer.toLocation?.name || transfer.toWarehouse?.name || 'Destination');
+                const destCode = transfer.transferType === 'OUTLET_TO_WAREHOUSE'
+                    ? (transfer.toWarehouse?.code || transfer.fromWarehouse?.code)
+                    : (transfer.toLocation?.code || transfer.toWarehouse?.code);
+                const isDestWarehouse = transfer.transferType === 'OUTLET_TO_WAREHOUSE' || transfer.transferType === 'WAREHOUSE_TO_WAREHOUSE';
+
                 return (
-                    <span className="text-sm font-medium">{name}</span>
-                );
-            },
-        },
-        {
-            id: "path",
-            header: "Transfer Path",
-            cell: ({ row }) => {
-                const transfer = row.original;
-                return (
-                    <div className="flex flex-col gap-1">
-                        {transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? (
-                            <>
-                                <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Badge variant="outline" className="px-1.5 py-0 h-5 bg-orange-50 text-orange-700 border-orange-200">FROM</Badge>
-                                    <span className="text-muted-foreground">{transfer.fromLocation?.name || 'Outlet'}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Badge variant="outline" className="px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">TO</Badge>
-                                    <span className="font-bold">{transfer.fromWarehouse?.name || 'Main Warehouse'}</span>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Badge variant="outline" className="px-1.5 py-0 h-5 bg-background">FROM</Badge>
-                                    <span className="text-muted-foreground">{transfer.fromLocation?.name || transfer.fromWarehouse?.name || '—'}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Badge variant="outline" className="px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">TO</Badge>
-                                    <span className="font-bold">{transfer.toLocation?.name || transfer.toWarehouse?.name}</span>
-                                </div>
-                            </>
-                        )}
+                    <div className="flex flex-col gap-1.5 min-w-[210px]">
+                        <div>
+                            {getTransferTypeBadge(transfer.transferType)}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs">
+                            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 border border-orange-200 dark:border-orange-800 shrink-0">
+                                FROM
+                            </span>
+                            <span className="flex items-center gap-1 font-medium text-foreground truncate" title={originName}>
+                                {isOriginOutlet ? <Store className="h-3 w-3 text-emerald-600 shrink-0" /> : <Building2 className="h-3 w-3 text-primary shrink-0" />}
+                                <span className="truncate">{originName}</span>
+                                {originCode && <span className="text-[10px] text-muted-foreground font-mono">({originCode})</span>}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs">
+                            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                                TO
+                            </span>
+                            <span className="flex items-center gap-1 font-bold text-foreground truncate" title={destName}>
+                                {isDestWarehouse ? <Building2 className="h-3 w-3 text-primary shrink-0" /> : <Store className="h-3 w-3 text-emerald-600 shrink-0" />}
+                                <span className="truncate">{destName}</span>
+                                {destCode && <span className="text-[10px] text-muted-foreground font-mono font-normal">({destCode})</span>}
+                            </span>
+                        </div>
                     </div>
                 );
             },
@@ -634,16 +745,21 @@ export function StockTransferHistoryList({
 
     return (
         <div className="space-y-6">
-            {/* KPI Cards */}
+            {/* KPI Summary Cards */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Card className="border-2 shadow-xs bg-card">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Delivery Notes</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                {isRouteActive ? "Route Deliveries" : "Total Delivery Notes"}
+                            </p>
                             <h3 className="text-2xl font-extrabold tracking-tight mt-1">{totalCount}</h3>
+                            <span className="text-[11px] font-semibold text-primary">
+                                {isRouteActive ? "Filtered Route Volume" : "Across All Facilities"}
+                            </span>
                         </div>
                         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                            <TrendingUp className="h-5 w-5" />
+                            {isRouteActive ? <Boxes className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />}
                         </div>
                     </CardContent>
                 </Card>
@@ -653,6 +769,7 @@ export function StockTransferHistoryList({
                         <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Completed Delivery</p>
                             <h3 className="text-2xl font-extrabold text-emerald-600 tracking-tight mt-1">{completedCount}</h3>
+                            <span className="text-[11px] text-muted-foreground">Received on current page</span>
                         </div>
                         <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600">
                             <CheckCheck className="h-5 w-5" />
@@ -665,6 +782,7 @@ export function StockTransferHistoryList({
                         <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Courier Dispatched</p>
                             <h3 className="text-2xl font-extrabold text-purple-600 tracking-tight mt-1">{courierCount}</h3>
+                            <span className="text-[11px] text-muted-foreground">With tracking info</span>
                         </div>
                         <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-600">
                             <Truck className="h-5 w-5" />
@@ -675,8 +793,11 @@ export function StockTransferHistoryList({
                 <Card className="border-2 shadow-xs bg-card">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Qty Delivered (Page)</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                {isRouteActive ? "Route Units (Page)" : "Qty Delivered (Page)"}
+                            </p>
                             <h3 className="text-2xl font-extrabold text-indigo-600 tracking-tight mt-1">{totalQtyDelivered}</h3>
+                            <span className="text-[11px] text-muted-foreground">Units in line items</span>
                         </div>
                         <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-600">
                             <Package className="h-5 w-5" />
@@ -688,7 +809,192 @@ export function StockTransferHistoryList({
             {/* Filter Bar */}
             <Card className="border-2 shadow-xs">
                 <CardContent className="p-4 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
+                    {/* Unified Route Intelligence Filter (Origin ➔ Destination) */}
+                    <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-r from-primary/5 via-background to-secondary/5 p-4 shadow-xs space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                    <MapPin className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold tracking-tight flex items-center gap-2">
+                                        Route Filter
+                                        <Badge variant="outline" className="text-[10px] font-semibold bg-background border-primary/30 text-primary">
+                                            Unified Facilities Model
+                                        </Badge>
+                                    </h4>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Check transfers from/into any Warehouse 🏢 or Outlet 🏬 across all directions
+                                    </p>
+                                </div>
+                            </div>
+
+                            {isRouteActive && (
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="bg-primary/15 text-primary border-primary/30 font-bold text-xs gap-1.5 py-1 px-2.5">
+                                        <Boxes className="h-3.5 w-3.5" />
+                                        {meta.total} {meta.total === 1 ? 'Transfer Found' : 'Transfers Found'}
+                                    </Badge>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setFromLocationId("all");
+                                            setToLocationId("all");
+                                        }}
+                                        className="h-7 text-xs text-muted-foreground hover:text-destructive px-2"
+                                    >
+                                        <X className="h-3.5 w-3.5 mr-1" /> Reset Route
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Route Selector Controls */}
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr] gap-3 items-center">
+                            {/* Origin / From Facility */}
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <span className="h-2 w-2 rounded-full bg-orange-500 inline-block"></span>
+                                    Origin (From Location / Warehouse)
+                                </Label>
+                                <Select value={fromLocationId} onValueChange={setFromLocationId}>
+                                    <SelectTrigger className="h-10 bg-background font-medium">
+                                        <SelectValue placeholder="All Origins (Any Facility)" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-80">
+                                        <SelectItem value="all" className="font-semibold text-muted-foreground">
+                                            🌐 All Origins (Any Warehouse or Outlet)
+                                        </SelectItem>
+                                        {warehouseFacilities.length > 0 && (
+                                            <SelectGroup>
+                                                <SelectLabel className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase">
+                                                    <Building2 className="h-3.5 w-3.5" /> Central Warehouses ({warehouseFacilities.length})
+                                                </SelectLabel>
+                                                {warehouseFacilities.map((fac) => (
+                                                    <SelectItem key={`from-wh-${fac.id}`} value={fac.id}>
+                                                        🏢 {fac.name} ({fac.code})
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        )}
+                                        {outletFacilities.length > 0 && (
+                                            <SelectGroup>
+                                                <SelectLabel className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 uppercase">
+                                                    <Store className="h-3.5 w-3.5" /> Retail Outlets / Stores ({outletFacilities.length})
+                                                </SelectLabel>
+                                                {outletFacilities.map((fac) => (
+                                                    <SelectItem key={`from-out-${fac.id}`} value={fac.id}>
+                                                        🏬 {fac.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Swap Button */}
+                            <div className="flex md:flex-col items-center justify-center pt-2 md:pt-5">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleSwapLocations}
+                                    disabled={fromLocationId === "all" && toLocationId === "all"}
+                                    title="Swap Origin and Destination"
+                                    className="h-9 w-9 rounded-full border-2 border-primary/20 hover:border-primary hover:bg-primary/10 transition-all shadow-xs"
+                                >
+                                    <ArrowRightLeft className="h-4 w-4 text-primary" />
+                                </Button>
+                            </div>
+
+                            {/* Destination / To Facility */}
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
+                                    Destination (Into Location / Warehouse)
+                                </Label>
+                                <Select value={toLocationId} onValueChange={setToLocationId}>
+                                    <SelectTrigger className="h-10 bg-background font-medium">
+                                        <SelectValue placeholder="All Destinations (Any Facility)" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-80">
+                                        <SelectItem value="all" className="font-semibold text-muted-foreground">
+                                            🌐 All Destinations (Any Warehouse or Outlet)
+                                        </SelectItem>
+                                        {warehouseFacilities.length > 0 && (
+                                            <SelectGroup>
+                                                <SelectLabel className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase">
+                                                    <Building2 className="h-3.5 w-3.5" /> Central Warehouses ({warehouseFacilities.length})
+                                                </SelectLabel>
+                                                {warehouseFacilities.map((fac) => (
+                                                    <SelectItem key={`to-wh-${fac.id}`} value={fac.id}>
+                                                        🏢 {fac.name} ({fac.code})
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        )}
+                                        {outletFacilities.length > 0 && (
+                                            <SelectGroup>
+                                                <SelectLabel className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 uppercase">
+                                                    <Store className="h-3.5 w-3.5" /> Retail Outlets / Stores ({outletFacilities.length})
+                                                </SelectLabel>
+                                                {outletFacilities.map((fac) => (
+                                                    <SelectItem key={`to-out-${fac.id}`} value={fac.id}>
+                                                        🏬 {fac.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Active Route Intelligence Summary Banner */}
+                        {isRouteActive && (
+                            <div className="flex flex-wrap items-center justify-between gap-3 bg-background/90 rounded-lg p-3 border shadow-xs text-xs">
+                                <div className="flex flex-wrap items-center gap-2 font-medium">
+                                    <span className="text-muted-foreground font-semibold">Active Filtered Route:</span>
+                                    <span className="font-bold flex items-center gap-1.5 px-2.5 py-1 rounded bg-orange-50 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300 border border-orange-200">
+                                        {fromFacility ? (
+                                            <>
+                                                {fromFacility.type === "WAREHOUSE" ? <Building2 className="h-3.5 w-3.5 text-orange-600" /> : <Store className="h-3.5 w-3.5 text-orange-600" />}
+                                                {fromFacility.name}
+                                            </>
+                                        ) : (
+                                            <span className="text-muted-foreground italic">Any Origin</span>
+                                        )}
+                                    </span>
+                                    <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+                                    <span className="font-bold flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200">
+                                        {toFacility ? (
+                                            <>
+                                                {toFacility.type === "WAREHOUSE" ? <Building2 className="h-3.5 w-3.5 text-emerald-600" /> : <Store className="h-3.5 w-3.5 text-emerald-600" />}
+                                                {toFacility.name}
+                                            </>
+                                        ) : (
+                                            <span className="text-muted-foreground italic">Any Destination</span>
+                                        )}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                    <span className="text-muted-foreground font-medium">
+                                        Transfers on Route: <strong className="text-foreground font-bold">{meta.total}</strong>
+                                    </span>
+                                    <span className="text-muted-foreground font-medium">
+                                        Units (Page): <strong className="text-primary font-bold">{totalQtyDelivered}</strong>
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Secondary Filter Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
                         <div className="space-y-1.5 lg:col-span-1">
                             <Label htmlFor="search" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Search Request / CN</Label>
                             <div className="relative">
@@ -731,6 +1037,7 @@ export function StockTransferHistoryList({
                                     <SelectItem value="all">All Transfer Types</SelectItem>
                                     <SelectItem value="WAREHOUSE_TO_OUTLET">Warehouse to Outlet</SelectItem>
                                     <SelectItem value="OUTLET_TO_WAREHOUSE">Outlet to Warehouse</SelectItem>
+                                    <SelectItem value="WAREHOUSE_TO_WAREHOUSE">Warehouse to Warehouse</SelectItem>
                                     <SelectItem value="OUTLET_TO_OUTLET">Outlet to Outlet</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -747,23 +1054,6 @@ export function StockTransferHistoryList({
                                     <SelectItem value="COURIER">Courier (Leopard / TCS)</SelectItem>
                                     <SelectItem value="RIDER">Rider / Driver</SelectItem>
                                     <SelectItem value="SELF">Self Handover</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Source Warehouse</Label>
-                            <Select value={warehouseId} onValueChange={setWarehouseId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Warehouse" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Warehouses</SelectItem>
-                                    {warehouses?.map((w) => (
-                                        <SelectItem key={w.id} value={w.id}>
-                                            {w.name} ({w.code})
-                                        </SelectItem>
-                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>

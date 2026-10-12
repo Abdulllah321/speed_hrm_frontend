@@ -1,5 +1,6 @@
 import { getStockTransfers } from "@/lib/actions/stock-transfer";
 import { getWarehouses } from "@/lib/actions/warehouse";
+import { getLocations } from "@/lib/actions/location";
 import { StockTransferHistoryList } from "./transfer-history-list";
 import { ListError } from "@/components/dashboard/list-error";
 import { PermissionGuard } from "@/components/auth/permission-guard";
@@ -14,6 +15,8 @@ export default async function DeliveryNotePage({
 }: {
     searchParams: Promise<{
         warehouseId?: string;
+        fromLocationId?: string;
+        toLocationId?: string;
         status?: string;
         transferType?: string;
         dispatchType?: string;
@@ -34,10 +37,15 @@ export default async function DeliveryNotePage({
             limit,
         };
 
-        const [result, warehouses] = await Promise.all([
+        const [result, warehouses, locationsRes] = await Promise.all([
             getStockTransfers(filters),
             getWarehouses(),
+            getLocations(),
         ]);
+
+        const locations = Array.isArray(locationsRes)
+            ? locationsRes
+            : (Array.isArray(locationsRes?.data) ? locationsRes.data : []);
 
         if (!result.status) {
             return (
@@ -70,7 +78,7 @@ export default async function DeliveryNotePage({
                                 <h2 className="text-3xl font-bold tracking-tight">Delivery Notes</h2>
                             </div>
                             <p className="text-muted-foreground">
-                                All stock transfer records (warehouse to outlet & return transfers) and their delivery status.
+                                All stock transfer records (warehouse to outlet, outlet to warehouse, inter-warehouse, and outlet transfers) with delivery status.
                             </p>
                         </div>
                         <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
@@ -84,6 +92,7 @@ export default async function DeliveryNotePage({
                         initialEntries={data} 
                         initialMeta={result.meta}
                         warehouses={warehouses}
+                        locations={locations}
                         initialFilters={filters}
                     />
                 </div>
