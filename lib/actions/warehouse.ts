@@ -18,11 +18,11 @@ export interface Warehouse {
 export async function getWarehouses(): Promise<Warehouse[]> {
     try {
         const res = await authFetch("/warehouse", { cache: "no-store" });
-        if (!res) return [];
-        if (Array.isArray(res.data)) return res.data;
-        if (Array.isArray(res.data?.data)) return res.data.data;
-        if (Array.isArray(res)) return res;
-        return [];
+        let list: Warehouse[] = [];
+        if (Array.isArray(res.data)) list = res.data;
+        else if (Array.isArray(res.data?.data)) list = res.data.data;
+        else if (Array.isArray(res)) list = res;
+        return list.filter((w) => w.isActive !== false && !(w as any).isDeleted);
     } catch (error) {
         console.error("Failed to fetch warehouses:", error);
         return [];
