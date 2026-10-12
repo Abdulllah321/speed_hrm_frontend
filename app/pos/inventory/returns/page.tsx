@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { useDebounce } from "@/hooks/use-debounce";
 import { warehouseApi, inventoryApi } from "@/lib/api";
+import { authFetch } from "@/lib/auth";
 
 interface Warehouse {
     id: string;
@@ -40,9 +41,11 @@ interface Item {
     sku: string;
     barCode?: string;
     description: string;
-    size?: { id: string; name: string };
-    color?: { id: string; name: string };
+    size?: any;
+    color?: any;
     totalQuantity: number;
+    brand?: any;
+    uniqueNo?: string;
 }
 
 interface CartItem {
@@ -250,28 +253,85 @@ export default function ReturnRequestsPage() {
     }, []);
 
     const handleSearch = useCallback(async (query: string) => {
-        if (!query.trim() || !locationId) {
+        const q = query.trim();
+        if (!q) {
             setSearchResults([]);
             return;
         }
         setIsSearching(true);
         try {
-            const res = await inventoryApi.search(query, undefined, locationId);
-            if (res.status) {
-                const availableItems = (res.data || []).map((item: any) => ({
+            // 1. Primary: Use POS Sales Lookup (same logic as New Sale and Direct Transfer)
+            const res = await authFetch(`/pos-sales/lookup`, {
+                params: { q, locationId },
+            });
+            if (res.ok && res.data?.status && Array.isArray(res.data.data) && res.data.data.length > 0) {
+                const availableItems = res.data.data.map((item: any) => ({
                     id: item.id,
-                    sku: item.sku,
+                    sku: item.sku || item.barCode || "-",
                     barCode: item.barCode,
-                    description: item.description,
-                    size: item.size,
-                    color: item.color,
-                    totalQuantity: item.totalQuantity || 0,
-                    brand: item.brand
+                    description: item.description || item.name || "Unknown Item",
+                    size: typeof item.size === 'object' ? item.size : { id: '', name: item.size || '' },
+                    color: typeof item.color === 'object' ? item.color : { id: '', name: item.color || '' },
+                    totalQuantity: Number(item.stockQty ?? item.totalQuantity ?? 0),
+                    brand: typeof item.brand === 'object' ? item.brand?.name : item.brand,
+                    uniqueNo: item.uniqueNo,
                 })).filter((item: any) => item.totalQuantity > 0);
-                setSearchResults(availableItems);
+
+                if (availableItems.length > 0) {
+                    setSearchResults(availableItems);
+                    return;
+                }
             }
+
+            // 2. Try exact POS scan if barcode/SKU typed (>= 3 chars)
+            if (q.length >= 3) {
+                const scanRes = await authFetch(`/pos-sales/scan`, {
+                    params: { barcode: q, locationId },
+                });
+                if (scanRes.ok && scanRes.data?.status && scanRes.data.data) {
+                    const prod = scanRes.data.data;
+                    const stock = Number(prod.stockQty ?? prod.totalQuantity ?? 0);
+                    if (stock > 0) {
+                        setSearchResults([{
+                            id: prod.id,
+                            sku: prod.sku || prod.barCode || "-",
+                            barCode: prod.barCode,
+                            description: prod.description || prod.name || "Unknown Item",
+                            size: typeof prod.size === 'object' ? prod.size : { id: '', name: prod.size || '' },
+                            color: typeof prod.color === 'object' ? prod.color : { id: '', name: prod.color || '' },
+                            totalQuantity: stock,
+                            brand: typeof prod.brand === 'object' ? prod.brand?.name : prod.brand,
+                            uniqueNo: prod.uniqueNo,
+                        }]);
+                        return;
+                    }
+                }
+            }
+
+            // 3. Fallback: Generic inventory search
+            if (locationId) {
+                const fallbackRes = await inventoryApi.search(q, undefined, locationId);
+                if (fallbackRes.status && fallbackRes.data) {
+                    const availableItems = fallbackRes.data.map((item: any) => ({
+                        id: item.id,
+                        sku: item.sku,
+                        barCode: item.barCode,
+                        description: item.description,
+                        size: typeof item.size === 'object' ? item.size : { id: '', name: item.size || '' },
+                        color: typeof item.color === 'object' ? item.color : { id: '', name: item.color || '' },
+                        totalQuantity: item.totalQuantity || 0,
+                        brand: item.brand,
+                        uniqueNo: item.uniqueNo,
+                    })).filter((item: any) => item.totalQuantity > 0);
+                    setSearchResults(availableItems);
+                    return;
+                }
+            }
+
+            setSearchResults([]);
         } catch (error) {
             console.error("Failed to search inventory", error);
+            setSearchResults([]);
         } finally {
             setIsSearching(false);
         }
@@ -281,7 +341,7 @@ export default function ReturnRequestsPage() {
         if (e.key === 'Enter') {
             e.preventDefault();
             const query = itemQuery.trim();
-            if (!query || !locationId) return;
+            if (!query) return;
 
             if (searchResults.length === 1) {
                 addToCart(searchResults[0]);
@@ -290,27 +350,83 @@ export default function ReturnRequestsPage() {
 
             setIsSearching(true);
             try {
-                const res = await inventoryApi.search(query, undefined, locationId);
-                if (res.status && res.data) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const availableItems = res.data.map((item: any) => ({
-                        id: item.id,
-                        sku: item.sku,
-                        barCode: item.barCode,
-                        description: item.description,
-                        size: item.size,
-                        color: item.color,
-                        totalQuantity: item.totalQuantity || 0
-                    })).filter((item: any) => item.totalQuantity > 0);
-                    
-                    if (availableItems.length === 1) {
-                        addToCart(availableItems[0]);
-                    } else if (availableItems.length > 1) {
-                        setSearchResults(availableItems);
+                // 1. Try exact barcode scan first (instant scan behavior matching New Sale)
+                const scanRes = await authFetch(`/pos-sales/scan`, {
+                    params: { barcode: query, locationId },
+                });
+                if (scanRes.ok && scanRes.data?.status && scanRes.data.data) {
+                    const prod = scanRes.data.data;
+                    const stock = Number(prod.stockQty ?? prod.totalQuantity ?? 0);
+                    if (stock > 0) {
+                        addToCart({
+                            id: prod.id,
+                            sku: prod.sku || prod.barCode || "-",
+                            barCode: prod.barCode,
+                            description: prod.description || prod.name || "Unknown Item",
+                            size: typeof prod.size === 'object' ? prod.size : { id: '', name: prod.size || '' },
+                            color: typeof prod.color === 'object' ? prod.color : { id: '', name: prod.color || '' },
+                            totalQuantity: stock,
+                            brand: typeof prod.brand === 'object' ? prod.brand?.name : prod.brand,
+                            uniqueNo: prod.uniqueNo,
+                        });
+                        return;
                     } else {
-                        toast.error("Item not found or out of stock at this location");
+                        toast.error("Item is out of stock at this location");
+                        return;
                     }
                 }
+
+                // 2. Try POS lookup
+                const lookupRes = await authFetch(`/pos-sales/lookup`, {
+                    params: { q: query, locationId },
+                });
+                if (lookupRes.ok && lookupRes.data?.status && Array.isArray(lookupRes.data.data)) {
+                    const availableItems = lookupRes.data.data.map((item: any) => ({
+                        id: item.id,
+                        sku: item.sku || item.barCode || "-",
+                        barCode: item.barCode,
+                        description: item.description || item.name || "Unknown Item",
+                        size: typeof item.size === 'object' ? item.size : { id: '', name: item.size || '' },
+                        color: typeof item.color === 'object' ? item.color : { id: '', name: item.color || '' },
+                        totalQuantity: Number(item.stockQty ?? item.totalQuantity ?? 0),
+                        brand: typeof item.brand === 'object' ? item.brand?.name : item.brand,
+                        uniqueNo: item.uniqueNo,
+                    })).filter((item: any) => item.totalQuantity > 0);
+
+                    if (availableItems.length === 1) {
+                        addToCart(availableItems[0]);
+                        return;
+                    } else if (availableItems.length > 1) {
+                        setSearchResults(availableItems);
+                        return;
+                    }
+                }
+
+                // 3. Fallback to generic inventory search
+                if (locationId) {
+                    const res = await inventoryApi.search(query, undefined, locationId);
+                    if (res.status && res.data) {
+                        const availableItems = res.data.map((item: any) => ({
+                            id: item.id,
+                            sku: item.sku,
+                            barCode: item.barCode,
+                            description: item.description,
+                            size: typeof item.size === 'object' ? item.size : { id: '', name: item.size || '' },
+                            color: typeof item.color === 'object' ? item.color : { id: '', name: item.color || '' },
+                            totalQuantity: item.totalQuantity || 0
+                        })).filter((item: any) => item.totalQuantity > 0);
+
+                        if (availableItems.length === 1) {
+                            addToCart(availableItems[0]);
+                            return;
+                        } else if (availableItems.length > 1) {
+                            setSearchResults(availableItems);
+                            return;
+                        }
+                    }
+                }
+
+                toast.error("Item not found or out of stock at this location");
             } catch (error) {
                 toast.error("Failed to search item");
             } finally {
