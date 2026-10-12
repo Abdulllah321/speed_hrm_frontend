@@ -381,9 +381,12 @@ export default function ReturnRequestsPage() {
 
     const handlePrint = (request: any) => {
         setPrintingId(request.id);
-        const win = window.open("", "_blank");
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        const win = iframe.contentWindow;
         if (!win) {
-            toast.error("Allow popups to print");
+            toast.error("Failed to create print frame");
             setPrintingId(null);
             return;
         }
@@ -517,7 +520,18 @@ export default function ReturnRequestsPage() {
                     <div class="signature-card">WAREHOUSE MANAGER</div>
                 </div>
                 <script>
-                    window.onload = function() { window.print(); window.close(); };
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                        }, 200);
+                    };
+                    window.onafterprint = function() {
+                        setTimeout(function() {
+                            if (window.frameElement) {
+                                window.parent.document.body.removeChild(window.frameElement);
+                            }
+                        }, 500);
+                    };
                 </script>
             </body>
             </html>

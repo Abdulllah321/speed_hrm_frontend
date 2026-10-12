@@ -349,11 +349,15 @@ function RequestTransferForm() {
     const typeTitle = isOutletToOutlet
       ? "OUTLET-TO-OUTLET TRANSFER REQUEST"
       : "STOCK REQUISITION NOTE";
-    const win = window.open("", "_blank");
-    if (!win) {
-      toast.error("Allow popups to print");
-      return;
-    }
+    const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        const win = iframe.contentWindow;
+        if (!win) {
+            toast.error("Failed to create print frame");
+            setPrintingId(null);
+            return;
+        }
 
     const dateStr = format(new Date(), "dd MMM yyyy HH:mm");
     const companyName = "Speed (pvt.) Limited";

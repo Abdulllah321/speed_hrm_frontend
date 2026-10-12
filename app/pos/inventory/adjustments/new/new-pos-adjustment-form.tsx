@@ -44,6 +44,7 @@ interface NewPosAdjustmentFormProps {
 interface SelectedItem {
     id: string;
     sku: string;
+    barCode?: string | null;
     description: string | null;
     currentQty: number;
     physicalQty: number;
@@ -253,12 +254,13 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
         const newItem: SelectedItem = {
             id: item.id,
             sku: item.sku,
+            barCode: item.barCode || item.barcode || null,
             description: item.description,
             currentQty: Number(item.totalQuantity || 0),
             physicalQty: Number(item.totalQuantity || 0),
             rate: Number(item.unitPrice || 0),
-            color: item.color?.name || null,
-            size: item.size?.name || null,
+            color: item.color?.name || (typeof item.color === "string" ? item.color : null),
+            size: item.size?.name || (typeof item.size === "string" ? item.size : null),
         };
 
         setSelectedItems((prev) => [...prev, newItem]);
@@ -379,12 +381,13 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                         updatedItems.push({
                             id: matchedItem.id,
                             sku: matchedItem.sku,
+                            barCode: matchedItem.barCode || matchedItem.barcode || null,
                             description: matchedItem.description,
                             currentQty: systemQty,
                             physicalQty: targetPhysicalQty,
                             rate: Number(matchedItem.unitCost || matchedItem.unitPrice || 0),
-                            color: matchedItem.color?.name || null,
-                            size: matchedItem.size?.name || null,
+                            color: matchedItem.color?.name || (typeof matchedItem.color === "string" ? matchedItem.color : null),
+                            size: matchedItem.size?.name || (typeof matchedItem.size === "string" ? matchedItem.size : null),
                         });
                     }
                 } else {
@@ -604,11 +607,22 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                         {selectedOutItem ? (
                                             <div className="p-3 bg-red-50/50 dark:bg-red-950/10 border border-red-200 dark:border-red-900/50 rounded-lg flex justify-between items-start gap-4">
                                                 <div>
-                                                    <span className="font-mono font-bold text-sm block">{selectedOutItem.sku}</span>
-                                                    <span className="text-xs text-muted-foreground block">{selectedOutItem.description}</span>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-mono font-bold text-sm block">{selectedOutItem.sku}</span>
+                                                        {(selectedOutItem.barCode || selectedOutItem.barcode) && (
+                                                            <span className="font-mono text-[10px] bg-red-100/70 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-800">
+                                                                {selectedOutItem.barCode || selectedOutItem.barcode}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground block mt-0.5">{selectedOutItem.description}</span>
                                                     <div className="flex gap-2 text-[10px] text-slate-500 font-semibold mt-1">
-                                                        {selectedOutItem.color?.name && <span>Color: {selectedOutItem.color.name}</span>}
-                                                        {selectedOutItem.size?.name && <span>Size: {selectedOutItem.size.name}</span>}
+                                                        {(selectedOutItem.color?.name || selectedOutItem.color) && (
+                                                            <span>Color: {selectedOutItem.color?.name || selectedOutItem.color}</span>
+                                                        )}
+                                                        {(selectedOutItem.size?.name || selectedOutItem.size) && (
+                                                            <span>Size: {selectedOutItem.size?.name || selectedOutItem.size}</span>
+                                                        )}
                                                     </div>
                                                     <span className="text-[11px] font-semibold text-red-600 dark:text-red-400 mt-1 block">
                                                         System Stock: {Number(selectedOutItem.totalQuantity || 0).toFixed(2)}
@@ -642,26 +656,59 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
 
                                                 {/* Dropdown */}
                                                 {swapOutResults.length > 0 && (
-                                                    <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-52 overflow-y-auto border border-muted bg-white dark:bg-slate-950 rounded-md shadow-lg divide-y divide-muted">
-                                                        {swapOutResults.map((item) => (
-                                                            <div
-                                                                key={item.id}
-                                                                className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-xs"
-                                                                onClick={() => {
-                                                                    setSelectedOutItem(item);
-                                                                    setSwapOutResults([]);
-                                                                    if (swapRate === 0) setSwapRate(Number(item.unitPrice || 0));
-                                                                }}
-                                                            >
-                                                                <span className="font-mono font-bold">{item.sku}</span>
-                                                                <div className="text-muted-foreground truncate">{item.description}</div>
-                                                                <div className="flex gap-2 mt-0.5 text-[10px] font-semibold text-slate-500">
-                                                                    {item.color?.name && <span>Color: {item.color.name}</span>}
-                                                                    {item.size?.name && <span>Size: {item.size.name}</span>}
-                                                                    <span>Available Stock: {Number(item.totalQuantity || 0)}</span>
+                                                    <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto border border-muted bg-white dark:bg-slate-950 rounded-md shadow-lg divide-y divide-muted">
+                                                        {swapOutResults.map((item) => {
+                                                            const barCode = item.barCode || item.barcode;
+                                                            const colorName = item.color?.name || (typeof item.color === "string" ? item.color : null);
+                                                            const sizeName = item.size?.name || (typeof item.size === "string" ? item.size : null);
+                                                            const stockQty = Number(item.totalQuantity || item.availableQuantity || 0);
+
+                                                            return (
+                                                                <div
+                                                                    key={item.id}
+                                                                    className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-xs transition-colors"
+                                                                    onClick={() => {
+                                                                        setSelectedOutItem(item);
+                                                                        setSwapOutResults([]);
+                                                                        if (swapRate === 0) setSwapRate(Number(item.unitPrice || 0));
+                                                                    }}
+                                                                >
+                                                                    <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                            <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{item.sku}</span>
+                                                                            {barCode && (
+                                                                                <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-slate-700/50">
+                                                                                    {barCode}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        {item.description && (
+                                                                            <div className="text-muted-foreground truncate max-w-xs text-[11px]">{item.description}</div>
+                                                                        )}
+                                                                        {(colorName || sizeName) && (
+                                                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold mt-0.5">
+                                                                                {colorName && <span>Color: <strong className="text-slate-700 dark:text-slate-300">{colorName}</strong></span>}
+                                                                                {sizeName && <span>Size: <strong className="text-slate-700 dark:text-slate-300">{sizeName}</strong></span>}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-right shrink-0">
+                                                                        <span
+                                                                            className={cn(
+                                                                                "text-[11px] font-bold px-2 py-0.5 rounded-full inline-block tabular-nums",
+                                                                                stockQty > 0
+                                                                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
+                                                                                    : stockQty < 0
+                                                                                        ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/60 dark:border-red-800/60"
+                                                                                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/40 dark:border-slate-700/40"
+                                                                            )}
+                                                                        >
+                                                                            Stock: {stockQty}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
                                             </>
@@ -678,11 +725,22 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                         {selectedInItem ? (
                                             <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200 dark:border-emerald-900/50 rounded-lg flex justify-between items-start gap-4">
                                                 <div>
-                                                    <span className="font-mono font-bold text-sm block">{selectedInItem.sku}</span>
-                                                    <span className="text-xs text-muted-foreground block">{selectedInItem.description}</span>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-mono font-bold text-sm block">{selectedInItem.sku}</span>
+                                                        {(selectedInItem.barCode || selectedInItem.barcode) && (
+                                                            <span className="font-mono text-[10px] bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                                                                {selectedInItem.barCode || selectedInItem.barcode}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground block mt-0.5">{selectedInItem.description}</span>
                                                     <div className="flex gap-2 text-[10px] text-slate-500 font-semibold mt-1">
-                                                        {selectedInItem.color?.name && <span>Color: {selectedInItem.color.name}</span>}
-                                                        {selectedInItem.size?.name && <span>Size: {selectedInItem.size.name}</span>}
+                                                        {(selectedInItem.color?.name || selectedInItem.color) && (
+                                                            <span>Color: {selectedInItem.color?.name || selectedInItem.color}</span>
+                                                        )}
+                                                        {(selectedInItem.size?.name || selectedInItem.size) && (
+                                                            <span>Size: {selectedInItem.size?.name || selectedInItem.size}</span>
+                                                        )}
                                                     </div>
                                                     <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1 block">
                                                         System Stock: {Number(selectedInItem.totalQuantity || 0).toFixed(2)}
@@ -716,26 +774,59 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
 
                                                 {/* Dropdown */}
                                                 {swapInResults.length > 0 && (
-                                                    <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-52 overflow-y-auto border border-muted bg-white dark:bg-slate-950 rounded-md shadow-lg divide-y divide-muted">
-                                                        {swapInResults.map((item) => (
-                                                            <div
-                                                                key={item.id}
-                                                                className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-xs"
-                                                                onClick={() => {
-                                                                    setSelectedInItem(item);
-                                                                    setSwapInResults([]);
-                                                                    if (swapRate === 0) setSwapRate(Number(item.unitPrice || 0));
-                                                                }}
-                                                            >
-                                                                <span className="font-mono font-bold">{item.sku}</span>
-                                                                <div className="text-muted-foreground truncate">{item.description}</div>
-                                                                <div className="flex gap-2 mt-0.5 text-[10px] font-semibold text-slate-500">
-                                                                    {item.color?.name && <span>Color: {item.color.name}</span>}
-                                                                    {item.size?.name && <span>Size: {item.size.name}</span>}
-                                                                    <span>Available Stock: {Number(item.totalQuantity || 0)}</span>
+                                                    <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto border border-muted bg-white dark:bg-slate-950 rounded-md shadow-lg divide-y divide-muted">
+                                                        {swapInResults.map((item) => {
+                                                            const barCode = item.barCode || item.barcode;
+                                                            const colorName = item.color?.name || (typeof item.color === "string" ? item.color : null);
+                                                            const sizeName = item.size?.name || (typeof item.size === "string" ? item.size : null);
+                                                            const stockQty = Number(item.totalQuantity || item.availableQuantity || 0);
+
+                                                            return (
+                                                                <div
+                                                                    key={item.id}
+                                                                    className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-xs transition-colors"
+                                                                    onClick={() => {
+                                                                        setSelectedInItem(item);
+                                                                        setSwapInResults([]);
+                                                                        if (swapRate === 0) setSwapRate(Number(item.unitPrice || 0));
+                                                                    }}
+                                                                >
+                                                                    <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                            <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{item.sku}</span>
+                                                                            {barCode && (
+                                                                                <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-slate-700/50">
+                                                                                    {barCode}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        {item.description && (
+                                                                            <div className="text-muted-foreground truncate max-w-xs text-[11px]">{item.description}</div>
+                                                                        )}
+                                                                        {(colorName || sizeName) && (
+                                                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold mt-0.5">
+                                                                                {colorName && <span>Color: <strong className="text-slate-700 dark:text-slate-300">{colorName}</strong></span>}
+                                                                                {sizeName && <span>Size: <strong className="text-slate-700 dark:text-slate-300">{sizeName}</strong></span>}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-right shrink-0">
+                                                                        <span
+                                                                            className={cn(
+                                                                                "text-[11px] font-bold px-2 py-0.5 rounded-full inline-block tabular-nums",
+                                                                                stockQty > 0
+                                                                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
+                                                                                    : stockQty < 0
+                                                                                        ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/60 dark:border-red-800/60"
+                                                                                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/40 dark:border-slate-700/40"
+                                                                            )}
+                                                                        >
+                                                                            Stock: {stockQty}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
                                             </>
@@ -823,23 +914,54 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                         {/* Dropdown */}
                                         {searchResults.length > 0 && (
                                             <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto border border-muted bg-white dark:bg-slate-950 rounded-md shadow-lg divide-y divide-muted">
-                                                {searchResults.map((item) => (
-                                                    <div
-                                                        key={item.id}
-                                                        className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-xs"
-                                                        onClick={() => handleAddStandardItem(item)}
-                                                    >
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <span className="font-mono font-bold text-sm">{item.sku}</span>
-                                                            <span className="text-muted-foreground">{item.description}</span>
-                                                            <div className="flex gap-2 mt-0.5 text-[10px] font-semibold text-slate-500">
-                                                                {item.color?.name && <span>Color: {item.color.name}</span>}
-                                                                {item.size?.name && <span>Size: {item.size.name}</span>}
+                                                {searchResults.map((item) => {
+                                                    const barCode = item.barCode || item.barcode;
+                                                    const colorName = item.color?.name || (typeof item.color === "string" ? item.color : null);
+                                                    const sizeName = item.size?.name || (typeof item.size === "string" ? item.size : null);
+                                                    const stockQty = Number(item.totalQuantity || item.availableQuantity || 0);
+
+                                                    return (
+                                                        <div
+                                                            key={item.id}
+                                                            className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-xs transition-colors"
+                                                            onClick={() => handleAddStandardItem(item)}
+                                                        >
+                                                            <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{item.sku}</span>
+                                                                    {barCode && (
+                                                                        <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-slate-700/50">
+                                                                            {barCode}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {item.description && (
+                                                                    <div className="text-muted-foreground truncate max-w-sm text-[11px]">{item.description}</div>
+                                                                )}
+                                                                {(colorName || sizeName) && (
+                                                                    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold mt-0.5">
+                                                                        {colorName && <span>Color: <strong className="text-slate-700 dark:text-slate-300">{colorName}</strong></span>}
+                                                                        {sizeName && <span>Size: <strong className="text-slate-700 dark:text-slate-300">{sizeName}</strong></span>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-right shrink-0">
+                                                                <span
+                                                                    className={cn(
+                                                                        "text-[11px] font-bold px-2 py-0.5 rounded-full inline-block tabular-nums",
+                                                                        stockQty > 0
+                                                                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
+                                                                            : stockQty < 0
+                                                                                ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/60 dark:border-red-800/60"
+                                                                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/40 dark:border-slate-700/40"
+                                                                    )}
+                                                                >
+                                                                    Stock: {stockQty}
+                                                                </span>
                                                             </div>
                                                         </div>
-                                                        <span className="text-slate-500 font-semibold">Stock: {Number(item.totalQuantity || 0)}</span>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -939,13 +1061,29 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                             <tbody className="divide-y divide-muted">
                                                 {selectedItems.map((item, idx) => {
                                                     const disc = item.physicalQty - item.currentQty;
+                                                    const barCodeDisplay = item.barCode;
                                                     return (
-                                                        <tr key={item.id}>
+                                                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
                                                             <td className="p-2.5">
-                                                                <span className="font-mono font-bold block">{item.sku}</span>
-                                                                <span className="text-muted-foreground block truncate max-w-48">{item.description}</span>
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{item.sku}</span>
+                                                                    {barCodeDisplay && (
+                                                                        <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-slate-700/50">
+                                                                            {barCodeDisplay}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {item.description && (
+                                                                    <span className="text-muted-foreground block truncate max-w-56 text-[11px] mt-0.5">{item.description}</span>
+                                                                )}
+                                                                {(item.color || item.size) && (
+                                                                    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold mt-0.5">
+                                                                        {item.color && <span>Color: <strong className="text-slate-700 dark:text-slate-300">{item.color}</strong></span>}
+                                                                        {item.size && <span>Size: <strong className="text-slate-700 dark:text-slate-300">{item.size}</strong></span>}
+                                                                    </div>
+                                                                )}
                                                             </td>
-                                                            <td className="p-2.5 text-right tabular-nums text-muted-foreground">
+                                                            <td className="p-2.5 text-right tabular-nums text-muted-foreground font-semibold">
                                                                 {item.currentQty.toFixed(2)}
                                                             </td>
                                                             <td className="p-2.5 text-right">
@@ -960,11 +1098,11 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                                             </td>
                                                             <td className="p-2.5 text-right tabular-nums font-bold">
                                                                 {disc === 0 ? (
-                                                                    <span className="text-slate-400">0</span>
+                                                                    <span className="text-slate-400">0.00</span>
                                                                 ) : disc > 0 ? (
-                                                                    <span className="text-emerald-600">+{disc}</span>
+                                                                    <span className="text-emerald-600">+{disc.toFixed(2)}</span>
                                                                 ) : (
-                                                                    <span className="text-red-600">{disc}</span>
+                                                                    <span className="text-red-600">{disc.toFixed(2)}</span>
                                                                 )}
                                                             </td>
                                                             <td className="p-2.5 text-right tabular-nums">

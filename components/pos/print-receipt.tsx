@@ -293,7 +293,11 @@ export function PrintReceipt({
       return v.voucherType === "CREDIT" || v.voucherType === "CORPORATE";
     }
     const code = (v.code || "").toUpperCase();
-    return !code.startsWith("EXC-") && !code.startsWith("CLM-") && !code.startsWith("REF-");
+    return (
+      !code.startsWith("EXC-") &&
+      !code.startsWith("CLM-") &&
+      !code.startsWith("REF-")
+    );
   });
 
   useEffect(() => {
@@ -1024,7 +1028,11 @@ function ReceiptBody({
       return v.voucherType === "CREDIT" || v.voucherType === "CORPORATE";
     }
     const code = (v.code || "").toUpperCase();
-    return !code.startsWith("EXC-") && !code.startsWith("CLM-") && !code.startsWith("REF-");
+    return (
+      !code.startsWith("EXC-") &&
+      !code.startsWith("CLM-") &&
+      !code.startsWith("REF-")
+    );
   });
 
   // Calculate total WOST value for proportional discount
@@ -1129,14 +1137,15 @@ function ReceiptBody({
           let extRef = order?.externalOrderNo;
           if (!extRef && order?.notes) {
             if (order.notes.includes("EZCommerce Order")) {
-              extRef = order.notes.split("|")[0].replace("EZCommerce Order", "").trim();
+              extRef = order.notes
+                .split("|")[0]
+                .replace("EZCommerce Order", "")
+                .trim();
             } else if (order.notes.includes("Online Order:")) {
               extRef = order.notes.replace("Online Order:", "").trim();
             }
           }
-          return extRef ? (
-            <Row label="Order ID" value={extRef} bold />
-          ) : null;
+          return extRef ? <Row label="Order ID" value={extRef} bold /> : null;
         })()}
         {order?.paymentStatus && (
           <Row
@@ -1291,7 +1300,10 @@ function ReceiptBody({
 
         const uniqueNoBase = item.uniqueNo || item.sku || item.upc || "—";
         const barCode = item.barCode || "";
-        const uniqueNo = barCode && barCode !== uniqueNoBase ? `${uniqueNoBase} / ${barCode}` : uniqueNoBase;
+        const uniqueNo =
+          barCode && barCode !== uniqueNoBase
+            ? `${uniqueNoBase} / ${barCode}`
+            : uniqueNoBase;
 
         return (
           <div
@@ -1657,11 +1669,20 @@ function A4InvoiceBody({
       return v.voucherType === "CREDIT" || v.voucherType === "CORPORATE";
     }
     const code = (v.code || "").toUpperCase();
-    return !code.startsWith("EXC-") && !code.startsWith("CLM-") && !code.startsWith("REF-");
+    return (
+      !code.startsWith("EXC-") &&
+      !code.startsWith("CLM-") &&
+      !code.startsWith("REF-")
+    );
   });
 
-  const customerName = order?.customer?.name || order?.customerName || "Walk-in Customer";
-  const customerPhone = order?.customer?.phone || order?.customerPhone || order?.customerMobile || "";
+  const customerName =
+    order?.customer?.name || order?.customerName || "Walk-in Customer";
+  const customerPhone =
+    order?.customer?.phone ||
+    order?.customerPhone ||
+    order?.customerMobile ||
+    "";
   const cnic = order?.customer?.cnic || order?.customerCnic || "";
 
   const formatInvoiceDateTime = (dateStr?: string | null) => {

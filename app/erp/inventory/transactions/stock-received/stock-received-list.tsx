@@ -402,8 +402,10 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
 
     useEffect(() => {
         async function loadLocations() {
-            const res = await getLocations();
-            if (res.status && res.data) {
+            const res = await getLocations(true);
+            if (Array.isArray(res)) {
+                setLocations(res.map(loc => ({ label: loc.name, value: loc.id })));
+            } else if (res && res.status && res.data) {
                 setLocations(res.data.map(loc => ({ label: loc.name, value: loc.id })));
             }
         }
