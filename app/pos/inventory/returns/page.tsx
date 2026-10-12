@@ -4,8 +4,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
     RotateCcw, ArrowLeft, RefreshCcw, Package, CheckCircle2, FileText,
     AlertTriangle, Plus, Minus, Trash2, Search, Send, ShoppingCart, Building2,
-    Calendar, PackageCheck, Printer
+    Calendar, PackageCheck, Printer, FileSpreadsheet
 } from "lucide-react";
+import {
+    DirectTransferBulkUploadModal,
+    DirectTransferImportItem,
+} from "@/components/pos/inventory/direct-transfer-bulk-upload-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -110,8 +114,40 @@ export default function ReturnRequestsPage() {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [csvImportOpen, setCsvImportOpen] = useState(false);
     const debouncedQuery = useDebounce(itemQuery, 300);
     const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleCsvImportComplete = useCallback(
+        (importedItems: DirectTransferImportItem[]) => {
+            setCart((prev) => {
+                const updated = [...prev];
+                importedItems.forEach((imp) => {
+                    const existingIndex = updated.findIndex((i) => i.item.id === imp.id);
+                    if (existingIndex > -1) {
+                        const newQty = updated[existingIndex].quantity + imp.quantity;
+                        updated[existingIndex].quantity = Math.min(newQty, imp.availableStock);
+                    } else {
+                        updated.push({
+                            item: {
+                                id: imp.id,
+                                sku: imp.sku,
+                                description: imp.description,
+                                size: imp.size ? { id: '', name: imp.size } : undefined,
+                                color: imp.color ? { id: '', name: imp.color } : undefined,
+                                totalQuantity: imp.availableStock,
+                            },
+                            quantity: Math.min(imp.quantity, imp.availableStock),
+                        });
+                    }
+                });
+                return updated;
+            });
+            setIsCreating(true);
+            toast.success(`${importedItems.length} item(s) imported from CSV/Excel.`);
+        },
+        [],
+    );
 
     // Filters and Search
     const [searchQuery, setSearchQuery] = useState("");
@@ -202,7 +238,10 @@ export default function ReturnRequestsPage() {
             const activeWhs = res.filter((w) => w.isActive);
             setWarehouses(activeWhs);
             if (activeWhs.length > 0) {
-                setSelectedWarehouseId(activeWhs[0].id);
+                const logisticWh = activeWhs.find((w) =>
+                    w.name?.toUpperCase().includes("LOGISTIC")
+                );
+                setSelectedWarehouseId(logisticWh ? logisticWh.id : activeWhs[0].id);
             }
         } catch (error) {
             console.error("Failed to fetch warehouses", error);
@@ -281,8 +320,18 @@ export default function ReturnRequestsPage() {
     };
 
     useEffect(() => {
-        if (isCreating) fetchWarehouses();
-    }, [isCreating, fetchWarehouses]);
+        if (isCreating) {
+            fetchWarehouses();
+            if (warehouses.length > 0) {
+                const logisticWh = warehouses.find((w) =>
+                    w.name?.toUpperCase().includes("LOGISTIC")
+                );
+                if (logisticWh) {
+                    setSelectedWarehouseId(logisticWh.id);
+                }
+            }
+        }
+    }, [isCreating, fetchWarehouses, warehouses]);
 
     useEffect(() => {
         if (isCreating) handleSearch(debouncedQuery);
@@ -562,9 +611,22 @@ export default function ReturnRequestsPage() {
                         <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                     </Button>
                     {(hasPermission('pos.inventory.transfer.create') || hasPermission('erp.inventory.transfer.create')) && (
-                        <Button className="bg-primary hover:bg-primary/90 text-white font-bold" onClick={() => setIsCreating(true)}>
-                            <Plus className="h-4 w-4 mr-2" /> New Return
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setIsCreating(true);
+                                    setCsvImportOpen(true);
+                                }}
+                                className="gap-2 h-9"
+                            >
+                                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                                Bulk Upload
+                            </Button>
+                            <Button className="bg-primary hover:bg-primary/90 text-white font-bold h-9" onClick={() => setIsCreating(true)}>
+                                <Plus className="h-4 w-4 mr-2" /> New Return
+                            </Button>
+                        </div>
                     )}
                 </div>
             </header>
@@ -576,7 +638,18 @@ export default function ReturnRequestsPage() {
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-lg font-bold tracking-tight">Create Return Request</h2>
-                                <Button variant="outline" size="sm" onClick={() => setIsCreating(false)}>Cancel</Button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCsvImportOpen(true)}
+                                        className="gap-2 h-9"
+                                    >
+                                        <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                                        Bulk Upload
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={() => setIsCreating(false)}>Cancel</Button>
+                                </div>
                             </div>
                             
                             <Card className="border-border/50 shadow-sm">
@@ -1061,6 +1134,11 @@ export default function ReturnRequestsPage() {
                     )}
                 </div>
             </main>
+            <DirectTransferBulkUploadModal
+                open={csvImportOpen}
+                onOpenChange={setCsvImportOpen}
+                onImportComplete={handleCsvImportComplete}
+            />
         </div>
     );
 }
