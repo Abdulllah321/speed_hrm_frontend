@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useDeferredValue } from "react";
-import { FlatItemRecord, LocationHeader, StockTotals } from "./types";
+import { FlatItemRecord, LocationHeader, StockTotals, StockAvailabilityFilter } from "./types";
 import { Location } from "@/lib/actions/location";
 import { Warehouse } from "@/lib/actions/warehouse";
 
@@ -27,6 +27,7 @@ export function useOverallAvailableReservedStockData({
     selectedLocationIds,
     selectedWarehouseIds,
     searchQuery,
+    stockFilter = "all",
     filterBrands,
     filterDivisions,
     filterCategories,
@@ -41,6 +42,7 @@ export function useOverallAvailableReservedStockData({
     selectedLocationIds: string[];
     selectedWarehouseIds: string[];
     searchQuery: string;
+    stockFilter?: StockAvailabilityFilter;
     filterBrands: Set<string>;
     filterDivisions: Set<string>;
     filterCategories: Set<string>;
@@ -114,9 +116,12 @@ export function useOverallAvailableReservedStockData({
         };
     }, [rawItems]);
 
-    // 3. Filter raw items based on search text and attribute filters
+    // 3. Filter raw items based on search text, attribute filters, and stock availability
     const filteredItems = useMemo(() => {
         const q = deferredSearchQuery.trim().toLowerCase();
+        const hasSelectedLocs = selectedLocationIds.length > 0;
+        const hasSelectedWhs = selectedWarehouseIds.length > 0;
+        const isScoped = hasSelectedLocs || hasSelectedWhs;
 
         return rawItems.filter((item) => {
             // Attribute filters
@@ -140,6 +145,28 @@ export function useOverallAvailableReservedStockData({
                 }
             }
 
+            // Calculate relevant stock in selected scope (or overall if no scope selected)
+            let relevantStock = 0;
+            if (isScoped) {
+                if (hasSelectedLocs) {
+                    for (const locId of selectedLocationIds) {
+                        relevantStock += Number(item.locationStocks?.[locId] || 0);
+                    }
+                }
+                if (hasSelectedWhs) {
+                    for (const whId of selectedWarehouseIds) {
+                        relevantStock += Number(item.warehouseStocks?.[whId] || 0);
+                    }
+                }
+            } else {
+                relevantStock = Number(item.quantity || 0);
+            }
+
+            // Stock Availability Filter
+            if (stockFilter === "in_stock" && relevantStock <= 0) return false;
+            if (stockFilter === "zero" && relevantStock !== 0) return false;
+            if (stockFilter === "negative" && relevantStock >= 0) return false;
+
             return true;
         });
     }, [
@@ -152,6 +179,9 @@ export function useOverallAvailableReservedStockData({
         filterSilhouettes,
         filterSizes,
         filterColors,
+        selectedLocationIds,
+        selectedWarehouseIds,
+        stockFilter,
     ]);
 
     // 4. Calculate Grand Totals across filtered items and location columns
@@ -165,29 +195,56 @@ export function useOverallAvailableReservedStockData({
             else totals.locationStocks[header.id] = 0;
         }
 
+        const hasSelectedLocs = selectedLocationIds.length > 0;
+        const hasSelectedWhs = selectedWarehouseIds.length > 0;
+        const isScoped = hasSelectedLocs || hasSelectedWhs;
+
         for (const item of filteredItems) {
-            totals.quantity += Number(item.quantity || 0);
-            totals.transit += Number(item.transit || 0);
-            totals.reserved += Number(item.reserved || 0);
-            totals.total += Number(item.total || 0);
-            totals.value += Number(item.value || 0);
-            totals.costingValue += Number(item.costingValue || 0);
+            let itemAvailableQty = Number(item.quantity || 0);
+            if (isScoped) {
+                let scopedQty = 0;
+                for (const header of locationHeaders) {
+                    if (header.type === "warehouse") {
+                        scopedQty += Number(item.warehouseStocks?.[header.id] || 0);
+                    } else {
+                        scopedQty += Number(item.locationStocks?.[header.id] || 0);
+                    }
+                }
+                itemAvailableQty = scopedQty;
+            }
+
+            const itemUnitPrice = Number(item.unitPrice || 0);
+            const itemUnitCost = Number(item.unitCost || 0);
+            const itemTransit = Number(item.transit || 0);
+            const itemReserved = Number(item.reserved || 0);
+            const itemTotal = itemAvailableQty + itemTransit + itemReserved;
+
+            totals.quantity += itemAvailableQty;
+            totals.transit += itemTransit;
+            totals.reserved += itemReserved;
+            totals.total += itemTotal;
+            totals.value += itemAvailableQty * itemUnitPrice;
+            totals.costingValue += itemAvailableQty * itemUnitCost;
 
             if (item.warehouseStocks) {
                 for (const [whId, qty] of Object.entries(item.warehouseStocks)) {
-                    totals.warehouseStocks[whId] = (totals.warehouseStocks[whId] || 0) + Number(qty || 0);
+                    if (totals.warehouseStocks[whId] !== undefined) {
+                        totals.warehouseStocks[whId] += Number(qty || 0);
+                    }
                 }
             }
 
             if (item.locationStocks) {
                 for (const [locId, qty] of Object.entries(item.locationStocks)) {
-                    totals.locationStocks[locId] = (totals.locationStocks[locId] || 0) + Number(qty || 0);
+                    if (totals.locationStocks[locId] !== undefined) {
+                        totals.locationStocks[locId] += Number(qty || 0);
+                    }
                 }
             }
         }
 
         return totals;
-    }, [filteredItems, locationHeaders]);
+    }, [filteredItems, locationHeaders, selectedLocationIds, selectedWarehouseIds]);
 
     return {
         locationHeaders,
