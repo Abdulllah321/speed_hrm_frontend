@@ -260,37 +260,7 @@ export default function ReturnRequestsPage() {
         }
         setIsSearching(true);
         try {
-            // 1. If user typed/scanned a numeric barcode (>= 6 digits), check exact scan first
-            const isNumericBarcode = /^\d{6,}$/.test(q);
-            if (isNumericBarcode) {
-                try {
-                    const scanRes = await authFetch(`/pos-sales/scan`, {
-                        params: { barcode: q, locationId },
-                    });
-                    if (scanRes.ok && scanRes.data?.status && scanRes.data.data) {
-                        const prod = scanRes.data.data;
-                        const stock = Number(prod.stockQty ?? prod.totalQuantity ?? 0);
-                        if (stock > 0) {
-                            setSearchResults([{
-                                id: prod.id,
-                                sku: prod.sku || prod.barCode || "-",
-                                barCode: prod.barCode,
-                                description: prod.description || prod.name || "Unknown Item",
-                                size: typeof prod.size === 'object' ? prod.size : { id: '', name: prod.size || '' },
-                                color: typeof prod.color === 'object' ? prod.color : { id: '', name: prod.color || '' },
-                                totalQuantity: stock,
-                                brand: typeof prod.brand === 'object' ? prod.brand?.name : prod.brand,
-                                uniqueNo: prod.uniqueNo,
-                            }]);
-                            return;
-                        }
-                    }
-                } catch (e) {
-                    // Continue to lookup if scan fails
-                }
-            }
-
-            // 2. Primary: Use POS Sales Lookup (now enhanced to prioritize exact SKU/Barcode and fetch all sizes)
+            // 1. Primary: Use POS Sales Lookup (same logic as New Sale and Direct Transfer)
             const res = await authFetch(`/pos-sales/lookup`, {
                 params: { q, locationId },
             });
@@ -313,8 +283,8 @@ export default function ReturnRequestsPage() {
                 }
             }
 
-            // 3. Fallback scan for non-numeric barcodes / itemIds
-            if (q.length >= 3 && !isNumericBarcode) {
+            // 2. Try exact POS scan if barcode/SKU typed (>= 3 chars)
+            if (q.length >= 3) {
                 const scanRes = await authFetch(`/pos-sales/scan`, {
                     params: { barcode: q, locationId },
                 });
