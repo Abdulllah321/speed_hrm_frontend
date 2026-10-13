@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { StockAvailabilityFilter } from "./types";
 
 // ─── Filter Dropdown Component ──────────────────────────────────────────────
 function FilterDropdown({
@@ -98,6 +99,8 @@ interface FiltersProps {
     setSelectedLocationIds: React.Dispatch<React.SetStateAction<string[]>>;
     selectedWarehouseIds: string[];
     setSelectedWarehouseIds: React.Dispatch<React.SetStateAction<string[]>>;
+    stockFilter: StockAvailabilityFilter;
+    setStockFilter: (f: StockAvailabilityFilter) => void;
     searchQuery: string;
     setSearchQuery: (v: string) => void;
     attributeOptions: {
@@ -143,6 +146,8 @@ export function OverallAvailableReservedFilters({
     setSelectedLocationIds,
     selectedWarehouseIds,
     setSelectedWarehouseIds,
+    stockFilter,
+    setStockFilter,
     searchQuery,
     setSearchQuery,
     attributeOptions,
@@ -170,12 +175,15 @@ export function OverallAvailableReservedFilters({
     exportProgressMessage,
     isExporting,
 }: FiltersProps) {
+    // Only display stock-holding locations (exclude corporate / non-stock / deleted)
     const locationOptions: MultiSelectOption[] = useMemo(() => {
-        return locations.map((loc) => ({
-            value: loc.id,
-            label: loc.name,
-            description: (loc as any).shortCode || loc.code ? `Code: ${(loc as any).shortCode || loc.code}` : undefined,
-        }));
+        return locations
+            .filter((loc) => loc.isStockLocation !== false && !(loc as any).isDeleted)
+            .map((loc) => ({
+                value: loc.id,
+                label: loc.name,
+                description: (loc as any).shortCode || loc.code ? `Code: ${(loc as any).shortCode || loc.code}` : undefined,
+            }));
     }, [locations]);
 
     const warehouseOptions: MultiSelectOption[] = useMemo(() => {
@@ -203,6 +211,9 @@ export function OverallAvailableReservedFilters({
         filterSilhouettes.size > 0 ||
         filterSizes.size > 0 ||
         filterColors.size > 0 ||
+        stockFilter !== "all" ||
+        selectedLocationIds.length > 0 ||
+        selectedWarehouseIds.length > 0 ||
         searchQuery.trim() !== "";
 
     const clearAllFilters = () => {
@@ -213,6 +224,9 @@ export function OverallAvailableReservedFilters({
         setFilterSilhouettes(new Set());
         setFilterSizes(new Set());
         setFilterColors(new Set());
+        setStockFilter("all");
+        setSelectedLocationIds([]);
+        setSelectedWarehouseIds([]);
         setSearchQuery("");
     };
 
@@ -221,13 +235,13 @@ export function OverallAvailableReservedFilters({
             {/* Top Toolbar Row */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl border border-border bg-card shadow-sm">
                 <div className="flex flex-wrap items-center gap-2.5">
-                    {/* Outlets Multi-Select */}
-                    <div className="w-48 sm:w-56">
+                    {/* Stock Outlets Multi-Select */}
+                    <div className="w-52 sm:w-60">
                         <MultiSelect
                             options={locationOptions}
                             selected={selectedLocationIds}
                             onChange={setSelectedLocationIds}
-                            placeholder="All Outlets (Stores)"
+                            placeholder="All Stock Outlets"
                         />
                     </div>
 
@@ -314,6 +328,33 @@ export function OverallAvailableReservedFilters({
                                 <X className="h-3.5 w-3.5" />
                             </button>
                         )}
+                    </div>
+
+                    {/* Stock Availability Filter Segment */}
+                    <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-xl border border-border">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase px-2">Stock:</span>
+                        {(
+                            [
+                                { id: "all", label: "All Items" },
+                                { id: "in_stock", label: "In Stock (>0)" },
+                                { id: "zero", label: "Zero (0)" },
+                                { id: "negative", label: "Negative (<0)" },
+                            ] as const
+                        ).map((opt) => (
+                            <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => setStockFilter(opt.id)}
+                                className={cn(
+                                    "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+                                    stockFilter === opt.id
+                                        ? "bg-background text-primary shadow-sm border border-border font-bold"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
                     </div>
 
                     {/* Attribute Filter Dropdowns */}

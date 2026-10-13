@@ -11,7 +11,7 @@ import { useReportSse } from "@/hooks/use-report-sse";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-import { FlatItemRecord } from "./types";
+import { FlatItemRecord, StockAvailabilityFilter } from "./types";
 import { useOverallAvailableReservedStockData } from "./use-overall-available-reserved-stock-data";
 import { OverallAvailableReservedHeader } from "./overall-available-reserved-header";
 import { OverallAvailableReservedFilters } from "./overall-available-reserved-filters";
@@ -40,6 +40,9 @@ export function OverallAvailableReservedStockView({
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>(
     [],
   );
+
+  const [stockFilter, setStockFilter] =
+    useState<StockAvailabilityFilter>("all");
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -70,16 +73,19 @@ export function OverallAvailableReservedStockView({
 
   const sseState = useReportSse(previewJobId, "overall-reserved");
 
-  // Fetch Outlets & Warehouses on mount
+  // Fetch Outlets (Stock Only) & Warehouses on mount
   useEffect(() => {
     async function loadMetadata() {
       try {
         const [locRes, whData] = await Promise.all([
-          getLocations(),
+          getLocations(true),
           getWarehouses(),
         ]);
         if (locRes && locRes.status && Array.isArray(locRes.data)) {
-          setLocations(locRes.data);
+          const stockOnlyLocs = locRes.data.filter(
+            (l) => l.isStockLocation !== false && !(l as any).isDeleted,
+          );
+          setLocations(stockOnlyLocs);
         }
         if (Array.isArray(whData)) {
           setWarehouses(whData);
@@ -103,6 +109,14 @@ export function OverallAvailableReservedStockView({
       asOfDate,
       summaryOnly: false,
       includeCosting: true,
+      locationId:
+        selectedLocationIds.length > 0
+          ? selectedLocationIds.join(",")
+          : undefined,
+      warehouseId:
+        selectedWarehouseIds.length > 0
+          ? selectedWarehouseIds.join(",")
+          : undefined,
     }).then((queueRes) => {
       if (queueRes && queueRes.status && queueRes.data?.jobId) {
         const newJobId = queueRes.data.jobId;
@@ -113,7 +127,7 @@ export function OverallAvailableReservedStockView({
         toast.error("Failed to queue stock data fetch");
       }
     });
-  }, [asOfDate]);
+  }, [asOfDate, selectedLocationIds, selectedWarehouseIds]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -226,7 +240,10 @@ export function OverallAvailableReservedStockView({
               Array.isArray(payload?.stockLocations) &&
               payload.stockLocations.length > 0
             ) {
-              setLocations(payload.stockLocations);
+              const stockOnlyLocs = payload.stockLocations.filter(
+                (l: any) => l.isStockLocation !== false && !l.isDeleted,
+              );
+              setLocations(stockOnlyLocs);
             }
 
             let itemsList: FlatItemRecord[] = [];
@@ -262,6 +279,7 @@ export function OverallAvailableReservedStockView({
       selectedLocationIds,
       selectedWarehouseIds,
       searchQuery,
+      stockFilter,
       filterBrands,
       filterDivisions,
       filterCategories,
@@ -369,6 +387,8 @@ export function OverallAvailableReservedStockView({
         setSelectedLocationIds={setSelectedLocationIds}
         selectedWarehouseIds={selectedWarehouseIds}
         setSelectedWarehouseIds={setSelectedWarehouseIds}
+        stockFilter={stockFilter}
+        setStockFilter={setStockFilter}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         attributeOptions={attributeOptions}

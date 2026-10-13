@@ -44,3 +44,5 @@ export interface StockTotals {
     locationStocks?: Record<string, number>;
     warehouseStocks?: Record<string, number>;
 }
+
+export type StockAvailabilityFilter = "all" | "in_stock" | "zero" | "negative";
