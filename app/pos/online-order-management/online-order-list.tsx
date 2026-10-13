@@ -183,7 +183,8 @@ export function OnlineOrderList() {
                     const voucherDeduction = Number(o.financials?.voucherDeduction ?? 0);
                     const shippingCharges = Number(o.financials?.shippingCharges ?? o.items?.[0]?.shippingCharges ?? 0);
                     const netGrandTotal = Number(o.financials?.netGrandTotal ?? o.orderTotal ?? (gross - itemDiscounts + shippingCharges - voucherDeduction));
-                    const remainingPayable = Number(o.financials?.remainingPayable ?? netGrandTotal);
+                    // remainingPayable matches total payable (including shipping charges)
+                    const remainingPayable = Number(o.financials?.remainingPayable ?? o.payableAfterVoucher ?? netGrandTotal);
                     const totalUnits = Number(o.financials?.totalUnits ?? o.items?.reduce((s: number, i: any) => s + Number(i.qty || 1), 0) ?? 0);
 
                     return {
@@ -410,7 +411,10 @@ export function OnlineOrderList() {
             try {
                 const res = await authFetch(`/pos-sales/orders/${order.salesOrderId}`);
                 if (res.ok && res.data?.status && res.data?.data) {
-                    setPrintOrderData(res.data.data);
+                    setPrintOrderData({
+                        ...res.data.data,
+                        shippingCharges: order.financials?.shippingCharges ?? res.data.data?.shippingCharges ?? 0,
+                    });
                     setIsPrintModalOpen(true);
                     return;
                 }
@@ -426,6 +430,7 @@ export function OnlineOrderList() {
             items: order.items,
             tenders: [{ paymentMethod: order.paymentMethod, amount: order.financials.remainingPayable }],
             createdAt: order.orderedAt || new Date().toISOString(),
+            shippingCharges: order.financials.shippingCharges || 0,
         });
         setIsPrintModalOpen(true);
     };

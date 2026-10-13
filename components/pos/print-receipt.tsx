@@ -1418,7 +1418,9 @@ function ReceiptBody({
                 finalGrandTotal - fbrPosFee - (valueForSales + totalTax),
               ),
             );
-            const shipFee = Number(order?.shippingFee ?? 0) || calcShipping;
+            const shipFee =
+              Number(order?.shippingFee ?? order?.shippingCharges ?? 0) ||
+              calcShipping;
             const itemsTotInclTax = itemsValInclTax - shipFee;
 
             return (
