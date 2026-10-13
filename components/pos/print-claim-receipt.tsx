@@ -450,7 +450,11 @@ function ClaimBody({
   );
 
   const totalUnits = claimedLines.reduce((s, l) => s + l.claimedQty, 0);
-  const isApproved = status === "APPROVED" || status === "PARTIALLY_APPROVED";
+  const isApproved =
+    status === "APPROVED" ||
+    status === "PARTIALLY_APPROVED" ||
+    status === "COMPLETED" ||
+    status === "ACKNOWLEDGED";
   const isRejected = status === "REJECTED";
   const isPending = status === "SUBMITTED" || status === "UNDER_REVIEW";
 
@@ -676,26 +680,39 @@ function ClaimBody({
         {isApproved && (
           <>
             <p className="font-bold text-center" style={{ color: statusColor }}>
-              ✓ CLAIM APPROVED ✓
+              {status === "COMPLETED" || status === "ACKNOWLEDGED"
+                ? "✓ CLAIM COMPLETED ✓"
+                : "✓ CLAIM APPROVED ✓"}
             </p>
             <p className="text-center">
-              Please present this receipt to collect your refund.
+              {voucher
+                ? "Present the voucher code below for refund or new purchase."
+                : "Please present this receipt to collect your refund."}
             </p>
 
-            {/* ── Exchange Voucher Details ── */}
-            {voucher && voucher.voucherType === "EXCHANGE" && (
+            {/* ── Claim / Exchange Voucher Details ── */}
+            {voucher && (
               <div
                 className="mt-2 pt-2 border-t border-dashed space-y-1"
                 style={{ borderColor: statusColor }}
               >
                 <p
-                  className="font-bold text-center"
+                  className="font-bold text-center tracking-wide"
                   style={{ color: "#10b981" }}
                 >
-                  🎫 EXCHANGE VOUCHER ISSUED 🎫
+                  🎫 {voucher.voucherType === "CLAIM" ? "CLAIM VOUCHER ISSUED" : "EXCHANGE VOUCHER ISSUED"} 🎫
                 </p>
-                <div className="space-y-0.5 text-[10px] bg-green-50 dark:bg-green-950/20 p-2 rounded">
-                  <Row label="Voucher Code" value={voucher.code} bold />
+                <div className="space-y-1 text-[11px] bg-green-50 dark:bg-green-950/20 p-2.5 rounded border border-green-200">
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="font-semibold text-muted-foreground">Voucher Code:</span>
+                    <span className="font-mono font-black text-sm text-green-700 bg-white px-2 py-0.5 rounded border border-green-300">
+                      {voucher.code}
+                    </span>
+                  </div>
+                  <Row
+                    label="Voucher Type"
+                    value={voucher.voucherType || "CLAIM"}
+                  />
                   <Row
                     label="Voucher Amount"
                     value={`Rs. ${fmt(Number(voucher.faceValue))}`}
@@ -705,10 +722,11 @@ function ClaimBody({
                   <Row
                     label="Status"
                     value={voucher.isRedeemed ? "USED" : "ACTIVE"}
+                    bold
                   />
                 </div>
-                <p className="text-center text-[10px] mt-1">
-                  Use this voucher code for your next purchase!
+                <p className="text-center text-[10px] font-medium text-muted-foreground mt-1">
+                  Use this voucher code at any counter for your next purchase!
                 </p>
               </div>
             )}

@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import Link from 'next/link';
+import { authFetch } from '@/lib/auth';
 
 interface TransferRequest {
     id: string;
@@ -22,6 +23,9 @@ interface TransferRequest {
     approvedBy?: { name: string };
     fromWarehouse?: { name: string; code: string };
     toWarehouse?: { name: string; code: string };
+    fromLocation?: { name: string; code: string };
+    toLocation?: { name: string; code: string };
+    isClaimDirect?: boolean;
     items: Array<{
         id: string;
         quantity: number;
@@ -53,23 +57,61 @@ export default function PLMClaimsPage() {
     const loadClaimTransfers = async () => {
         setLoading(true);
         try {
-            const response = await getTransferRequests();
+            const [transferRes, claimsRes] = await Promise.all([
+                getTransferRequests(),
+                authFetch('/pos-claims?status=APPROVED'),
+            ]);
             
-            if (response.status && response.data) {
-                // Filter only CLAIM_TO_PLM transfers
-                const claimTransfers = response.data.filter(
+            const pending: any[] = [];
+            const completed: any[] = [];
+
+            // 1. Claims awaiting PLM Acknowledgment (Approved/Partial)
+            if (claimsRes.ok && claimsRes.data?.data) {
+                const claims = claimsRes.data.data;
+                for (const c of claims) {
+                    if (c.status === 'APPROVED' || c.status === 'PARTIALLY_APPROVED') {
+                        pending.push({
+                            id: c.id,
+                            isClaimDirect: true,
+                            requestNo: c.claimNumber,
+                            status: 'PENDING',
+                            transferType: 'CLAIM_TO_PLM',
+                            createdAt: c.createdAt,
+                            fromLocation: c.salesOrder?.location || { name: 'Outlet Store', code: 'OUTLET' },
+                            toLocation: { name: 'PLM Location', code: 'C20001' },
+                            items: (c.items || []).filter((i: any) => ['APPROVED', 'PARTIALLY_APPROVED'].includes(i.itemStatus)).map((i: any) => ({
+                                id: i.id,
+                                quantity: i.approvedQty,
+                                item: i.item || { sku: 'ITEM', description: 'Claim Item' },
+                            })),
+                            claim: {
+                                claimNo: c.claimNumber,
+                                claimType: c.claimType,
+                            },
+                        });
+                    }
+                }
+            }
+
+            // 2. Transfers from Transfer Requests
+            if (transferRes.status && transferRes.data) {
+                const claimTransfers = transferRes.data.filter(
                     (req: TransferRequest) => req.transferType === 'CLAIM_TO_PLM'
                 );
 
-                const pending = claimTransfers.filter((req: TransferRequest) => req.status === 'PENDING');
-                const completed = claimTransfers.filter((req: TransferRequest) => req.status === 'COMPLETED' || req.status === 'APPROVED');
+                const pendingTrs = claimTransfers.filter((req: TransferRequest) => req.status === 'PENDING');
+                const completedTrs = claimTransfers.filter((req: TransferRequest) => req.status === 'COMPLETED' || req.status === 'APPROVED');
 
-                setPendingRequests(pending);
-                setCompletedRequests(completed);
-                
-                console.log('Claim transfers loaded:', { pending: pending.length, completed: completed.length });
-                console.log('Sample transfer:', pending[0] || completed[0]);
+                for (const tr of pendingTrs) {
+                    if (!pending.some((p: any) => p.claim?.claimNo === tr.claim?.claimNo)) {
+                        pending.push(tr);
+                    }
+                }
+                completed.push(...completedTrs);
             }
+
+            setPendingRequests(pending);
+            setCompletedRequests(completed);
         } catch (error) {
             console.error('Failed to load claim transfers:', error);
             toast.error('Failed to load claim transfers');
@@ -78,21 +120,27 @@ export default function PLMClaimsPage() {
         }
     };
 
-    const handleAcknowledge = async (transferRequestId: string) => {
+    const handleAcknowledge = async (request: TransferRequest) => {
         if (!user?.id) {
             toast.error('User not authenticated');
             return;
         }
 
-        setAcknowledgingId(transferRequestId);
+        setAcknowledgingId(request.id);
         try {
-            const result = await acknowledgeClaimTransfer(transferRequestId, user.id);
-
-            if (result.status) {
-                toast.success('✅ Claim acknowledged! PLM inventory updated.');
-                loadClaimTransfers(); // Refresh the list
+            let result: any;
+            if (request.isClaimDirect) {
+                const res = await authFetch(`/pos-claims/${request.id}/acknowledge`, { method: 'POST' });
+                result = res.data;
             } else {
-                toast.error(result.message || 'Failed to acknowledge claim');
+                result = await acknowledgeClaimTransfer(request.id, user.id);
+            }
+
+            if (result && result.status) {
+                toast.success('✅ Claim acknowledged! POS Return, Claim Voucher and PLM inventory updated.');
+                loadClaimTransfers();
+            } else {
+                toast.error(result?.message || 'Failed to acknowledge claim');
             }
         } catch (error) {
             console.error('Error acknowledging claim:', error);
@@ -161,6 +209,18 @@ export default function PLMClaimsPage() {
                     </div>
                 </div>
 
+                {/* Review Remarks */}
+                {(request.claim?.reviewNotes || request.notes) && (
+                    <div className="bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-2.5 text-xs space-y-0.5">
+                        <span className="font-bold text-amber-800 dark:text-amber-300 block">
+                            ERP Review Remarks:
+                        </span>
+                        <p className="text-foreground font-medium whitespace-pre-wrap">
+                            {request.claim?.reviewNotes || request.notes}
+                        </p>
+                    </div>
+                )}
+
                 {/* Items */}
                 <div className="border-t pt-3">
                     <p className="text-sm font-medium mb-2">Items ({request.items.length})</p>
@@ -209,7 +269,7 @@ export default function PLMClaimsPage() {
                 <div className="flex gap-2 pt-2">
                     {isPending ? (
                         <Button
-                            onClick={() => handleAcknowledge(request.id)}
+                            onClick={() => handleAcknowledge(request)}
                             disabled={acknowledgingId === request.id}
                             className="flex-1 bg-green-600 hover:bg-green-700"
                         >
@@ -228,12 +288,21 @@ export default function PLMClaimsPage() {
                             Inventory Updated
                         </div>
                     )}
-                    <Button variant="outline" size="sm" asChild>
-                        <Link href={`/erp/inventory/transactions/claim-transfer/slip/${request.id}`} target="_blank">
-                            <FileText className="h-4 w-4 mr-1" />
-                            View Slip
-                        </Link>
-                    </Button>
+                    {request.isClaimDirect ? (
+                        <Button variant="outline" size="sm" asChild>
+                            <Link href="/erp/claims" target="_blank">
+                                <FileText className="h-4 w-4 mr-1" />
+                                Claim Detail
+                            </Link>
+                        </Button>
+                    ) : (
+                        <Button variant="outline" size="sm" asChild>
+                            <Link href={`/erp/inventory/transactions/claim-transfer/slip/${request.id}`} target="_blank">
+                                <FileText className="h-4 w-4 mr-1" />
+                                View Slip
+                            </Link>
+                        </Button>
+                    )}
                 </div>
             </CardContent>
         </Card>

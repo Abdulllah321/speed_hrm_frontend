@@ -95,9 +95,9 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
 
 
       <SessionChecker />
-      <AppSidebar />
+      <AppSidebar className="print:hidden" />
       <SidebarInset>
-        <header className="flex shrink-0 h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky z-40 w-full justify-between shadow-sm" style={{
+        <header className="flex shrink-0 h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky z-40 w-full justify-between shadow-sm print:hidden" style={{
           top: "calc(var(--banner-height) - var(--titlebar-height))",
           viewTransitionName: "site-header",
         }}>
