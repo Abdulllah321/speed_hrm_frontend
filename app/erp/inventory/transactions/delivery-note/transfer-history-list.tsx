@@ -491,6 +491,12 @@ export function StockTransferHistoryList({
 
     const getTransferTypeBadge = (type: string) => {
         switch (type) {
+            case 'CLAIM_TO_PLM':
+                return (
+                    <Badge variant="outline" className="bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 text-[10px] gap-1 font-semibold py-0.5 w-fit">
+                        <RotateCcw className="h-3 w-3 text-amber-600 shrink-0" /> Outlet ➔ PLM (Claim)
+                    </Badge>
+                );
             case 'OUTLET_TO_WAREHOUSE':
                 return (
                     <Badge variant="outline" className="bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 text-[10px] gap-1 font-semibold py-0.5 w-fit">
@@ -622,21 +628,25 @@ export function StockTransferHistoryList({
             header: "Transfer Route (From ➔ To)",
             cell: ({ row }) => {
                 const transfer = row.original;
-                const originName = transfer.transferType === 'OUTLET_TO_WAREHOUSE'
+                const isOriginOutlet = transfer.transferType === 'OUTLET_TO_WAREHOUSE' || transfer.transferType === 'OUTLET_TO_OUTLET' || transfer.transferType === 'CLAIM_TO_PLM';
+                const originName = isOriginOutlet
                     ? (transfer.fromLocation?.name || 'Outlet')
                     : (transfer.fromWarehouse?.name || transfer.fromLocation?.name || 'Warehouse');
-                const originCode = transfer.transferType === 'OUTLET_TO_WAREHOUSE'
-                    ? transfer.fromLocation?.code
+                const originCode = isOriginOutlet
+                    ? (transfer.fromLocation?.code || transfer.fromLocation?.shortCode)
                     : (transfer.fromWarehouse?.code || transfer.fromLocation?.code);
-                const isOriginOutlet = transfer.transferType === 'OUTLET_TO_WAREHOUSE' || transfer.transferType === 'OUTLET_TO_OUTLET';
 
-                const destName = transfer.transferType === 'OUTLET_TO_WAREHOUSE'
-                    ? (transfer.toWarehouse?.name || transfer.fromWarehouse?.name || 'Warehouse')
-                    : (transfer.toLocation?.name || transfer.toWarehouse?.name || 'Destination');
-                const destCode = transfer.transferType === 'OUTLET_TO_WAREHOUSE'
-                    ? (transfer.toWarehouse?.code || transfer.fromWarehouse?.code)
-                    : (transfer.toLocation?.code || transfer.toWarehouse?.code);
-                const isDestWarehouse = transfer.transferType === 'OUTLET_TO_WAREHOUSE' || transfer.transferType === 'WAREHOUSE_TO_WAREHOUSE';
+                const isDestWarehouse = transfer.transferType === 'OUTLET_TO_WAREHOUSE' || transfer.transferType === 'WAREHOUSE_TO_WAREHOUSE' || transfer.transferType === 'CLAIM_TO_PLM';
+                const destName = transfer.transferType === 'CLAIM_TO_PLM'
+                    ? (transfer.toLocation?.name || transfer.toWarehouse?.name || 'Product Line Management')
+                    : isDestWarehouse
+                        ? (transfer.toWarehouse?.name || transfer.fromWarehouse?.name || 'Warehouse')
+                        : (transfer.toLocation?.name || transfer.toWarehouse?.name || 'Destination');
+                const destCode = transfer.transferType === 'CLAIM_TO_PLM'
+                    ? (transfer.toLocation?.code || transfer.toWarehouse?.code)
+                    : isDestWarehouse
+                        ? (transfer.toWarehouse?.code || transfer.fromWarehouse?.code)
+                        : (transfer.toLocation?.code || transfer.toWarehouse?.code);
 
                 return (
                     <div className="flex flex-col gap-1.5 min-w-[210px]">

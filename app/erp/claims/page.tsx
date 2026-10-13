@@ -37,9 +37,12 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
     DRAFT:               { label: "Draft",              cls: "bg-muted text-muted-foreground border-border" },
     SUBMITTED:           { label: "Submitted",          cls: "bg-blue-50 text-blue-700 border-blue-300" },
     UNDER_REVIEW:        { label: "Under Review",       cls: "bg-amber-50 text-amber-700 border-amber-300" },
-    APPROVED:            { label: "Approved",           cls: "bg-emerald-50 text-emerald-700 border-emerald-300" },
-    PARTIALLY_APPROVED:  { label: "Partial",            cls: "bg-cyan-50 text-cyan-700 border-cyan-300" },
+    APPROVED:            { label: "Approved (Pending Ack)", cls: "bg-emerald-50 text-emerald-700 border-emerald-300" },
+    PARTIALLY_APPROVED:  { label: "Partial (Pending Ack)",  cls: "bg-cyan-50 text-cyan-700 border-cyan-300" },
+    COMPLETED:           { label: "Acknowledged",       cls: "bg-green-100 text-green-800 border-green-300" },
+    ACKNOWLEDGED:        { label: "Acknowledged",       cls: "bg-green-100 text-green-800 border-green-300" },
     REJECTED:            { label: "Rejected",           cls: "bg-destructive/10 text-destructive border-destructive/30" },
+    MENDED:              { label: "Mended",             cls: "bg-amber-100 text-amber-800 border-amber-300" },
     CANCELLED:           { label: "Cancelled",          cls: "bg-muted text-muted-foreground border-border" },
 };
 
@@ -48,6 +51,7 @@ const ITEM_STATUS_META: Record<string, { label: string; cls: string }> = {
     APPROVED:           { label: "Approved",  cls: "bg-emerald-100 text-emerald-700" },
     PARTIALLY_APPROVED: { label: "Partial",   cls: "bg-cyan-100 text-cyan-700" },
     REJECTED:           { label: "Rejected",  cls: "bg-red-100 text-red-700" },
+    MENDED:             { label: "Mended",    cls: "bg-amber-100 text-amber-700" },
 };
 
 export default function ClaimsPage() {
@@ -58,6 +62,7 @@ export default function ClaimsPage() {
     const [showDetail, setShowDetail] = useState(false);
     const [isStartingReview, setIsStartingReview] = useState(false);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+    const [isAcknowledging, setIsAcknowledging] = useState(false);
     const [isRejecting, setIsRejecting] = useState(false);
     const [showRejectDialog, setShowRejectDialog] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
@@ -95,14 +100,14 @@ export default function ClaimsPage() {
                         init[`${i.id}-${idx}`] = { 
                             approvedQty: 1, 
                             notes: i.reviewNotes ?? "",
-                            status: "PENDING"
+                            status: "APPROVED"
                         };
                     }
                 } else {
                     init[i.id] = { 
-                        approvedQty: i.approvedQty || i.claimedQty, 
+                        approvedQty: i.approvedQty || (i.itemStatus === 'REJECTED' || i.itemStatus === 'MENDED' ? 0 : i.claimedQty), 
                         notes: i.reviewNotes ?? "",
-                        status: i.itemStatus || "PENDING"
+                        status: i.itemStatus || "APPROVED"
                     };
                 }
             });
@@ -182,17 +187,17 @@ export default function ClaimsPage() {
             }
 
             const items = Array.from(grouped.entries()).map(([claimItemId, data]) => {
-                let status = "PENDING";
+                let status = "REJECTED";
                 let remainingStatus = "REJECTED";
                 
                 const hasApproved = data.statuses.includes("APPROVED");
-                const hasPending = data.statuses.includes("PENDING");
+                const hasMended = data.statuses.includes("MENDED");
                 
                 if (hasApproved) {
                     status = "APPROVED";
-                    remainingStatus = hasPending ? "PENDING" : "REJECTED";
-                } else if (hasPending) {
-                    status = "PENDING";
+                    remainingStatus = hasMended ? "MENDED" : "REJECTED";
+                } else if (hasMended) {
+                    status = "MENDED";
                 } else {
                     status = "REJECTED";
                 }
@@ -244,6 +249,27 @@ export default function ClaimsPage() {
         finally { setIsRejecting(false); }
     };
 
+    const handleAcknowledgeClaim = async () => {
+        if (!selectedClaim) return;
+        setIsAcknowledging(true);
+        try {
+            const res = await authFetch(`/pos-claims/${selectedClaim.id}/acknowledge`, {
+                method: "POST",
+            });
+            if (res.ok && res.data?.status) {
+                toast.success(res.data.message || "Claim acknowledged successfully");
+                setShowDetail(false);
+                fetchClaims();
+            } else {
+                toast.error(res.data?.message || "Failed to acknowledge claim");
+            }
+        } catch {
+            toast.error("Failed to acknowledge claim");
+        } finally {
+            setIsAcknowledging(false);
+        }
+    };
+
     const totalApprovedInReview = useMemo(() => {
         if (!selectedClaim) return 0;
         return renderedItems.reduce((s: number, i: any) => {
@@ -257,6 +283,13 @@ export default function ClaimsPage() {
             return s;
         }, 0);
     }, [selectedClaim, itemApprovals, renderedItems, canReview]);
+
+    const hasAnyApproved = useMemo(() => {
+        return renderedItems.some((i: any) => {
+            const approval = itemApprovals[i.displayId];
+            return approval?.status === 'APPROVED';
+        });
+    }, [itemApprovals, renderedItems]);
 
     const columns = useMemo<ColumnDef<any>[]>(() => [
         {
@@ -380,6 +413,28 @@ export default function ClaimsPage() {
                                     </div>
                                 </div>
 
+                                {selectedClaim.voucher && (
+                                    <div className="flex items-center justify-between bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-300 rounded-lg px-4 py-3 text-sm">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-2xl">🎫</span>
+                                            <div>
+                                                <p className="font-bold text-emerald-900 dark:text-emerald-300">
+                                                    {selectedClaim.voucher.voucherType || "CLAIM"} Voucher Issued
+                                                </p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                    Code: <span className="font-mono font-bold text-emerald-800 bg-white dark:bg-zinc-900 px-2 py-0.5 rounded border border-emerald-200">{selectedClaim.voucher.code}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-mono font-bold text-emerald-700 text-base">Rs. {fmt(Number(selectedClaim.voucher.faceValue))}</p>
+                                            <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 border-emerald-300">
+                                                {selectedClaim.voucher.isRedeemed ? "REDEEMED" : "ACTIVE"}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {selectedClaim.reasonNotes && (
                                     <div className="text-sm bg-muted/30 rounded-lg px-3 py-2 italic text-muted-foreground">
                                         "{selectedClaim.reasonNotes}"
@@ -449,9 +504,9 @@ export default function ClaimsPage() {
                                                                             <SelectValue />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
-                                                                            <SelectItem value="PENDING">Review Later</SelectItem>
                                                                             <SelectItem value="APPROVED">Approve</SelectItem>
                                                                             <SelectItem value="REJECTED">Reject</SelectItem>
+                                                                            <SelectItem value="MENDED">Mended</SelectItem>
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </TableCell>
@@ -511,27 +566,33 @@ export default function ClaimsPage() {
 
                                 <SheetFooter className="shrink-0 border-t px-6 py-4 gap-2 flex-row justify-end">
                                     <Button variant="ghost" onClick={() => setShowDetail(false)}>Close</Button>
-                                    {selectedClaim.status === "SUBMITTED" && (
-                                        <PermissionGuard permissions="erp.claims.approve" fallback={null}>
-                                            <Button variant="outline" onClick={handleStartReview} disabled={isStartingReview} className="gap-2">
-                                                {isStartingReview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
-                                                Start Review
-                                            </Button>
-                                        </PermissionGuard>
-                                    )}
                                     {canReview && (
                                         <PermissionGuard permissions="erp.claims.approve" fallback={null}>
-                                            <Button 
-                                                variant="destructive" 
-                                                onClick={() => setShowRejectDialog(true)} 
-                                                className="gap-2"
-                                            >
-                                                <XCircle className="h-4 w-4" />
-                                                Reject Claim
-                                            </Button>
+                                            {!hasAnyApproved && (
+                                                <Button 
+                                                    variant="destructive" 
+                                                    onClick={() => setShowRejectDialog(true)} 
+                                                    className="gap-2"
+                                                >
+                                                    <XCircle className="h-4 w-4" />
+                                                    Reject Claim
+                                                </Button>
+                                            )}
                                             <Button onClick={handleSubmitReview} disabled={isSubmittingReview} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
                                                 {isSubmittingReview ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                                 Submit Decision
+                                            </Button>
+                                        </PermissionGuard>
+                                    )}
+                                    {["APPROVED", "PARTIALLY_APPROVED"].includes(selectedClaim.status) && (
+                                        <PermissionGuard permissions="erp.inventory.claims.acknowledge" fallback={null}>
+                                            <Button 
+                                                onClick={handleAcknowledgeClaim} 
+                                                disabled={isAcknowledging} 
+                                                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                                            >
+                                                {isAcknowledging ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                                Acknowledge Receipt
                                             </Button>
                                         </PermissionGuard>
                                     )}

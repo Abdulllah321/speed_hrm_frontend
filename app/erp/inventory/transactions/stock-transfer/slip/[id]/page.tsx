@@ -566,7 +566,11 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                 <div className="space-y-2 col-span-2 md:col-span-4 mt-2">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Remarks / Notes</p>
                   <div className="text-sm font-medium text-slate-700 bg-slate-50 p-3 rounded-md border border-slate-100 min-h-[60px] leading-relaxed">
-                    {transfer.notes ? transfer.notes : <span className="text-slate-400 italic">No remarks provided.</span>}
+                    {transfer.claim?.reviewNotes || transfer.notes ? (
+                      <span className="font-semibold text-slate-900">{transfer.claim?.reviewNotes || transfer.notes}</span>
+                    ) : (
+                      <span className="text-slate-400 italic">No remarks provided.</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -725,7 +729,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
             )}
             <div className="flex">
               <span className="font-semibold w-36 text-gray-600">Remarks :</span>
-              <span className="font-medium text-gray-800">{transfer.notes || '-'}</span>
+              <span className="font-medium text-gray-800">{transfer.claim?.reviewNotes || transfer.notes || '-'}</span>
             </div>
             {distinctBrandNames.length > 1 && (
               <div className="flex items-center gap-1 pt-1">
