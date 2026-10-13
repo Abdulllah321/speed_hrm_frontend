@@ -108,7 +108,7 @@ export function OverallAvailableReservedStockView({
     queueOverallAvailableReservedStockPreview({
       asOfDate,
       summaryOnly: false,
-      includeCosting: true,
+      includeCosting: !isPosLevel,
       locationId:
         selectedLocationIds.length > 0
           ? selectedLocationIds.join(",")
@@ -127,7 +127,7 @@ export function OverallAvailableReservedStockView({
         toast.error("Failed to queue stock data fetch");
       }
     });
-  }, [asOfDate, selectedLocationIds, selectedWarehouseIds]);
+  }, [asOfDate, isPosLevel, selectedLocationIds, selectedWarehouseIds]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -307,6 +307,7 @@ export function OverallAvailableReservedStockView({
         grandTotals,
         asOfDate,
         companyName,
+        isPosLevel,
         onProgress: (percent, message) => {
           setExportProgressPercent(percent);
           setExportProgressMessage(message);
@@ -338,6 +339,7 @@ export function OverallAvailableReservedStockView({
         grandTotals,
         asOfDate,
         companyName,
+        isPosLevel,
         onProgress: (percent, message) => {
           setExportProgressPercent(percent);
           setExportProgressMessage(message);

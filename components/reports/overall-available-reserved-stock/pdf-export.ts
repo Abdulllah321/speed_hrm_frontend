@@ -9,6 +9,7 @@ interface ExportPdfOptions {
     grandTotals: StockTotals;
     asOfDate?: string;
     companyName?: string;
+    isPosLevel?: boolean;
     onProgress?: (percent: number, message: string) => void;
 }
 
@@ -20,6 +21,7 @@ export async function exportOverallAvailableReservedStockToPdf({
     grandTotals,
     asOfDate,
     companyName = "Speed Limit ERP",
+    isPosLevel = false,
     onProgress,
 }: ExportPdfOptions): Promise<void> {
     try {
@@ -59,8 +61,10 @@ export async function exportOverallAvailableReservedStockToPdf({
                     <td style="text-align: right; font-weight: bold;">${item.total.toLocaleString()}</td>
                     <td style="text-align: right;">Rs. ${item.unitPrice ? item.unitPrice.toLocaleString() : "-"}</td>
                     <td style="text-align: right; font-weight: bold;">Rs. ${item.value.toLocaleString()}</td>
+                    ${!isPosLevel ? `
                     <td style="text-align: right;">Rs. ${item.unitCost ? item.unitCost.toLocaleString() : "-"}</td>
                     <td style="text-align: right; font-weight: bold;">Rs. ${item.costingValue.toLocaleString()}</td>
+                    ` : ""}
                     ${locCellsHtml}
                 </tr>
             `;
@@ -91,7 +95,7 @@ export async function exportOverallAvailableReservedStockToPdf({
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Overall Stock Matrix Report - ${companyName}</title>
+                <title>Overall Stock Matrix Report ${isPosLevel ? "(POS)" : ""} - ${companyName}</title>
                 <style>
                     body { font-family: system-ui, -apple-system, sans-serif; margin: 15px; color: #111; }
                     .header { margin-bottom: 15px; border-bottom: 2px solid #1E293B; padding-bottom: 8px; }
@@ -110,7 +114,7 @@ export async function exportOverallAvailableReservedStockToPdf({
             <body>
                 <div class="header">
                     <h1>${companyName}</h1>
-                    <p><strong>OVERALL STOCK MATRIX REPORT (STORE-WISE BREAKDOWN)</strong></p>
+                    <p><strong>OVERALL STOCK MATRIX REPORT ${isPosLevel ? "(POS LEVEL - STORE-WISE BREAKDOWN)" : "(STORE-WISE BREAKDOWN)"}</strong></p>
                     <p>As Of Date: ${asOfDate || new Date().toISOString().slice(0, 10)} | Generated: ${new Date().toLocaleString()}</p>
                 </div>
 
@@ -133,8 +137,10 @@ export async function exportOverallAvailableReservedStockToPdf({
                             <th style="text-align: right;">Total Bal</th>
                             <th style="text-align: right;">Price</th>
                             <th style="text-align: right;">Value</th>
+                            ${!isPosLevel ? `
                             <th style="text-align: right;">Unit Cost</th>
                             <th style="text-align: right;">Unit Value</th>
+                            ` : ""}
                             ${storeHeadersHtml}
                         </tr>
                     </thead>
@@ -150,8 +156,10 @@ export async function exportOverallAvailableReservedStockToPdf({
                             <td style="text-align: right; color: #38BDF8;">${grandTotals.total.toLocaleString()}</td>
                             <td style="text-align: right;"></td>
                             <td style="text-align: right; color: #818CF8;">Rs. ${grandTotals.value.toLocaleString()}</td>
+                            ${!isPosLevel ? `
                             <td style="text-align: right;"></td>
                             <td style="text-align: right; color: #2DD4BF;">Rs. ${grandTotals.costingValue.toLocaleString()}</td>
+                            ` : ""}
                             ${storeGrandTotalsHtml}
                         </tr>
                     </tfoot>
@@ -178,7 +186,7 @@ export async function exportOverallAvailableReservedStockToPdf({
 
         try {
             const blob = new Blob([printHtml], { type: "text/html" });
-            const fileName = `overall-stock-matrix-${asOfDate || new Date().toISOString().slice(0, 10)}.html`;
+            const fileName = `${isPosLevel ? "pos-" : ""}overall-stock-matrix-${asOfDate || new Date().toISOString().slice(0, 10)}.html`;
             const formData = new FormData();
             formData.append("file", blob, fileName);
             formData.append("fileName", fileName);

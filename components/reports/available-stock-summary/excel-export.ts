@@ -13,6 +13,7 @@ interface ExportExcelOptions {
     dateFromStr?: string;
     dateToStr?: string;
     companyName?: string;
+    isPosLevel?: boolean;
     onProgress?: (percent: number, message: string) => void;
 }
 
@@ -28,6 +29,7 @@ export async function exportAvailableStockSummaryToExcel({
     dateFromStr,
     dateToStr,
     companyName = "Speed Limit ERP",
+    isPosLevel = false,
     onProgress,
 }: ExportExcelOptions): Promise<void> {
     try {
@@ -36,17 +38,19 @@ export async function exportAvailableStockSummaryToExcel({
 
         const formattedDate = new Date().toLocaleString();
         const dateRangeStr = `Period: ${dateFromStr || "All Time"} to ${dateToStr || "Present"}`;
+        const reportTitleSuffix = isPosLevel ? " (POS LEVEL)" : "";
 
         // ─── 1. Build Color-Coded Hierarchy View HTML Table ─────────────────────────
         let hierarchyRowsHtml = "";
         let hierarchyFlatRows: any[][] = [];
 
         hierarchyFlatRows.push([companyName.toUpperCase()]);
-        hierarchyFlatRows.push([`AVAILABLE STOCK SUMMARY REPORT (${reportType.toUpperCase()} HIERARCHY VIEW)`]);
+        hierarchyFlatRows.push([`AVAILABLE STOCK SUMMARY REPORT${reportTitleSuffix} (${reportType.toUpperCase()} HIERARCHY VIEW)`]);
         hierarchyFlatRows.push([dateRangeStr]);
         hierarchyFlatRows.push([`Generated At: ${formattedDate}`]);
         hierarchyFlatRows.push([]);
-        hierarchyFlatRows.push([
+        
+        const hierarchyHeader = [
             "GPC / Category / Product / Barcode",
             "Size",
             "Color",
@@ -57,9 +61,11 @@ export async function exportAvailableStockSummaryToExcel({
             "Total Balance",
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
-            "Unit Cost (Rs.)",
-            "Unit Value (Rs.)",
-        ]);
+        ];
+        if (!isPosLevel) {
+            hierarchyHeader.push("Unit Cost (Rs.)", "Unit Value (Rs.)");
+        }
+        hierarchyFlatRows.push(hierarchyHeader);
 
         if (exportMode === "hierarchy" || exportMode === "both") {
             onProgress?.(15, "Formatting color-coded hierarchy tree...");
@@ -89,7 +95,7 @@ export async function exportAvailableStockSummaryToExcel({
                     label = `${indent}[${node.barCode}] ${node.color || "Default"}-${node.size || "Default"}`;
                 }
 
-                hierarchyFlatRows.push([
+                const rowData: (string | number)[] = [
                     label,
                     node.size || "",
                     node.color || "",
@@ -100,9 +106,11 @@ export async function exportAvailableStockSummaryToExcel({
                     node.totals.total,
                     node.totals.unitPrice || "",
                     node.totals.value,
-                    node.totals.unitCost || "",
-                    node.totals.costingValue,
-                ]);
+                ];
+                if (!isPosLevel) {
+                    rowData.push(node.totals.unitCost || "", node.totals.costingValue);
+                }
+                hierarchyFlatRows.push(rowData);
 
                 // Build HTML row with distinct level background colors
                 let bgStyle = "background-color: #FFFFFF; color: #0F172A;";
@@ -143,7 +151,7 @@ export async function exportAvailableStockSummaryToExcel({
             }
 
             hierarchyFlatRows.push([]);
-            hierarchyFlatRows.push([
+            const hierarchyGrandTotalRow: (string | number)[] = [
                 "GRAND TOTAL",
                 "",
                 "",
@@ -154,9 +162,11 @@ export async function exportAvailableStockSummaryToExcel({
                 grandTotals.total,
                 "",
                 grandTotals.value,
-                "",
-                grandTotals.costingValue,
-            ]);
+            ];
+            if (!isPosLevel) {
+                hierarchyGrandTotalRow.push("", grandTotals.costingValue);
+            }
+            hierarchyFlatRows.push(hierarchyGrandTotalRow);
         }
 
         // ─── 2. Build Color-Coded Flat Detail Ledger HTML Table ────────────────────
@@ -164,11 +174,11 @@ export async function exportAvailableStockSummaryToExcel({
         let flatDataRows: any[][] = [];
 
         flatDataRows.push([companyName.toUpperCase()]);
-        flatDataRows.push([`AVAILABLE STOCK SUMMARY REPORT (FLAT DETAIL LEDGER VIEW)`]);
+        flatDataRows.push([`AVAILABLE STOCK SUMMARY REPORT${reportTitleSuffix} (FLAT DETAIL LEDGER VIEW)`]);
         flatDataRows.push([dateRangeStr]);
         flatDataRows.push([`Generated At: ${formattedDate}`]);
         flatDataRows.push([]);
-        flatDataRows.push([
+        const flatHeaders = [
             "Location / Store",
             "Barcode",
             "SKU",
@@ -187,9 +197,11 @@ export async function exportAvailableStockSummaryToExcel({
             "Total Balance",
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
-            "Unit Cost (Rs.)",
-            "Unit Value (Rs.)",
-        ]);
+        ];
+        if (!isPosLevel) {
+            flatHeaders.push("Unit Cost (Rs.)", "Unit Value (Rs.)");
+        }
+        flatDataRows.push(flatHeaders);
 
         if (exportMode === "flat" || exportMode === "both") {
             onProgress?.(45, "Formatting color-coded flat detail ledger...");
@@ -200,7 +212,7 @@ export async function exportAvailableStockSummaryToExcel({
             for (let i = 0; i < filteredItems.length; i++) {
                 const item = filteredItems[i];
 
-                flatDataRows.push([
+                const flatRow: (string | number)[] = [
                     item.locationName,
                     item.barCode,
                     item.sku,
@@ -219,9 +231,11 @@ export async function exportAvailableStockSummaryToExcel({
                     item.total,
                     item.unitPrice,
                     item.value,
-                    item.unitCost,
-                    item.costingValue,
-                ]);
+                ];
+                if (!isPosLevel) {
+                    flatRow.push(item.unitCost, item.costingValue);
+                }
+                flatDataRows.push(flatRow);
 
                 const bgStyle = i % 2 === 0 ? "background-color: #FFFFFF;" : "background-color: #F8FAFC;";
 
@@ -253,7 +267,7 @@ export async function exportAvailableStockSummaryToExcel({
             }
 
             flatDataRows.push([]);
-            flatDataRows.push([
+            const flatGrandTotalRow: (string | number)[] = [
                 "GRAND TOTAL",
                 "",
                 "",
@@ -272,9 +286,11 @@ export async function exportAvailableStockSummaryToExcel({
                 grandTotals.total,
                 "",
                 grandTotals.value,
-                "",
-                grandTotals.costingValue,
-            ]);
+            ];
+            if (!isPosLevel) {
+                flatGrandTotalRow.push("", grandTotals.costingValue);
+            }
+            flatDataRows.push(flatGrandTotalRow);
         }
 
         onProgress?.(85, "Creating color-styled XLSX Excel file...");
@@ -285,27 +301,36 @@ export async function exportAvailableStockSummaryToExcel({
 
         if (exportMode === "hierarchy" || exportMode === "both") {
             const wsHierarchy = XLSX.utils.aoa_to_sheet(hierarchyFlatRows);
-            wsHierarchy["!cols"] = [
+            const hierarchyCols = [
                 { wch: 48 }, { wch: 10 }, { wch: 16 }, { wch: 14 },
                 { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
-                { wch: 18 }, { wch: 16 }, { wch: 18 },
+                { wch: 18 }, { wch: 18 },
             ];
+            if (!isPosLevel) {
+                hierarchyCols.push({ wch: 18 }, { wch: 18 });
+            }
+            wsHierarchy["!cols"] = hierarchyCols;
             XLSX.utils.book_append_sheet(workbook, wsHierarchy, "Hierarchy Stock Summary");
         }
 
         if (exportMode === "flat" || exportMode === "both") {
             const wsFlat = XLSX.utils.aoa_to_sheet(flatDataRows);
-            wsFlat["!cols"] = [
+            const flatCols = [
                 { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 32 },
                 { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 12 },
                 { wch: 16 }, { wch: 10 }, { wch: 16 }, { wch: 14 },
                 { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
-                { wch: 18 }, { wch: 16 }, { wch: 18 },
+                { wch: 18 }, { wch: 18 },
             ];
+            if (!isPosLevel) {
+                flatCols.push({ wch: 18 }, { wch: 18 });
+            }
+            wsFlat["!cols"] = flatCols;
             XLSX.utils.book_append_sheet(workbook, wsFlat, "Flat Detail Ledger");
         }
 
-        const fileName = `available-stock-summary-${exportMode}-${reportType}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        const posPrefix = isPosLevel ? "pos-" : "";
+        const fileName = `available-stock-summary-${posPrefix}${exportMode}-${reportType}-${new Date().toISOString().slice(0, 10)}.xlsx`;
         const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
 
         onProgress?.(92, "Triggering instant browser download...");

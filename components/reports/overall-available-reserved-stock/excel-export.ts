@@ -10,6 +10,7 @@ interface ExportExcelOptions {
     grandTotals: StockTotals;
     asOfDate?: string;
     companyName?: string;
+    isPosLevel?: boolean;
     onProgress?: (percent: number, message: string) => void;
 }
 
@@ -21,6 +22,7 @@ export async function exportOverallAvailableReservedStockToExcel({
     grandTotals,
     asOfDate,
     companyName = "Speed Limit ERP",
+    isPosLevel = false,
     onProgress,
 }: ExportExcelOptions): Promise<void> {
     try {
@@ -33,8 +35,11 @@ export async function exportOverallAvailableReservedStockToExcel({
         const dataRows: any[][] = [];
 
         // Title Block
+        const reportTitle = isPosLevel
+            ? "OVERALL STOCK MATRIX REPORT (POS LEVEL - STORE-WISE BREAKDOWN)"
+            : "OVERALL STOCK MATRIX REPORT (OUTLETS & WAREHOUSES STORE-WISE BREAKDOWN)";
         dataRows.push([companyName.toUpperCase()]);
-        dataRows.push([`OVERALL STOCK MATRIX REPORT (OUTLETS & WAREHOUSES STORE-WISE BREAKDOWN)`]);
+        dataRows.push([reportTitle]);
         dataRows.push([dateRangeStr]);
         dataRows.push([`Generated At: ${formattedDate}`]);
         dataRows.push([]);
@@ -57,8 +62,7 @@ export async function exportOverallAvailableReservedStockToExcel({
             "Total Balance",
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
-            "Unit Cost (Rs.)",
-            "Unit Value (Rs.)",
+            ...(!isPosLevel ? ["Unit Cost (Rs.)", "Unit Value (Rs.)"] : []),
             ...locationHeaders.map((h) => h.code),
         ];
         dataRows.push(headerRow);
@@ -95,8 +99,7 @@ export async function exportOverallAvailableReservedStockToExcel({
                 item.total,
                 item.unitPrice,
                 item.value,
-                item.unitCost,
-                item.costingValue,
+                ...(!isPosLevel ? [item.unitCost, item.costingValue] : []),
                 ...locQtys,
             ]);
 
@@ -133,8 +136,7 @@ export async function exportOverallAvailableReservedStockToExcel({
             grandTotals.total,
             "",
             grandTotals.value,
-            "",
-            grandTotals.costingValue,
+            ...(!isPosLevel ? ["", grandTotals.costingValue] : []),
             ...totalsLocQtys,
         ]);
 
@@ -150,14 +152,14 @@ export async function exportOverallAvailableReservedStockToExcel({
             { wch: 14 }, { wch: 16 }, { wch: 32 }, { wch: 10 },
             { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 12 },
             { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 18 },
-            { wch: 16 }, { wch: 18 },
+            ...(!isPosLevel ? [{ wch: 16 }, { wch: 18 }] : []),
             ...locationHeaders.map(() => ({ wch: 12 })),
         ];
         worksheet["!cols"] = colWidths;
 
         XLSX.utils.book_append_sheet(workbook, worksheet, "Overall Stock Matrix");
 
-        const fileName = `overall-stock-matrix-${asOfDate || new Date().toISOString().slice(0, 10)}.xlsx`;
+        const fileName = `${isPosLevel ? "pos-" : ""}overall-stock-matrix-${asOfDate || new Date().toISOString().slice(0, 10)}.xlsx`;
         const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
 
         onProgress?.(92, "Triggering instant browser download...");

@@ -222,6 +222,7 @@ export function AvailableStockSummaryView({
                 dateFromStr: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
                 dateToStr: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
                 companyName,
+                isPosLevel,
                 onProgress: (percent, message) => {
                     setExportProgressPercent(percent);
                     setExportProgressMessage(message);
@@ -256,6 +257,7 @@ export function AvailableStockSummaryView({
                 dateFromStr: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
                 dateToStr: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
                 companyName,
+                isPosLevel,
                 onProgress: (percent, message) => {
                     setExportProgressPercent(percent);
                     setExportProgressMessage(message);
