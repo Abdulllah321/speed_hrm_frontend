@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 interface GroupedProduct {
   skuBase: string;
+  brandName: string;
   description: string;
   unitPrice: number;
   totalQty: number;
@@ -40,6 +41,13 @@ interface GroupedCategory {
   totalQty: number;
   totalValue: number;
   genders: GroupedGender[];
+}
+
+interface GroupedBrand {
+  brandName: string;
+  totalQty: number;
+  totalValue: number;
+  categories: GroupedCategory[];
 }
 
 export default function StockRequisitionSlipPage() {
@@ -79,16 +87,13 @@ export default function StockRequisitionSlipPage() {
 
   const handleBackNavigation = () => {
     try {
-      // Check if there's history to go back to
       if (window.history.length > 1) {
         router.back();
       } else {
-        // Fallback to stock requisition list page
         router.push('/erp/inventory/transactions/stock-requisition');
       }
     } catch (error) {
       console.error('Navigation error:', error);
-      // Ultimate fallback
       router.push('/erp/inventory/transactions/stock-requisition');
     }
   };
@@ -125,9 +130,25 @@ export default function StockRequisitionSlipPage() {
     return sku;
   };
 
-  // Hierarchy Grouping Function
-  const getGroupedHierarchy = (items: any[]): GroupedCategory[] => {
-    const categories: Record<string, GroupedCategory> = {};
+  const getBrandName = (item: any, fallbackBrand?: any): string => {
+    if (!item) return (fallbackBrand?.name || 'GENERAL').toUpperCase();
+    if (typeof item.brand === 'object' && item.brand?.name) return String(item.brand.name).trim().toUpperCase();
+    if (typeof item.brand === 'string' && item.brand.trim()) return item.brand.trim().toUpperCase();
+    if (item.brandName) return String(item.brandName).trim().toUpperCase();
+    if (fallbackBrand?.name) return String(fallbackBrand.name).trim().toUpperCase();
+
+    const desc = (item.description || '').toUpperCase();
+    if (desc.includes('NIKE')) return 'NIKE';
+    if (desc.includes('PUMA')) return 'PUMA';
+    if (desc.includes('ADIDAS') || desc.includes('ADISSAGE')) return 'ADIDAS';
+    if (desc.includes('SKECHERS')) return 'SKECHERS';
+
+    return 'GENERAL';
+  };
+
+  // Hierarchy Grouping Function: Brand -> Category -> Gender -> Segment -> Product -> Sizes
+  const getGroupedHierarchy = (items: any[], fallbackBrand?: any): GroupedBrand[] => {
+    const brands: Record<string, GroupedBrand> = {};
 
     if (!items || !Array.isArray(items)) return [];
 
@@ -136,6 +157,7 @@ export default function StockRequisitionSlipPage() {
       const item = reqItem.item;
       if (!item) return;
 
+      const brandName = getBrandName(item, fallbackBrand);
       const categoryName = item.category?.name || 'UNCLASSIFIED';
       const genderName = item.gender?.name || 'GENERAL';
       const segmentName = item.segment?.name || 'GENERAL';
@@ -147,20 +169,34 @@ export default function StockRequisitionSlipPage() {
       const sizeName = item.size?.name || 'Free Size';
       const skuBase = getBaseSku(item.sku, item.size?.name);
 
-      // 1. Initialize Category
-      if (!categories[categoryName]) {
-        categories[categoryName] = {
+      // 1. Initialize Brand
+      if (!brands[brandName]) {
+        brands[brandName] = {
+          brandName,
+          totalQty: 0,
+          totalValue: 0,
+          categories: [],
+        };
+      }
+      const br = brands[brandName];
+      br.totalQty += qty;
+      br.totalValue += totalValue;
+
+      // 2. Initialize Category inside Brand
+      let cat = br.categories.find((c) => c.categoryName === categoryName);
+      if (!cat) {
+        cat = {
           categoryName,
           totalQty: 0,
           totalValue: 0,
           genders: [],
         };
+        br.categories.push(cat);
       }
-      const cat = categories[categoryName];
       cat.totalQty += qty;
       cat.totalValue += totalValue;
 
-      // 2. Find/Create Gender
+      // 3. Find/Create Gender
       let gend = cat.genders.find((g) => g.genderName === genderName);
       if (!gend) {
         gend = {
@@ -174,7 +210,7 @@ export default function StockRequisitionSlipPage() {
       gend.totalQty += qty;
       gend.totalValue += totalValue;
 
-      // 3. Find/Create Segment
+      // 4. Find/Create Segment
       let seg = gend.segments.find((s) => s.segmentName === segmentName);
       if (!seg) {
         seg = {
@@ -188,11 +224,12 @@ export default function StockRequisitionSlipPage() {
       seg.totalQty += qty;
       seg.totalValue += totalValue;
 
-      // 4. Find/Create Product (group by skuBase + description)
-      let prod = seg.products.find((p) => p.skuBase === skuBase);
+      // 5. Find/Create Product (group by skuBase + brand + description)
+      let prod = seg.products.find((p) => p.skuBase === skuBase && p.brandName === brandName);
       if (!prod) {
         prod = {
           skuBase,
+          brandName,
           description: item.description || '',
           unitPrice,
           totalQty: 0,
@@ -204,7 +241,7 @@ export default function StockRequisitionSlipPage() {
       prod.totalQty += qty;
       prod.totalValue += totalValue;
 
-      // 5. Add size quantity
+      // 6. Add size quantity
       const existingSize = prod.sizes.find((sz) => sz.sizeName === sizeName);
       if (existingSize) {
         existingSize.quantity += qty;
@@ -213,7 +250,7 @@ export default function StockRequisitionSlipPage() {
       }
     });
 
-    return Object.values(categories);
+    return Object.values(brands);
   };
 
   if (loading) {
@@ -234,7 +271,17 @@ export default function StockRequisitionSlipPage() {
     );
   }
 
-  const groupedCategories = getGroupedHierarchy(requisition.items || []);
+  const groupedBrands = getGroupedHierarchy(requisition.items || [], requisition.brand);
+  const distinctBrandNames = Array.from(
+    new Set(groupedBrands.map((b) => b.brandName).filter((b) => b && b !== 'GENERAL'))
+  );
+  const brandHeaderTitle =
+    distinctBrandNames.length === 1
+      ? distinctBrandNames[0]
+      : distinctBrandNames.length > 1
+      ? distinctBrandNames.join(' • ')
+      : requisition.brand?.name || 'ALL BRANDS';
+
   const grandTotalQty = requisition.items?.reduce((sum: number, i: any) => {
     if (!i) return sum;
     return sum + Number(i.quantity || 0);
@@ -268,8 +315,9 @@ export default function StockRequisitionSlipPage() {
 
           <div className="text-center flex-1 pr-14">
             <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Speed (Private) Limited</h1>
-            <p className="text-xl font-extrabold uppercase border-b-2 border-black inline-block px-8 mt-1 tracking-wider">
-              {requisition.brand?.name || requisition.items?.[0]?.item?.brand?.name || requisition.items?.[0]?.brand?.name || 'GENERAL'}
+            <p className="text-lg font-bold text-gray-800">Stock Requisition Note</p>
+            <p className="text-base font-extrabold uppercase border-b-2 border-black inline-block px-6 mt-1 tracking-wider">
+              {brandHeaderTitle}
             </p>
           </div>
         </div>
@@ -303,6 +351,18 @@ export default function StockRequisitionSlipPage() {
               <span className="font-semibold w-32 text-gray-600">Remarks :</span>
               <span className="font-medium text-gray-800">{requisition.remarks || '-'}</span>
             </div>
+            {distinctBrandNames.length > 1 && (
+              <div className="flex items-center gap-1 pt-1">
+                <span className="font-semibold w-32 text-gray-600">Brands :</span>
+                <span className="font-bold text-gray-800 flex flex-wrap gap-1">
+                  {distinctBrandNames.map((bName) => (
+                    <span key={bName} className="inline-block bg-gray-100 text-gray-900 text-[11px] px-2 py-0.5 rounded border border-gray-300 font-extrabold">
+                      {bName}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2 text-right flex flex-col items-end justify-start">
@@ -337,87 +397,104 @@ export default function StockRequisitionSlipPage() {
         <div className="w-full text-xs">
           {/* Table Headers */}
           <div className="grid grid-cols-12 font-bold border-b border-black pb-2 text-[11px] uppercase tracking-wider text-gray-700">
-            <div className="col-span-5">GPC / Category / Product</div>
+            <div className="col-span-5">Brand / Category / Product</div>
             <div className="col-span-2 text-center">Size</div>
             <div className="col-span-1 text-center">Quantity</div>
             <div className="col-span-2 text-right pr-4">Selling Price (Rs.)</div>
             <div className="col-span-2 text-right">Total Value (Rs.)</div>
           </div>
 
-          {/* Loop over Grouped Categories */}
+          {/* Loop over Grouped Brands */}
           <div className="space-y-6 pt-3">
-            {groupedCategories.map((cat) => (
-              <div key={cat.categoryName} className="space-y-4">
-                {/* Level 1: Category Row */}
-                <div className="grid grid-cols-12 font-extrabold border-b pb-1 text-black text-sm uppercase">
-                  <div className="col-span-5">{cat.categoryName}</div>
-                  <div className="col-span-2"></div>
-                  <div className="col-span-1"></div>
-                  <div className="col-span-2"></div>
-                  <div className="col-span-2 text-right font-black">
-                    {cat.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+            {groupedBrands.map((brand) => (
+              <div key={brand.brandName} className="space-y-3">
+                {/* Level 0: Brand Header with Underline */}
+                <div className="border-b-2 border-black pb-1.5 pt-3 flex justify-between items-baseline text-black uppercase">
+                  <div>
+                    <span className="text-base font-black tracking-wide text-black underline underline-offset-4 decoration-2">{brand.brandName}</span>
+                  </div>
+                  <div>
+                    <span className="text-sm font-black text-black">Rs. {brand.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}</span>
                   </div>
                 </div>
 
-                {/* Level 2: Genders */}
-                {cat.genders.map((gender) => (
-                  <div key={gender.genderName} className="pl-4 space-y-3">
-                    {gender.genderName !== 'GENERAL' && (
-                      <div className="grid grid-cols-12 font-bold text-gray-800 border-b border-dashed pb-0.5 uppercase">
-                        <div className="col-span-5">{gender.genderName}</div>
-                        <div className="col-span-2"></div>
-                        <div className="col-span-1"></div>
-                        <div className="col-span-2"></div>
-                        <div className="col-span-2 text-right font-bold">
-                          {gender.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
-                        </div>
+                {/* Level 1: Categories */}
+                {brand.categories.map((cat) => (
+                  <div key={cat.categoryName} className="space-y-3 pl-2">
+                    {/* Category Row */}
+                    <div className="grid grid-cols-12 font-extrabold border-b pb-1 text-black text-sm uppercase">
+                      <div className="col-span-5 flex items-center gap-2">
+                        <span>{cat.categoryName}</span>
                       </div>
-                    )}
+                      <div className="col-span-2"></div>
+                      <div className="col-span-1"></div>
+                      <div className="col-span-2"></div>
+                      <div className="col-span-2 text-right font-black">
+                        {cat.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+                      </div>
+                    </div>
 
-                    {/* Level 3: Segments */}
-                    {gender.segments.map((segment) => (
-                      <div key={segment.segmentName} className="pl-4 space-y-2">
-                        {segment.segmentName !== 'GENERAL' && (
-                          <div className="grid grid-cols-12 font-semibold text-gray-700 uppercase">
-                            <div className="col-span-5">{segment.segmentName}</div>
+                    {/* Level 2: Genders */}
+                    {cat.genders.map((gender) => (
+                      <div key={gender.genderName} className="pl-4 space-y-3">
+                        {gender.genderName !== 'GENERAL' && (
+                          <div className="grid grid-cols-12 font-bold text-gray-800 border-b border-dashed pb-0.5 uppercase">
+                            <div className="col-span-5">{gender.genderName}</div>
                             <div className="col-span-2"></div>
                             <div className="col-span-1"></div>
                             <div className="col-span-2"></div>
-                            <div className="col-span-2 text-right">
-                              {segment.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+                            <div className="col-span-2 text-right font-bold">
+                              {gender.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
                             </div>
                           </div>
                         )}
 
-                        {/* Level 4: Products */}
-                        {segment.products.map((prod) => (
-                          <div key={prod.skuBase} className="pl-4 border-l border-gray-300 space-y-1 my-2">
-                            {/* Product Header Row */}
-                            <div className="grid grid-cols-12 font-medium text-gray-900">
-                              <div className="col-span-5 flex gap-2">
-                                <span className="font-bold underline">{prod.skuBase}</span>
-                                <span className="text-gray-600 truncate">{prod.description}</span>
-                              </div>
-                              <div className="col-span-2"></div>
-                              <div className="col-span-1"></div>
-                              <div className="col-span-2 text-right pr-4">
-                                {prod.unitPrice > 0
-                                  ? prod.unitPrice.toLocaleString('en-PK', { minimumFractionDigits: 0 })
-                                  : '0'}
-                              </div>
-                              <div className="col-span-2 text-right">
-                                {prod.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
-                              </div>
-                            </div>
-
-                            {/* Level 5: Sizes Breakdown */}
-                            {prod.sizes.map((sz) => (
-                              <div key={sz.sizeName} className="grid grid-cols-12 text-gray-500 text-[11px] pl-6">
-                                <div className="col-span-5"></div>
-                                <div className="col-span-2 text-center font-mono font-semibold">{sz.sizeName}</div>
-                                <div className="col-span-1 text-center font-bold text-gray-800">{sz.quantity}</div>
+                        {/* Level 3: Segments */}
+                        {gender.segments.map((segment) => (
+                          <div key={segment.segmentName} className="pl-4 space-y-2">
+                            {segment.segmentName !== 'GENERAL' && (
+                              <div className="grid grid-cols-12 font-semibold text-gray-700 uppercase">
+                                <div className="col-span-5">{segment.segmentName}</div>
                                 <div className="col-span-2"></div>
-                                <div className="col-span-2 text-right"></div>
+                                <div className="col-span-1"></div>
+                                <div className="col-span-2"></div>
+                                <div className="col-span-2 text-right">
+                                  {segment.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Level 4: Products */}
+                            {segment.products.map((prod) => (
+                              <div key={`${prod.brandName}-${prod.skuBase}`} className="pl-4 border-l-2 border-gray-400 space-y-1 my-2">
+                                {/* Product Header Row */}
+                                <div className="grid grid-cols-12 font-medium text-gray-900 items-baseline">
+                                  <div className="col-span-5 flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold underline">{prod.skuBase}</span>
+                                    <span className="text-gray-600 truncate">{prod.description}</span>
+                                  </div>
+                                  <div className="col-span-2"></div>
+                                  <div className="col-span-1"></div>
+                                  <div className="col-span-2 text-right pr-4">
+                                    {prod.unitPrice > 0
+                                      ? prod.unitPrice.toLocaleString('en-PK', { minimumFractionDigits: 0 })
+                                      : '0'}
+                                  </div>
+                                  <div className="col-span-2 text-right font-bold">
+                                    {prod.totalValue.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+                                  </div>
+                                </div>
+
+                                {/* Level 5: Sizes Breakdown */}
+                                {prod.sizes.map((sz) => (
+                                  <div key={sz.sizeName} className="grid grid-cols-12 text-gray-600 text-[11px] pl-6">
+                                    <div className="col-span-5"></div>
+                                    <div className="col-span-2 text-center font-mono font-semibold">{sz.sizeName}</div>
+                                    <div className="col-span-1 text-center font-bold text-gray-900">{sz.quantity}</div>
+                                    <div className="col-span-2"></div>
+                                    <div className="col-span-2 text-right"></div>
+                                  </div>
+                                ))}
                               </div>
                             ))}
                           </div>

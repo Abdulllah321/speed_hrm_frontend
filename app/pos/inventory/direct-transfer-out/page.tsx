@@ -8,6 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Card,
   CardContent,
   CardHeader,
@@ -32,6 +41,9 @@ import {
   Trash2,
   ScanBarcode,
   FileSpreadsheet,
+  Minus,
+  Plus,
+  CircleDot,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createTransferRequest } from "@/lib/actions/transfer-request";
@@ -117,7 +129,15 @@ function DirectTransferForm() {
     [],
   );
 
-  // Search bar states
+  // Search bar states & scanner refs
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const lastKeyTimeRef = React.useRef<number>(0);
+  const isScannerInputRef = React.useRef<boolean>(false);
+  const isScanningRef = React.useRef<boolean>(false);
+  const globalScannerBuffer = React.useRef<string>("");
+  const globalScannerLastCharTime = React.useRef<number>(0);
+  const globalScannerTimer = React.useRef<NodeJS.Timeout | null>(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -184,38 +204,12 @@ function DirectTransferForm() {
     }
   }
 
-  // Debounced Live Search
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (searchQuery.trim().length >= 2) {
-        setIsSearching(true);
-        try {
-          const res = await authFetch(`/pos-sales/lookup`, {
-            params: { q: searchQuery.trim() },
-          });
-          if (res.ok && res.data?.status && res.data.data) {
-            setSearchResults(res.data.data);
-          } else {
-            setSearchResults([]);
-          }
-        } catch {
-          setSearchResults([]);
-        } finally {
-          setIsSearching(false);
-        }
-      } else {
-        setSearchResults([]);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
   // Reset active index when search results change
   useEffect(() => {
     setActiveIndex(-1);
   }, [searchResults, searchQuery]);
 
-  const handleSelectProduct = (product: any) => {
+  const handleSelectProduct = useCallback((product: any) => {
     const prodSize =
       typeof product.size === "object" ? product.size?.name : product.size;
     const prodColor =
@@ -247,6 +241,8 @@ function DirectTransferForm() {
         {
           id: product.id,
           sku: product.sku || product.barCode || "-",
+          uniqueNo: product.uniqueNo || "",
+          barCode: product.barCode || "",
           description: product.description || "Unknown Item",
           size: prodSize || "",
           color: prodColor || "",
@@ -258,27 +254,252 @@ function DirectTransferForm() {
 
     setSearchQuery("");
     setSearchResults([]);
+    setActiveIndex(-1);
+    isScanningRef.current = false;
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 50);
+  }, []);
+
+  const handleSearchChange = (value: string) => {
+    const now = Date.now();
+    const timeDiff = now - lastKeyTimeRef.current;
+    lastKeyTimeRef.current = now;
+
+    // Detect rapid scanner keystrokes (< 50ms) or bulk paste/scan (> 2 chars jump)
+    if (timeDiff < 50 || value.length - searchQuery.length > 2) {
+      isScannerInputRef.current = true;
+    } else {
+      isScannerInputRef.current = false;
+    }
+
+    setSearchQuery(value);
   };
 
+  // Debounced Live Search with instant auto-add for Barcodes
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    // Fast scanner input uses 50ms debounce; manual typing uses 250ms
+    const delay = isScannerInputRef.current ? 50 : 250;
+
+    const timer = setTimeout(async () => {
+      if (isScanningRef.current) return;
+
+      // 1. Instant scan check: if scanner input or query is numeric barcode (>= 6 digits)
+      const isNumericBarcode = /^\d{6,}$/.test(query);
+      if (isScannerInputRef.current || isNumericBarcode) {
+        try {
+          isScanningRef.current = true;
+          const scanRes = await authFetch(`/pos-sales/scan`, {
+            params: { barcode: query },
+          });
+          if (scanRes.ok && scanRes.data?.status && scanRes.data.data) {
+            const product = scanRes.data.data;
+            handleSelectProduct(product);
+            toast.success(
+              `Scanned: ${product.description || product.sku || "Product"}`,
+            );
+            return;
+          }
+        } catch {
+          // Fall through to regular lookup
+        } finally {
+          isScanningRef.current = false;
+        }
+      }
+
+      // 2. Regular lookup for SKU, article name, or manual search
+      // When searching by SKU, do NOT auto-add: show all barcodes/variants under that SKU in dropdown
+      if (query.length >= 2) {
+        setIsSearching(true);
+        try {
+          const res = await authFetch(`/pos-sales/lookup`, {
+            params: { q: query },
+          });
+          if (res.ok && res.data?.status && res.data.data) {
+            const results = res.data.data;
+
+            // Only auto-add if scanner input or numeric barcode had an exact BARCODE match (NOT SKU)
+            if (isScannerInputRef.current || isNumericBarcode) {
+              const exactBarcodeMatch = results.find(
+                (p: any) =>
+                  p.barCode &&
+                  p.barCode.trim().toLowerCase() === query.toLowerCase(),
+              );
+              if (exactBarcodeMatch) {
+                handleSelectProduct(exactBarcodeMatch);
+                toast.success(
+                  `Scanned: ${exactBarcodeMatch.description || exactBarcodeMatch.sku || "Product"}`,
+                );
+                return;
+              }
+            }
+
+            // For SKU or text search: Always show dropdown with all variants/barcodes so user can select manually
+            setSearchResults(results);
+          } else {
+            setSearchResults([]);
+          }
+        } catch {
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, handleSelectProduct]);
+
+  // Global Barcode Scanner Listener
+  useEffect(() => {
+    const processBuffer = async (barcode: string) => {
+      if (barcode.length < 3 || isScanningRef.current) return;
+      isScanningRef.current = true;
+      try {
+        const res = await authFetch(`/pos-sales/scan`, {
+          params: { barcode },
+        });
+        if (res.ok && res.data?.status && res.data.data) {
+          handleSelectProduct(res.data.data);
+          toast.success(
+            `Scanned: ${res.data.data.description || res.data.data.name || "Product"}`,
+          );
+        } else {
+          const lookupRes = await authFetch(`/pos-sales/lookup`, {
+            params: { q: barcode },
+          });
+          if (
+            lookupRes.ok &&
+            lookupRes.data?.status &&
+            lookupRes.data.data?.length > 0
+          ) {
+            const found = lookupRes.data.data[0];
+            handleSelectProduct(found);
+            toast.success(
+              `Scanned: ${found.description || found.name || "Product"}`,
+            );
+          } else {
+            toast.error(res.data?.message || "Item not found");
+          }
+        }
+      } catch {
+        toast.error("Failed to scan item. Check connection.");
+      } finally {
+        isScanningRef.current = false;
+      }
+    };
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInputFocused =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          activeEl.getAttribute("contenteditable") === "true");
+
+      if (isInputFocused) return;
+      if (e.key.length > 1 && e.key !== "Enter") return;
+
+      const now = Date.now();
+      if (now - globalScannerLastCharTime.current > 100) {
+        globalScannerBuffer.current = "";
+      }
+      globalScannerLastCharTime.current = now;
+
+      if (globalScannerTimer.current) {
+        clearTimeout(globalScannerTimer.current);
+      }
+
+      if (e.key === "Enter") {
+        if (globalScannerBuffer.current.length >= 3) {
+          e.preventDefault();
+          const barcode = globalScannerBuffer.current;
+          globalScannerBuffer.current = "";
+          processBuffer(barcode);
+        } else {
+          globalScannerBuffer.current = "";
+        }
+      } else {
+        globalScannerBuffer.current += e.key;
+        if (globalScannerBuffer.current.length >= 6) {
+          globalScannerTimer.current = setTimeout(() => {
+            const barcode = globalScannerBuffer.current;
+            globalScannerBuffer.current = "";
+            processBuffer(barcode);
+          }, 70);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+      if (globalScannerTimer.current) clearTimeout(globalScannerTimer.current);
+    };
+  }, [handleSelectProduct]);
+
   const handleSearchSubmit = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || isScanningRef.current) return;
+    isScanningRef.current = true;
+    const query = searchQuery.trim();
     try {
       const res = await authFetch(`/pos-sales/scan`, {
-        params: { barcode: searchQuery.trim() },
+        params: { barcode: query },
       });
       if (res.ok && res.data?.status && res.data.data) {
         handleSelectProduct(res.data.data);
+      } else if (searchResults.length === 1) {
+        handleSelectProduct(searchResults[0]);
+      } else if (searchResults.length > 1) {
+        // Multiple variants under SKU: Keep dropdown open for user to choose
+        return;
       } else {
-        toast.error(res.data?.message || "Item not found");
+        const lookupRes = await authFetch(`/pos-sales/lookup`, {
+          params: { q: query },
+        });
+        if (
+          lookupRes.ok &&
+          lookupRes.data?.status &&
+          lookupRes.data.data?.length === 1
+        ) {
+          handleSelectProduct(lookupRes.data.data[0]);
+        } else if (
+          lookupRes.ok &&
+          lookupRes.data?.status &&
+          lookupRes.data.data?.length > 1
+        ) {
+          setSearchResults(lookupRes.data.data);
+          return;
+        } else {
+          toast.error(res.data?.message || "Item not found");
+        }
       }
     } catch {
       toast.error("Failed to scan item. Check connection.");
+    } finally {
+      isScanningRef.current = false;
     }
     setSearchQuery("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (searchResults.length === 0) return;
+    if (searchResults.length === 0) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleSearchSubmit();
+      }
+      return;
+    }
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -559,7 +780,7 @@ function DirectTransferForm() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
-        <div className="flex items-center gap-4 max-w-5xl mx-auto w-full">
+        <div className="flex items-center gap-4 max-w-7xl mx-auto w-full">
           <Button
             variant="ghost"
             size="icon"
@@ -591,7 +812,7 @@ function DirectTransferForm() {
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-6 pb-20 overflow-auto">
-        <div className="max-w-5xl mx-auto w-full">
+        <div className="max-w-7xl mx-auto w-full">
           {isSuccess ? (
             <div className="max-w-xl mx-auto">
               <Card className="border border-border/80 shadow-2xl overflow-hidden rounded-2xl bg-card">
@@ -698,11 +919,13 @@ function DirectTransferForm() {
                   <div className="relative flex-1">
                     <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
+                      ref={searchInputRef}
                       placeholder="Scan Barcode / Search Product by Name or SKU..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => handleSearchChange(e.target.value)}
                       onKeyDown={handleKeyDown}
                       className="pl-9 bg-muted/30 border-input h-11 w-full text-sm"
+                      autoFocus
                     />
 
                     {/* Autocomplete Dropdown */}
@@ -799,96 +1022,235 @@ function DirectTransferForm() {
               </div>
 
               {/* 2-Column Responsive Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-                {/* Left Column: Items List */}
-                <div className="md:col-span-3">
-                  <Card className="border border-border/80 shadow-lg overflow-hidden rounded-2xl bg-card">
-                    <CardHeader className="bg-muted/10 border-b border-border/50 p-6 flex flex-row items-center justify-between">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left Column: Items Data Table */}
+                <div className="lg:col-span-7 xl:col-span-8">
+                  <Card className="border border-border/80 shadow-sm overflow-hidden rounded-xl bg-card">
+                    <CardHeader className="bg-muted/20 border-b border-border/60 px-5 py-4 flex flex-row items-center justify-between">
                       <div>
-                        <CardTitle className="text-lg font-bold tracking-tight">
+                        <CardTitle className="text-base font-bold tracking-tight">
                           Transfer Items
                         </CardTitle>
                         <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                          Review and edit quantities of items to transfer
+                          Review and adjust quantities of items to transfer
                         </CardDescription>
                       </div>
-                      <div className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full">
-                        {items.length} Product(s)
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-bold rounded-md">
+                          {items.length} Item{items.length !== 1 ? "s" : ""}
+                        </span>
+                        {items.length > 0 && (
+                          <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs font-bold rounded-md border border-emerald-200 dark:border-emerald-800">
+                            {items.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0)} Total Units
+                          </span>
+                        )}
                       </div>
                     </CardHeader>
-                    <CardContent className="p-6">
+                    <CardContent className="p-0">
                       {items.length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground/60 space-y-3">
-                          <Package className="w-12 h-12 mx-auto text-muted/30" />
-                          <p className="text-sm font-medium">
-                            No products selected yet.
+                        <div className="text-center py-16 text-muted-foreground/60 space-y-3">
+                          <div className="rounded-full bg-muted/50 p-4 w-16 h-16 mx-auto flex items-center justify-center">
+                            <Package className="w-8 h-8 text-muted-foreground/40" />
+                          </div>
+                          <p className="text-sm font-semibold text-foreground">
+                            No products selected yet
                           </p>
-                          <p className="text-xs text-muted-foreground/80">
-                            Use the search bar above to add products for direct
-                            transfer.
+                          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                            Scan a barcode or search by SKU/name in the entry bar above to add products for direct transfer.
                           </p>
                         </div>
                       ) : (
-                        <div className="divide-y divide-border/60">
-                          {items.map((item) => (
-                            <div
-                              key={item.id}
-                              className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                            >
-                              <div className="flex-1 min-w-0 space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-bold text-foreground text-sm tracking-tight">
-                                    {item.sku}
-                                  </span>
-                                  {item.barCode && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 font-mono">{item.barCode}</span>}
-                                  {item.uniqueNo && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 font-mono">{item.uniqueNo}</span>}
-                                  {item.size && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 ring-1 ring-inset ring-indigo-700/10 dark:ring-indigo-300/20">
-                                      Size: {item.size}
-                                    </span>
-                                  )}
-                                  {item.color && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 ring-1 ring-inset ring-pink-700/10 dark:ring-pink-300/20">
-                                      Color: {item.color}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground truncate leading-relaxed">
-                                  {item.description}
-                                </p>
-                                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">
-                                  Available Stock: {item.availableStock} Units
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                <div className="w-28">
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    max={item.availableStock}
-                                    value={
-                                      item.quantity === 0 ? "" : item.quantity
-                                    }
-                                    onChange={(e) =>
-                                      handleQtyChange(item.id, e.target.value)
-                                    }
-                                    className="h-9 text-right font-mono focus-visible:ring-ring bg-muted/20"
-                                    required
-                                  />
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg flex-none"
-                                  onClick={() => handleRemoveItem(item.id)}
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                                <TableHead className="w-[45px] text-center font-semibold text-xs uppercase tracking-wider">
+                                  #
+                                </TableHead>
+                                <TableHead className="font-semibold text-xs uppercase tracking-wider min-w-[130px]">
+                                  Barcode / SKU
+                                </TableHead>
+                                <TableHead className="font-semibold text-xs uppercase tracking-wider min-w-[160px]">
+                                  Item Description
+                                </TableHead>
+                                <TableHead className="font-semibold text-xs uppercase tracking-wider text-center min-w-[100px]">
+                                  Size / Color
+                                </TableHead>
+                                <TableHead className="font-semibold text-xs uppercase tracking-wider text-center min-w-[85px]">
+                                  Stock
+                                </TableHead>
+                                <TableHead className="font-semibold text-xs uppercase tracking-wider text-center min-w-[130px]">
+                                  Transfer Qty
+                                </TableHead>
+                                <TableHead className="w-[45px] text-center" />
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {items.map((item, index) => (
+                                <TableRow
+                                  key={item.id}
+                                  className="group hover:bg-muted/30 transition-colors"
                                 >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
+                                  {/* # */}
+                                  <TableCell className="text-center text-muted-foreground font-medium text-xs">
+                                    {index + 1}
+                                  </TableCell>
+
+                                  {/* Barcode / SKU */}
+                                  <TableCell>
+                                    <div className="flex flex-col gap-0.5">
+                                      {item.barCode ? (
+                                        <span className="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                          {item.barCode}
+                                        </span>
+                                      ) : null}
+                                      <span className="font-bold text-xs font-mono text-foreground tracking-wide">
+                                        {item.sku}
+                                      </span>
+                                      {item.uniqueNo ? (
+                                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-mono">
+                                          #{item.uniqueNo}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </TableCell>
+
+                                  {/* Item Description */}
+                                  <TableCell>
+                                    <span className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
+                                      {item.description || "Unknown Item"}
+                                    </span>
+                                  </TableCell>
+
+                                  {/* Size / Color */}
+                                  <TableCell className="text-center">
+                                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                      {item.size ? (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-[11px] font-bold px-2 py-0.5 rounded-md"
+                                        >
+                                          {item.size}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">—</span>
+                                      )}
+                                      {item.color ? (
+                                        <span className="text-xs text-muted-foreground font-medium">
+                                          {item.color}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </TableCell>
+
+                                  {/* Stock status */}
+                                  <TableCell className="text-center">
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <CircleDot
+                                        className={`h-3 w-3 ${
+                                          item.availableStock > 0
+                                            ? "text-emerald-500"
+                                            : "text-rose-500"
+                                        }`}
+                                      />
+                                      <span
+                                        className={`text-xs font-semibold tabular-nums ${
+                                          item.availableStock > 0
+                                            ? "text-emerald-600 dark:text-emerald-400"
+                                            : "text-rose-600 dark:text-rose-400"
+                                        }`}
+                                      >
+                                        {item.availableStock}
+                                      </span>
+                                    </div>
+                                  </TableCell>
+
+                                  {/* Quantity Controls */}
+                                  <TableCell>
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() =>
+                                          handleQtyChange(
+                                            item.id,
+                                            String(Math.max(1, item.quantity - 1)),
+                                          )
+                                        }
+                                        className="h-7 w-7 rounded-md"
+                                        disabled={item.quantity <= 1}
+                                      >
+                                        <Minus className="h-3 w-3" />
+                                      </Button>
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        max={item.availableStock}
+                                        value={item.quantity === 0 ? "" : item.quantity}
+                                        onChange={(e) =>
+                                          handleQtyChange(item.id, e.target.value)
+                                        }
+                                        className="h-8 w-14 text-center font-bold text-sm tabular-nums px-1 bg-background"
+                                        required
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() =>
+                                          handleQtyChange(
+                                            item.id,
+                                            String(
+                                              Math.min(
+                                                item.availableStock,
+                                                item.quantity + 1,
+                                              ),
+                                            ),
+                                          )
+                                        }
+                                        className="h-7 w-7 rounded-md"
+                                        disabled={item.quantity >= item.availableStock}
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+
+                                  {/* Action */}
+                                  <TableCell className="text-center">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors"
+                                      onClick={() => handleRemoveItem(item.id)}
+                                      title="Remove item"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                            <TableFooter className="bg-muted/30 border-t font-semibold">
+                              <TableRow>
+                                <TableCell
+                                  colSpan={5}
+                                  className="text-right text-xs uppercase tracking-wider text-muted-foreground font-bold py-3"
+                                >
+                                  Total Transfer Units:
+                                </TableCell>
+                                <TableCell className="text-center text-sm font-bold font-mono text-primary py-3">
+                                  {items.reduce(
+                                    (sum, i) => sum + (Number(i.quantity) || 0),
+                                    0,
+                                  )}
+                                </TableCell>
+                                <TableCell />
+                              </TableRow>
+                            </TableFooter>
+                          </Table>
                         </div>
                       )}
                     </CardContent>
@@ -896,7 +1258,7 @@ function DirectTransferForm() {
                 </div>
 
                 {/* Right Column: Form Inputs */}
-                <div className="md:col-span-2">
+                <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24">
                   <Card className="border border-border/80 shadow-lg overflow-hidden rounded-2xl bg-card">
                     <CardContent className="p-6">
                       <form onSubmit={handleSubmit} className="space-y-5">

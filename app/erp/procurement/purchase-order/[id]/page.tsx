@@ -668,40 +668,69 @@ export default function PurchaseOrderDetail({
                   <TableHead className="text-right">Ordered</TableHead>
                   <TableHead className="text-right">Received</TableHead>
                   <TableHead className="text-right">Unit Price</TableHead>
+                  <TableHead className="text-right">Tax Rate</TableHead>
                   <TableHead className="text-right">Line Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {order.items && order.items.length > 0 ? (
                   <>
-                    {order.items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">
-                          {item.item?.sku || "-"}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          {item.item?.barCode || "-"}
-                        </TableCell>
-                        <TableCell>{item.item?.brand?.name || "-"}</TableCell>
-                        <TableCell>{item.item?.size?.name || "-"}</TableCell>
-                        <TableCell>{item.item?.color?.name || "-"}</TableCell>
-                        <TableCell>
-                          {item.description || "No description"}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {fmt(item.quantity)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-blue-600">
-                          {fmt(item.receivedQty || "0")}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {fmt(item.unitPrice)}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {fmt(item.lineTotal)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {order.items.map((item) => {
+                      const taxRate =
+                        item.item?.taxRate1 != null &&
+                        !isNaN(Number(item.item.taxRate1))
+                          ? Number(item.item.taxRate1)
+                          : Number(item.taxPercent || 0) || 0;
+
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            {item.item?.sku || "-"}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-muted-foreground">
+                            {item.item?.barCode || "-"}
+                          </TableCell>
+                          <TableCell>{item.item?.brand?.name || "-"}</TableCell>
+                          <TableCell>{item.item?.size?.name || "-"}</TableCell>
+                          <TableCell>{item.item?.color?.name || "-"}</TableCell>
+                          <TableCell>
+                            {item.description || "No description"}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {fmt(item.quantity)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-blue-600">
+                            {fmt(item.receivedQty || "0")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {fmt(item.unitPrice)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {taxRate > 0 ? (
+                              <Badge
+                                variant="outline"
+                                className={
+                                  taxRate === 25
+                                    ? "border-amber-500/50 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 font-semibold"
+                                    : taxRate === 18
+                                    ? "border-blue-500/50 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 font-semibold"
+                                    : "border-slate-300 bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-medium"
+                                }
+                              >
+                                {taxRate}%
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">
+                                0%
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {fmt(item.lineTotal)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     <TableRow className="border-t-2 font-semibold bg-muted/30">
                       <TableCell
                         colSpan={6}
@@ -717,13 +746,13 @@ export default function PurchaseOrderDetail({
                           ),
                         )}
                       </TableCell>
-                      <TableCell colSpan={3} />
+                      <TableCell colSpan={4} />
                     </TableRow>
                   </>
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={10}
+                      colSpan={11}
                       className="text-center text-muted-foreground py-8"
                     >
                       No items found for this purchase order
@@ -830,64 +859,78 @@ export default function PurchaseOrderDetail({
               <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
                 <thead>
                   <tr className="border-y-2 border-black">
-                    <th className="py-2 pr-2 text-left font-bold w-[13%]">
+                    <th className="py-2 pr-2 text-left font-bold w-[12%]">
                       SKU
                     </th>
-                    <th className="py-2 pr-2 text-left font-bold w-[14%]">
+                    <th className="py-2 pr-2 text-left font-bold w-[13%]">
                       Barcode
                     </th>
-                    <th className="py-2 pr-2 text-left font-bold w-[23%]">
+                    <th className="py-2 pr-2 text-left font-bold w-[21%]">
                       Description
                     </th>
                     <th className="py-2 pr-2 text-left font-bold w-[8%]">
                       Size
                     </th>
-                    <th className="py-2 pr-2 text-left font-bold w-[12%]">
+                    <th className="py-2 pr-2 text-left font-bold w-[11%]">
                       Color
                     </th>
-                    <th className="py-2 pr-2 text-right font-bold w-[9%]">
+                    <th className="py-2 pr-2 text-right font-bold w-[8%]">
                       Qty
                     </th>
-                    <th className="py-2 pr-2 text-right font-bold w-[11%]">
+                    <th className="py-2 pr-2 text-right font-bold w-[10%]">
                       Unit Price
                     </th>
-                    <th className="py-2 text-right font-bold w-[10%]">Total</th>
+                    <th className="py-2 pr-2 text-right font-bold w-[8%]">
+                      Tax Rate
+                    </th>
+                    <th className="py-2 text-right font-bold w-[9%]">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {order.items && order.items.length > 0 ? (
                     <>
-                      {order.items.map((item, i) => (
-                        <tr
-                          key={item.id || i}
-                          className="border-b border-gray-300 align-top"
-                        >
-                          <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
-                            {item.item?.sku || "-"}
-                          </td>
-                          <td className="py-2 pr-2 font-mono text-[11px] overflow-hidden text-ellipsis text-gray-700">
-                            {item.item?.barCode || "-"}
-                          </td>
-                          <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
-                            {item.description || "-"}
-                          </td>
-                          <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                            {item.item?.size?.name || "-"}
-                          </td>
-                          <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                            {item.item?.color?.name || "-"}
-                          </td>
-                          <td className="py-2 pr-2 text-right tabular-nums">
-                            {parseFloat(item.quantity).toFixed(2)}
-                          </td>
-                          <td className="py-2 pr-2 text-right tabular-nums">
-                            {fmt(Number(item.unitPrice))}
-                          </td>
-                          <td className="py-2 text-right tabular-nums">
-                            {fmt(Number(item.lineTotal))}
-                          </td>
-                        </tr>
-                      ))}
+                      {order.items.map((item, i) => {
+                        const taxRate =
+                          item.item?.taxRate1 != null &&
+                          !isNaN(Number(item.item.taxRate1))
+                            ? Number(item.item.taxRate1)
+                            : Number(item.taxPercent || 0) || 0;
+
+                        return (
+                          <tr
+                            key={item.id || i}
+                            className="border-b border-gray-300 align-top"
+                          >
+                            <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
+                              {item.item?.sku || "-"}
+                            </td>
+                            <td className="py-2 pr-2 font-mono text-[11px] overflow-hidden text-ellipsis text-gray-700">
+                              {item.item?.barCode || "-"}
+                            </td>
+                            <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
+                              {item.description || "-"}
+                            </td>
+                            <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                              {item.item?.size?.name || "-"}
+                            </td>
+                            <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                              {item.item?.color?.name || "-"}
+                            </td>
+                            <td className="py-2 pr-2 text-right tabular-nums">
+                              {parseFloat(item.quantity).toFixed(2)}
+                            </td>
+                            <td className="py-2 pr-2 text-right tabular-nums">
+                              {fmt(Number(item.unitPrice))}
+                            </td>
+                            <td className="py-2 pr-2 text-right tabular-nums">
+                              {taxRate > 0 ? `${taxRate}%` : "0%"}
+                            </td>
+                            <td className="py-2 text-right tabular-nums">
+                              {fmt(Number(item.lineTotal))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                       <tr className="border-t-2 border-black">
                         <td
                           colSpan={5}
@@ -909,7 +952,7 @@ export default function PurchaseOrderDetail({
                   ) : (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={9}
                         className="py-4 text-center text-muted-foreground border-b border-gray-300"
                       >
                         No items found for this purchase order
