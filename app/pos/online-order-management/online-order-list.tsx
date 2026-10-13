@@ -27,9 +27,11 @@ import {
     Square,
     Check,
     X,
-    ExternalLink
+    ExternalLink,
+    Pencil
 } from 'lucide-react';
 import { OnlineOrderBulkUploadModal } from '@/components/online-orders/online-order-bulk-upload-modal';
+import { EditOnlineOrderModal } from '@/components/online-orders/edit-online-order-modal';
 import { authFetch } from '@/lib/auth';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -154,6 +156,10 @@ export function OnlineOrderList() {
     const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
     const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Edit Order Modal State
+    const [orderToEdit, setOrderToEdit] = useState<GroupedOrder | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     // Bulk Post Results Dialog
     const [bulkResults, setBulkResults] = useState<{
@@ -336,23 +342,30 @@ export function OnlineOrderList() {
                 body: JSON.stringify({ orderNumbers: targetOrderNumbers }),
             });
 
-            if (res.ok && res.data?.status && res.data?.data) {
-                const data = res.data.data;
-                setBulkResults(data);
+            const payload = res.data?.data || res.data;
+            if (res.ok && (res.data?.status || payload?.status) && payload) {
+                const summary = payload.summary || {
+                    total: payload.total || targetOrderNumbers.length,
+                    posted: payload.successCount ?? payload.posted ?? 0,
+                    failed: payload.failedCount ?? payload.failed ?? 0,
+                };
+                const results = payload.results || [];
+                const formattedData = { summary, results };
+                setBulkResults(formattedData);
                 setIsBulkResultsModalOpen(true);
 
                 // Update orders in local state
                 const successfulOrderNumbers = new Set(
-                    data.results.filter((r: any) => r.success).map((r: any) => r.orderNumber)
+                    results.filter((r: any) => r.success || r.status === 'success').map((r: any) => r.orderNumber)
                 );
 
                 setOrders(prev => prev.map(o => {
                     if (successfulOrderNumbers.has(o.orderNumber)) {
-                        const result = data.results.find((r: any) => r.orderNumber === o.orderNumber);
+                        const result = results.find((r: any) => r.orderNumber === o.orderNumber);
                         return {
                             ...o,
                             status: 'posted',
-                            salesOrderId: result?.salesOrderId || o.salesOrderId
+                            salesOrderId: result?.salesOrderId || result?.data?.id || o.salesOrderId
                         };
                     }
                     return o;
@@ -365,14 +378,14 @@ export function OnlineOrderList() {
                     return next;
                 });
 
-                if (data.summary.posted > 0) {
-                    toast.success(`Batch completed: ${data.summary.posted} orders posted successfully!`);
+                if (summary.posted > 0) {
+                    toast.success(`Batch completed: ${summary.posted} orders posted successfully!`);
                 }
-                if (data.summary.failed > 0) {
-                    toast.warning(`${data.summary.failed} orders could not be posted. Inspect results for details.`);
+                if (summary.failed > 0) {
+                    toast.warning(`${summary.failed} orders could not be posted. Inspect results for details.`);
                 }
             } else {
-                toast.error(res.data?.message || "Failed to process bulk posting.");
+                toast.error(res.data?.message || payload?.message || "Failed to process bulk posting.");
             }
         } catch (error: any) {
             console.error("Bulk post error", error);
@@ -462,6 +475,42 @@ export function OnlineOrderList() {
         } finally {
             setIsDeleting(false);
             setOrderToDelete(null);
+        }
+    };
+
+    // Edit Order Handlers
+    const handleEditOrder = (order: GroupedOrder) => {
+        setOrderToEdit(order);
+        setIsEditModalOpen(true);
+    };
+
+    const handleOrderUpdated = (updatedOrder: any) => {
+        const gross = Number(updatedOrder.grossSubtotal ?? updatedOrder.items?.reduce((s: number, i: any) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0) ?? 0);
+        const itemDiscounts = Number(updatedOrder.totalDiscount ?? updatedOrder.items?.reduce((s: number, i: any) => s + Number(i.skuDiscounted || 0), 0) ?? 0);
+        const voucherDeduction = Number(updatedOrder.voucherRedeemed ?? 0);
+        const shippingCharges = Number(updatedOrder.shippingCharges ?? 0);
+        const netGrandTotal = Number(updatedOrder.orderTotal ?? (gross - itemDiscounts + shippingCharges - voucherDeduction));
+        const remainingPayable = Number(updatedOrder.payableAfterVoucher ?? netGrandTotal);
+        const totalUnits = Number(updatedOrder.items?.reduce((s: number, i: any) => s + Number(i.qty || 1), 0) ?? 0);
+
+        const formatted: GroupedOrder = {
+            ...updatedOrder,
+            id: updatedOrder.orderNumber,
+            financials: {
+                grossSubtotal: gross,
+                itemDiscounts,
+                voucherDeduction,
+                shippingCharges,
+                netGrandTotal,
+                remainingPayable,
+                totalUnits,
+            },
+            allStockAvailable: updatedOrder.allStockAvailable ?? true,
+        };
+
+        setOrders(prev => prev.map(o => o.orderNumber === formatted.orderNumber ? formatted : o));
+        if (viewItemsOrder?.orderNumber === formatted.orderNumber) {
+            setViewItemsOrder(formatted);
         }
     };
 
@@ -769,6 +818,19 @@ export function OnlineOrderList() {
                         >
                             <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                         </Button>
+
+                        {/* Edit unposted order */}
+                        {!isPosted && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-muted text-primary/80 hover:text-primary"
+                                onClick={() => handleEditOrder(order)}
+                                title="Edit Order, Vouchers, & Items"
+                            >
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                        )}
 
                         {/* Print Receipt if posted */}
                         {isPosted && (
@@ -1153,50 +1215,57 @@ export function OnlineOrderList() {
                                 </div>
                                 <ScrollArea className="flex-1 max-h-[380px]">
                                     <div className="divide-y text-xs">
-                                        {bulkResults.results.map((res, i) => (
-                                            <div key={i} className="p-3 flex items-center justify-between hover:bg-muted/30 gap-4">
-                                                <div className="space-y-0.5 min-w-0">
-                                                    <span className="font-bold text-foreground">{res.orderNumber}</span>
-                                                    {res.salesOrderNumber && (
-                                                        <p className="text-muted-foreground text-[11px]">
-                                                            Invoice: <span className="font-mono text-foreground font-semibold">{res.salesOrderNumber}</span>
-                                                        </p>
-                                                    )}
-                                                    {res.error && (
-                                                        <p className="text-rose-600 dark:text-rose-400 font-medium text-[11px] break-words">
-                                                            {res.error}
-                                                        </p>
-                                                    )}
-                                                </div>
+                                        {bulkResults.results.map((res: any, i) => {
+                                            const isSuccess = res.success || res.status === 'success';
+                                            const invoiceNo = res.salesOrderNumber || res.salesOrder?.orderNumber || res.data?.orderNumber;
+                                            const errMsg = res.error || (res.status === 'failed' && res.message);
+                                            const printableOrder = res.salesOrder || res.data;
 
-                                                <div className="flex items-center gap-2 shrink-0">
-                                                    {res.success ? (
-                                                        <>
-                                                            <Badge className="bg-emerald-500 text-white gap-1 text-[11px]">
-                                                                <Check className="h-3 w-3" /> Posted
+                                            return (
+                                                <div key={i} className="p-3 flex items-center justify-between hover:bg-muted/30 gap-4">
+                                                    <div className="space-y-0.5 min-w-0">
+                                                        <span className="font-bold text-foreground">{res.orderNumber}</span>
+                                                        {invoiceNo && (
+                                                            <p className="text-muted-foreground text-[11px]">
+                                                                Invoice: <span className="font-mono text-foreground font-semibold">{invoiceNo}</span>
+                                                            </p>
+                                                        )}
+                                                        {errMsg && (
+                                                            <p className="text-rose-600 dark:text-rose-400 font-medium text-[11px] break-words">
+                                                                {errMsg}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        {isSuccess ? (
+                                                            <>
+                                                                <Badge className="bg-emerald-500 text-white gap-1 text-[11px]">
+                                                                    <Check className="h-3 w-3" /> Posted
+                                                                </Badge>
+                                                                {printableOrder && (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="h-7 text-xs gap-1"
+                                                                        onClick={() => {
+                                                                            setPrintOrderData(printableOrder);
+                                                                            setIsPrintModalOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        <Printer className="h-3 w-3" /> Print
+                                                                    </Button>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <Badge variant="destructive" className="gap-1 text-[11px]">
+                                                                <X className="h-3 w-3" /> Failed
                                                             </Badge>
-                                                            {res.salesOrder && (
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="h-7 text-xs gap-1"
-                                                                    onClick={() => {
-                                                                        setPrintOrderData(res.salesOrder);
-                                                                        setIsPrintModalOpen(true);
-                                                                    }}
-                                                                >
-                                                                    <Printer className="h-3 w-3" /> Print
-                                                                </Button>
-                                                            )}
-                                                        </>
-                                                    ) : (
-                                                        <Badge variant="destructive" className="gap-1 text-[11px]">
-                                                            <X className="h-3 w-3" /> Failed
-                                                        </Badge>
-                                                    )}
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </ScrollArea>
                             </div>
@@ -1425,38 +1494,60 @@ export function OnlineOrderList() {
                             Close
                         </Button>
 
-                        {viewItemsOrder && viewItemsOrder.status !== 'posted' && (
-                            <Button
-                                onClick={async () => {
-                                    const success = await handlePostOrder(viewItemsOrder.orderNumber);
-                                    if (success) {
-                                        setViewItemsOrder(null);
-                                    }
-                                }}
-                                disabled={postingOrder === viewItemsOrder.orderNumber}
-                                className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-                            >
-                                {postingOrder === viewItemsOrder.orderNumber ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Send className="h-4 w-4" />
-                                )}
-                                Post Order Now
-                            </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {viewItemsOrder && viewItemsOrder.status !== 'posted' && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        handleEditOrder(viewItemsOrder);
+                                    }}
+                                    className="gap-1.5"
+                                >
+                                    <Pencil className="h-4 w-4 text-primary" /> Edit Order
+                                </Button>
+                            )}
 
-                        {viewItemsOrder && viewItemsOrder.status === 'posted' && (
-                            <Button
-                                variant="outline"
-                                onClick={() => handlePrintReceipt(viewItemsOrder)}
-                                className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
-                            >
-                                <Printer className="h-4 w-4" /> Print Receipt
-                            </Button>
-                        )}
+                            {viewItemsOrder && viewItemsOrder.status !== 'posted' && (
+                                <Button
+                                    onClick={async () => {
+                                        const success = await handlePostOrder(viewItemsOrder.orderNumber);
+                                        if (success) {
+                                            setViewItemsOrder(null);
+                                        }
+                                    }}
+                                    disabled={postingOrder === viewItemsOrder.orderNumber}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                                >
+                                    {postingOrder === viewItemsOrder.orderNumber ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Send className="h-4 w-4" />
+                                    )}
+                                    Post Order Now
+                                </Button>
+                            )}
+
+                            {viewItemsOrder && viewItemsOrder.status === 'posted' && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => handlePrintReceipt(viewItemsOrder)}
+                                    className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                                >
+                                    <Printer className="h-4 w-4" /> Print Receipt
+                                </Button>
+                            )}
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Edit Online Order Modal */}
+            <EditOnlineOrderModal
+                open={isEditModalOpen}
+                onOpenChange={setIsEditModalOpen}
+                order={orderToEdit}
+                onSuccess={handleOrderUpdated}
+            />
 
             {/* Confirm Delete Order Dialog */}
             <AlertDialog open={!!orderToDelete} onOpenChange={(o) => !o && setOrderToDelete(null)}>
