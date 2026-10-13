@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -34,6 +34,7 @@ import {
 } from "@/lib/actions/transfer-request";
 import { getStockTransfers } from "@/lib/actions/stock-transfer";
 import { getLocations } from "@/lib/actions/location";
+import { useAuth } from "@/components/providers/auth-provider";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -106,6 +107,19 @@ function StockTransferContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requisitionId = searchParams.get("requisitionId");
+  const { user, hasPermission, isAdmin } = useAuth();
+
+  const isWarehouseUser = useMemo(() => {
+    if (!user) return false;
+    if (isAdmin()) return false;
+    const roleName = (user.role?.name || (user as any)?.role || "").toLowerCase();
+    return (
+      roleName.includes("warehouse") ||
+      hasPermission("erp.inventory.warehouse.stock-transfer") ||
+      hasPermission("erp.inventory.warehouse.stock-requisition.pending")
+    );
+  }, [user, isAdmin, hasPermission]);
+
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [locations, setLocations] = useState<WarehouseLocation[]>([]);
   const [masterLocations, setMasterLocations] = useState<any[]>([]);
@@ -573,7 +587,13 @@ function StockTransferContent() {
     try {
       const res = await stockRequisitionApi.getAll();
       if (res.status) {
-        const pending = res.data.filter((req: any) => req.status === "PENDING");
+        let pending = res.data.filter((req: any) => req.status === "PENDING");
+        if (isWarehouseUser) {
+          pending = pending.filter(
+            (req: any) =>
+              (req.documentType || "").toLowerCase().trim() !== "outlet request",
+          );
+        }
         setPendingRequisitions(pending);
       }
     } catch (error) {
@@ -734,6 +754,16 @@ function StockTransferContent() {
           const res = await stockRequisitionApi.getById(requisitionId);
           if (res.status && res.data) {
             const req = res.data;
+            if (
+              isWarehouseUser &&
+              (req.documentType || "").toLowerCase().trim() === "outlet request"
+            ) {
+              toast.error(
+                "Warehouse users are not permitted to transfer Outlet Request requisitions to STN.",
+              );
+              router.push("/erp/inventory/transactions/stock-requisition");
+              return;
+            }
             if (req.status === "PENDING") {
               await handleSelectRequisition(req);
             } else {

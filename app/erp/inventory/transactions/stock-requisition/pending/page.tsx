@@ -27,9 +27,32 @@ import Link from 'next/link';
 import DataTable from '@/components/common/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import { PermissionGuard } from '@/components/auth/permission-guard';
+import { useAuth } from '@/components/providers/auth-provider';
 
 export default function StockRequisitionPendingPage() {
   const router = useRouter();
+  const { user, hasPermission, isAdmin } = useAuth();
+
+  const isWarehouseUser = useMemo(() => {
+    if (!user) return false;
+    if (isAdmin()) return false;
+    const roleName = (user.role?.name || (user as any).role || '').toLowerCase();
+    return (
+      roleName.includes('warehouse') ||
+      hasPermission('erp.inventory.warehouse.stock-transfer') ||
+      hasPermission('erp.inventory.warehouse.stock-requisition.pending')
+    );
+  }, [user, isAdmin, hasPermission]);
+
+  const canTransferToSTN = (req: any) => {
+    if (!req || req.status !== 'PENDING') return false;
+    const docType = (req.documentType || '').toLowerCase().trim();
+    if (isWarehouseUser && docType === 'outlet request') {
+      return false;
+    }
+    return true;
+  };
+
   const [loading, setLoading] = useState<boolean>(true);
   const [requisitions, setRequisitions] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -145,15 +168,17 @@ export default function StockRequisitionPendingPage() {
         const req = row.original;
         return (
           <div className="flex justify-end items-center gap-2 flex-nowrap whitespace-nowrap">
-            <Button
-              size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs shadow-sm"
-              asChild
-            >
-              <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${req.id}`}>
-                <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Transfer Stock
-              </Link>
-            </Button>
+            {canTransferToSTN(req) && (
+              <Button
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs shadow-sm"
+                asChild
+              >
+                <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${req.id}`}>
+                  <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Transfer Stock
+                </Link>
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -417,14 +442,16 @@ export default function StockRequisitionPendingPage() {
                     </Button>
                   </div>
                   <div className="flex gap-2 items-center">
-                    <Button
-                      className="bg-indigo-600 hover:bg-indigo-700 font-bold text-white shadow-sm"
-                      asChild
-                    >
-                      <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${selectedRequisition.id}`}>
-                        <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Transfer Stock
-                      </Link>
-                    </Button>
+                    {canTransferToSTN(selectedRequisition) && (
+                      <Button
+                        className="bg-indigo-600 hover:bg-indigo-700 font-bold text-white shadow-sm"
+                        asChild
+                      >
+                        <Link href={`/erp/inventory/transactions/stock-transfer?requisitionId=${selectedRequisition.id}`}>
+                          <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Transfer Stock
+                        </Link>
+                      </Button>
+                    )}
                     <Button variant="outline" asChild>
                       <Link
                         href={`/erp/inventory/transactions/stock-requisition/slip/${selectedRequisition.id}`}

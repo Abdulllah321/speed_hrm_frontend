@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Autocomplete } from '@/components/ui/autocomplete';
 import { PermissionGuard } from '@/components/auth/permission-guard';
+import { useAuth } from '@/components/providers/auth-provider';
 import {
   Dialog,
   DialogContent,
@@ -79,6 +80,28 @@ interface SRNItem {
 
 export default function StockRequisitionPage() {
   const router = useRouter();
+  const { user, hasPermission, isAdmin } = useAuth();
+
+  const isWarehouseUser = useMemo(() => {
+    if (!user) return false;
+    if (isAdmin()) return false;
+    const roleName = (user.role?.name || (user as any).role || '').toLowerCase();
+    return (
+      roleName.includes('warehouse') ||
+      hasPermission('erp.inventory.warehouse.stock-transfer') ||
+      hasPermission('erp.inventory.warehouse.stock-requisition.pending')
+    );
+  }, [user, isAdmin, hasPermission]);
+
+  const canTransferToSTN = (req: any) => {
+    if (!req || req.status !== 'PENDING') return false;
+    const docType = (req.documentType || '').toLowerCase().trim();
+    if (isWarehouseUser && docType === 'outlet request') {
+      return false;
+    }
+    return true;
+  };
+
   const [activeTab, setActiveTab] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -730,6 +753,11 @@ export default function StockRequisitionPage() {
   const handleConvertToSTN = async () => {
     if (!selectedRequisition) return;
 
+    if (!canTransferToSTN(selectedRequisition)) {
+      toast.error('Warehouse users cannot transfer Outlet Request requisitions to STN.');
+      return;
+    }
+
     const items = Object.entries(stnQuantities).map(([itemId, quantity]) => ({
       itemId,
       quantity,
@@ -869,7 +897,7 @@ export default function StockRequisitionPage() {
                 Approve
               </Button>
             )}
-            {req.status === 'PENDING' && (
+            {canTransferToSTN(req) && (
               <Button
                 size="sm"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs"
@@ -1588,7 +1616,7 @@ export default function StockRequisitionPage() {
                           </Button>
                         </>
                       )}
-                      {selectedRequisition.status === 'PENDING' && (
+                      {selectedRequisition.status === 'PENDING' && canTransferToSTN(selectedRequisition) && (
                         <>
                           <Button
                             className="bg-indigo-600 hover:bg-indigo-700 font-bold text-white"
