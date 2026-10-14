@@ -77,8 +77,7 @@ export default function NewSalePage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { settings } = usePosSettings();
-    const { user, hasPermission } = useAuth();
-    const activeLocationId = user?.terminal?.location?.id || user?.locationId;
+    const { hasPermission } = useAuth();
     const canDiscount = hasPermission('pos.sale.item-discount');
     const canHold = hasPermission('pos.hold.create');
     const canViewHolds = hasPermission('pos.hold.view');
@@ -316,12 +315,7 @@ export default function NewSalePage() {
             if (isScannerInputRef.current && query.length >= 3) {
                 try {
                     isScanningRef.current = true;
-                    const scanRes = await authFetch(`/pos-sales/scan`, {
-                        params: {
-                            barcode: query,
-                            ...(activeLocationId ? { locationId: activeLocationId } : {}),
-                        },
-                    });
+                    const scanRes = await authFetch(`/pos-sales/scan`, { params: { barcode: query } });
                     if (scanRes.ok && scanRes.data?.status && scanRes.data.data) {
                         const product = scanRes.data.data;
                         addProductToCart(product);
@@ -339,12 +333,7 @@ export default function NewSalePage() {
             if (query.length >= 2) {
                 setIsSearching(true);
                 try {
-                    const res = await authFetch(`/pos-sales/lookup`, {
-                        params: {
-                            q: query,
-                            ...(activeLocationId ? { locationId: activeLocationId } : {}),
-                        },
-                    });
+                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: query } });
                     if (res.ok && res.data?.status && res.data.data) {
                         setSearchResults(res.data.data);
                     } else {
@@ -361,7 +350,7 @@ export default function NewSalePage() {
         }, delay);
 
         return () => clearTimeout(timer);
-    }, [searchQuery, addProductToCart, activeLocationId]);
+    }, [searchQuery, addProductToCart]);
 
     // ─── Global Barcode Scanner Listener ────────────────────────────
     const globalScannerBuffer = useRef("");
@@ -402,12 +391,7 @@ export default function NewSalePage() {
                     isScanningRef.current = true;
                     
                     try {
-                        const res = await authFetch(`/pos-sales/scan`, {
-                            params: {
-                                barcode,
-                                ...(activeLocationId ? { locationId: activeLocationId } : {}),
-                            },
-                        });
+                        const res = await authFetch(`/pos-sales/scan`, { params: { barcode } });
                         if (res.ok && res.data?.status && res.data.data) {
                             addProductToCart(res.data.data);
                             toast.success(`Scanned: ${res.data.data.description || res.data.data.name || "Product"}`);
@@ -429,7 +413,7 @@ export default function NewSalePage() {
 
         window.addEventListener("keydown", handleGlobalKeyDown);
         return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-    }, [addProductToCart, activeLocationId]);
+    }, [addProductToCart]);
 
     // ─── Barcode scan / Search submit (fallback on Enter key) ───────
     const handleSearchSubmit = useCallback(async () => {
@@ -437,12 +421,7 @@ export default function NewSalePage() {
         if (isScanningRef.current) return;
         isScanningRef.current = true;
         try {
-            const res = await authFetch(`/pos-sales/scan`, {
-                params: {
-                    barcode: searchQuery.trim(),
-                    ...(activeLocationId ? { locationId: activeLocationId } : {}),
-                },
-            });
+            const res = await authFetch(`/pos-sales/scan`, { params: { barcode: searchQuery.trim() } });
             if (res.ok && res.data?.status && res.data.data) {
                 addProductToCart(res.data.data);
                 toast.success(`Added: ${res.data.data.description || "Product"}`);
@@ -464,7 +443,7 @@ export default function NewSalePage() {
         }
         setSearchQuery("");
         searchInputRef.current?.focus();
-    }, [searchQuery, searchResults, addProductToCart, activeLocationId]);
+    }, [searchQuery, searchResults, addProductToCart]);
 
     // ─── Select from Autocomplete ───────────────────────────────────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
