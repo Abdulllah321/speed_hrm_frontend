@@ -41,9 +41,13 @@ function getReferenceHref(referenceType: string, referenceId: string): string | 
         case "TRANSFER_REQUEST":
         case "TRANSFER_IN":
         case "TRANSFER_OUT":
+        case "TRANSFER_RECEIPT":
         case "RETURN_REQUEST":
         case "OUTLET_TRANSFER_IN":
         case "OUTLET_TRANSFER_OUT":
+        case "DIRECT_TRANSFER":
+        case "DIRECT_TRANSFER_IN":
+        case "DIRECT_TRANSFER_OUT":
             return `/erp/inventory/transactions/stock-transfer/slip/${referenceId}`;
         case "LANDED_COST":
             return `/erp/procurement/landed-cost`;
@@ -148,8 +152,15 @@ export const columns: ColumnDef<StockLedgerEntry>[] = [
             const isInbound = qty >= 0;
             const locationName = row.original.location?.name;
 
-            // For POS Sale, Outlet Transfer In/Out, Stock Adjustment — show only location, hide warehouse
-            const locationOnlyTypes = ["POS_SALE", "POS_RETURN", "OUTLET_TRANSFER_IN", "OUTLET_TRANSFER_OUT", "POS_CLAIM_APPROVED", "STOCK_ADJUSTMENT"];
+            const locationOnlyTypes = [
+                "POS_SALE",
+                "POS_RETURN",
+                "OUTLET_TRANSFER_IN",
+                "OUTLET_TRANSFER_OUT",
+                "TRANSFER_RECEIPT",
+                "POS_CLAIM_APPROVED",
+                "STOCK_ADJUSTMENT",
+            ];
             const showLocationOnly = locationOnlyTypes.includes(refType) && locationName;
 
             if (showLocationOnly) {
@@ -233,7 +244,16 @@ export const columns: ColumnDef<StockLedgerEntry>[] = [
                         {meta.icon}
                         {meta.label}
                     </Badge>
-                    {["TRANSFER_REQUEST", "RETURN_REQUEST", "OUTLET_TRANSFER_IN", "OUTLET_TRANSFER_OUT"].includes(row.original.referenceType) && (
+                    {[
+                        "TRANSFER_REQUEST",
+                        "RETURN_REQUEST",
+                        "OUTLET_TRANSFER_IN",
+                        "OUTLET_TRANSFER_OUT",
+                        "TRANSFER_RECEIPT",
+                        "DIRECT_TRANSFER",
+                        "DIRECT_TRANSFER_IN",
+                        "DIRECT_TRANSFER_OUT",
+                    ].includes(row.original.referenceType) && (
                         <span className={cn(
                             "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
                             isOut
@@ -281,9 +301,13 @@ export const columns: ColumnDef<StockLedgerEntry>[] = [
                 POS_RETURN: "POS Return",
                 POS_VOID: "POS Void",
                 TRANSFER_REQUEST: "Transfer",
+                TRANSFER_RECEIPT: "Transfer Receipt",
                 RETURN_REQUEST: "Return Transfer",
                 OUTLET_TRANSFER_IN: "Outlet Transfer In",
                 OUTLET_TRANSFER_OUT: "Outlet Transfer Out",
+                DIRECT_TRANSFER: "Direct Transfer",
+                DIRECT_TRANSFER_IN: "Direct Transfer In",
+                DIRECT_TRANSFER_OUT: "Direct Transfer Out",
                 STOCK_MOVEMENT: "Stock Movement",
                 RETURN_MOVEMENT: "Return Movement",
                 ADJUSTMENT: "Adjustment",
