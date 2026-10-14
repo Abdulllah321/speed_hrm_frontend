@@ -45,6 +45,10 @@ interface EditableItem {
     price: number;
     skuDiscounted: number;
     subTotalPrice?: number;
+    stock?: {
+        available: number;
+        isAvailable: boolean;
+    };
 }
 
 interface EditOnlineOrderModalProps {
@@ -141,6 +145,7 @@ export function EditOnlineOrderModal({
                 price: Math.max(0, Number(it.price) || 0),
                 skuDiscounted: Math.min(100, Math.max(0, Number(it.skuActualDiscount ?? it.skuDiscounted ?? 0))),
                 subTotalPrice: Number(it.price || 0) * Number(it.qty || 1),
+                stock: it.stock,
             }));
 
             setItems(mappedItems.length > 0 ? mappedItems : [
@@ -208,9 +213,55 @@ export function EditOnlineOrderModal({
     const updateItem = (index: number, field: keyof EditableItem, value: any) => {
         setItems(prev => {
             const next = [...prev];
-            next[index] = { ...next[index], [field]: value };
+            const updated = { ...next[index], [field]: value };
+            if (field === 'qty' && updated.stock) {
+                updated.stock = {
+                    ...updated.stock,
+                    isAvailable: updated.stock.available >= Number(value || 1),
+                };
+            }
+            next[index] = updated;
             return next;
         });
+    };
+
+    const handleCheckItemStock = async (index: number) => {
+        const item = items[index];
+        const skuToLookup = item?.sku?.trim();
+        if (!skuToLookup || skuToLookup.length < 2) return;
+
+        try {
+            const locId = order?.locationId;
+            const res = await authFetch(`/pos-sales/lookup`, {
+                params: {
+                    q: skuToLookup,
+                    ...(locId ? { locationId: locId } : {}),
+                },
+            });
+            if (res.ok && res.data?.status && Array.isArray(res.data.data) && res.data.data.length > 0) {
+                const found = res.data.data[0];
+                const avail = Number(found.stockQty ?? 0);
+                setItems(prev => {
+                    const next = [...prev];
+                    const current = next[index];
+                    if (!current) return prev;
+                    next[index] = {
+                        ...current,
+                        name: current.name || found.description || found.name || '',
+                        brand: current.brand || (typeof found.brand === 'object' ? found.brand?.name : found.brand) || '',
+                        size: current.size || (typeof found.size === 'object' ? found.size?.name : found.size) || '',
+                        price: current.price > 0 ? current.price : Number(found.unitPrice || 0),
+                        stock: {
+                            available: avail,
+                            isAvailable: avail >= (Number(current.qty) || 1),
+                        },
+                    };
+                    return next;
+                });
+            }
+        } catch {
+            // Silently continue
+        }
     };
 
     const removeItem = (index: number) => {
@@ -598,6 +649,7 @@ export function EditOnlineOrderModal({
                                                 <Input
                                                     value={item.sku}
                                                     onChange={(e) => updateItem(idx, 'sku', e.target.value)}
+                                                    onBlur={() => handleCheckItemStock(idx)}
                                                     placeholder="Item SKU"
                                                     className="font-mono text-xs h-8 bg-background"
                                                 />
@@ -658,6 +710,21 @@ export function EditOnlineOrderModal({
                                                     Rs {lineSubtotal.toLocaleString()}
                                                 </div>
                                             </div>
+
+                                            {/* Live Stock Badge */}
+                                            {item.stock && (
+                                                <div className="col-span-2 sm:col-span-4 md:col-span-6 pt-1 flex items-center gap-1.5">
+                                                    {item.stock.available >= qty ? (
+                                                        <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1 font-medium">
+                                                            <CheckCircle2 className="h-3 w-3" /> Location Stock: {item.stock.available} available (Requires {qty})
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 gap-1 font-medium">
+                                                            <AlertCircle className="h-3 w-3" /> Out of Stock: only {item.stock.available} available at this location (Requires {qty})
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Remove row */}
