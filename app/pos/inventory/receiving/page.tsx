@@ -99,7 +99,6 @@ export default function StockReceivingPage() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const ITEMS_PER_PAGE = 20;
 
@@ -107,9 +106,62 @@ export default function StockReceivingPage() {
     setCurrentPage(1);
   }, [searchQuery, sortBy, statusFilter, activeTab, brandFilter, dateFrom, dateTo]);
 
+  // Client-side instant filter: no backend API hit on typing
+  const filteredRequests = React.useMemo(() => {
+    if (!searchQuery.trim()) return requests;
+    const q = searchQuery.trim().toLowerCase();
+    const cleanQ = q.replace(/^tr\s*#?\s*/i, '').trim();
+
+    return requests.filter(request => {
+      // Request No
+      if (request.requestNo?.toLowerCase().includes(q)) return true;
+
+      // TR # (e.g. TR-IN-0258 or 0258)
+      const trNo = (request.inboundNo || request.formattedSerialNo || '')?.toLowerCase();
+      if (trNo) {
+        if (trNo.includes(q)) return true;
+        if (cleanQ && trNo.includes(cleanQ)) return true;
+      }
+
+      // Source Warehouse / Outlet
+      const sourceName = (request.fromLocation?.name || request.fromWarehouse?.name || '')?.toLowerCase();
+      const sourceCode = (request.fromLocation?.code || request.fromWarehouse?.code || '')?.toLowerCase();
+      if (sourceName.includes(q) || sourceCode.includes(q)) return true;
+
+      // Notes
+      if (request.notes?.toLowerCase().includes(q)) return true;
+
+      // Brand
+      const brand = (request.brand?.name || request.items?.[0]?.item?.brand?.name || '')?.toLowerCase();
+      if (brand.includes(q)) return true;
+
+      // "Stock Transfer Note"
+      if (q.includes('stock transfer') && (request.items?.length || 0) > 1) return true;
+
+      // Items (description, sku, barcode, uniqueNo)
+      return (request.items || []).some((item: any) => {
+        const i = item.item;
+        if (!i) return false;
+        return (
+          i.description?.toLowerCase().includes(q) ||
+          i.sku?.toLowerCase().includes(q) ||
+          i.barCode?.toLowerCase().includes(q) ||
+          i.uniqueNo?.toLowerCase().includes(q)
+        );
+      });
+    });
+  }, [requests, searchQuery]);
+
+  const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE) || 1;
+
+  const paginatedRequests = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredRequests, currentPage]);
+
   const groupedRequests = React.useMemo(() => {
     const groups: { date: string; items: any[] }[] = [];
-    requests.forEach(request => {
+    paginatedRequests.forEach(request => {
         const dateStr = format(new Date(request.createdAt), 'MMMM d, yyyy');
         const lastGroup = groups[groups.length - 1];
         if (lastGroup && lastGroup.date === dateStr) {
@@ -119,7 +171,7 @@ export default function StockReceivingPage() {
         }
     });
     return groups;
-  }, [requests]);
+  }, [paginatedRequests]);
 
   const handlePrint = (request: any) => {
     setPrintingId(request.id);
@@ -349,16 +401,17 @@ export default function StockReceivingPage() {
     try {
       const res = await getIncomingTransferRequests(locationId, {
         status: activeTab === 'history' ? 'history' : undefined,
-        page: currentPage,
-        limit: ITEMS_PER_PAGE,
-        search: searchQuery,
+        page: 1,
+        limit: 500,
         sortBy: sortBy,
-        statusFilter: statusFilter
-      , dateFrom, dateTo, brand: brandFilter });
+        statusFilter: statusFilter,
+        dateFrom,
+        dateTo,
+        brand: brandFilter
+      });
       if (res.status) {
         setRequests(res.data || []);
-        setTotalPages(res.meta?.totalPages || 1);
-        setTotalRecords(res.meta?.total || 0);
+        setTotalRecords(res.meta?.total || (res.data || []).length);
       }
     } catch (error) {
       console.error("Failed to fetch incoming transfers", error);
@@ -369,11 +422,8 @@ export default function StockReceivingPage() {
   };
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-        fetchRequests();
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [locationId, activeTab, currentPage, searchQuery, sortBy, statusFilter, dateFrom, dateTo, brandFilter]);
+    fetchRequests();
+  }, [locationId, activeTab, sortBy, statusFilter, dateFrom, dateTo, brandFilter]);
 
   const handleAccept = async (requestId: string) => {
     setIsAccepting(requestId);
@@ -543,6 +593,18 @@ export default function StockReceivingPage() {
                 <RefreshCcw className="h-4 w-4 mr-2" /> Check Again
               </Button>
             </Card>
+          ) : filteredRequests.length === 0 ? (
+            <Card className="border-dashed h-[300px] flex flex-col items-center justify-center text-center p-8 bg-muted/5">
+              <h2 className="text-lg mb-2 text-muted-foreground font-bold">
+                No transfers match "{searchQuery}"
+              </h2>
+              <p className="max-w-xs mx-auto text-muted-foreground text-sm mb-4">
+                Try searching by Request No, TR #, SKU, Barcode, or Source.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => setSearchQuery('')}>
+                Clear Search
+              </Button>
+            </Card>
           ) : (
             <div className="bg-white border rounded-lg shadow-sm overflow-x-auto">
                             <Table className="min-w-[1000px]">
@@ -656,7 +718,7 @@ export default function StockReceivingPage() {
                     {!isLoading && totalPages > 1 && (
                         <div className="flex items-center justify-between mt-6 pt-4 border-t border-black/5">
                             <span className="text-sm text-muted-foreground font-medium">
-                                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, totalRecords)} of {totalRecords}
+                                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredRequests.length)} of {filteredRequests.length}
                             </span>
                             <SmartPagination 
                                 currentPage={currentPage} 
