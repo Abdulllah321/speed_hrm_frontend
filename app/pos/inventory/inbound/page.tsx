@@ -87,7 +87,7 @@ export default function InboundRequestsPage() {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery, sortBy, statusFilter, activeTab]);
+    }, [searchQuery, sortBy, statusFilter, activeTab, brandFilter, dateFrom, dateTo]);
 
     const groupedRequests = React.useMemo(() => {
         const groups: { date: string; items: any[] }[] = [];
@@ -324,7 +324,7 @@ export default function InboundRequestsPage() {
             fetchRequests();
         }, 300);
         return () => clearTimeout(timeoutId);
-    }, [locationId, activeTab, currentPage, searchQuery, sortBy, statusFilter]);
+    }, [locationId, activeTab, currentPage, searchQuery, sortBy, statusFilter, dateFrom, dateTo, brandFilter]);
 
     const handleAccept = async (requestId: string) => {
         setIsAccepting(requestId);
@@ -407,7 +407,7 @@ export default function InboundRequestsPage() {
                         <div className="relative flex-1 w-full sm:w-auto">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
                             <Input
-                                placeholder="Search by SKU, Barcode, Reference..."
+                                placeholder="Search by Request No, TR #, Description, Source..."
                                 className="pl-9 h-10 bg-white shadow-sm border-black/10"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -523,48 +523,13 @@ export default function InboundRequestsPage() {
                                                             )}
                                                         </TableCell>
                                                         <TableCell>
-                                                            <div className="flex flex-col">
-                                                                <div className="flex items-center gap-2 flex-wrap">
-                                                        <span className="font-semibold text-sm leading-tight text-gray-800">
-                                                            {totalItemsCount > 1
-                                                              ? `Stock Transfer Note (${totalItemsCount} Products)`
-                                                              : firstItem?.description || "Incoming Items"}
-                                                        </span>
-                                                        <BrandBadge brand={brandName} />
-                                                    </div>
-                                                                {totalItemsCount > 1 ? (
-                                                                    <div className="flex flex-col gap-1 mt-1.5 w-full">
-                                                                        {(request.items || []).slice(0, 3).map((i: any, idx: number) => (
-                                                                            <div key={i.id || idx} className="flex justify-between items-center text-[10px] bg-gray-50/80 p-1 px-1.5 rounded border border-gray-100">
-                                                                                <span className="truncate flex-1 mr-2 text-gray-600 font-medium" title={i.item?.description}>
-                                                                                    {i.item?.description || "Unknown Item"}
-                                                                                    {i.item?.uniqueNo ? ` (${i.item.uniqueNo})` : i.item?.barCode ? ` (${i.item.barCode})` : ''}
-                                                                                </span>
-                                                                                <span className="font-bold text-gray-900 ml-2">x{i.quantity}</span>
-                                                                            </div>
-                                                                        ))}
-                                                                        {totalItemsCount > 3 && (
-                                                                            <div className="text-[9px] text-center text-muted-foreground bg-gray-50/50 p-0.5 rounded border border-gray-50 font-medium">
-                                                                                + {totalItemsCount - 3} more line items
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-[10px] text-muted-foreground mt-0.5 font-medium flex items-center gap-2 flex-wrap">
-                                                                        <span>SKU: {firstItem?.sku || "N/A"}</span>
-                                                                        {firstItem?.barCode && <span className="text-blue-600 bg-blue-50 px-1 rounded border border-blue-100">{firstItem.barCode}</span>}
-                                                                        {firstItem?.uniqueNo && <span className="text-purple-600 bg-purple-50 px-1 rounded border border-purple-100">{firstItem.uniqueNo}</span>}
-                                                                    </span>
-                                                                )}
-                                                                {request.notes && <span className="text-[10px] text-green-700 font-medium line-clamp-1 mt-1 bg-green-50 p-1 px-2 rounded w-fit" title={request.notes}>Notes: {request.notes}</span>}
-                                                                {(request.courierName || request.trackingNumber || request.vehicleNumber) && (
-                                                                    <div className="flex flex-wrap gap-1 mt-1.5">
-                                                                        {request.courierName && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Courier: {request.courierName}</span>}
-                                                                        {request.trackingNumber && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Track: {request.trackingNumber}</span>}
-                                                                        {request.vehicleNumber && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Veh: {request.vehicleNumber}</span>}
-                                                                        {request.riderName && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">Rider: {request.riderName}</span>}
-                                                                    </div>
-                                                                )}
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="font-semibold text-sm leading-tight text-gray-800">
+                                                                    {totalItemsCount > 1
+                                                                        ? `Stock Transfer Note (${totalItemsCount} Products)`
+                                                                        : firstItem?.description || "Incoming Items"}
+                                                                </span>
+                                                                <BrandBadge brand={brandName} />
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="text-xs font-medium">
