@@ -2,6 +2,6 @@ import { getLocations } from "@/lib/actions/location";
 import { VoucherFormPage } from "./voucher-form-page";
 
 export default async function VoucherNewPage() {
-    const locationsRes = await getLocations();
+    const locationsRes = await getLocations(true);
     return <VoucherFormPage locations={locationsRes.data ?? []} />;
 }

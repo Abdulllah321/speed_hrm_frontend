@@ -101,6 +101,7 @@ const SOURCE_LABELS: Record<string, string> = {
   PURCHASE_INVOICE: "PI",
   PAYMENT_VOUCHER: "PV",
   RECEIPT_VOUCHER: "RV",
+  RSRV: "RSRV",
   JOURNAL_VOUCHER: "JV",
   ADVANCE_APPLICATION: "Advance Application",
   SALES_INVOICE: "SI",
@@ -113,6 +114,8 @@ const SOURCE_BADGES: Record<string, string> = {
     "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-300 dark:border-rose-900/30",
   RECEIPT_VOUCHER:
     "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-300 dark:border-emerald-900/30",
+  RSRV:
+    "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/20 dark:text-teal-300 dark:border-teal-900/30",
   JOURNAL_VOUCHER:
     "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-900/30",
   ADVANCE_APPLICATION:
@@ -121,7 +124,20 @@ const SOURCE_BADGES: Record<string, string> = {
     "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-300 dark:border-purple-900/30",
 };
 
-const getSourceLink = (sourceType: string, sourceId: string) => {
+const getSourceLink = (
+  sourceType: string,
+  sourceId: string,
+  sourceRef?: string,
+) => {
+  const isRsrv =
+    sourceType === "RSRV" ||
+    (sourceType === "RECEIPT_VOUCHER" &&
+      (sourceRef?.startsWith("RSRV") || sourceRef?.startsWith("RS-RV")));
+
+  if (isRsrv) {
+    return `/erp/finance/retail-sale-receipt-voucher/${sourceId}`;
+  }
+
   switch (sourceType) {
     case "JOURNAL_VOUCHER":
       return `/erp/finance/journal-voucher/${sourceId}`;
@@ -958,10 +974,17 @@ export function GeneralLedgerClient({
         ]);
 
         for (const r of lg.rows) {
+          const isRsrvRow =
+            r.sourceType === "RSRV" ||
+            (r.sourceType === "RECEIPT_VOUCHER" &&
+              (r.sourceRef?.startsWith("RSRV") ||
+                r.sourceRef?.startsWith("RS-RV")));
+          const rSource = isRsrvRow ? "RSRV" : r.sourceType;
+
           csvLines.push([
             format(new Date(r.transactionDate), "yyyy-MM-dd"),
             r.sourceRef,
-            SOURCE_LABELS[r.sourceType] ?? r.sourceType,
+            SOURCE_LABELS[rSource] ?? rSource,
             r.chequeNo ?? "",
             r.refBillNo ?? "",
             r.refBillNo2 ?? "",
@@ -1694,9 +1717,18 @@ export function GeneralLedgerClient({
                               )}
 
                               {ledgerItem.rows.map((row, i) => {
+                                const isRsrvRow =
+                                  row.sourceType === "RSRV" ||
+                                  (row.sourceType === "RECEIPT_VOUCHER" &&
+                                    (row.sourceRef?.startsWith("RSRV") ||
+                                      row.sourceRef?.startsWith("RS-RV")));
+                                const rowDisplayType = isRsrvRow
+                                  ? "RSRV"
+                                  : row.sourceType;
                                 const drillDownLink = getSourceLink(
                                   row.sourceType,
                                   row.sourceId,
+                                  row.sourceRef,
                                 );
                                 return (
                                   <tr
@@ -1730,12 +1762,12 @@ export function GeneralLedgerClient({
                                       <span
                                         className={cn(
                                           "px-2 py-0.5 rounded text-[10px] font-semibold border",
-                                          SOURCE_BADGES[row.sourceType] ??
+                                          SOURCE_BADGES[rowDisplayType] ??
                                             "bg-muted text-muted-foreground border-border",
                                         )}
                                       >
-                                        {SOURCE_LABELS[row.sourceType] ??
-                                          row.sourceType}
+                                        {SOURCE_LABELS[rowDisplayType] ??
+                                          rowDisplayType}
                                       </span>
                                     </td>
                                     <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-muted-foreground">
@@ -1947,20 +1979,27 @@ export function GeneralLedgerClient({
                     </tr>
                   )}
 
-                  {ledgerItem.rows.map((row) => (
-                    <tr key={row.id} className="border-b border-gray-200 align-top">
-                      <td className="py-1 pr-1 font-mono text-[8px] whitespace-nowrap">
-                        {format(new Date(row.transactionDate), "dd/MM/yyyy")}
-                      </td>
-                      <td className="py-1 pr-1 font-mono font-semibold text-[8px] whitespace-nowrap">
-                        {formatVoucherNoForPrint(row.sourceRef)}
-                      </td>
-                      <td
-                        className="py-1 pr-1 text-[8px] whitespace-nowrap truncate max-w-0"
-                        title={SOURCE_LABELS[row.sourceType] ?? row.sourceType}
-                      >
-                        {SOURCE_LABELS[row.sourceType] ?? row.sourceType}
-                      </td>
+                  {ledgerItem.rows.map((row) => {
+                    const isRsrvRow =
+                      row.sourceType === "RSRV" ||
+                      (row.sourceType === "RECEIPT_VOUCHER" &&
+                        (row.sourceRef?.startsWith("RSRV") ||
+                          row.sourceRef?.startsWith("RS-RV")));
+                    const rowDisplayType = isRsrvRow ? "RSRV" : row.sourceType;
+                    return (
+                      <tr key={row.id} className="border-b border-gray-200 align-top">
+                        <td className="py-1 pr-1 font-mono text-[8px] whitespace-nowrap">
+                          {format(new Date(row.transactionDate), "dd/MM/yyyy")}
+                        </td>
+                        <td className="py-1 pr-1 font-mono font-semibold text-[8px] whitespace-nowrap">
+                          {formatVoucherNoForPrint(row.sourceRef)}
+                        </td>
+                        <td
+                          className="py-1 pr-1 text-[8px] whitespace-nowrap truncate max-w-0"
+                          title={SOURCE_LABELS[rowDisplayType] ?? rowDisplayType}
+                        >
+                          {SOURCE_LABELS[rowDisplayType] ?? rowDisplayType}
+                        </td>
                       <td
                         className="py-1 pr-1 text-[8px] font-mono whitespace-nowrap truncate max-w-0"
                         title={row.chequeNo || undefined}
@@ -1992,7 +2031,8 @@ export function GeneralLedgerClient({
                         {fmt(row.runningBalance)}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
                 <tfoot className="print:table-row-group">
                   <tr>

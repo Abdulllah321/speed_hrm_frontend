@@ -1,13 +1,19 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Search } from "lucide-react";
+import { MapPin, Search, Tag, Check, Minus } from "lucide-react";
 import { Location } from "@/lib/actions/location";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+
+interface BrandInfo {
+  id: string;
+  name: string;
+  locationIds: string[];
+}
 
 export function LocationMultiSelect({
   locations,
@@ -15,20 +21,64 @@ export function LocationMultiSelect({
   onChange,
   disabled,
   maxHeight = "calc(100vh - 18rem)",
+  stockOnly = true,
 }: {
   locations: Location[];
   selected: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
   maxHeight?: string;
+  stockOnly?: boolean;
 }) {
   const [search, setSearch] = React.useState("");
+  const [selectedBrandFilter, setSelectedBrandFilter] = React.useState<string | null>(null);
 
-  const filtered = locations.filter(
-    (loc) =>
-      loc.name.toLowerCase().includes(search.toLowerCase()) ||
-      loc.code.toLowerCase().includes(search.toLowerCase()),
-  );
+  // 1. Only stock locations (when stockOnly is true)
+  const baseLocations = useMemo(() => {
+    if (!stockOnly) return locations;
+    return locations.filter((loc) => loc.isStockLocation !== false);
+  }, [locations, stockOnly]);
+
+  // 2. Extract unique brands with their associated location IDs
+  const brands = useMemo<BrandInfo[]>(() => {
+    const map = new Map<string, BrandInfo>();
+    baseLocations.forEach((loc) => {
+      (loc.brands || []).forEach((b) => {
+        if (!b || !b.id) return;
+        const existing = map.get(b.id);
+        if (existing) {
+          if (!existing.locationIds.includes(loc.id)) {
+            existing.locationIds.push(loc.id);
+          }
+        } else {
+          map.set(b.id, {
+            id: b.id,
+            name: b.name,
+            locationIds: [loc.id],
+          });
+        }
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [baseLocations]);
+
+  // 3. Search filter matching name, shortCode, and code
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return baseLocations.filter((loc) => {
+      // Optional brand view filter
+      if (selectedBrandFilter) {
+        const belongsToBrand = loc.brands?.some((b) => b.id === selectedBrandFilter);
+        if (!belongsToBrand) return false;
+      }
+
+      if (!query) return true;
+      const nameMatch = loc.name.toLowerCase().includes(query);
+      const shortCodeMatch = loc.shortCode ? loc.shortCode.toLowerCase().includes(query) : false;
+      const codeMatch = loc.code ? loc.code.toLowerCase().includes(query) : false;
+      return nameMatch || shortCodeMatch || codeMatch;
+    });
+  }, [baseLocations, search, selectedBrandFilter]);
 
   const toggle = (id: string) => {
     if (disabled) return;
@@ -57,32 +107,102 @@ export function LocationMultiSelect({
     onChange([]);
   };
 
+  // Toggle all locations belonging to a specific brand
+  const handleToggleBrand = (brand: BrandInfo) => {
+    if (disabled) return;
+    const allSelected = brand.locationIds.every((id) => selected.includes(id));
+
+    if (allSelected) {
+      // Deselect all locations belonging to this brand
+      onChange(selected.filter((id) => !brand.locationIds.includes(id)));
+    } else {
+      // Select all locations belonging to this brand (preserving existing selections)
+      const newIds = brand.locationIds.filter((id) => !selected.includes(id));
+      onChange([...selected, ...newIds]);
+    }
+  };
+
   return (
     <div className="border rounded-lg bg-card overflow-hidden">
-      {/* Search header */}
-      <div className="p-3 border-b space-y-2">
+      {/* Search & Filter Header */}
+      <div className="p-3 border-b space-y-2.5">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
-            className="pl-9 h-9 text-sm"
-            placeholder="Search locations..."
+            className="pl-9 h-9 text-xs"
+            placeholder="Search store name, short code (e.g. KHI-01)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             disabled={disabled}
           />
         </div>
 
+        {/* Brand-Based Multi-Selection */}
+        {brands.length > 0 && (
+          <div className="space-y-1.5 pt-0.5">
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+              <span className="flex items-center gap-1">
+                <Tag className="h-3 w-3" /> Select by Brand
+              </span>
+              <span className="text-[10px]">Click brand to toggle its stores</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+              {brands.map((b) => {
+                const selectedCount = b.locationIds.filter((id) => selected.includes(id)).length;
+                const isAllBrandSelected = selectedCount === b.locationIds.length && b.locationIds.length > 0;
+                const isPartiallySelected = selectedCount > 0 && !isAllBrandSelected;
+
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => handleToggleBrand(b)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer border select-none",
+                      isAllBrandSelected
+                        ? "bg-primary text-primary-foreground border-primary shadow-2xs font-semibold"
+                        : isPartiallySelected
+                        ? "bg-primary/15 text-primary border-primary/40 font-semibold"
+                        : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60",
+                      disabled && "opacity-50 cursor-not-allowed"
+                    )}
+                    title={`${b.name} (${selectedCount}/${b.locationIds.length} stores selected)`}
+                  >
+                    {isAllBrandSelected ? (
+                      <Check className="h-3 w-3 shrink-0 stroke-[2.5]" />
+                    ) : isPartiallySelected ? (
+                      <Minus className="h-3 w-3 shrink-0 stroke-[2.5]" />
+                    ) : null}
+                    <span>{b.name}</span>
+                    <span
+                      className={cn(
+                        "text-[9px] px-1 py-0.2 rounded font-mono",
+                        isAllBrandSelected
+                          ? "bg-primary-foreground/20 text-primary-foreground"
+                          : "bg-background/80 text-muted-foreground"
+                      )}
+                    >
+                      {selectedCount}/{b.locationIds.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Selection summary */}
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">
+        <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
+          <span className="text-muted-foreground text-[11px]">
             {selected.length > 0 ? (
-              <span className="font-medium text-foreground">
+              <span className="font-semibold text-foreground">
                 {selected.length}
               </span>
             ) : (
               "0"
             )}{" "}
-            of {locations.length} selected
+            of {baseLocations.length} stores selected
           </span>
           <div className="flex gap-1">
             {selected.length > 0 && (
@@ -90,7 +210,7 @@ export function LocationMultiSelect({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-6 text-xs px-2 text-muted-foreground hover:text-foreground"
+                className="h-6 text-[11px] px-2 text-muted-foreground hover:text-foreground cursor-pointer"
                 onClick={clearAll}
                 disabled={disabled}
               >
@@ -101,11 +221,11 @@ export function LocationMultiSelect({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-6 text-xs px-2 text-muted-foreground hover:text-foreground"
+              className="h-6 text-[11px] px-2 text-muted-foreground hover:text-foreground cursor-pointer"
               onClick={toggleAll}
               disabled={disabled || filtered.length === 0}
             >
-              {isAllSelected ? "Deselect All" : "Select All"}
+              {isAllSelected ? "Deselect Filtered" : "Select Filtered"}
             </Button>
           </div>
         </div>
@@ -116,22 +236,23 @@ export function LocationMultiSelect({
         {filtered.length === 0 ? (
           <div className="p-8 text-center">
             <MapPin className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No locations found</p>
+            <p className="text-xs text-muted-foreground">No stock locations found</p>
           </div>
         ) : (
           <div className="p-2 space-y-0.5">
             {filtered.map((loc) => {
               const isSelected = selected.includes(loc.id);
+              const displayCode = loc.shortCode || loc.code;
               return (
                 <div
                   key={loc.id}
                   onClick={() => toggle(loc.id)}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors",
+                    "flex items-center gap-2.5 px-2.5 py-2 rounded-md transition-colors",
                     "cursor-pointer select-none",
                     disabled && "opacity-50 cursor-not-allowed",
                     !disabled && "hover:bg-muted/70",
-                    isSelected && "bg-muted/50",
+                    isSelected && "bg-muted/60",
                   )}
                 >
                   <div
@@ -167,12 +288,19 @@ export function LocationMultiSelect({
                     )}
                   </div>
                   <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm flex-1 font-medium">{loc.name}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate text-foreground">{loc.name}</p>
+                    {loc.brands && loc.brands.length > 0 && (
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {loc.brands.map((b) => b.name).join(", ")}
+                      </p>
+                    )}
+                  </div>
                   <Badge
                     variant="outline"
-                    className="text-[10px] font-mono shrink-0"
+                    className="text-[10px] font-mono shrink-0 font-semibold bg-background"
                   >
-                    {loc.code}
+                    {displayCode}
                   </Badge>
                 </div>
               );

@@ -23,7 +23,7 @@ export interface Voucher {
     isDeleted?: boolean;
     expiresAt?: string;
     createdAt: string;
-    locations: { id: string; location: { id: string; name: string; code: string } }[];
+    locations: { id: string; location: { id: string; name: string; code: string; shortCode?: string | null } }[];
     redemptions?: { amountUsed: number; orderId: string }[];
     claims?: { id: string; claimNumber: string }[];
     paymentMode?: string;
@@ -193,6 +193,28 @@ export async function updateVoucherExpiry(
         return result;
     } catch {
         return { status: false, message: 'Failed to update voucher expiry' };
+    }
+}
+
+export async function updateVoucherLocations(
+    voucherIds: string[],
+    locationIds: string[],
+    mode: 'replace' | 'add' | 'clear' = 'replace',
+): Promise<{ status: boolean; count?: number; message?: string }> {
+    try {
+        const res = await authFetch('/pos-config/vouchers/bulk/locations', {
+            method: 'PUT',
+            body: JSON.stringify({ voucherIds, locationIds, mode }),
+        });
+        const result = res.data;
+        if (result.status) {
+            revalidatePath('/pos/vouchers');
+            revalidatePath('/master/pos-config');
+            revalidatePath('/master/pos-config/vouchers');
+        }
+        return result;
+    } catch {
+        return { status: false, message: 'Failed to update voucher locations' };
     }
 }
 

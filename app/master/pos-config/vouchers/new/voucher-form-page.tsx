@@ -1,20 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition, useState, useEffect } from "react";
+import { useTransition, useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Loader2, ArrowLeft, Gift, Copy, CheckCircle2, MapPin } from "lucide-react";
+import { Loader2, ArrowLeft, Gift, Copy, CheckCircle2, MapPin, Building2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { issueVoucher, Voucher, VoucherType, getMerchants, MerchantConfig } from "@/lib/actions/vouchers";
 import { Location } from "@/lib/actions/location";
 import { LocationMultiSelect } from "../../_components/location-multi-select";
 import { formatCurrency } from "@/lib/utils";
-import { getCustomers } from "@/lib/actions/customer";
+import { getCustomers, createCustomer } from "@/lib/actions/customer";
 import type { Customer } from "@/lib/actions/customer";
+import { Autocomplete, AutocompleteOption } from "@/components/ui/autocomplete";
 
 interface Props { locations: Location[] }
 
@@ -30,6 +31,7 @@ export function VoucherFormPage({ locations }: Props) {
     const [faceValue, setFaceValue] = useState<number | "">("");
     const [discount, setDiscount] = useState<number | "">("");
     const [description, setDescription] = useState("");
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
     const [companyName, setCompanyName] = useState("");
     const [companyGlCode, setCompanyGlCode] = useState("");
     const [expiresAt, setExpiresAt] = useState("");
@@ -62,6 +64,59 @@ export function VoucherFormPage({ locations }: Props) {
         });
     }, []);
 
+    const resolveCustomerCode = (c: Customer) => {
+        return c.code || c.subCode || c.traderId || (c.id ? `CUST-${c.id.slice(-6).toUpperCase()}` : "");
+    };
+
+    const customerOptions: AutocompleteOption[] = useMemo(() => {
+        return customers.map((c) => {
+            const code = resolveCustomerCode(c);
+            return {
+                value: c.id,
+                label: c.name,
+                description: code ? `Code: ${code}${c.contactNo ? ` • ${c.contactNo}` : ""}` : (c.contactNo || undefined),
+            };
+        });
+    }, [customers]);
+
+    const handleCustomerSelect = (customerId: string) => {
+        setSelectedCustomerId(customerId);
+        const cust = customers.find((c) => c.id === customerId);
+        if (cust) {
+            setCompanyName(cust.name);
+            const code = resolveCustomerCode(cust);
+            setCompanyGlCode(code);
+        } else {
+            setCompanyName("");
+            setCompanyGlCode("");
+        }
+    };
+
+    const handleCreateCustomer = async (typedName: string) => {
+        if (!typedName.trim()) return;
+        try {
+            toast.loading(`Creating ERP customer "${typedName}"...`, { id: "create-cust" });
+            const res = await createCustomer({ name: typedName.trim() });
+            if (res?.status && res?.data) {
+                const newCust = res.data;
+                const code = resolveCustomerCode(newCust);
+                setCustomers((prev) => [newCust, ...prev]);
+                setSelectedCustomerId(newCust.id);
+                setCompanyName(newCust.name);
+                setCompanyGlCode(code);
+                toast.success(`Customer "${newCust.name}" created with code ${code}`, { id: "create-cust" });
+            } else {
+                toast.error(res?.message || "Failed to create customer", { id: "create-cust" });
+            }
+        } catch {
+            toast.error("Failed to create customer", { id: "create-cust" });
+        }
+    };
+
+    const stockLocations = useMemo(() => {
+        return locations.filter((loc) => loc.isStockLocation !== false);
+    }, [locations]);
+
     const goBack = () => {
         startTransition(() => {
             router.push("/master/pos-config/vouchers");
@@ -88,7 +143,7 @@ export function VoucherFormPage({ locations }: Props) {
                 return;
             }
         }
-        if (voucherType === "CORPORATE" && !companyGlCode) {
+        if (voucherType === "CORPORATE" && (!companyGlCode || !companyName)) {
             toast.error("Please select a company/customer");
             return;
         }
@@ -98,6 +153,7 @@ export function VoucherFormPage({ locations }: Props) {
                 faceValue: Number(faceValue),
                 discount: discount ? Number(discount) : 0,
                 description: description || undefined,
+                customerId: voucherType === "CORPORATE" ? selectedCustomerId || undefined : undefined,
                 companyName: voucherType === "CORPORATE" ? companyName || undefined : undefined,
                 companyGlCode: voucherType === "CORPORATE" ? companyGlCode || undefined : undefined,
                 expiresAt: expiresAt || undefined,
@@ -226,36 +282,49 @@ export function VoucherFormPage({ locations }: Props) {
                         )}
 
                         {voucherType === "CORPORATE" && (
-                            <div className="space-y-2">
-                                <Label>Company / ERP Customer *</Label>
-                                <Select
-                                    value={companyGlCode}
-                                    onValueChange={(val) => {
-                                        setCompanyGlCode(val);
-                                        const cust = customers.find((c) => c.code === val);
-                                        if (cust) {
-                                            setCompanyName(cust.name);
-                                        } else {
-                                            setCompanyName("");
-                                        }
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select ERP customer..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {customers.length === 0 && (
-                                            <div className="p-2 text-center text-xs text-muted-foreground italic">
-                                                No ERP customers found
+                            <div className="space-y-3 rounded-lg border p-3.5 bg-muted/15 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <div className="space-y-1.5">
+                                    <Label className="flex items-center justify-between text-xs font-semibold">
+                                        <span className="flex items-center gap-1.5">
+                                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                            Company / ERP Customer *
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground font-normal">
+                                            Search by name or code
+                                        </span>
+                                    </Label>
+                                    <Autocomplete
+                                        options={customerOptions}
+                                        value={selectedCustomerId}
+                                        onValueChange={handleCustomerSelect}
+                                        placeholder="Select or search ERP customer..."
+                                        searchPlaceholder="Search customer by name or code..."
+                                        onCreate={handleCreateCustomer}
+                                        emptyMessage={
+                                            <div className="p-3 text-center text-xs text-muted-foreground">
+                                                No ERP customer found. Type name to create.
                                             </div>
-                                        )}
-                                        {customers.map((c) => (
-                                            <SelectItem key={c.id} value={c.code}>
-                                                {c.name} ({c.code})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                        }
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border/40 text-xs">
+                                    <div>
+                                        <span className="text-[11px] text-muted-foreground font-medium">Selected Customer:</span>
+                                        <p className="font-semibold text-foreground truncate mt-0.5">
+                                            {companyName || "—"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-[11px] text-muted-foreground font-medium">Voucher GL Code *:</span>
+                                        <Input
+                                            value={companyGlCode}
+                                            onChange={(e) => setCompanyGlCode(e.target.value)}
+                                            placeholder="e.g. 310001"
+                                            className="h-7 text-xs font-mono font-semibold mt-0.5 bg-background"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -284,17 +353,18 @@ export function VoucherFormPage({ locations }: Props) {
                     </div>
 
                     {/* Right — location selection */}
-                    <div className="w-72 shrink-0 sticky top-4 max-h-[calc(100vh-5rem)] flex flex-col gap-3">
+                    <div className="w-80 shrink-0 sticky top-4 max-h-[calc(100vh-5rem)] flex flex-col gap-3">
                         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground shrink-0">
                             <MapPin className="h-4 w-4" />
-                            Allowed Locations
+                            Allowed Stock Locations
                             <span className="text-xs font-normal">(empty = all)</span>
                         </div>
                         <LocationMultiSelect
-                            locations={locations}
+                            locations={stockLocations}
                             selected={locationIds}
                             onChange={setLocationIds}
                             disabled={isPending}
+                            stockOnly={true}
                         />
                     </div>
                 </div>

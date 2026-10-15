@@ -74,9 +74,11 @@ import {
   VoucherType,
   voidVoucher,
   updateVoucherExpiry,
+  updateVoucherLocations,
   getVouchers,
 } from "@/lib/actions/vouchers";
 import { getLocations, Location } from "@/lib/actions/location";
+import { LocationMultiSelect } from "../_components/location-multi-select";
 import { cn, formatCurrency } from "@/lib/utils";
 
 interface Props {
@@ -261,19 +263,28 @@ export function VouchersListPage({ initialData }: Props) {
   const [selectedLocationId, setSelectedLocationId] = useState<string>("ALL");
   const [locations, setLocations] = useState<Location[]>([]);
 
+  // Row Multi-selection state
+  const [selectedVoucherIds, setSelectedVoucherIds] = useState<string[]>([]);
+
   // Dialog & Detail states
   const [voidId, setVoidId] = useState<string | null>(null);
   const [editExpiryVoucher, setEditExpiryVoucher] = useState<Voucher | null>(null);
   const [expiryValue, setExpiryValue] = useState<string>("");
   const [selectedVoucherForModal, setSelectedVoucherForModal] = useState<Voucher | null>(null);
 
+  // Edit Voucher Locations Modal states
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [targetVouchersForLocation, setTargetVouchersForLocation] = useState<Voucher[]>([]);
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+  const [locationUpdateMode, setLocationUpdateMode] = useState<"add" | "replace" | "clear">("add");
+
   const canCreate = hasPermission("pos.voucher.create");
   const canVoid = hasPermission("pos.voucher.void");
   const canEditExpiry = canCreate || canVoid;
 
-  // Load locations
+  // Load active stock locations
   useEffect(() => {
-    getLocations().then((res) => {
+    getLocations(true).then((res) => {
       if (res.status && res.data) setLocations(res.data);
     });
   }, []);
@@ -352,6 +363,71 @@ export function VouchersListPage({ initialData }: Props) {
       }
     });
   };
+
+  // Selection handlers
+  const currentPageIds = vouchers.map((v) => v.id);
+  const isAllPageSelected =
+    currentPageIds.length > 0 &&
+    currentPageIds.every((id) => selectedVoucherIds.includes(id));
+
+  const toggleSelectVoucher = (id: string) => {
+    setSelectedVoucherIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const toggleSelectAllPage = () => {
+    if (isAllPageSelected) {
+      setSelectedVoucherIds((prev) =>
+        prev.filter((id) => !currentPageIds.includes(id)),
+      );
+    } else {
+      const newIds = currentPageIds.filter((id) => !selectedVoucherIds.includes(id));
+      setSelectedVoucherIds((prev) => [...prev, ...newIds]);
+    }
+  };
+
+  const openLocationModalForSelected = () => {
+    const selected = vouchers.filter((v) => selectedVoucherIds.includes(v.id));
+    if (selected.length === 0) return;
+    setTargetVouchersForLocation(selected);
+    setSelectedLocationIds([]);
+    setLocationUpdateMode("add"); // Default to adding (e.g. adding new outlet)
+    setIsLocationModalOpen(true);
+  };
+
+  const openLocationModalForSingle = (v: Voucher) => {
+    setTargetVouchersForLocation([v]);
+    const existingLocIds = (v.locations || []).map((l) => l.location.id);
+    setSelectedLocationIds(existingLocIds);
+    setLocationUpdateMode("replace");
+    setIsLocationModalOpen(true);
+  };
+
+  const handleSaveLocations = () => {
+    if (targetVouchersForLocation.length === 0) return;
+    const vIds = targetVouchersForLocation.map((v) => v.id);
+
+    startTransition(async () => {
+      const result = await updateVoucherLocations(
+        vIds,
+        selectedLocationIds,
+        locationUpdateMode,
+      );
+      if (result.status) {
+        toast.success(
+          result.message ||
+            `Redemption locations updated for ${vIds.length} voucher(s)`,
+        );
+        setIsLocationModalOpen(false);
+        setSelectedVoucherIds([]);
+        loadVouchersData(pagination.page);
+      } else {
+        toast.error(result.message || "Failed to update voucher locations");
+      }
+    });
+  };
+
 
   const clearAllFilters = () => {
     setActiveTab("ALL");
@@ -583,11 +659,57 @@ export function VouchersListPage({ initialData }: Props) {
         </div>
       </div>
 
+      {/* Batch Selection Action Bar */}
+      {selectedVoucherIds.length > 0 && (
+        <div className="flex items-center justify-between p-3 px-4 rounded-xl bg-primary/10 border border-primary/30 text-xs animate-in fade-in slide-in-from-top-1 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <Badge variant="default" className="font-mono text-xs px-2 py-0.5">
+              {selectedVoucherIds.length}
+            </Badge>
+            <span className="font-semibold text-foreground">
+              {selectedVoucherIds.length === 1
+                ? "1 voucher selected"
+                : `${selectedVoucherIds.length} vouchers selected`}
+            </span>
+            <span className="text-muted-foreground hidden sm:inline text-[11px]">
+              • Bulk update allowed redemption stores or allow universal redemption
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-semibold shadow-xs cursor-pointer"
+              onClick={openLocationModalForSelected}
+            >
+              <Store className="h-3.5 w-3.5" />
+              Manage Locations
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs cursor-pointer"
+              onClick={() => setSelectedVoucherIds([])}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Main Data Table */}
       <div className="rounded-xl border border-border/70 overflow-hidden bg-card shadow-2xs">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="w-10 px-3">
+                <input
+                  type="checkbox"
+                  aria-label="Select all vouchers on current page"
+                  checked={isAllPageSelected}
+                  onChange={toggleSelectAllPage}
+                  className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer align-middle"
+                />
+              </TableHead>
               <TableHead className="w-[170px] text-xs font-semibold">Voucher Code</TableHead>
               <TableHead className="w-[140px] text-xs font-semibold">Type</TableHead>
               <TableHead className="text-xs font-semibold">Customer / Company Profile</TableHead>
@@ -595,13 +717,13 @@ export function VouchersListPage({ initialData }: Props) {
               <TableHead className="w-[140px] text-xs font-semibold">Issuing Store</TableHead>
               <TableHead className="w-[170px] text-xs font-semibold">Validity / Expiry</TableHead>
               <TableHead className="w-[120px] text-xs font-semibold">Status</TableHead>
-              <TableHead className="w-[120px] text-right text-xs font-semibold">Actions</TableHead>
+              <TableHead className="w-[160px] text-right text-xs font-semibold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-16 text-muted-foreground">
                   <div className="flex flex-col items-center justify-center gap-2.5">
                     <Loader2 className="h-6 w-6 animate-spin text-slate-700 dark:text-slate-300" />
                     <span className="text-xs font-medium">Fetching vouchers from database...</span>
@@ -610,7 +732,7 @@ export function VouchersListPage({ initialData }: Props) {
               </TableRow>
             ) : vouchers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-16 text-xs">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-16 text-xs">
                   No vouchers found matching the specified filters.
                 </TableCell>
               </TableRow>
@@ -645,6 +767,17 @@ export function VouchersListPage({ initialData }: Props) {
                     className="hover:bg-muted/30 transition-colors cursor-pointer group"
                     onClick={() => setSelectedVoucherForModal(v)}
                   >
+                    {/* Row Checkbox */}
+                    <TableCell className="w-10 px-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select voucher ${v.code}`}
+                        checked={selectedVoucherIds.includes(v.id)}
+                        onChange={() => toggleSelectVoucher(v.id)}
+                        className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer align-middle"
+                      />
+                    </TableCell>
+
                     {/* Code */}
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1.5">
@@ -700,7 +833,14 @@ export function VouchersListPage({ initialData }: Props) {
 
                     {/* Store */}
                     <TableCell>
-                      {v.issuedByLocation ? (
+                      {v.voucherType === "CORPORATE" ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-semibold bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800"
+                        >
+                          ERP (Head Office)
+                        </Badge>
+                      ) : v.issuedByLocation ? (
                         <Badge variant="outline" className="text-[10px] font-mono font-medium">
                           {v.issuedByLocation.shortCode || v.issuedByLocation.code || v.issuedByLocation.name}
                         </Badge>
@@ -741,6 +881,19 @@ export function VouchersListPage({ initialData }: Props) {
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
+
+                        {!v.isRedeemed && !v.isDeleted && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer gap-1"
+                            title="Edit Allowed Store Locations"
+                            onClick={() => openLocationModalForSingle(v)}
+                          >
+                            <MapPin className="h-3 w-3" />
+                            <span>Stores</span>
+                          </Button>
+                        )}
 
                         {canEditExpiry && !v.isRedeemed && !v.isDeleted && (
                           <Button
@@ -941,8 +1094,46 @@ export function VouchersListPage({ initialData }: Props) {
                 <div className="flex justify-between py-1 border-b border-border/40">
                   <span className="text-muted-foreground font-medium">Issuing Location</span>
                   <span className="font-medium text-foreground">
-                    {selectedVoucherForModal.issuedByLocation?.name || "All Locations"}
+                    {selectedVoucherForModal.voucherType === "CORPORATE"
+                      ? "ERP (Corporate / Head Office)"
+                      : selectedVoucherForModal.issuedByLocation?.name || "All Locations"}
                   </span>
+                </div>
+                <div className="py-2 border-b border-border/40 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                      <Store className="h-3.5 w-3.5 text-primary" />
+                      Allowed Stores
+                    </span>
+                    {!selectedVoucherForModal.isRedeemed && !selectedVoucherForModal.isDeleted && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-2 text-primary hover:text-primary/80 cursor-pointer font-medium"
+                        onClick={() => {
+                          const v = selectedVoucherForModal;
+                          setSelectedVoucherForModal(null);
+                          openLocationModalForSingle(v);
+                        }}
+                      >
+                        <MapPin className="h-3 w-3 mr-1" /> Edit Stores
+                      </Button>
+                    )}
+                  </div>
+                  {(!selectedVoucherForModal.locations || selectedVoucherForModal.locations.length === 0) ? (
+                    <Badge variant="secondary" className="text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      Universal (Redeemable at all locations)
+                    </Badge>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {selectedVoucherForModal.locations.map((item) => (
+                        <Badge key={item.id} variant="outline" className="text-[10px] font-mono bg-background">
+                          {item.location.shortCode || item.location.code} · {item.location.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-between py-1 border-b border-border/40">
                   <span className="text-muted-foreground font-medium">Creation Date</span>
@@ -1049,6 +1240,149 @@ export function VouchersListPage({ initialData }: Props) {
             </Button>
             <Button onClick={handleSaveExpiry} disabled={isPending} className="cursor-pointer">
               {isPending ? "Saving..." : "Save Expiry"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Voucher Allowed Locations Dialog */}
+      <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Store className="h-5 w-5 text-primary" />
+              Manage Allowed Store Locations
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {targetVouchersForLocation.length === 1 ? (
+                <>
+                  Updating redemption outlets for voucher{" "}
+                  <span className="font-mono font-bold text-foreground">
+                    {targetVouchersForLocation[0]?.code}
+                  </span>.
+                </>
+              ) : (
+                <>
+                  Updating redemption outlets for{" "}
+                  <span className="font-semibold text-foreground">
+                    {targetVouchersForLocation.length}
+                  </span>{" "}
+                  selected vouchers in bulk.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Update Mode Selector */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Update Mode</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLocationUpdateMode("add")}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs text-center transition-all cursor-pointer select-none",
+                    locationUpdateMode === "add"
+                      ? "border-primary bg-primary/10 text-primary font-semibold shadow-2xs"
+                      : "border-border/70 hover:bg-muted/50 text-muted-foreground",
+                  )}
+                >
+                  <Plus className="h-4 w-4 mb-1" />
+                  <span>Add Store(s)</span>
+                  <span className="text-[10px] text-muted-foreground font-normal mt-0.5">Keep existing + append</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLocationUpdateMode("replace")}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs text-center transition-all cursor-pointer select-none",
+                    locationUpdateMode === "replace"
+                      ? "border-primary bg-primary/10 text-primary font-semibold shadow-2xs"
+                      : "border-border/70 hover:bg-muted/50 text-muted-foreground",
+                  )}
+                >
+                  <RefreshCw className="h-4 w-4 mb-1" />
+                  <span>Replace Stores</span>
+                  <span className="text-[10px] text-muted-foreground font-normal mt-0.5">Overwrite allowed</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLocationUpdateMode("clear")}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs text-center transition-all cursor-pointer select-none",
+                    locationUpdateMode === "clear"
+                      ? "border-primary bg-primary/10 text-primary font-semibold shadow-2xs"
+                      : "border-border/70 hover:bg-muted/50 text-muted-foreground",
+                  )}
+                >
+                  <Store className="h-4 w-4 mb-1" />
+                  <span>Allow Everywhere</span>
+                  <span className="text-[10px] text-muted-foreground font-normal mt-0.5">No store restrictions</span>
+                </button>
+              </div>
+            </div>
+
+            {/* If not "clear", show the LocationMultiSelect */}
+            {locationUpdateMode !== "clear" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold flex items-center justify-between">
+                  <span>
+                    Select Outlets to {locationUpdateMode === "add" ? "Add" : "Assign"}:
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-normal">
+                    Stock locations only • {selectedLocationIds.length} selected
+                  </span>
+                </Label>
+                <LocationMultiSelect
+                  locations={locations}
+                  selected={selectedLocationIds}
+                  onChange={setSelectedLocationIds}
+                  disabled={isPending}
+                  maxHeight="250px"
+                  stockOnly={true}
+                />
+              </div>
+            )}
+
+            {locationUpdateMode === "clear" && (
+              <div className="p-3.5 rounded-lg border border-blue-200/80 bg-blue-50/50 dark:bg-blue-950/20 text-xs text-blue-900 dark:text-blue-200 flex items-start gap-2.5">
+                <Info className="h-4 w-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <p className="font-semibold">Universal Redemption Enabled</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    All location restrictions will be cleared from {targetVouchersForLocation.length} voucher(s).
+                    Customers will be able to redeem them at any registered checkout outlet.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={() => setIsLocationModalOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveLocations}
+              disabled={
+                isPending ||
+                (locationUpdateMode !== "clear" && selectedLocationIds.length === 0)
+              }
+              className="gap-1.5 cursor-pointer"
+            >
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              <CheckCircle2 className="h-4 w-4" />
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
