@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package, CheckCircle, Clock, AlertCircle, FileText } from 'lucide-react';
@@ -12,6 +12,8 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import Link from 'next/link';
 import { authFetch } from '@/lib/auth';
+import DataTable from '@/components/common/data-table';
+import { ColumnDef } from '@tanstack/react-table';
 
 interface TransferRequest {
     id: string;
@@ -39,7 +41,11 @@ interface TransferRequest {
     claim?: {
         claimNo: string;
         claimType: string;
+        reviewNotes?: string | null;
+        reasonNotes?: string | null;
+        reasonCode?: string | null;
     };
+    notes?: string | null;
 }
 
 export default function PLMClaimsPage() {
@@ -48,7 +54,7 @@ export default function PLMClaimsPage() {
     const [completedRequests, setCompletedRequests] = useState<TransferRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
+    const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('completed');
 
     useEffect(() => {
         loadClaimTransfers();
@@ -58,57 +64,144 @@ export default function PLMClaimsPage() {
         setLoading(true);
         try {
             const [transferRes, claimsRes] = await Promise.all([
-                getTransferRequests(),
-                authFetch('/pos-claims?status=APPROVED'),
+                getTransferRequests({ transferType: 'CLAIM_TO_PLM', limit: 0 }),
+                authFetch('/pos-claims?status=ALL&limit=0'),
             ]);
             
             const pending: any[] = [];
             const completed: any[] = [];
 
-            // 1. Claims awaiting PLM Acknowledgment (Approved/Partial)
-            if (claimsRes.ok && claimsRes.data?.data) {
-                const claims = claimsRes.data.data;
-                for (const c of claims) {
-                    if (c.status === 'APPROVED' || c.status === 'PARTIALLY_APPROVED') {
-                        pending.push({
-                            id: c.id,
-                            isClaimDirect: true,
-                            requestNo: c.claimNumber,
-                            status: 'PENDING',
+            const claimTransfers: any[] = (transferRes.status && transferRes.data)
+                ? transferRes.data.filter((req: TransferRequest) => req.transferType === 'CLAIM_TO_PLM')
+                : [];
+
+            const allClaims: any[] = (claimsRes.ok && claimsRes.data?.data)
+                ? claimsRes.data.data
+                : [];
+
+            // Build map of claims by claimNumber and transferRequestId for quick cross-referencing
+            const claimByNumber = new Map<string, any>();
+            const claimByTrId = new Map<string, any>();
+            for (const c of allClaims) {
+                if (c.claimNumber) claimByNumber.set(c.claimNumber, c);
+                if (c.transferRequestId) claimByTrId.set(c.transferRequestId, c);
+            }
+
+            // Also map transfer requests by id and claimNo
+            const trById = new Map<string, any>();
+            for (const tr of claimTransfers) {
+                if (tr.id) trById.set(tr.id, tr);
+            }
+
+            // 1. Process TransferRequests
+            for (const tr of claimTransfers) {
+                // Enrich review remarks / claim info from claims table if missing
+                const matchedClaim = claimByTrId.get(tr.id) || (tr.claim?.claimNo ? claimByNumber.get(tr.claim.claimNo) : null);
+                if (matchedClaim) {
+                    if (!tr.claim) {
+                        tr.claim = {
+                            claimNo: matchedClaim.claimNumber,
+                            claimType: matchedClaim.claimType,
+                            reviewNotes: matchedClaim.reviewNotes,
+                            reasonNotes: matchedClaim.reasonNotes,
+                            reasonCode: matchedClaim.reasonCode,
+                        };
+                    } else if (!tr.claim.reviewNotes && matchedClaim.reviewNotes) {
+                        tr.claim.reviewNotes = matchedClaim.reviewNotes;
+                    }
+                }
+
+                if (tr.status === 'COMPLETED' || tr.status === 'APPROVED') {
+                    completed.push(tr);
+                } else if (tr.status === 'PENDING') {
+                    pending.push(tr);
+                }
+            }
+
+            // 2. Process claims from pos_claims table to catch any not covered by TransferRequest
+            for (const c of allClaims) {
+                const isClaimCompleted = c.status === 'COMPLETED' || c.status === 'ACKNOWLEDGED';
+                const isClaimPending = c.status === 'APPROVED' || c.status === 'PARTIALLY_APPROVED';
+
+                if (isClaimCompleted) {
+                    const alreadyInCompleted = completed.some(
+                        (item: any) =>
+                            (c.transferRequestId && item.id === c.transferRequestId) ||
+                            (item.claim?.claimNo && item.claim.claimNo === c.claimNumber) ||
+                            item.requestNo === c.claimNumber
+                    );
+
+                    if (!alreadyInCompleted) {
+                        const tr = c.transferRequestId ? trById.get(c.transferRequestId) : null;
+                        completed.push({
+                            id: c.transferRequestId || c.id,
+                            isClaimDirect: !c.transferRequestId,
+                            requestNo: tr?.requestNo || c.claimNumber,
+                            status: 'COMPLETED',
                             transferType: 'CLAIM_TO_PLM',
                             createdAt: c.createdAt,
-                            fromLocation: c.salesOrder?.location || { name: 'Outlet Store', code: 'OUTLET' },
-                            toLocation: { name: 'PLM Location', code: 'C20001' },
-                            items: (c.items || []).filter((i: any) => ['APPROVED', 'PARTIALLY_APPROVED'].includes(i.itemStatus)).map((i: any) => ({
-                                id: i.id,
-                                quantity: i.approvedQty,
-                                item: i.item || { sku: 'ITEM', description: 'Claim Item' },
-                            })),
+                            approvedAt: c.reviewedAt || c.updatedAt,
+                            fromLocation: c.salesOrder?.location || tr?.fromLocation || { name: 'Outlet Store', code: 'OUTLET' },
+                            toLocation: tr?.toLocation || { name: 'PRODUCT LINE MANAGEMENT', code: 'C20001' },
+                            items: (c.items && c.items.length > 0)
+                                ? c.items.map((i: any) => ({
+                                    id: i.id,
+                                    quantity: i.approvedQty > 0 ? i.approvedQty : (i.claimedQty || 1),
+                                    item: i.item || { sku: 'ITEM', description: 'Claim Item' },
+                                }))
+                                : (tr?.items || []),
                             claim: {
                                 claimNo: c.claimNumber,
                                 claimType: c.claimType,
+                                reviewNotes: c.reviewNotes,
+                                reasonNotes: c.reasonNotes,
+                                reasonCode: c.reasonCode,
                             },
+                            notes: c.reviewNotes,
+                        });
+                    }
+                } else if (isClaimPending) {
+                    const alreadyInPending = pending.some(
+                        (item: any) =>
+                            (c.transferRequestId && item.id === c.transferRequestId) ||
+                            (item.claim?.claimNo && item.claim.claimNo === c.claimNumber) ||
+                            item.requestNo === c.claimNumber
+                    );
+
+                    if (!alreadyInPending) {
+                        const tr = c.transferRequestId ? trById.get(c.transferRequestId) : null;
+                        pending.push({
+                            id: c.id,
+                            isClaimDirect: !c.transferRequestId,
+                            requestNo: tr?.requestNo || c.claimNumber,
+                            status: 'PENDING',
+                            transferType: 'CLAIM_TO_PLM',
+                            createdAt: c.createdAt,
+                            fromLocation: c.salesOrder?.location || tr?.fromLocation || { name: 'Outlet Store', code: 'OUTLET' },
+                            toLocation: tr?.toLocation || { name: 'PRODUCT LINE MANAGEMENT', code: 'C20001' },
+                            items: (c.items || [])
+                                .filter((i: any) => ['APPROVED', 'PARTIALLY_APPROVED'].includes(i.itemStatus) || i.approvedQty > 0)
+                                .map((i: any) => ({
+                                    id: i.id,
+                                    quantity: i.approvedQty || i.claimedQty,
+                                    item: i.item || { sku: 'ITEM', description: 'Claim Item' },
+                                })),
+                            claim: {
+                                claimNo: c.claimNumber,
+                                claimType: c.claimType,
+                                reviewNotes: c.reviewNotes,
+                                reasonNotes: c.reasonNotes,
+                                reasonCode: c.reasonCode,
+                            },
+                            notes: c.reviewNotes,
                         });
                     }
                 }
             }
 
-            // 2. Transfers from Transfer Requests
-            if (transferRes.status && transferRes.data) {
-                const claimTransfers = transferRes.data.filter(
-                    (req: TransferRequest) => req.transferType === 'CLAIM_TO_PLM'
-                );
-
-                const pendingTrs = claimTransfers.filter((req: TransferRequest) => req.status === 'PENDING');
-                const completedTrs = claimTransfers.filter((req: TransferRequest) => req.status === 'COMPLETED' || req.status === 'APPROVED');
-
-                for (const tr of pendingTrs) {
-                    if (!pending.some((p: any) => p.claim?.claimNo === tr.claim?.claimNo)) {
-                        pending.push(tr);
-                    }
-                }
-                completed.push(...completedTrs);
-            }
+            // Sort newest first by createdAt
+            pending.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            completed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
             setPendingRequests(pending);
             setCompletedRequests(completed);
@@ -150,163 +243,190 @@ export default function PLMClaimsPage() {
         }
     };
 
-    const renderTransferCard = (request: TransferRequest, isPending: boolean) => (
-        <Card key={request.id} className="shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Package className="h-5 w-5 text-primary" />
-                            {request.requestNo}
-                        </CardTitle>
-                        {request.claim && (
-                            <p className="text-sm text-muted-foreground">
-                                Claim: <span className="font-semibold">{request.claim.claimNo}</span>
-                                <Badge variant="outline" className="ml-2 text-xs">
-                                    {request.claim.claimType}
+    const columns: ColumnDef<TransferRequest>[] = useMemo(
+        () => [
+            {
+                accessorKey: 'requestNo',
+                header: 'Transfer / STN #',
+                cell: ({ row }) => {
+                    const req = row.original;
+                    return (
+                        <div className="font-semibold flex items-center gap-2">
+                            <Package className="h-4 w-4 text-primary shrink-0" />
+                            <span>{req.requestNo}</span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'claimNo',
+                accessorFn: (row) => row.claim?.claimNo || row.requestNo,
+                header: 'Claim No',
+                cell: ({ row }) => {
+                    const req = row.original;
+                    const claimNo = req.claim?.claimNo || req.requestNo;
+                    return (
+                        <div className="space-y-1">
+                            <div className="font-medium text-sm">{claimNo}</div>
+                            {req.claim?.claimType && (
+                                <Badge variant="outline" className="text-[11px] py-0 px-1.5 font-normal">
+                                    {req.claim.claimType}
                                 </Badge>
-                            </p>
-                        )}
-                    </div>
-                    <Badge 
-                        variant={isPending ? "secondary" : "default"}
-                        className={isPending ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}
-                    >
-                        {isPending ? (
-                            <>
-                                <Clock className="h-3 w-3 mr-1" />
-                                PENDING
-                            </>
-                        ) : (
-                            <>
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                COMPLETED
-                            </>
-                        )}
-                    </Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {/* Transfer Details */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <p className="text-muted-foreground">From</p>
-                        <p className="font-medium">
-                            {request.fromLocation?.name || request.fromWarehouse?.name || 'N/A'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            {request.fromLocation?.code || request.fromWarehouse?.code || ''}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-muted-foreground">To</p>
-                        <p className="font-medium">
-                            {request.toWarehouse?.name || request.toLocation?.name || 'N/A'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            {request.toWarehouse?.code || request.toLocation?.code || ''}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Review Remarks */}
-                {(request.claim?.reviewNotes || request.notes) && (
-                    <div className="bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-2.5 text-xs space-y-0.5">
-                        <span className="font-bold text-amber-800 dark:text-amber-300 block">
-                            ERP Review Remarks:
-                        </span>
-                        <p className="text-foreground font-medium whitespace-pre-wrap">
-                            {request.claim?.reviewNotes || request.notes}
-                        </p>
-                    </div>
-                )}
-
-                {/* Items */}
-                <div className="border-t pt-3">
-                    <p className="text-sm font-medium mb-2">Items ({request.items.length})</p>
-                    <div className="space-y-2">
-                        {request.items.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between bg-muted/30 p-2 rounded">
-                                <div>
-                                    <p className="text-sm font-medium">{item.item.sku}</p>
-                                    <p className="text-xs text-muted-foreground">{item.item.description}</p>
-                                    {(item.item.color?.name || item.item.size?.name) && (
-                                        <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
-                                            {item.item.color?.name && (
-                                                <span>
-                                                    Color: <span className="font-medium text-foreground">{item.item.color.name}</span>
-                                                </span>
-                                            )}
-                                            {item.item.color?.name && item.item.size?.name && <span>•</span>}
-                                            {item.item.size?.name && (
-                                                <span>
-                                                    Size: <span className="font-medium text-foreground">{item.item.size.name}</span>
-                                                </span>
-                                            )}
-                                        </div>
+                            )}
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'fromLocation',
+                accessorFn: (row) => row.fromLocation?.name || row.fromWarehouse?.name || '',
+                header: 'From Outlet',
+                cell: ({ row }) => {
+                    const req = row.original;
+                    const loc = req.fromLocation || req.fromWarehouse;
+                    return (
+                        <div>
+                            <p className="font-medium text-sm">{loc?.name || 'N/A'}</p>
+                            <p className="text-xs text-muted-foreground">{loc?.code || ''}</p>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'toLocation',
+                accessorFn: (row) => row.toLocation?.name || row.toWarehouse?.name || '',
+                header: 'To Location',
+                cell: ({ row }) => {
+                    const req = row.original;
+                    const loc = req.toWarehouse || req.toLocation;
+                    return (
+                        <div>
+                            <p className="font-medium text-sm">{loc?.name || 'PLM (C20001)'}</p>
+                            <p className="text-xs text-muted-foreground">{loc?.code || 'C20001'}</p>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'items',
+                header: 'Items',
+                cell: ({ row }) => {
+                    const req = row.original;
+                    return (
+                        <div className="space-y-1 max-w-[280px]">
+                            {req.items?.map((it) => (
+                                <div key={it.id} className="text-xs flex items-center justify-between gap-2 border-b border-muted/50 pb-0.5 last:border-b-0">
+                                    <span className="font-medium truncate">{it.item?.sku || 'ITEM'}</span>
+                                    {(it.item?.color?.name || it.item?.size?.name) && (
+                                        <span className="text-[11px] text-muted-foreground truncate">
+                                            {[it.item.color?.name, it.item.size?.name].filter(Boolean).join(' • ')}
+                                        </span>
                                     )}
+                                    <Badge variant="secondary" className="text-[10px] py-0 px-1 font-mono shrink-0">
+                                        Qty: {it.quantity}
+                                    </Badge>
                                 </div>
-                                <Badge variant="outline" className="font-semibold">
-                                    Qty: {item.quantity}
-                                </Badge>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Timestamps */}
-                <div className="border-t pt-3 text-xs text-muted-foreground space-y-1">
-                    <p>Created: {format(new Date(request.createdAt), 'dd MMM yyyy, h:mm a')}</p>
-                    {request.approvedAt && (
-                        <p>
-                            Acknowledged: {format(new Date(request.approvedAt), 'dd MMM yyyy, h:mm a')}
-                            {request.approvedBy && <span className="ml-1">by {request.approvedBy.name}</span>}
-                        </p>
-                    )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-2">
-                    {isPending ? (
-                        <Button
-                            onClick={() => handleAcknowledge(request)}
-                            disabled={acknowledgingId === request.id}
-                            className="flex-1 bg-green-600 hover:bg-green-700"
+                            ))}
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'reviewNotes',
+                accessorFn: (row) => row.claim?.reviewNotes || (row as any).notes || '',
+                header: 'ERP Remarks',
+                cell: ({ row }) => {
+                    const notes = row.original.claim?.reviewNotes || (row.original as any).notes;
+                    if (!notes) return <span className="text-xs text-muted-foreground italic">-</span>;
+                    return (
+                        <div className="max-w-[220px] text-xs bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300 p-1.5 rounded border border-amber-200 dark:border-amber-800 font-medium whitespace-pre-wrap">
+                            {notes}
+                        </div>
+                    );
+                },
+            },
+            {
+                accessorKey: 'status',
+                header: 'Status',
+                cell: ({ row }) => {
+                    const isPending = row.original.status === 'PENDING';
+                    return (
+                        <Badge 
+                            variant={isPending ? "secondary" : "default"}
+                            className={isPending ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}
                         >
-                            {acknowledgingId === request.id ? (
-                                <>Processing...</>
+                            {isPending ? (
+                                <>
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    PENDING
+                                </>
                             ) : (
                                 <>
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Acknowledge Receipt
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    COMPLETED
                                 </>
                             )}
-                        </Button>
-                    ) : (
-                        <div className="flex-1 flex items-center justify-center gap-2 text-sm text-green-600 font-medium">
-                            <CheckCircle className="h-4 w-4" />
-                            Inventory Updated
+                        </Badge>
+                    );
+                },
+            },
+            {
+                accessorKey: 'createdAt',
+                header: 'Date',
+                cell: ({ row }) => {
+                    const d = row.original.approvedAt || row.original.createdAt;
+                    return (
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
+                            {d ? format(new Date(d), 'dd MMM yyyy, h:mm a') : '-'}
                         </div>
-                    )}
-                    {request.isClaimDirect ? (
-                        <Button variant="outline" size="sm" asChild>
+                    );
+                },
+            },
+            {
+                id: 'actions',
+                header: 'Action',
+                cell: ({ row }) => {
+                    const req = row.original;
+                    const isPending = req.status === 'PENDING';
+                    if (isPending) {
+                        return (
+                            <Button
+                                size="sm"
+                                onClick={() => handleAcknowledge(req)}
+                                disabled={acknowledgingId === req.id}
+                                className="bg-green-600 hover:bg-green-700 h-8 text-xs whitespace-nowrap"
+                            >
+                                {acknowledgingId === req.id ? 'Processing...' : (
+                                    <>
+                                        <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                        Acknowledge
+                                    </>
+                                )}
+                            </Button>
+                        );
+                    }
+                    return req.isClaimDirect ? (
+                        <Button variant="outline" size="sm" className="h-8 text-xs whitespace-nowrap" asChild>
                             <Link href="/erp/claims" target="_blank">
-                                <FileText className="h-4 w-4 mr-1" />
+                                <FileText className="h-3.5 w-3.5 mr-1" />
                                 Claim Detail
                             </Link>
                         </Button>
                     ) : (
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href={`/erp/inventory/transactions/claim-transfer/slip/${request.id}`} target="_blank">
-                                <FileText className="h-4 w-4 mr-1" />
+                        <Button variant="outline" size="sm" className="h-8 text-xs whitespace-nowrap" asChild>
+                            <Link href={`/erp/inventory/transactions/claim-transfer/slip/${req.id}`} target="_blank">
+                                <FileText className="h-3.5 w-3.5 mr-1" />
                                 View Slip
                             </Link>
                         </Button>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
+                    );
+                },
+            },
+        ],
+        [acknowledgingId]
     );
+
+    const activeList = activeTab === 'pending' ? pendingRequests : completedRequests;
 
     return (
         <PermissionGuard permissions="erp.inventory.warehouse.view">
@@ -350,7 +470,7 @@ export default function PLMClaimsPage() {
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-2 border-b">
+                <div className="flex items-center border-b pb-1 gap-2">
                     <button
                         onClick={() => setActiveTab('pending')}
                         className={`px-4 py-2 font-medium transition-colors ${
@@ -373,7 +493,7 @@ export default function PLMClaimsPage() {
                     </button>
                 </div>
 
-                {/* Content */}
+                {/* Content — always table with built-in search & filter */}
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
                         <div className="text-center space-y-2">
@@ -381,33 +501,56 @@ export default function PLMClaimsPage() {
                             <p className="text-muted-foreground">Loading claim transfers...</p>
                         </div>
                     </div>
-                ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                ) : activeList.length === 0 && !loading ? (
+                    <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg">
                         {activeTab === 'pending' ? (
-                            pendingRequests.length === 0 ? (
-                                <div className="col-span-full flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg">
-                                    <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                                    <h3 className="text-lg font-semibold mb-2">No Pending Claims</h3>
-                                    <p className="text-muted-foreground text-center max-w-md">
-                                        All claim transfers have been acknowledged. New transfers will appear here when created.
-                                    </p>
-                                </div>
-                            ) : (
-                                pendingRequests.map((request) => renderTransferCard(request, true))
-                            )
+                            <>
+                                <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                                <h3 className="text-lg font-semibold mb-2">No Pending Claims</h3>
+                                <p className="text-muted-foreground text-center max-w-md">
+                                    All claim transfers have been acknowledged. New transfers will appear here when created.
+                                </p>
+                            </>
                         ) : (
-                            completedRequests.length === 0 ? (
-                                <div className="col-span-full flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg">
-                                    <CheckCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                                    <h3 className="text-lg font-semibold mb-2">No Completed Claims</h3>
-                                    <p className="text-muted-foreground text-center max-w-md">
-                                        Acknowledged claims will appear here.
-                                    </p>
-                                </div>
-                            ) : (
-                                completedRequests.map((request) => renderTransferCard(request, false))
-                            )
+                            <>
+                                <CheckCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                                <h3 className="text-lg font-semibold mb-2">No Completed Claims</h3>
+                                <p className="text-muted-foreground text-center max-w-md">
+                                    Acknowledged claims will appear here.
+                                </p>
+                            </>
                         )}
+                    </div>
+                ) : (
+                    <div className="rounded-md border bg-card p-3 shadow-sm">
+                        <DataTable
+                            tableId={`plm-claims-table-${activeTab}`}
+                            columns={columns}
+                            data={activeList}
+                            isLoading={loading}
+                            canBulkEdit={false}
+                            canBulkDelete={false}
+                            canRowEdit={false}
+                            canRowDelete={false}
+                            searchFields={[
+                                { key: 'requestNo', label: 'Transfer / STN #' },
+                                { key: 'claimNo', label: 'Claim No' },
+                                { key: 'fromLocation', label: 'From Outlet' },
+                                { key: 'reviewNotes', label: 'ERP Remarks' },
+                            ]}
+                            filters={[
+                                {
+                                    key: 'status',
+                                    label: 'Status',
+                                    options: [
+                                        { label: 'All', value: '' },
+                                        { label: 'Pending', value: 'PENDING' },
+                                        { label: 'Completed', value: 'COMPLETED' },
+                                        { label: 'Approved', value: 'APPROVED' },
+                                    ],
+                                },
+                            ]}
+                        />
                     </div>
                 )}
             </div>

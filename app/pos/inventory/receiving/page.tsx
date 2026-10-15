@@ -146,6 +146,7 @@ export default function StockReceivingPage() {
     const refNo = request.requestNo || "N/A";
     const outboundNo = request.outboundNo || request.formattedSerialNo || null;
     const notes = request.notes || "";
+    const srnRemarks = request.stockRequisition?.remarks || "";
     const totalQty =
       request.items?.reduce(
         (sum: number, item: any) => sum + Number(item.quantity || 0),
@@ -280,11 +281,19 @@ export default function StockReceivingPage() {
                 </div>
 
                 ${
-                  notes
+                  (notes || srnRemarks)
                     ? `
                     <div class="remarks-box">
-                        <div class="remarks-title">Remarks</div>
-                        <div class="remarks-content">${notes}</div>
+                        ${
+                          notes
+                            ? `<div class="remarks-content"><span class="remarks-title">Remarks:</span> ${notes}</div>`
+                            : ""
+                        }
+                        ${
+                          srnRemarks
+                            ? `<div class="remarks-content" style="margin-top: ${notes ? '3px' : '0'}"><span style="font-weight:700;">SRN Remarks:</span> ${srnRemarks}</div>`
+                            : ""
+                        }
                     </div>
                 `
                     : ""
