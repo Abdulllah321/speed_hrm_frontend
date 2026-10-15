@@ -68,7 +68,6 @@ export async function getLocations(stockOnly?: boolean): Promise<{ status: boole
         };
     }
 }
-
 // Get location by id
 export async function getLocationById(id: string): Promise<{ status: boolean; data?: Location; message?: string }> {
     try {
@@ -302,4 +301,4 @@ export async function getLocationExportStatus(
         return { status: false, message: 'Failed to connect to server' };
     }
 }
-
+
