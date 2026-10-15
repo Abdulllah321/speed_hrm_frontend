@@ -156,6 +156,71 @@ export async function issueVoucher(data: {
     }
 }
 
+export async function bulkIssueVouchers(data: {
+    voucherType?: VoucherType;
+    faceValue?: number;
+    quantity?: number;
+    discount?: number;
+    description?: string;
+    customerId?: string;
+    companyName?: string;
+    companyGlCode?: string;
+    requireCustomerMatch?: boolean;
+    expiresAt?: string;
+    locationIds?: string[];
+    paymentMode?: string;
+    cardholderName?: string;
+    cardLast4?: string;
+    slipNo?: string;
+    merchantId?: string;
+    vouchers?: Array<{
+        voucherType?: VoucherType;
+        faceValue: number;
+        discount?: number;
+        description?: string;
+        customerId?: string;
+        companyName?: string;
+        companyGlCode?: string;
+        expiresAt?: string;
+        locationIds?: string[];
+        paymentMode?: string;
+        cardholderName?: string;
+        cardLast4?: string;
+        slipNo?: string;
+        merchantId?: string;
+    }>;
+}): Promise<{
+    status: boolean;
+    data?: {
+        count: number;
+        codes: string[];
+        vouchers: Array<{
+            id: string;
+            code: string;
+            faceValue: number;
+            discount?: number;
+            voucherType: VoucherType;
+            expiresAt?: string;
+        }>;
+    };
+    message?: string;
+}> {
+    try {
+        const res = await authFetch('/pos-config/vouchers/bulk', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+        const result = res.data;
+        if (result?.status) {
+            revalidatePath('/pos/vouchers');
+            revalidatePath('/master/pos-config');
+        }
+        return result;
+    } catch {
+        return { status: false, message: 'Failed to bulk issue vouchers' };
+    }
+}
+
 export async function voidVoucher(
     id: string,
     reason?: string,

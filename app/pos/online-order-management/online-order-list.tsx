@@ -28,10 +28,18 @@ import {
     Check,
     X,
     ExternalLink,
-    Pencil
+    Pencil,
+    Phone,
+    PhoneCall,
+    MessageCircle,
+    Clock,
+    Warehouse
 } from 'lucide-react';
 import { OnlineOrderBulkUploadModal } from '@/components/online-orders/online-order-bulk-upload-modal';
 import { EditOnlineOrderModal } from '@/components/online-orders/edit-online-order-modal';
+import { OrderConfirmationModal } from '@/components/online-orders/order-confirmation-modal';
+import { InventorySourcingModal } from '@/components/online-orders/inventory-sourcing-modal';
+import { OnlineOrderNav } from '@/components/online-orders/online-order-nav';
 import { authFetch } from '@/lib/auth';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -65,6 +73,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface OrderItem {
     id?: string;
+    itemId?: string;
     sku: string;
     systemSku?: string;
     barcode?: string;
@@ -116,6 +125,8 @@ interface GroupedOrder {
     address?: string;
     paymentMethod: string;
     status: string;
+    confirmationStatus?: string;
+    note?: string;
     orderedAt?: string;
     trackingNumber?: string;
     marketplace?: string;
@@ -128,7 +139,7 @@ interface GroupedOrder {
     orderTotal: number;
 }
 
-type TabFilter = 'all' | 'pending' | 'ready' | 'stock_warning' | 'posted' | 'with_vouchers';
+type TabFilter = 'all' | 'needs_confirmation' | 'confirmed' | 'stock_warning' | 'ready' | 'posted' | 'with_vouchers' | 'cancelled';
 
 export function OnlineOrderList() {
     const { user } = useAuth();
@@ -161,6 +172,14 @@ export function OnlineOrderList() {
     const [orderToEdit, setOrderToEdit] = useState<GroupedOrder | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+    // Customer Telephonic Confirmation Modal State
+    const [orderToConfirm, setOrderToConfirm] = useState<GroupedOrder | null>(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+    // Multi-Location Inventory Sourcing & Transfer Modal State
+    const [orderToSource, setOrderToSource] = useState<GroupedOrder | null>(null);
+    const [isSourcingModalOpen, setIsSourcingModalOpen] = useState(false);
+
     // Bulk Post Results Dialog
     const [bulkResults, setBulkResults] = useState<{
         summary: { total: number; posted: number; failed: number };
@@ -174,6 +193,7 @@ export function OnlineOrderList() {
         }>;
     } | null>(null);
     const [isBulkResultsModalOpen, setIsBulkResultsModalOpen] = useState(false);
+    const [isBulkConfirming, setIsBulkConfirming] = useState(false);
 
     // Fetch orders from backend
     const fetchOrders = useCallback(async (isSilent = false) => {
@@ -196,6 +216,8 @@ export function OnlineOrderList() {
                     return {
                         ...o,
                         id: o.orderNumber,
+                        confirmationStatus: (o.confirmationStatus || o.realMarketStatus || 'NEEDS_CONFIRMATION').toUpperCase(),
+                        note: o.note,
                         financials: {
                             grossSubtotal: gross,
                             itemDiscounts,
@@ -238,8 +260,11 @@ export function OnlineOrderList() {
         const total = orders.length;
         const posted = orders.filter(o => o.status === 'posted').length;
         const pending = orders.filter(o => o.status !== 'posted').length;
-        const ready = orders.filter(o => o.status !== 'posted' && o.allStockAvailable).length;
+        const needsConfirmation = orders.filter(o => o.status !== 'posted' && (!o.confirmationStatus || o.confirmationStatus === 'NEEDS_CONFIRMATION' || o.confirmationStatus === 'CALL_BACK')).length;
+        const confirmed = orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED').length;
+        const ready = orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED' && o.allStockAvailable).length;
         const stockWarning = orders.filter(o => o.status !== 'posted' && !o.allStockAvailable).length;
+        const cancelled = orders.filter(o => o.confirmationStatus === 'CANCELLED').length;
         const withVouchers = orders.filter(o => o.voucherInfo && o.voucherInfo.isValid).length;
         const totalRevenue = orders.reduce((sum, o) => sum + (o.financials.netGrandTotal || 0), 0);
         const totalVoucherValue = orders.reduce((sum, o) => sum + (o.financials.voucherDeduction || 0), 0);
@@ -248,8 +273,11 @@ export function OnlineOrderList() {
             total,
             posted,
             pending,
+            needsConfirmation,
+            confirmed,
             ready,
             stockWarning,
+            cancelled,
             withVouchers,
             totalRevenue,
             totalVoucherValue,
@@ -259,16 +287,20 @@ export function OnlineOrderList() {
     // Filtered orders for table
     const filteredOrders = useMemo(() => {
         switch (activeTab) {
-            case 'pending':
-                return orders.filter(o => o.status !== 'posted');
+            case 'needs_confirmation':
+                return orders.filter(o => o.status !== 'posted' && (!o.confirmationStatus || o.confirmationStatus === 'NEEDS_CONFIRMATION' || o.confirmationStatus === 'CALL_BACK'));
+            case 'confirmed':
+                return orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED');
             case 'ready':
-                return orders.filter(o => o.status !== 'posted' && o.allStockAvailable);
+                return orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED' && o.allStockAvailable);
             case 'stock_warning':
                 return orders.filter(o => o.status !== 'posted' && !o.allStockAvailable);
             case 'posted':
                 return orders.filter(o => o.status === 'posted');
             case 'with_vouchers':
                 return orders.filter(o => o.voucherInfo && o.voucherInfo.isValid);
+            case 'cancelled':
+                return orders.filter(o => o.confirmationStatus === 'CANCELLED');
             default:
                 return orders;
         }
@@ -514,6 +546,100 @@ export function OnlineOrderList() {
         }
     };
 
+    // 1-Click Fast Inline Confirmation Handler (No modal or typing needed)
+    const handleFastInlineConfirm = async (orderNumber: string, status: string) => {
+        try {
+            const res = await authFetch(`/pos-sales/online-orders/bulk-upload/order/${orderNumber}/confirmation`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    confirmationStatus: status,
+                    notes: `Updated via 1-click action to ${status}`,
+                }),
+            });
+
+            if (res.ok && res.data?.status) {
+                toast.success(`Order #${orderNumber} marked as ${status}!`);
+                setOrders(prev => prev.map(o => {
+                    if (o.orderNumber === orderNumber) {
+                        return {
+                            ...o,
+                            confirmationStatus: status,
+                        };
+                    }
+                    return o;
+                }));
+            } else {
+                toast.error(res.data?.message || 'Failed to update confirmation status');
+            }
+        } catch (e: any) {
+            toast.error(e.message || 'Error updating order status');
+        }
+    };
+
+    // Bulk Confirmation Handler (Confirms multiple selected orders at once)
+    const handleBulkConfirmSelected = async () => {
+        const list = Array.from(selectedOrderNumbers);
+        if (list.length === 0) return;
+        setIsBulkConfirming(true);
+        try {
+            const res = await authFetch(`/pos-sales/online-orders/bulk-upload/bulk-confirm`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    orderNumbers: list,
+                    confirmationStatus: 'CONFIRMED',
+                }),
+            });
+
+            if (res.ok && res.data?.status) {
+                toast.success(`Marked ${list.length} orders as CONFIRMED!`);
+                setOrders(prev => prev.map(o => {
+                    if (selectedOrderNumbers.has(o.orderNumber)) {
+                        return { ...o, confirmationStatus: 'CONFIRMED' };
+                    }
+                    return o;
+                }));
+            } else {
+                toast.error(res.data?.message || 'Failed to bulk confirm orders');
+            }
+        } catch (e: any) {
+            toast.error(e.message || 'Error occurred during bulk confirm');
+        } finally {
+            setIsBulkConfirming(false);
+        }
+    };
+
+    // Bulk Call Back Handler
+    const handleBulkCallBackSelected = async () => {
+        const list = Array.from(selectedOrderNumbers);
+        if (list.length === 0) return;
+        setIsBulkConfirming(true);
+        try {
+            const res = await authFetch(`/pos-sales/online-orders/bulk-upload/bulk-confirm`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    orderNumbers: list,
+                    confirmationStatus: 'CALL_BACK',
+                }),
+            });
+
+            if (res.ok && res.data?.status) {
+                toast.success(`Marked ${list.length} orders as CALL BACK!`);
+                setOrders(prev => prev.map(o => {
+                    if (selectedOrderNumbers.has(o.orderNumber)) {
+                        return { ...o, confirmationStatus: 'CALL_BACK' };
+                    }
+                    return o;
+                }));
+            } else {
+                toast.error(res.data?.message || 'Failed to bulk update orders');
+            }
+        } catch (e: any) {
+            toast.error(e.message || 'Error occurred during bulk update');
+        } finally {
+            setIsBulkConfirming(false);
+        }
+    };
+
     // Define table columns
     const columns = useMemo<ColumnDef<GroupedOrder>[]>(() => [
         {
@@ -616,8 +742,15 @@ export function OnlineOrderList() {
             accessorKey: "customerName",
             cell: ({ row }) => {
                 const order = row.original;
+                const phone = (order.phone || order.items?.[0]?.phone || '').replace(/[^0-9+]/g, '');
+                const cleanPhone = phone.startsWith('0') ? '92' + phone.substring(1) : phone.replace('+', '');
+                const totalAmount = order.financials?.netGrandTotal ?? order.orderTotal ?? 0;
+                const whatsappGreeting = encodeURIComponent(
+                    `Assalam-o-Alaikum ${order.customerName || 'Customer'}, regarding your Order #${order.orderNumber} (Rs ${totalAmount.toLocaleString()}) from Speed Limit. Please confirm if we can dispatch your parcel?`
+                );
+
                 return (
-                    <div className="flex flex-col text-xs max-w-[150px]">
+                    <div className="flex flex-col text-xs max-w-[170px] gap-0.5">
                         <span className="font-semibold text-foreground truncate">
                             <HighlightText text={order.customerName || 'Walk-in / Online'} />
                         </span>
@@ -625,6 +758,125 @@ export function OnlineOrderList() {
                             <span>{order.city || '—'}</span>
                             {order.phone && <span>• {order.phone}</span>}
                         </div>
+                        {phone && (
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                                <a
+                                    href={`tel:${phone}`}
+                                    className="p-1 rounded bg-muted/60 hover:bg-emerald-50 hover:text-emerald-600 text-muted-foreground transition inline-flex items-center gap-1 text-[10px]"
+                                    title="Call Customer"
+                                >
+                                    <Phone className="h-3 w-3" />
+                                </a>
+                                <a
+                                    href={`https://wa.me/${cleanPhone}?text=${whatsappGreeting}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-1 rounded bg-muted/60 hover:bg-emerald-50 hover:text-emerald-600 text-muted-foreground transition inline-flex items-center gap-1 text-[10px]"
+                                    title="WhatsApp Customer"
+                                >
+                                    <MessageCircle className="h-3 w-3 text-emerald-600" />
+                                </a>
+                            </div>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            header: "Verification",
+            accessorKey: "confirmationStatus",
+            cell: ({ row }) => {
+                const order = row.original;
+                const confStatus = order.confirmationStatus || 'NEEDS_CONFIRMATION';
+
+                let badge = null;
+                if (confStatus === 'CONFIRMED') {
+                    badge = (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-300 text-[10px] font-semibold gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Confirmed
+                        </Badge>
+                    );
+                } else if (confStatus === 'CALL_BACK') {
+                    badge = (
+                        <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-300 dark:bg-violet-950/40 dark:text-violet-300 text-[10px] font-semibold gap-1">
+                            <Clock className="h-3 w-3" /> Call Back
+                        </Badge>
+                    );
+                } else if (confStatus === 'CANCELLED') {
+                    badge = (
+                        <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 text-[10px] font-semibold gap-1">
+                            <X className="h-3 w-3" /> Cancelled
+                        </Badge>
+                    );
+                } else {
+                    badge = (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 text-[10px] font-semibold gap-1">
+                            <PhoneCall className="h-3 w-3 text-amber-600" /> Awaiting Call
+                        </Badge>
+                    );
+                }
+
+                const isConfirmed = order.confirmationStatus === 'CONFIRMED';
+                const isCallBack = order.confirmationStatus === 'CALL_BACK';
+
+                return (
+                    <div className="flex flex-col gap-1.5 items-start min-w-[130px]">
+                        {badge}
+                        {order.status !== 'posted' && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                                {/* 1-Click Fast Confirm */}
+                                <button
+                                    type="button"
+                                    disabled={isConfirmed}
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await handleFastInlineConfirm(order.orderNumber, 'CONFIRMED');
+                                    }}
+                                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                                        isConfirmed
+                                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200'
+                                    }`}
+                                    title="1-Click Confirm (No typing required)"
+                                >
+                                    <Check className="h-2.5 w-2.5" />
+                                    <span>Confirm</span>
+                                </button>
+
+                                {/* 1-Click Fast Call Back */}
+                                <button
+                                    type="button"
+                                    disabled={isCallBack}
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await handleFastInlineConfirm(order.orderNumber, 'CALL_BACK');
+                                    }}
+                                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                                        isCallBack
+                                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                            : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200'
+                                    }`}
+                                    title="1-Click Call Back"
+                                >
+                                    <Clock className="h-2.5 w-2.5" />
+                                    <span>Call</span>
+                                </button>
+
+                                {/* Optional Note Modal Trigger */}
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOrderToConfirm(order);
+                                        setIsConfirmModalOpen(true);
+                                    }}
+                                    className="text-[10px] text-muted-foreground hover:text-foreground font-medium cursor-pointer p-0.5"
+                                    title="Open Detailed Call Log Dialog"
+                                >
+                                    <Pencil className="h-2.5 w-2.5" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 );
             },
@@ -639,7 +891,7 @@ export function OnlineOrderList() {
                 const isAllStock = order.allStockAvailable;
 
                 return (
-                    <div className="flex flex-col gap-1.5 min-w-[160px]">
+                    <div className="flex flex-col gap-1.5 min-w-[170px]">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-medium text-foreground">
                                 {itemCount} {itemCount === 1 ? 'item' : 'items'} ({totalUnits} pcs)
@@ -676,6 +928,22 @@ export function OnlineOrderList() {
                                 </span>
                             )}
                         </div>
+
+                        {/* Arrange Stock Trigger Button */}
+                        {order.status !== 'posted' && !isAllStock && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setOrderToSource(order);
+                                    setIsSourcingModalOpen(true);
+                                }}
+                                className="h-6 text-[10px] px-2 text-primary border-primary/30 hover:bg-primary/10 gap-1 w-fit mt-0.5 font-medium cursor-pointer"
+                                title="Locate barcodes across company warehouses & outlets"
+                            >
+                                <Layers className="h-3 w-3" /> Arrange Stock
+                            </Button>
+                        )}
                     </div>
                 );
             },
@@ -805,9 +1073,42 @@ export function OnlineOrderList() {
                 const order = row.original;
                 const isPosted = order.status === 'posted';
                 const isCurrentlyPosting = postingOrder === order.orderNumber;
+                const isCancelled = order.confirmationStatus === 'CANCELLED';
 
                 return (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
+                        {/* Call / Confirm Dialog */}
+                        {!isPosted && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-muted text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                onClick={() => {
+                                    setOrderToConfirm(order);
+                                    setIsConfirmModalOpen(true);
+                                }}
+                                title="Customer Confirmation & Call Log"
+                            >
+                                <PhoneCall className="h-4 w-4" />
+                            </Button>
+                        )}
+
+                        {/* Multi-Location Inventory Sourcing & Transfer Routing */}
+                        {!isPosted && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-muted text-primary/80 hover:text-primary hover:bg-primary/10"
+                                onClick={() => {
+                                    setOrderToSource(order);
+                                    setIsSourcingModalOpen(true);
+                                }}
+                                title="Locate Barcodes across Stores & 1-Click Transfer"
+                            >
+                                <Layers className="h-4 w-4" />
+                            </Button>
+                        )}
+
                         {/* View Items & Ledger */}
                         <Button
                             variant="ghost"
@@ -850,9 +1151,19 @@ export function OnlineOrderList() {
                             <Button
                                 size="sm"
                                 onClick={() => handlePostOrder(order.orderNumber)}
-                                disabled={isCurrentlyPosting || isPostingSelected || isPostingAll}
-                                className="h-8 px-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-xs"
-                                title={!order.allStockAvailable ? "Warning: Inventory is below ordered quantity" : "Post Order to POS Sales"}
+                                disabled={isCurrentlyPosting || isPostingSelected || isPostingAll || isCancelled}
+                                className={`h-8 px-2.5 font-medium text-xs shadow-xs ${
+                                    isCancelled
+                                        ? 'bg-muted text-muted-foreground opacity-50 cursor-not-allowed'
+                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                }`}
+                                title={
+                                    isCancelled
+                                        ? "Order cancelled by customer"
+                                        : !order.allStockAvailable
+                                        ? "Warning: Inventory is below ordered quantity"
+                                        : "Post Order to POS Sales"
+                                }
                             >
                                 {isCurrentlyPosting ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -886,6 +1197,13 @@ export function OnlineOrderList() {
 
     return (
         <div className="w-full space-y-6">
+            {/* Top Sub-Navigation across modules */}
+            <OnlineOrderNav counts={{
+                totalOrders: orders.length,
+                needsConfirmation: metrics.needsConfirmation,
+                stockShortage: metrics.stockWarning,
+            }} />
+
             {/* Top Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5">
                 <div>
@@ -942,64 +1260,62 @@ export function OnlineOrderList() {
                             <Layers className="h-4 w-4" />
                         </div>
                         <div className="text-2xl font-bold tracking-tight text-foreground">{metrics.total}</div>
-                        <span className="text-[11px] text-muted-foreground mt-1">Imported in system</span>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-card border-border/60 shadow-xs">
-                    <CardContent className="p-4 flex flex-col justify-between">
-                        <div className="flex items-center justify-between text-blue-600 dark:text-blue-400 mb-1">
-                            <span className="text-xs font-medium">Ready to Post</span>
-                            <PackageCheck className="h-4 w-4" />
-                        </div>
-                        <div className="text-2xl font-bold tracking-tight text-blue-600 dark:text-blue-400">{metrics.ready}</div>
-                        <span className="text-[11px] text-muted-foreground mt-1">Full stock available</span>
+                        <span className="text-[11px] text-muted-foreground mt-1">Imported portfolio</span>
                     </CardContent>
                 </Card>
 
                 <Card className="bg-card border-border/60 shadow-xs">
                     <CardContent className="p-4 flex flex-col justify-between">
                         <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 mb-1">
+                            <span className="text-xs font-medium">Awaiting Call</span>
+                            <PhoneCall className="h-4 w-4" />
+                        </div>
+                        <div className="text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400">{metrics.needsConfirmation}</div>
+                        <span className="text-[11px] text-muted-foreground mt-1">Needs confirmation</span>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-card border-border/60 shadow-xs">
+                    <CardContent className="p-4 flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-blue-600 dark:text-blue-400 mb-1">
+                            <span className="text-xs font-medium">Confirmed</span>
+                            <CheckCircle2 className="h-4 w-4" />
+                        </div>
+                        <div className="text-2xl font-bold tracking-tight text-blue-600 dark:text-blue-400">{metrics.confirmed}</div>
+                        <span className="text-[11px] text-muted-foreground mt-1">Ready for fulfillment</span>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-card border-border/60 shadow-xs">
+                    <CardContent className="p-4 flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 mb-1">
                             <span className="text-xs font-medium">Stock Alerts</span>
                             <AlertTriangle className="h-4 w-4" />
                         </div>
-                        <div className="text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400">{metrics.stockWarning}</div>
-                        <span className="text-[11px] text-muted-foreground mt-1">Insufficient inventory</span>
+                        <div className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400">{metrics.stockWarning}</div>
+                        <span className="text-[11px] text-muted-foreground mt-1">Needs multi-store transfer</span>
                     </CardContent>
                 </Card>
 
                 <Card className="bg-card border-border/60 shadow-xs">
                     <CardContent className="p-4 flex flex-col justify-between">
                         <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-1">
+                            <span className="text-xs font-medium">Ready to Post</span>
+                            <PackageCheck className="h-4 w-4" />
+                        </div>
+                        <div className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{metrics.ready}</div>
+                        <span className="text-[11px] text-muted-foreground mt-1">Confirmed & in stock</span>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-card border-border/60 shadow-xs">
+                    <CardContent className="p-4 flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-muted-foreground mb-1">
                             <span className="text-xs font-medium">Posted</span>
-                            <CheckCircle2 className="h-4 w-4" />
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                         </div>
-                        <div className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{metrics.posted}</div>
+                        <div className="text-2xl font-bold tracking-tight text-foreground">{metrics.posted}</div>
                         <span className="text-[11px] text-muted-foreground mt-1">Invoiced into POS</span>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-card border-border/60 shadow-xs">
-                    <CardContent className="p-4 flex flex-col justify-between">
-                        <div className="flex items-center justify-between text-violet-600 dark:text-violet-400 mb-1">
-                            <span className="text-xs font-medium">Vouchers</span>
-                            <Tag className="h-4 w-4" />
-                        </div>
-                        <div className="text-2xl font-bold tracking-tight text-violet-600 dark:text-violet-400">{metrics.withVouchers}</div>
-                        <span className="text-[11px] text-muted-foreground mt-1">Rs {metrics.totalVoucherValue.toLocaleString()} redeemed</span>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-card border-border/60 shadow-xs">
-                    <CardContent className="p-4 flex flex-col justify-between">
-                        <div className="flex items-center justify-between text-primary mb-1">
-                            <span className="text-xs font-medium">Total Net Value</span>
-                            <DollarSign className="h-4 w-4" />
-                        </div>
-                        <div className="text-xl font-bold tracking-tight text-primary truncate" title={`Rs ${metrics.totalRevenue.toLocaleString()}`}>
-                            Rs {metrics.totalRevenue.toLocaleString()}
-                        </div>
-                        <span className="text-[11px] text-muted-foreground mt-1">Order portfolio total</span>
                     </CardContent>
                 </Card>
             </div>
@@ -1017,28 +1333,36 @@ export function OnlineOrderList() {
                             All ({orders.length})
                         </Button>
                         <Button
-                            variant={activeTab === 'pending' ? 'default' : 'ghost'}
+                            variant={activeTab === 'needs_confirmation' ? 'default' : 'ghost'}
                             size="sm"
-                            onClick={() => setActiveTab('pending')}
-                            className="text-xs h-8 rounded-lg"
+                            onClick={() => setActiveTab('needs_confirmation')}
+                            className="text-xs h-8 rounded-lg text-amber-700 dark:text-amber-400"
                         >
-                            Pending ({metrics.pending})
+                            Needs Call ({metrics.needsConfirmation})
                         </Button>
                         <Button
-                            variant={activeTab === 'ready' ? 'default' : 'ghost'}
+                            variant={activeTab === 'confirmed' ? 'default' : 'ghost'}
                             size="sm"
-                            onClick={() => setActiveTab('ready')}
-                            className="text-xs h-8 rounded-lg"
+                            onClick={() => setActiveTab('confirmed')}
+                            className="text-xs h-8 rounded-lg text-blue-700 dark:text-blue-400"
                         >
-                            Ready in Stock ({metrics.ready})
+                            Confirmed ({metrics.confirmed})
                         </Button>
                         <Button
                             variant={activeTab === 'stock_warning' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setActiveTab('stock_warning')}
-                            className="text-xs h-8 rounded-lg text-amber-700 dark:text-amber-400"
+                            className="text-xs h-8 rounded-lg text-rose-700 dark:text-rose-400"
                         >
                             Stock Alerts ({metrics.stockWarning})
+                        </Button>
+                        <Button
+                            variant={activeTab === 'ready' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setActiveTab('ready')}
+                            className="text-xs h-8 rounded-lg text-emerald-700 dark:text-emerald-400"
+                        >
+                            Ready to Post ({metrics.ready})
                         </Button>
                         <Button
                             variant={activeTab === 'with_vouchers' ? 'default' : 'ghost'}
@@ -1052,10 +1376,20 @@ export function OnlineOrderList() {
                             variant={activeTab === 'posted' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setActiveTab('posted')}
-                            className="text-xs h-8 rounded-lg text-emerald-700 dark:text-emerald-400"
+                            className="text-xs h-8 rounded-lg"
                         >
                             Posted ({metrics.posted})
                         </Button>
+                        {metrics.cancelled > 0 && (
+                            <Button
+                                variant={activeTab === 'cancelled' ? 'default' : 'ghost'}
+                                size="sm"
+                                onClick={() => setActiveTab('cancelled')}
+                                className="text-xs h-8 rounded-lg text-muted-foreground"
+                            >
+                                Cancelled ({metrics.cancelled})
+                            </Button>
+                        )}
                     </div>
 
                     <div className="text-xs text-muted-foreground px-2">
@@ -1079,7 +1413,7 @@ export function OnlineOrderList() {
                                 </Badge>
                             )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -1088,6 +1422,36 @@ export function OnlineOrderList() {
                             >
                                 Clear Selection
                             </Button>
+
+                            {/* 1-Click Bulk Confirm */}
+                            <Button
+                                size="sm"
+                                disabled={isBulkConfirming || selectedOrderNumbers.size === 0}
+                                onClick={handleBulkConfirmSelected}
+                                className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs gap-1.5"
+                                title="Confirm all selected orders in 1-click (Zero typing)"
+                            >
+                                {isBulkConfirming ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                )}
+                                <span>Bulk Confirm ({selectedOrderNumbers.size})</span>
+                            </Button>
+
+                            {/* 1-Click Bulk Call Back */}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isBulkConfirming || selectedOrderNumbers.size === 0}
+                                onClick={handleBulkCallBackSelected}
+                                className="h-8 text-amber-700 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 font-semibold text-xs shadow-xs gap-1.5"
+                                title="Mark all selected orders as Call Back in 1-click"
+                            >
+                                <Clock className="h-3.5 w-3.5" />
+                                <span>Bulk Call Back</span>
+                            </Button>
+
                             <Button
                                 size="sm"
                                 onClick={handlePostSelected}
@@ -1489,12 +1853,38 @@ export function OnlineOrderList() {
                         </div>
                     )}
 
-                    <DialogFooter className="mt-4 flex flex-row items-center justify-between gap-2 border-t pt-3">
+                    <DialogFooter className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-2 border-t pt-3">
                         <Button variant="outline" onClick={() => setViewItemsOrder(null)}>
                             Close
                         </Button>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {viewItemsOrder && viewItemsOrder.status !== 'posted' && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setOrderToConfirm(viewItemsOrder);
+                                        setIsConfirmModalOpen(true);
+                                    }}
+                                    className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                >
+                                    <PhoneCall className="h-4 w-4" /> Call / Confirm
+                                </Button>
+                            )}
+
+                            {viewItemsOrder && viewItemsOrder.status !== 'posted' && !viewItemsOrder.allStockAvailable && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setOrderToSource(viewItemsOrder);
+                                        setIsSourcingModalOpen(true);
+                                    }}
+                                    className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10"
+                                >
+                                    <Layers className="h-4 w-4" /> Locate & Route Stock
+                                </Button>
+                            )}
+
                             {viewItemsOrder && viewItemsOrder.status !== 'posted' && (
                                 <Button
                                     variant="outline"
@@ -1515,7 +1905,7 @@ export function OnlineOrderList() {
                                             setViewItemsOrder(null);
                                         }
                                     }}
-                                    disabled={postingOrder === viewItemsOrder.orderNumber}
+                                    disabled={postingOrder === viewItemsOrder.orderNumber || viewItemsOrder.confirmationStatus === 'CANCELLED'}
                                     className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
                                 >
                                     {postingOrder === viewItemsOrder.orderNumber ? (
@@ -1540,6 +1930,38 @@ export function OnlineOrderList() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Customer Order Confirmation & Call Log Modal */}
+            <OrderConfirmationModal
+                open={isConfirmModalOpen}
+                onOpenChange={setIsConfirmModalOpen}
+                order={orderToConfirm}
+                onConfirmed={(orderNum, status, notes) => {
+                    setOrders(prev => prev.map(o => o.orderNumber === orderNum ? {
+                        ...o,
+                        confirmationStatus: status,
+                        note: notes ? (o.note ? `${o.note}\n${notes}` : notes) : o.note,
+                    } : o));
+                    if (viewItemsOrder?.orderNumber === orderNum) {
+                        setViewItemsOrder(prev => prev ? {
+                            ...prev,
+                            confirmationStatus: status,
+                            note: notes ? (prev.note ? `${prev.note}\n${notes}` : notes) : prev.note,
+                        } : null);
+                    }
+                }}
+            />
+
+            {/* Multi-Location Inventory Sourcing & 1-Click Transfer Routing Modal */}
+            <InventorySourcingModal
+                open={isSourcingModalOpen}
+                onOpenChange={setIsSourcingModalOpen}
+                order={orderToSource}
+                currentLocationId={user?.terminal?.location?.id || (user as any)?.locationId}
+                onTransferCreated={(orderNum, transferData) => {
+                    toast.info(`Transfer Request ${transferData.requestNo} initiated for Order #${orderNum}`);
+                }}
+            />
 
             {/* Edit Online Order Modal */}
             <EditOnlineOrderModal
