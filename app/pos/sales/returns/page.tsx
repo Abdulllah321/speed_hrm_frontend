@@ -134,6 +134,7 @@ interface NewLine {
 interface LoadedOrder {
   id: string;
   orderNumber: string;
+  referenceNumber?: string | null;
   grandTotal: number;
   createdAt: string;
   items: any[];
@@ -627,10 +628,18 @@ export default function ReturnsPage() {
 
   // ── Add an order ──────────────────────────────────────────────────
   const handleAddOrder = useCallback(async () => {
-    if (!orderSearch.trim()) return;
+    const searchVal = orderSearch.trim();
+    if (!searchVal) return;
+    const cleanSearch = searchVal.toLowerCase();
+    const cleanSearchNoHash = cleanSearch.replace(/^#/, '');
+
     if (
       loadedOrders.find(
-        (o) => o.orderNumber.toLowerCase() === orderSearch.trim().toLowerCase(),
+        (o) =>
+          o.orderNumber.toLowerCase() === cleanSearch ||
+          o.orderNumber.toLowerCase() === cleanSearchNoHash ||
+          (o.referenceNumber && o.referenceNumber.toLowerCase() === cleanSearch) ||
+          (o.referenceNumber && o.referenceNumber.toLowerCase() === cleanSearchNoHash),
       )
     ) {
       toast.info("Order already added");
@@ -639,7 +648,7 @@ export default function ReturnsPage() {
     setIsSearching(true);
     try {
       const res = await authFetch("/pos-sales/orders/search-for-return", {
-        params: { search: orderSearch.trim() },
+        params: { search: searchVal },
       });
       if (res.ok && res.data?.status) {
         const found = res.data.data?.[0];
@@ -651,6 +660,19 @@ export default function ReturnsPage() {
           toast.error("Cannot process a voided order");
           return;
         }
+        if (loadedOrders.some((o) => o.id === found.id)) {
+          toast.info(`Order #${found.orderNumber} is already added`);
+          setOrderSearch("");
+          return;
+        }
+
+        const shopifyRef =
+          found.referenceNumber ||
+          found.onlineOrders?.[0]?.orderNumber ||
+          (found.notes
+            ? found.notes.match(/Online Order:\s*([^\s|]+)/i)?.[1] ||
+              found.notes.match(/Ref:\s*([^\s|]+)/i)?.[1]
+            : null);
 
         let orderCustomer = found.customer || null;
         if (!orderCustomer && found.id) {
@@ -667,8 +689,8 @@ export default function ReturnsPage() {
           setClaimCustomerName(orderCustomer.name || "");
           setClaimCustomerPhone(orderCustomer.contactNo || orderCustomer.phone || "");
         } else {
-          const custName = found.customerName || "";
-          const custPhone = found.customerPhone || "";
+          const custName = found.customerName || found.onlineOrders?.[0]?.customerName || "";
+          const custPhone = found.customerPhone || found.onlineOrders?.[0]?.phone || "";
           if (custName) setClaimCustomerName(custName);
           if (custPhone) setClaimCustomerPhone(custPhone);
         }
@@ -678,6 +700,7 @@ export default function ReturnsPage() {
           {
             id: found.id,
             orderNumber: found.orderNumber,
+            referenceNumber: shopifyRef,
             grandTotal: Number(found.grandTotal),
             createdAt: found.createdAt,
             items: found.items || [],
@@ -1222,11 +1245,11 @@ export default function ReturnsPage() {
           </Label>
           <div className="flex gap-2">
             <Input
-              placeholder="Order number (e.g. SO-20260401-0001)"
+              placeholder="Search by Order # or Reference (e.g. Shopify #94013, SO-2026...)"
               value={orderSearch}
               onChange={(e) => setOrderSearch(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddOrder()}
-              className="flex-1 font-mono"
+              className="flex-1 font-mono text-sm"
             />
             <Button
               onClick={handleAddOrder}
@@ -1255,6 +1278,15 @@ export default function ReturnsPage() {
                   <span className="font-mono font-extrabold text-emerald-700 dark:text-emerald-300 text-sm tracking-wide">
                     {o.orderNumber}
                   </span>
+                  {o.referenceNumber && (
+                    <Badge
+                      variant="outline"
+                      className="bg-primary/10 text-primary border-primary/30 text-[10px] font-mono font-bold py-0 px-2"
+                      title="Shopify / Reference Number"
+                    >
+                      Ref #{o.referenceNumber}
+                    </Badge>
+                  )}
                   {o.locationName && (
                     <Badge
                       variant="outline"
