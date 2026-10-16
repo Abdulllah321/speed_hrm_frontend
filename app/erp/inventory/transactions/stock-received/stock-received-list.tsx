@@ -148,9 +148,10 @@ export const columns: ColumnDef<StockLedgerEntry>[] = [
             const isInbound = qty >= 0;
             const locationName = row.original.location?.name;
 
-            // For POS Sale, Outlet Transfer In/Out, Stock Adjustment — show only location, hide warehouse
+            // For POS Sale, Outlet Transfer In/Out, Stock Adjustment, and Outlet Return Outbound — show only outlet location, hide warehouse
+            const isOutletReturnOut = (refType === "RETURN_REQUEST" || refType === "CLAIM_RETURN_REQUEST") && !isInbound;
             const locationOnlyTypes = ["POS_SALE", "POS_RETURN", "OUTLET_TRANSFER_IN", "OUTLET_TRANSFER_OUT", "POS_CLAIM_APPROVED", "STOCK_ADJUSTMENT"];
-            const showLocationOnly = locationOnlyTypes.includes(refType) && locationName;
+            const showLocationOnly = (locationOnlyTypes.includes(refType) || isOutletReturnOut) && locationName;
 
             if (showLocationOnly) {
                 return (
@@ -159,7 +160,7 @@ export const columns: ColumnDef<StockLedgerEntry>[] = [
                             <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400" />
                             {locationName}
                         </span>
-                        {(refType === "OUTLET_TRANSFER_IN" || refType === "OUTLET_TRANSFER_OUT") && (
+                        {(refType === "OUTLET_TRANSFER_IN" || refType === "OUTLET_TRANSFER_OUT" || isOutletReturnOut) && (
                             <span className={cn(
                                 "text-xs font-medium flex items-center gap-1",
                                 isInbound ? "text-emerald-600" : "text-red-600"

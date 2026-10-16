@@ -43,6 +43,15 @@ export async function getReturnTransferRequests(locationId: string, params?: { s
         console.error("Get return transfer requests error:", error);
         return { status: false, data: [], meta: null };
     }
+}export async function getPendingReturnsForWarehouse(warehouseId?: string) {
+    try {
+        const query = warehouseId && warehouseId !== 'all' ? `?warehouseId=${warehouseId}` : '';
+        const response = await authFetch(`/transfer-request/pending-returns${query}`);
+        return { status: response.status, data: response.data?.data || [] };
+    } catch (error) {
+        console.error("Get pending returns error:", error);
+        return { status: false, data: [] };
+    }
 }
 
 export async function getOutboundTransferRequests(locationId: string, params?: { status?: string; page?: number; limit?: number; search?: string; sortBy?: string; statusFilter?: string; dateFrom?: string; dateTo?: string ;brand?: string; }) {

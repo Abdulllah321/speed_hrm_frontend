@@ -31,6 +31,8 @@ import {
   createReturnTransferRequest,
   createOutletToOutletTransferRequest,
   createWarehouseToWarehouseTransferRequest,
+  acceptTransferRequest,
+  getPendingReturnsForWarehouse,
 } from "@/lib/actions/transfer-request";
 import { getStockTransfers } from "@/lib/actions/stock-transfer";
 import { getLocations } from "@/lib/actions/location";
@@ -185,6 +187,7 @@ function StockTransferContent() {
 
   const [pendingReturns, setPendingReturns] = useState<any[]>([]);
   const [loadingReturns, setLoadingReturns] = useState(false);
+  const [acceptingReturnId, setAcceptingReturnId] = useState<string | null>(null);
   const [isReturnsSheetOpen, setIsReturnsSheetOpen] = useState(false);
 
   // Selection State
@@ -603,30 +606,37 @@ function StockTransferContent() {
     }
   };
 
-  const loadPendingReturns = async () => {
-    setLoadingReturns(true);
+  const loadPendingReturns = async (silent = false) => {
+    if (!silent) setLoadingReturns(true);
     try {
-      const res = await getStockTransfers({
-        transferType: "OUTLET_TO_WAREHOUSE",
-        limit: 300,
-      });
-
-      let pending: any[] = [];
-      if (res.status && res.data) {
-        pending = res.data.filter((req: any) => {
-          const s = (req.status || "").toUpperCase();
-          return s === "PENDING" || s === "PENDING_CHECKER";
-        });
-      } else if (!res.status) {
-        toast.error("Failed to load returns: " + res.message);
+      const res = await getPendingReturnsForWarehouse(selectedWarehouseId);
+      if (res.status && Array.isArray(res.data)) {
+        setPendingReturns(res.data);
       }
-
-      setPendingReturns(pending);
     } catch (error) {
       console.error("Failed to load pending returns", error);
-      toast.error("Failed to load pending returns");
+      if (!silent) toast.error("Failed to load pending returns");
     } finally {
-      setLoadingReturns(false);
+      if (!silent) setLoadingReturns(false);
+    }
+  };
+
+  const handleAcceptReturn = async (requestId: string) => {
+    setAcceptingReturnId(requestId);
+    try {
+      const res = await acceptTransferRequest(requestId, user?.id);
+      if (res.status) {
+        toast.success(
+          "Return accepted and stock received into warehouse successfully!",
+        );
+        await loadPendingReturns();
+      } else {
+        toast.error(res.message || "Failed to accept return request");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to accept return request");
+    } finally {
+      setAcceptingReturnId(null);
     }
   };
 
@@ -748,6 +758,7 @@ function StockTransferContent() {
       await loadFilterData();
       await loadPendingRequisitions();
       await fetchNextTransferNumber();
+      await loadPendingReturns(true);
 
       if (requisitionId) {
         try {
@@ -1146,7 +1157,7 @@ function StockTransferContent() {
           toast.success("Transfer request created! Awaiting shop acceptance.");
           stnId = (res as any)?.id;
         } else if (transferMode === "OUTLET_TO_WAREHOUSE") {
-          await createReturnTransferRequest({
+          const res = await createReturnTransferRequest({
             fromLocationId: destLocationId,
             toWarehouseId: selectedWarehouseId,
             items: itemsToTransfer,
@@ -1154,8 +1165,10 @@ function StockTransferContent() {
             ...dispatchPayload,
           });
           toast.success(
-            "Return request created! Awaiting outlet manager approval.",
+            "Return request created! Awaiting warehouse acceptance.",
           );
+          stnId = (res as any)?.id || (res as any)?.data?.id;
+          loadPendingReturns();
         } else if (transferMode === "OUTLET_TO_OUTLET") {
           await createOutletToOutletTransferRequest({
             fromLocationId: sourceLocationId,
@@ -1342,15 +1355,20 @@ function StockTransferContent() {
                   variant="outline"
                   onClick={() => {
                     setIsReturnsSheetOpen(true);
-                    loadPendingReturns();
+                    loadPendingReturns(pendingReturns.length > 0);
                   }}
-                  className="border-2 font-bold shadow-sm border-orange-200 text-orange-700 hover:bg-orange-50"
+                  className="border-2 font-bold shadow-sm border-orange-200 text-orange-700 hover:bg-orange-50 relative"
                 >
-                  <RotateCcw className="h-4 w-4 mr-2" /> Return from warehouse
+                  <RotateCcw className="h-4 w-4 mr-2" /> Return to warehouse
+                  {pendingReturns.length > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.5 text-[10px] bg-orange-600 text-white rounded-full font-extrabold leading-none">
+                      {pendingReturns.length}
+                    </span>
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                View all pending returns from outlets
+                View and accept pending returns from outlets
               </TooltipContent>
             </Tooltip>
 
@@ -2708,7 +2726,7 @@ function StockTransferContent() {
 
         {/* Pending Returns Sheet */}
         <Sheet open={isReturnsSheetOpen} onOpenChange={setIsReturnsSheetOpen}>
-          <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
+          <SheetContent side="right" className="sm:max-w-3xl overflow-y-auto">
             <SheetHeader className="pb-4 border-b">
               <div className="flex justify-between items-center">
                 <div>
@@ -2717,8 +2735,7 @@ function StockTransferContent() {
                     Pending Returns from Outlets
                   </SheetTitle>
                   <p className="text-xs text-muted-foreground mt-1">
-                    View and manage stock returns sent from POS to the
-                    warehouse.
+                    Review and directly accept stock returns sent from outlets back into warehouse inventory.
                   </p>
                 </div>
                 <Button
@@ -2737,7 +2754,7 @@ function StockTransferContent() {
             </SheetHeader>
 
             <div className="py-4">
-              {loadingReturns ? (
+              {loadingReturns && pendingReturns.length === 0 ? (
                 <div className="flex justify-center items-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
                 </div>
@@ -2746,55 +2763,89 @@ function StockTransferContent() {
                   No pending returns from outlets at the moment.
                 </div>
               ) : (
-                <div className="border rounded-md overflow-hidden">
+                <div className="border rounded-md overflow-hidden shadow-sm">
                   <Table>
-                    <TableHeader className="bg-gray-50/50">
+                    <TableHeader className="bg-gray-50/80">
                       <TableRow>
                         <TableHead className="font-bold">Transfer No</TableHead>
                         <TableHead className="font-bold">Date</TableHead>
                         <TableHead className="font-bold">From Outlet</TableHead>
+                        <TableHead className="font-bold">Items / Qty</TableHead>
+                        <TableHead className="font-bold">Status</TableHead>
                         <TableHead className="text-right font-bold">
                           Action
                         </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingReturns.map((req) => (
-                        <TableRow
-                          key={req.id}
-                          className="hover:bg-amber-50/10 transition-colors"
-                        >
-                          <TableCell className="font-bold text-orange-600">
-                            {req.requestNo}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(req.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="font-medium text-xs">
-                            {req.fromLocation?.name ||
-                              req.fromWarehouse?.name ||
-                              "—"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
+                      {pendingReturns.map((req) => {
+                        const totalQty = (req.items || []).reduce(
+                          (acc: number, item: any) => acc + Number(item.quantity || 0),
+                          0,
+                        );
+                        const totalItems = req.items?.length || 0;
+
+                        return (
+                          <TableRow
+                            key={req.id}
+                            className="hover:bg-amber-50/20 transition-colors"
+                          >
+                            <TableCell className="font-mono font-bold text-orange-600 text-xs">
+                              {req.requestNo}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {new Date(req.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="font-semibold text-xs">
+                              {req.fromLocation?.name ||
+                                req.fromWarehouse?.name ||
+                                "—"}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <span className="font-semibold text-slate-800">{totalItems}</span> items
+                              <span className="text-muted-foreground ml-1">({totalQty} pcs)</span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
                                 variant="outline"
-                                asChild
-                                className="font-bold text-xs"
+                                className="bg-amber-50 text-amber-800 border-amber-200 text-[10px] font-bold uppercase tracking-wider"
                               >
-                                <Link
-                                  href={`/erp/inventory/transactions/stock-transfer/slip/${req.id}`}
-                                  target="_blank"
+                                {req.status?.replace("_", " ") || "PENDING"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  asChild
+                                  className="font-bold text-xs h-8"
                                 >
-                                  <Printer className="h-3.5 w-3.5 mr-1" /> View
-                                  / Print
-                                </Link>
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                  <Link
+                                    href={`/erp/inventory/transactions/stock-transfer/slip/${req.id}`}
+                                    target="_blank"
+                                  >
+                                    <Printer className="h-3.5 w-3.5 mr-1" /> View / Slip
+                                  </Link>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 shadow-sm"
+                                  disabled={acceptingReturnId === req.id}
+                                  onClick={() => handleAcceptReturn(req.id)}
+                                >
+                                  {acceptingReturnId === req.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                                  ) : (
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                  )}
+                                  Accept
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
