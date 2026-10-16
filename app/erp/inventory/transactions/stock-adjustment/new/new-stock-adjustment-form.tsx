@@ -591,9 +591,11 @@ export function NewStockAdjustmentForm({
 
       startTransition(async () => {
         try {
-          const targetLocId = locationId !== "none" ? locationId : undefined;
+          const isLocationMode = locationId && locationId !== "none";
+          const targetLocId = isLocationMode ? locationId : undefined;
           const payload = {
-            warehouseId,
+            warehouseId: isLocationMode ? undefined : warehouseId,
+            locationId: isLocationMode ? locationId : undefined,
             reason: reason || "Billing Swap Mismatch",
             notes: notes || undefined,
             status: targetStatus,
@@ -602,13 +604,15 @@ export function NewStockAdjustmentForm({
               {
                 itemId: selectedOutItem.id,
                 locationId: targetLocId,
-                physicalQty: Math.max(0, currentOutQty - swapQty),
+                currentQty: currentOutQty,
+                physicalQty: currentOutQty - swapQty,
                 rate: swapRate || Number(selectedOutRate(selectedOutItem)),
                 swapItemId: selectedInItem.id,
               },
               {
                 itemId: selectedInItem.id,
                 locationId: targetLocId,
+                currentQty: Number(selectedInItem.totalQuantity || 0),
                 physicalQty:
                   Number(selectedInItem.totalQuantity || 0) + swapQty,
                 rate: swapRate || Number(selectedInRate(selectedInItem)),
@@ -640,8 +644,11 @@ export function NewStockAdjustmentForm({
 
       startTransition(async () => {
         try {
+          const isLocationMode = locationId && locationId !== "none";
+          const targetLocId = isLocationMode ? locationId : undefined;
           const payload = {
-            warehouseId,
+            warehouseId: isLocationMode ? undefined : warehouseId,
+            locationId: isLocationMode ? locationId : undefined,
             reason: reason || "Physical Count Mismatch",
             notes: notes || undefined,
             status: targetStatus,
@@ -650,7 +657,8 @@ export function NewStockAdjustmentForm({
               itemId: item.id,
               locationId:
                 item.locationId ||
-                (locationId !== "none" ? locationId : undefined),
+                targetLocId,
+              currentQty: item.currentQty,
               physicalQty: item.physicalQty,
               rate: item.rate,
             })),

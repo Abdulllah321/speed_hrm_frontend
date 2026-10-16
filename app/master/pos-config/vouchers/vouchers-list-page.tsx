@@ -84,6 +84,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 interface Props {
   initialData?: {
     vouchers: Voucher[];
+    tabCounts?: Record<string, number>;
     pagination?: { page: number; limit: number; total: number; totalPages: number };
   };
 }
@@ -212,11 +213,15 @@ export function getVoucherStatusInfo(v: Voucher): {
 }
 
 function getVoucherDescription(v: Voucher) {
-  if (v.description) return v.description;
-
-  if (v.voucherType === "CORPORATE" && (v.companyName || v.companyGlCode)) {
-    return `${v.companyName ?? ""}${v.companyGlCode ? ` (${v.companyGlCode})` : ""}`.trim();
+  if (v.voucherType === "CORPORATE") {
+    if (v.companyName || v.companyGlCode) {
+      return `${v.companyName ?? ""}${v.companyGlCode ? ` (${v.companyGlCode})` : ""}`.trim();
+    }
+    if (v.description) return v.description;
+    return "Corporate Account";
   }
+
+  if (v.description) return v.description;
 
   if (v.voucherType === "EXCHANGE" && v.sourceOrder) {
     const ref =
@@ -244,6 +249,9 @@ export function VouchersListPage({ initialData }: Props) {
 
   // Data state
   const [vouchers, setVouchers] = useState<Voucher[]>(initialData?.vouchers || []);
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>(
+    initialData?.tabCounts || {},
+  );
   const [pagination, setPagination] = useState(
     initialData?.pagination || {
       page: 1,
@@ -309,6 +317,9 @@ export function VouchersListPage({ initialData }: Props) {
           setVouchers(res.data);
           if (res.pagination) {
             setPagination(res.pagination);
+          }
+          if (res.tabCounts) {
+            setTabCounts(res.tabCounts);
           }
         } else {
           toast.error(res.message || "Failed to load vouchers");
@@ -556,6 +567,7 @@ export function VouchersListPage({ initialData }: Props) {
         {VOUCHER_CATEGORY_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
+          const count = tabCounts[tab.id];
 
           return (
             <button
@@ -574,6 +586,18 @@ export function VouchersListPage({ initialData }: Props) {
             >
               <Icon className={cn("h-3.5 w-3.5", isActive ? "opacity-90" : tab.color)} />
               <span>{tab.label}</span>
+              {count !== undefined && (
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.2 rounded-full font-mono font-medium ml-0.5",
+                    isActive
+                      ? "bg-white/20 text-white dark:bg-black/20 dark:text-slate-900"
+                      : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
+                  )}
+                >
+                  {count.toLocaleString()}
+                </span>
+              )}
             </button>
           );
         })}
@@ -808,13 +832,40 @@ export function VouchersListPage({ initialData }: Props) {
 
                     {/* Customer / Company */}
                     <TableCell className="max-w-[280px]">
-                      <div className="font-medium text-xs text-foreground truncate" title={getVoucherDescription(v)}>
-                        {getVoucherDescription(v)}
-                      </div>
-                      {v.customer && (
-                        <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <span>{v.customer.name}</span>
-                          {v.customer.contactNo && <span>• {v.customer.contactNo}</span>}
+                      {v.voucherType === "CORPORATE" ? (
+                        <div>
+                          <div
+                            className="font-semibold text-xs text-foreground flex items-center gap-1.5 truncate"
+                            title={v.companyName || v.description || "Corporate Account"}
+                          >
+                            <Building2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <span className="truncate">{v.companyName || "Corporate Account"}</span>
+                            {v.companyGlCode && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] px-1 py-0 h-4 font-mono font-normal bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                              >
+                                {v.companyGlCode}
+                              </Badge>
+                            )}
+                          </div>
+                          {v.description && (
+                            <div className="text-[11px] text-muted-foreground truncate mt-0.5" title={v.description}>
+                              {v.description}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="font-medium text-xs text-foreground truncate" title={getVoucherDescription(v)}>
+                            {getVoucherDescription(v)}
+                          </div>
+                          {v.customer && (
+                            <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <span>{v.customer.name}</span>
+                              {v.customer.contactNo && <span>• {v.customer.contactNo}</span>}
+                            </div>
+                          )}
                         </div>
                       )}
                     </TableCell>

@@ -447,7 +447,7 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
             startTransition(async () => {
                 try {
                     const payload = {
-                        warehouseId: warehouse.id,
+                        locationId: location.id,
                         reason: reason || "Billing Swap Mismatch",
                         notes: notes || undefined,
                         status: "PENDING_APPROVAL",
@@ -456,13 +456,15 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                             {
                                 itemId: selectedOutItem.id,
                                 locationId: location.id,
-                                physicalQty: Math.max(0, currentOutQty - swapQty),
+                                currentQty: currentOutQty,
+                                physicalQty: currentOutQty - swapQty,
                                 rate: swapRate || Number(selectedOutItem.unitPrice || 0),
                                 swapItemId: selectedInItem.id,
                             },
                             {
                                 itemId: selectedInItem.id,
                                 locationId: location.id,
+                                currentQty: Number(selectedInItem.totalQuantity || 0),
                                 physicalQty: Number(selectedInItem.totalQuantity || 0) + swapQty,
                                 rate: swapRate || Number(selectedInItem.unitPrice || 0),
                                 swapItemId: selectedOutItem.id,
@@ -490,7 +492,7 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
             startTransition(async () => {
                 try {
                     const payload = {
-                        warehouseId: warehouse.id,
+                        locationId: location.id,
                         reason: reason || "Physical Count Mismatch",
                         notes: notes || undefined,
                         status: "PENDING_APPROVAL",
@@ -498,6 +500,7 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                         items: selectedItems.map((item) => ({
                             itemId: item.id,
                             locationId: location.id,
+                            currentQty: item.currentQty,
                             physicalQty: item.physicalQty,
                             rate: item.rate,
                         }))
@@ -505,7 +508,7 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
 
                     const res = await createStockAdjustment(payload);
                     if (res.status !== false) {
-                        toast.success("Stock adjustment request submitted for approval");
+                        toast.success("Stock adjustment applied immediately and submitted for approval");
                         router.push("/pos/inventory/adjustments");
                     } else {
                         toast.error(res.message || "Failed to submit request");
@@ -523,7 +526,7 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">Request Stock Adjustment</h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        Submit a request to correct inventory discrepancies. Requests must be approved by the ERP head office.
+                        Submit a request to correct inventory discrepancies. Stock takes effect immediately and is sent to Head Office for review.
                     </p>
                 </div>
                 <div className="flex items-center gap-3">

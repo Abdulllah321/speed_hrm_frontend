@@ -7,6 +7,7 @@ export default async function VouchersPage() {
         <VouchersListPage 
             initialData={{
                 vouchers: res.data ?? [],
+                tabCounts: res.tabCounts,
                 pagination: res.pagination ?? { page: 1, limit: 25, total: 0, totalPages: 1 },
             }} 
         />

@@ -97,6 +97,7 @@ export async function getVouchers(filters?: {
 }): Promise<{
     status: boolean;
     data?: Voucher[];
+    tabCounts?: Record<string, number>;
     pagination?: {
         page: number;
         limit: number;

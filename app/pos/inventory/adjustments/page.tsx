@@ -17,6 +17,37 @@ import { format } from "date-fns";
 import { printStockAdjustmentNote } from "@/lib/utils/print-stock-adjustment";
 import Link from "next/link";
 
+interface AdjustmentItem {
+    id: string;
+    stockAdjustmentId?: string;
+    itemId: string;
+    locationId?: string | null;
+    currentQty: number | string;
+    physicalQty: number | string;
+    adjustedQty: number | string;
+    rate?: number | string;
+    swapItemId?: string | null;
+    item?: {
+        id: string;
+        itemId?: string;
+        sku?: string;
+        barCode?: string | null;
+        description?: string | null;
+        color?: { id?: string; name?: string } | null;
+        size?: { id?: string; name?: string } | null;
+        brand?: { id?: string; name?: string } | null;
+    } | null;
+    swapItem?: {
+        id: string;
+        itemId?: string;
+        sku?: string;
+        barCode?: string | null;
+        description?: string | null;
+        color?: { id?: string; name?: string } | null;
+        size?: { id?: string; name?: string } | null;
+    } | null;
+}
+
 interface Adjustment {
     id: string;
     adjustmentNo: string;
@@ -26,7 +57,7 @@ interface Adjustment {
     adjustmentType: "STANDARD" | "SWAP";
     reason: string | null;
     notes: string | null;
-    items: any[];
+    items: AdjustmentItem[];
 }
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
@@ -210,53 +241,107 @@ export default function PosStockAdjustmentsPage() {
                                             <div>
                                                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-2">Adjusted Items</span>
                                                 <div className="border border-muted rounded-md overflow-hidden bg-white dark:bg-slate-950">
-                                                    <table className="w-full text-xs text-left border-collapse">
-                                                        <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-muted">
-                                                            <tr>
-                                                                <th className="p-2.5">Item</th>
-                                                                <th className="p-2.5 text-right">System Qty</th>
-                                                                <th className="p-2.5 text-right">Physical Count</th>
-                                                                <th className="p-2.5 text-right">Discrepancy</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-muted">
-                                                            {adj.items.map((item) => {
-                                                                const discrepancy = Number(item.adjustedQty);
-                                                                return (
-                                                                    <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20">
-                                                                        <td className="p-2.5">
-                                                                            <div className="flex flex-col">
-                                                                                <span className="font-semibold font-mono">{item.item?.sku || item.itemId}</span>
-                                                                                <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">
-                                                                                    {item.item?.description}
-                                                                                </span>
-                                                                                {item.swapItem && (
-                                                                                    <span className="text-[9px] text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 px-1 py-0.2 rounded w-fit mt-0.5">
-                                                                                        Swapped with: {item.swapItem.sku}
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-xs text-left border-collapse">
+                                                            <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-muted text-slate-700 dark:text-slate-300">
+                                                                <tr>
+                                                                    <th className="p-2.5 min-w-[220px]">Item</th>
+                                                                    <th className="p-2.5 min-w-[130px]">Barcode</th>
+                                                                    <th className="p-2.5 min-w-[90px]">Color</th>
+                                                                    <th className="p-2.5 min-w-[70px]">Size</th>
+                                                                    <th className="p-2.5 text-right min-w-[90px]">System Qty</th>
+                                                                    <th className="p-2.5 text-right min-w-[100px]">Physical Count</th>
+                                                                    <th className="p-2.5 text-right min-w-[90px]">Discrepancy</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-muted">
+                                                                {adj.items.map((item) => {
+                                                                    const discrepancy = Number(item.adjustedQty);
+                                                                    const barCode = item.item?.barCode || (item.item as any)?.barcode;
+                                                                    const colorName = item.item?.color?.name;
+                                                                    const sizeName = item.item?.size?.name;
+                                                                    const swapItem = item.swapItem;
+                                                                    const swapBarcode = swapItem?.barCode || (swapItem as any)?.barcode;
+
+                                                                    return (
+                                                                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20">
+                                                                            <td className="p-2.5">
+                                                                                <div className="flex flex-col">
+                                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                                        <span className="font-semibold font-mono text-xs">{item.item?.sku || item.itemId}</span>
+                                                                                        {item.item?.brand?.name && (
+                                                                                            <span className="text-[10px] uppercase font-bold text-muted-foreground bg-slate-100 dark:bg-slate-800 px-1 rounded">
+                                                                                                {item.item.brand.name}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <span className="text-[11px] text-muted-foreground truncate max-w-[220px]">
+                                                                                        {item.item?.description || "—"}
                                                                                     </span>
+                                                                                    {swapItem && (
+                                                                                        <div className="flex flex-wrap items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/60 px-1.5 py-0.5 rounded w-fit mt-1">
+                                                                                            <span className="font-semibold">Swapped with:</span>
+                                                                                            <span className="font-mono font-bold">{swapItem.sku}</span>
+                                                                                            {swapBarcode && (
+                                                                                                <span className="font-mono text-muted-foreground">({swapBarcode})</span>
+                                                                                            )}
+                                                                                            {(swapItem.color?.name || swapItem.size?.name) && (
+                                                                                                <span className="font-medium text-amber-800 dark:text-amber-300">
+                                                                                                    [{[swapItem.color?.name, swapItem.size?.name && `Sz ${swapItem.size.name}`].filter(Boolean).join(" • ")}]
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="p-2.5 whitespace-nowrap">
+                                                                                {barCode ? (
+                                                                                    <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                                                                                        {barCode}
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="text-muted-foreground text-xs">—</span>
                                                                                 )}
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="p-2.5 text-right text-muted-foreground font-medium">
-                                                                            {Number(item.currentQty).toFixed(2)}
-                                                                        </td>
-                                                                        <td className="p-2.5 text-right font-medium">
-                                                                            {Number(item.physicalQty).toFixed(2)}
-                                                                        </td>
-                                                                        <td className="p-2.5 text-right font-bold">
-                                                                            {discrepancy === 0 ? (
-                                                                                <span className="text-slate-400">0.00</span>
-                                                                            ) : discrepancy > 0 ? (
-                                                                                <span className="text-emerald-600">+{discrepancy.toFixed(2)}</span>
-                                                                            ) : (
-                                                                                <span className="text-red-600">{discrepancy.toFixed(2)}</span>
-                                                                            )}
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            })}
-                                                        </tbody>
-                                                    </table>
+                                                                            </td>
+                                                                            <td className="p-2.5 whitespace-nowrap">
+                                                                                {colorName ? (
+                                                                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                                                                                        {colorName}
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="text-muted-foreground text-xs">—</span>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="p-2.5 whitespace-nowrap">
+                                                                                {sizeName ? (
+                                                                                    <Badge variant="outline" className="font-bold text-xs px-2 py-0.5 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                                                                                        {sizeName}
+                                                                                    </Badge>
+                                                                                ) : (
+                                                                                    <span className="text-muted-foreground text-xs">—</span>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="p-2.5 text-right text-muted-foreground font-mono font-medium text-xs whitespace-nowrap">
+                                                                                {Number(item.currentQty).toFixed(2)}
+                                                                            </td>
+                                                                            <td className="p-2.5 text-right font-mono font-semibold text-xs whitespace-nowrap">
+                                                                                {Number(item.physicalQty).toFixed(2)}
+                                                                            </td>
+                                                                            <td className="p-2.5 text-right font-mono font-bold text-xs whitespace-nowrap">
+                                                                                {discrepancy === 0 ? (
+                                                                                    <span className="text-slate-400">0.00</span>
+                                                                                ) : discrepancy > 0 ? (
+                                                                                    <span className="text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-200/50">+{discrepancy.toFixed(2)}</span>
+                                                                                ) : (
+                                                                                    <span className="text-red-600 bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded border border-red-200/50">{discrepancy.toFixed(2)}</span>
+                                                                                )}
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

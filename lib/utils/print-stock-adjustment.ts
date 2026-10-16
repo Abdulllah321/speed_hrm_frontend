@@ -10,6 +10,7 @@ export interface PrintStockAdjustmentItem {
   location?: { id: string; name: string; code: string } | null;
   item?: {
     sku?: string;
+    barCode?: string | null;
     description?: string | null;
     name?: string | null;
     color?: { name: string } | null;
@@ -21,6 +22,7 @@ export interface PrintStockAdjustmentItem {
   } | null;
   swapItem?: {
     sku?: string;
+    barCode?: string | null;
     description?: string | null;
     color?: { name: string } | null;
     size?: { name: string } | null;
@@ -205,8 +207,9 @@ export function printStockAdjustmentNote(
       size: item.item?.size?.name || "N/A",
       qty,
       rate,
-      val,
-      swapSku: item.swapItem?.sku,
+      swapSku: item.swapItem?.sku
+        ? `${item.swapItem.sku}${item.swapItem.barCode ? ` (${item.swapItem.barCode})` : ""}${item.swapItem.size?.name ? ` [Sz: ${item.swapItem.size.name}]` : ""}`
+        : undefined,
     });
   });
 

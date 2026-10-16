@@ -55,8 +55,8 @@ const VOUCHER_TYPE_OPTIONS: { value: VoucherType; label: string }[] = [
     { value: "CORPORATE", label: "Corporate Gift" },
 ];
 
-const MAX_VOUCHER_LIMIT = 50;
-const QUANTITY_PRESETS = [1, 5, 10, 20, 25, 50];
+const MAX_VOUCHER_LIMIT = 500;
+const QUANTITY_PRESETS = [5, 10, 25, 50, 100, 250, 500];
 
 interface CustomRow {
     id: string;
@@ -826,7 +826,31 @@ export function VoucherFormPage({ locations }: Props) {
                                             className="h-8 text-xs gap-1 font-semibold"
                                         >
                                             <Plus className="h-3.5 w-3.5" />
-                                            <span>+10 Rows</span>
+                                            <span>+10</span>
+                                        </Button>
+
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => addMultipleCustomRows(25)}
+                                            disabled={customRows.length >= MAX_VOUCHER_LIMIT}
+                                            className="h-8 text-xs gap-1 font-semibold"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" />
+                                            <span>+25</span>
+                                        </Button>
+
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => addMultipleCustomRows(50)}
+                                            disabled={customRows.length >= MAX_VOUCHER_LIMIT}
+                                            className="h-8 text-xs gap-1 font-semibold"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" />
+                                            <span>+50</span>
                                         </Button>
 
                                         <div className="h-4 w-px bg-border/60 mx-1 hidden sm:block" />

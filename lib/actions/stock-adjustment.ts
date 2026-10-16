@@ -17,8 +17,10 @@ export interface StockAdjustmentItem {
         id: string;
         itemId: string;
         sku: string;
+        barCode?: string | null;
         description: string | null;
         unitPrice?: number;
+        brand?: { id: string; name: string } | null;
         category?: { id: string; name: string; code: string } | null;
         color?: { id: string; name: string; code: string } | null;
         division?: { id: string; name: string; code: string } | null;
@@ -28,8 +30,10 @@ export interface StockAdjustmentItem {
         id: string;
         itemId: string;
         sku: string;
+        barCode?: string | null;
         description: string | null;
         unitPrice?: number;
+        brand?: { id: string; name: string } | null;
         category?: { id: string; name: string; code: string } | null;
         color?: { id: string; name: string; code: string } | null;
         division?: { id: string; name: string; code: string } | null;
@@ -45,7 +49,8 @@ export interface StockAdjustmentItem {
 export interface StockAdjustment {
     id: string;
     adjustmentNo: string;
-    warehouseId: string;
+    warehouseId?: string | null;
+    locationId?: string | null;
     adjustmentDate: string;
     status: "DRAFT" | "PENDING_APPROVAL" | "SUBMITTED" | "REJECTED" | "CANCELLED";
     adjustmentType: "STANDARD" | "SWAP";
@@ -55,10 +60,16 @@ export interface StockAdjustment {
     approvedById: string | null;
     createdAt: string;
     updatedAt: string;
-    warehouse: {
+    warehouse?: {
+        id?: string;
         name: string;
         code: string;
-    };
+    } | null;
+    location?: {
+        id?: string;
+        name: string;
+        code: string;
+    } | null;
     items: StockAdjustmentItem[];
 }
 
@@ -100,11 +111,12 @@ export async function getStockAdjustment(id: string): Promise<StockAdjustment | 
 
 export async function createStockAdjustment(data: {
     warehouseId?: string;
+    locationId?: string;
     reason?: string;
     notes?: string;
     status?: string;
     adjustmentType?: string;
-    items: { itemId: string; locationId?: string; physicalQty: number; rate?: number; swapItemId?: string }[];
+    items: { itemId: string; locationId?: string; currentQty?: number; physicalQty: number; rate?: number; swapItemId?: string }[];
 }) {
     try {
         const response = await authFetch("/stock-adjustments", {
@@ -124,11 +136,12 @@ export async function updateStockAdjustment(
     id: string,
     data: {
         warehouseId?: string;
+        locationId?: string;
         reason?: string;
         notes?: string;
         status?: string;
         adjustmentType?: string;
-        items: { itemId: string; locationId?: string; physicalQty: number; rate?: number; swapItemId?: string }[];
+        items: { itemId: string; locationId?: string; currentQty?: number; physicalQty: number; rate?: number; swapItemId?: string }[];
     },
 ) {
     try {

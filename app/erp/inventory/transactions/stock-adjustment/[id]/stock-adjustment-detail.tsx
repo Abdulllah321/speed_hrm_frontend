@@ -87,7 +87,7 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
     // Handle Submit / Post
     const handleSubmit = () => {
         const confirmMsg = isPendingApproval
-            ? "Are you sure you want to approve and post this stock adjustment? Stock counts will be updated."
+            ? "Are you sure you want to approve this stock adjustment? If you adjusted counts, only the difference (delta) will be applied."
             : "Are you sure you want to post this stock adjustment?";
 
         if (!confirm(confirmMsg)) return;
@@ -289,7 +289,7 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-amber-400">
                     <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
                     <span>
-                        This document is a <strong>Draft</strong>. Quantities below have not been adjusted in your stock records. Review and click "Submit / Post Stock" to apply these changes.
+                        This adjustment was <strong>applied immediately</strong> to stock upon creation. Click &quot;Submit / Post Stock&quot; to finalize it, or delete to revert the stock changes.
                     </span>
                 </div>
             )}
@@ -298,7 +298,16 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                 <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-md text-sm dark:bg-blue-950/20 dark:border-blue-900/50 dark:text-blue-400">
                     <AlertCircle className="h-4 w-4 shrink-0 text-blue-600" />
                     <span>
-                        This document is <strong>Pending Approval</strong> from POS/Outlet. Review details, adjust quantities if necessary, and approve or reject with instructions.
+                        This request is <strong>Pending Approval</strong> from Outlet/POS. The requested adjustment was already applied to live stock on creation. If you alter physical counts below, only the difference (delta) will be adjusted on approval. Rejecting will reverse the adjustment back to original stock.
+                    </span>
+                </div>
+            )}
+
+            {adjustment.status === "SUBMITTED" && (
+                <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-md text-sm dark:bg-emerald-950/20 dark:border-emerald-900/50 dark:text-emerald-400">
+                    <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+                    <span>
+                        This stock adjustment is <strong>Approved and Posted</strong>. Live inventory and stock ledger records are in sync.
                     </span>
                 </div>
             )}
@@ -426,7 +435,14 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                                         <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
                                             <td className="p-3">
                                                 <div className="flex flex-col">
-                                                    <span className="font-mono font-bold text-sm">{item.item?.sku}</span>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-mono font-bold text-sm">{item.item?.sku}</span>
+                                                        {item.item?.barCode && (
+                                                            <span className="font-mono text-[11px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                                {item.item.barCode}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <span className="text-xs text-muted-foreground truncate max-w-60">
                                                         {item.item?.description || "No description"}
                                                     </span>
@@ -437,8 +453,9 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                                                     {item.swapItem && (
                                                         <span className="text-[10px] mt-1 text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-300 border border-amber-200/50 px-1.5 py-0.5 rounded w-fit font-medium">
                                                             Swapped with: {item.swapItem.sku}
-                                                            {item.swapItem.color?.name && ` (${item.swapItem.color.name}`}
-                                                            {item.swapItem.size?.name && `, ${item.swapItem.size.name})`}
+                                                            {item.swapItem.barCode && ` (${item.swapItem.barCode})`}
+                                                            {item.swapItem.color?.name && ` [${item.swapItem.color.name}`}
+                                                            {item.swapItem.size?.name && `, Sz ${item.swapItem.size.name}]`}
                                                         </span>
                                                     )}
                                                 </div>
