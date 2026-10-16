@@ -1844,7 +1844,7 @@ export const menuData: MenuItem[] = [
         badgeKey: "outletStockOut",
       },
       {
-        title: "Return Requests",
+        title: "Return to Warehouse",
         href: "/pos/inventory/returns",
         permissions: ["pos.inventory.returns.view"],
         badgeKey: "returnRequests",

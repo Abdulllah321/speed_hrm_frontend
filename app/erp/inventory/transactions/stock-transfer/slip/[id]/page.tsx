@@ -1,12 +1,12 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { getTransferRequests, updateTransferRequestStatus } from '@/lib/actions/transfer-request';
+import { getTransferRequests, updateTransferRequestStatus, acceptTransferRequest } from '@/lib/actions/transfer-request';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Printer, ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, ShieldAlert, Clock, ThumbsUp, Package } from 'lucide-react';
+import { Printer, ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, ShieldAlert, Clock, ThumbsUp, Package, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -82,6 +82,23 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
       }
     } catch (error: any) {
       toast.error(error?.message || 'An error occurred while updating status');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAcceptReturn = async () => {
+    setSubmitting(true);
+    try {
+      const res = await acceptTransferRequest(id, user?.id);
+      if (res.status) {
+        toast.success('Return accepted and inventory received into warehouse successfully.');
+        await loadTransferDetails();
+      } else {
+        toast.error(res.message || 'Failed to accept return');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'An error occurred while accepting return');
     } finally {
       setSubmitting(false);
     }
@@ -281,6 +298,38 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
               </CardContent>
             </Card>
           </div>
+        ) : transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? (
+          <div className="print:hidden max-w-4xl mx-auto mb-6">
+            <Card className="bg-gradient-to-r from-slate-900/90 to-slate-950/95 text-white border-slate-800 shadow-xl overflow-hidden relative backdrop-blur-md">
+              <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]" />
+              <CardContent className="relative p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <RotateCcw className="h-5 w-5 text-orange-400" />
+                      <span className="text-base font-bold text-white">Outlet Return to Warehouse</span>
+                      <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30">Direct Warehouse Receipt Flow</Badge>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      {transfer.status === 'COMPLETED'
+                        ? '✅ Return accepted. Stock has been received into warehouse inventory.'
+                        : '⚠️ This return has been dispatched from the outlet and is awaiting warehouse acceptance.'}
+                    </p>
+                  </div>
+                  {transfer.status !== 'COMPLETED' && transfer.status !== 'REJECTED' && (
+                    <Button 
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shrink-0 shadow-md"
+                      disabled={submitting}
+                      onClick={handleAcceptReturn}
+                    >
+                      {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                      Accept Return into Warehouse
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         ) : (
         <div className="print:hidden max-w-4xl mx-auto mb-6">
           <Card className="bg-gradient-to-r from-slate-900/90 to-slate-950/95 text-white border-slate-800 shadow-xl overflow-hidden relative backdrop-blur-md">
@@ -386,7 +435,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
       )}
 
       {/* Pending Approval Action Card (only shown when PENDING_CHECKER or PENDING_AUTHORIZER) */}
-      {!loading && transfer && (transfer.status === 'PENDING_CHECKER' || transfer.status === 'PENDING_AUTHORIZER') && (
+      {!loading && transfer && transfer.transferType !== 'OUTLET_TO_WAREHOUSE' && (transfer.status === 'PENDING_CHECKER' || transfer.status === 'PENDING_AUTHORIZER') && (
         <div className="print:hidden max-w-4xl mx-auto mb-6">
           <div className="bg-blue-50/50 border border-blue-200 p-6 rounded-2xl shadow-sm">
             <div className="flex items-center gap-2 text-blue-700 font-bold mb-3">
@@ -464,7 +513,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
       )}
 
       {/* Approval Status Card (hidden on print, shown only for non-actionable statuses) */}
-      {!loading && transfer && transfer.status !== 'PENDING_CHECKER' && transfer.status !== 'PENDING_AUTHORIZER' && (
+      {!loading && transfer && transfer.transferType !== 'OUTLET_TO_WAREHOUSE' && transfer.status !== 'PENDING_CHECKER' && transfer.status !== 'PENDING_AUTHORIZER' && (
         <div className="print:hidden bg-white border border-slate-200 p-5 shadow-sm max-w-4xl mx-auto rounded-2xl mb-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>

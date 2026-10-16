@@ -1079,7 +1079,7 @@ export default function ReturnRequestsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ALL">All Status</SelectItem>
-                                        <SelectItem value="COMPLETED">Completed</SelectItem>
+                                        <SelectItem value="COMPLETED">Accepted / Completed</SelectItem>
                                         <SelectItem value="APPROVED">Approved</SelectItem>
                                         <SelectItem value="REJECTED">Rejected</SelectItem>
                                     </SelectContent>
@@ -1146,7 +1146,7 @@ export default function ReturnRequestsPage() {
                                                         <TableCell>
                                                             {request.status === 'COMPLETED' ? (
                                                                 <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100/80 border-emerald-200 text-[10px] font-bold">
-                                                                    Completed
+                                                                    Accepted
                                                                 </Badge>
                                                             ) : request.status === 'APPROVED' || request.status === 'SOURCE_APPROVED' ? (
                                                                 <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100/80 border-blue-200 text-[10px] font-bold">
@@ -1158,7 +1158,7 @@ export default function ReturnRequestsPage() {
                                                                 </Badge>
                                                             ) : (
                                                                 <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100/80 border-orange-200 text-[10px] font-bold">
-                                                                    Pending
+                                                                    Pending Acceptance
                                                                 </Badge>
                                                             )}
                                                         </TableCell>
@@ -1198,24 +1198,13 @@ export default function ReturnRequestsPage() {
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="text-xs font-medium">
-                                                            {request.fromWarehouse?.name || request.warehouse?.name || "Main Warehouse"}
+                                                            {request.toWarehouse?.name || request.fromWarehouse?.name || request.warehouse?.name || "Main Warehouse"}
                                                         </TableCell>
                                                         <TableCell className="text-right font-black text-primary">
                                                             {totalQty}
                                                         </TableCell>
                                                         <TableCell className="text-right">
                                                             <div className="flex justify-end gap-2">
-                                                                {activeTab === 'pending' && (request.status === 'PENDING') && (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="h-8 px-3 text-xs bg-primary hover:bg-primary/90"
-                                                                        disabled={isAccepting === request.id || !hasPermission('pos.inventory.returns.approve')}
-                                                                        onClick={() => handleAccept(request.id)}
-                                                                    >
-                                                                        {isAccepting === request.id ? <RefreshCcw className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
-                                                                        Approve
-                                                                    </Button>
-                                                                )}
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
