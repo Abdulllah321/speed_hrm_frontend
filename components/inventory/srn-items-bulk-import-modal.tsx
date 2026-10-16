@@ -38,8 +38,10 @@ import { toast } from 'sonner';
 
 interface SkippedItem {
   sku: string;
-  barcode?: string;
+  barcode?: string | null;
   description?: string;
+  color?: string | null;
+  size?: string | null;
   requestedQty: number;
   availableStock: number;
   reason: string;
@@ -201,9 +203,9 @@ export function SrnItemsBulkImportModal({
   const handleDownloadErrorReport = () => {
     if (skippedItems.length === 0) return;
 
-    let csv = 'SKU / BarCode,Description,Requested Qty,Warehouse Available Stock,Status / Reason\n';
+    let csv = 'SKU,Barcode,Description,Color,Size,Requested Qty,Warehouse Available Stock,Status / Reason\n';
     skippedItems.forEach((item) => {
-      csv += `"${item.sku}","${(item.description || '').replace(/"/g, '""')}",${item.requestedQty || 0},${item.availableStock || 0},"${(item.reason || '').replace(/"/g, '""')}"\n`;
+      csv += `"${item.sku}","${item.barcode || ''}","${(item.description || '').replace(/"/g, '""')}","${item.color || ''}","${item.size || ''}",${item.requestedQty || 0},${item.availableStock || 0},"${(item.reason || '').replace(/"/g, '""')}"\n`;
     });
 
     const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csv);
@@ -218,12 +220,12 @@ export function SrnItemsBulkImportModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[760px] w-full flex flex-col p-0 bg-card max-h-[90vh]">
+      <DialogContent noScroll className="sm:max-w-[960px] max-w-[96vw] w-full flex flex-col p-0 bg-card max-h-[92vh] overflow-hidden">
         {/* Header */}
-        <DialogHeader className="p-6 pb-4 border-b bg-muted/30 shrink-0">
-          <div className="flex items-center justify-between">
+        <DialogHeader className="p-5 pb-3 border-b bg-muted/30 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-8">
             <div className="flex items-center gap-2">
-              <div className="bg-indigo-100 text-indigo-700 p-2 rounded-lg">
+              <div className="bg-indigo-100 text-indigo-700 p-2 rounded-lg shrink-0">
                 <FileSpreadsheet className="h-6 w-6" />
               </div>
               <div>
@@ -235,7 +237,7 @@ export function SrnItemsBulkImportModal({
                 </DialogDescription>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-md text-xs font-semibold text-indigo-800">
+            <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-md text-xs font-semibold text-indigo-800 shrink-0 self-start sm:self-auto">
               <Warehouse className="h-4 w-4 text-indigo-600" />
               <span>Target WH: <strong>{warehouseName || 'Selected WH'}</strong></span>
             </div>
@@ -243,7 +245,7 @@ export function SrnItemsBulkImportModal({
         </DialogHeader>
 
         {/* Content Body */}
-        <ScrollArea className="flex-1 p-6 overflow-y-auto max-h-[60vh]">
+        <div className="flex-1 p-5 overflow-y-auto max-h-[65vh]">
           <div className="space-y-6">
             {!hasValidated ? (
               <>
@@ -377,15 +379,15 @@ export function SrnItemsBulkImportModal({
                 {/* Skipped Items Report Table */}
                 {skippedItems.length > 0 ? (
                   <div className="space-y-2 border border-rose-200 rounded-xl overflow-hidden bg-rose-50/20 p-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2 text-rose-700">
-                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
                         <h4 className="font-bold text-sm">Out-of-Stock / Skipped Items Report ({skippedItems.length})</h4>
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 text-xs font-bold border-rose-300 text-rose-700 hover:bg-rose-50 gap-1.5"
+                        className="h-8 text-xs font-bold border-rose-300 text-rose-700 hover:bg-rose-50 gap-1.5 shrink-0"
                         onClick={handleDownloadErrorReport}
                       >
                         <Download className="h-3.5 w-3.5" /> Download Error Report (CSV)
@@ -395,30 +397,55 @@ export function SrnItemsBulkImportModal({
                       The following items could not be imported because they have zero available stock in <strong>{warehouseName}</strong>:
                     </p>
 
-                    <div className="border rounded-lg overflow-hidden bg-background mt-2">
-                      <ScrollArea className="h-48">
-                        <Table>
-                          <TableHeader className="bg-muted/50 sticky top-0">
+                    <div className="border border-rose-200 rounded-lg bg-background mt-2 overflow-hidden shadow-xs">
+                      <div className="overflow-x-auto overflow-y-auto max-h-64 w-full">
+                        <Table className="min-w-[850px] w-full">
+                          <TableHeader className="bg-muted/60 sticky top-0 z-10">
                             <TableRow>
-                              <TableHead className="font-bold text-xs">SKU / BarCode</TableHead>
-                              <TableHead className="font-bold text-xs">Description</TableHead>
-                              <TableHead className="font-bold text-xs text-center">Requested</TableHead>
-                              <TableHead className="font-bold text-xs text-center">WH Stock</TableHead>
-                              <TableHead className="font-bold text-xs">Reason / Status</TableHead>
+                              <TableHead className="font-bold text-xs whitespace-nowrap min-w-[120px]">SKU</TableHead>
+                              <TableHead className="font-bold text-xs whitespace-nowrap min-w-[130px]">Barcode</TableHead>
+                              <TableHead className="font-bold text-xs min-w-[160px]">Description</TableHead>
+                              <TableHead className="font-bold text-xs text-center whitespace-nowrap min-w-[80px]">Color</TableHead>
+                              <TableHead className="font-bold text-xs text-center whitespace-nowrap min-w-[70px]">Size</TableHead>
+                              <TableHead className="font-bold text-xs text-center whitespace-nowrap min-w-[80px]">Requested</TableHead>
+                              <TableHead className="font-bold text-xs text-center whitespace-nowrap min-w-[80px]">WH Stock</TableHead>
+                              <TableHead className="font-bold text-xs min-w-[260px]">Reason / Status</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {skippedItems.map((item, idx) => (
                               <TableRow key={idx} className="hover:bg-rose-50/30 text-xs">
-                                <TableCell className="font-mono font-bold text-rose-700">
-                                  <div>{item.sku}</div>
-                                  {item.barcode && <div className="text-[10px] font-normal text-muted-foreground">{item.barcode}</div>}
+                                <TableCell className="font-mono font-bold text-rose-700 whitespace-nowrap">
+                                  {item.sku}
                                 </TableCell>
-                                <TableCell className="max-w-[200px] truncate text-gray-700">{item.description || '—'}</TableCell>
-                                <TableCell className="text-center font-bold">{item.requestedQty || 0}</TableCell>
-                                <TableCell className="text-center font-bold text-rose-600">{item.availableStock || 0}</TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className="border-rose-300 bg-rose-50 text-rose-700 font-semibold text-[10px]">
+                                <TableCell className="font-mono text-gray-700 whitespace-nowrap">
+                                  {item.barcode || '—'}
+                                </TableCell>
+                                <TableCell className="max-w-[180px] truncate text-gray-700" title={item.description}>
+                                  {item.description || '—'}
+                                </TableCell>
+                                <TableCell className="text-center whitespace-nowrap">
+                                  {item.color ? (
+                                    <Badge variant="outline" className="text-[10px] font-semibold bg-gray-50 border-gray-300">
+                                      {item.color}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center whitespace-nowrap">
+                                  {item.size ? (
+                                    <Badge variant="outline" className="text-[10px] font-bold bg-indigo-50/60 border-indigo-200 text-indigo-700">
+                                      {item.size}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center font-bold text-gray-800 whitespace-nowrap">{item.requestedQty || 0}</TableCell>
+                                <TableCell className="text-center font-bold text-rose-600 whitespace-nowrap">{item.availableStock || 0}</TableCell>
+                                <TableCell className="whitespace-normal">
+                                  <Badge variant="outline" className="border-rose-300 bg-rose-50 text-rose-700 font-semibold text-[10px] leading-snug py-0.5 inline-block text-left break-words">
                                     {item.reason || '0 Stock'}
                                   </Badge>
                                 </TableCell>
@@ -426,7 +453,7 @@ export function SrnItemsBulkImportModal({
                             ))}
                           </TableBody>
                         </Table>
-                      </ScrollArea>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -440,10 +467,10 @@ export function SrnItemsBulkImportModal({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Footer Actions */}
-        <DialogFooter className="p-4 border-t bg-muted/20 shrink-0 flex items-center justify-between">
+        <DialogFooter className="p-4 border-t bg-muted/20 shrink-0 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
           <Button variant="outline" onClick={handleClose} disabled={isValidating}>
             Cancel
           </Button>
@@ -465,7 +492,7 @@ export function SrnItemsBulkImportModal({
               )}
             </Button>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"

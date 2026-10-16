@@ -39,6 +39,7 @@ export interface AutocompleteProps {
   popoverClassName?: string
   isLoading?: boolean
   onCreate?: (value: string) => void
+  allowClear?: boolean
 }
 
 // Marquee text — infinite loop on hover, only when content overflows
@@ -89,6 +90,67 @@ function MarqueeText({ text, className }: { text: string; className?: string }) 
   )
 }
 
+/**
+ * Normalizes text for flexible searching:
+ * - Lowercase
+ * - Replaces delimiters (-, _, /, \, ., ,, :, etc.) with spaces
+ * - Collapses consecutive spaces
+ */
+export function normalizeForSearch(str: string): string {
+  return (str || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+/**
+ * Strips all non-alphanumeric characters for compact search:
+ * e.g. "NIKE-XINHUA MALL" -> "nikexinhuamall"
+ */
+export function compactForSearch(str: string): string {
+  return (str || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+}
+
+/**
+ * Flexible matching algorithm:
+ * Matches if any of the following are true:
+ * 1. Raw case-insensitive substring
+ * 2. Compact string match (ignoring dashes, spaces, and punctuation)
+ * 3. Token-based word match (all search words present in target, in any order)
+ */
+export function matchesAutocompleteSearch(option: AutocompleteOption, rawSearch: string): boolean {
+  if (!rawSearch || !rawSearch.trim()) return true
+
+  const rawSearchLower = rawSearch.trim().toLowerCase()
+  const rawHaystack = [option.value, option.label, option.description || ''].join(' ').toLowerCase()
+
+  // 1. Direct raw substring match
+  if (rawHaystack.includes(rawSearchLower)) {
+    return true
+  }
+
+  // 2. Compact match (strips out all spaces, hyphens, punctuation)
+  // e.g. "nike xinhua mall" matches "NIKE-XINHUA MALL" or "nikexinhua"
+  const compactHaystack = compactForSearch(rawHaystack)
+  const compactSearch = compactForSearch(rawSearch)
+  if (compactSearch.length > 0 && compactHaystack.includes(compactSearch)) {
+    return true
+  }
+
+  // 3. Normalized tokens match (word-by-word agnostic, order-independent)
+  // e.g. "xinhua nike" or "nike xinhua mall"
+  const normalizedHaystack = normalizeForSearch(rawHaystack)
+  const searchTokens = normalizeForSearch(rawSearch).split(' ').filter(Boolean)
+
+  if (searchTokens.length > 0 && searchTokens.every((token) => normalizedHaystack.includes(token))) {
+    return true
+  }
+
+  return false
+}
+
 export function Autocomplete({
   options,
   value,
@@ -101,25 +163,19 @@ export function Autocomplete({
   popoverClassName,
   isLoading = false,
   onCreate,
+  allowClear = false,
 }: AutocompleteProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
 
   const selectedOption = options.find((option) => option.value === value)
 
-  const normalizedSearch = search.trim().toLowerCase()
-
   const filteredOptions = React.useMemo(
     () =>
-      normalizedSearch.length === 0
+      search.trim().length === 0
         ? options
-        : options.filter((option) => {
-          const haystack = [option.value, option.label, option.description || ""]
-            .join(" ")
-            .toLowerCase()
-          return haystack.includes(normalizedSearch)
-        }),
-    [options, normalizedSearch]
+        : options.filter((option) => matchesAutocompleteSearch(option, search)),
+    [options, search]
   )
 
   React.useEffect(() => {
@@ -143,11 +199,12 @@ export function Autocomplete({
           aria-haspopup="listbox"
           tabIndex={disabled || isLoading ? -1 : 0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(v => !v) } }}
+          title={selectedOption ? selectedOption.label : undefined}
           className={cn(
-            "flex items-center w-full h-9 px-3 rounded-md border border-input bg-background text-sm font-normal cursor-pointer select-none",
+            "flex items-center w-full h-10 px-3 rounded-md border border-input bg-background text-sm font-normal cursor-pointer select-none",
             "hover:bg-accent hover:text-accent-foreground transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-            open && "ring-2 ring-ring/20",
+            open && "ring-2 ring-ring/20 border-primary",
             (disabled || isLoading) && "pointer-events-none opacity-50",
             className
           )}
@@ -160,11 +217,11 @@ export function Autocomplete({
                 Loading...
               </span>
             ) : selectedOption ? (
-              <MarqueeText text={selectedOption.label} />
+              <MarqueeText text={selectedOption.label} className="font-semibold text-gray-900" />
             ) : value && options.length === 0 ? (
               <span className="text-muted-foreground">Loading options...</span>
             ) : (
-              <span className="text-muted-foreground truncate">{placeholder}</span>
+              <span className="text-muted-foreground truncate block">{placeholder}</span>
             )}
           </div>
 
@@ -179,19 +236,31 @@ export function Autocomplete({
       </PopoverTrigger>
 
       <PopoverContent
-        className={cn("w-[var(--radix-popover-trigger-width)] p-0", popoverClassName)}
+        className={cn(
+          "w-[var(--radix-popover-trigger-width)] min-w-[340px] sm:min-w-[440px] max-w-[95vw] p-0 shadow-2xl border rounded-lg bg-popover",
+          popoverClassName
+        )}
         align="start"
         sideOffset={4}
       >
-        <Command className="rounded-lg">
+        <Command className="rounded-lg" shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
             disabled={isLoading}
             value={search}
             onValueChange={setSearch}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && filteredOptions.length > 0) {
+                e.preventDefault()
+                e.stopPropagation()
+                const target = filteredOptions[0]
+                onValueChange?.(target.value)
+                setOpen(false)
+              }
+            }}
           />
-          <CommandList className="max-h-[280px]">
-            <div className={cn("max-h-[280px]", options.length <= 5 ? "h-fit" : "h-[280px]")}>
+          <CommandList className="max-h-[320px]">
+            <div className={cn("max-h-[320px]", filteredOptions.length <= 5 ? "h-fit" : "h-[320px]")}>
               <ScrollArea showShadows={true} shadowSize="md" className="h-full">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
@@ -200,7 +269,7 @@ export function Autocomplete({
                   </div>
                 ) : (
                   <>
-                    <CommandEmpty className="py-2 text-center text-sm text-muted-foreground px-2">
+                    <CommandEmpty className="py-4 text-center text-sm text-muted-foreground px-3">
                       {filteredOptions.length === 0 && onCreate && search ? (
                         <Button
                           variant="ghost"
@@ -213,36 +282,38 @@ export function Autocomplete({
                         emptyMessage
                       )}
                     </CommandEmpty>
-                    <CommandGroup className="p-1">
+                    <CommandGroup className="p-1.5">
                       {filteredOptions.map((option) => {
                         const isSelected = value === option.value
-                        const searchValue = [option.value, option.label, option.description || ""].join(" ")
                         return (
                           <CommandItem
                             key={option.value}
-                            value={searchValue}
+                            value={option.value}
                             onSelect={() => {
-                              onValueChange?.(isSelected ? "" : option.value)
+                              onValueChange?.(allowClear && isSelected ? "" : option.value)
                               setOpen(false)
                             }}
                             className={cn(
-                              "flex items-center gap-2 px-3 py-2.5 rounded-md cursor-pointer overflow-hidden",
-                              isSelected && "bg-accent"
+                              "flex items-center justify-between gap-3 px-3 py-2.5 my-0.5 rounded-md cursor-pointer transition-colors",
+                              isSelected ? "bg-indigo-50 text-indigo-900 font-semibold" : "hover:bg-accent text-gray-800"
                             )}
                           >
-                            <div className="flex flex-col gap-0.5 flex-1 w-0 min-w-0">
-                              <MarqueeText
-                                text={option.label}
-                                className={cn(isSelected && "font-medium")}
-                              />
+                            <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                              <span
+                                className={cn(
+                                  "text-sm leading-snug break-words",
+                                  isSelected ? "font-bold text-indigo-700" : "font-medium"
+                                )}
+                              >
+                                {option.label}
+                              </span>
                               {option.description && (
-                                <MarqueeText
-                                  text={option.description}
-                                  className="text-xs text-muted-foreground"
-                                />
+                                <span className="text-xs text-muted-foreground break-words">
+                                  {option.description}
+                                </span>
                               )}
                             </div>
-                            {isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-primary" />}
+                            {isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-indigo-600 font-bold" />}
                           </CommandItem>
                         )
                       })}

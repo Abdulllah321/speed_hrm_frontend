@@ -501,9 +501,9 @@ export default function StockRequisitionPage() {
   const downloadSkippedReportCSV = () => {
     if (!skippedReportData || !skippedReportData.skippedItems || skippedReportData.skippedItems.length === 0) return;
 
-    let csv = 'SKU,Description,Requested Qty,Available Stock,Reason\n';
+    let csv = 'SKU,Barcode,Description,Color,Size,Requested Qty,Available Stock,Reason\n';
     skippedReportData.skippedItems.forEach((item) => {
-      csv += `"${item.sku}","${(item.description || '').replace(/"/g, '""')}",${item.requestedQty || 0},${item.availableStock || 0},"${(item.reason || '').replace(/"/g, '""')}"\n`;
+      csv += `"${item.sku}","${item.barcode || ''}","${(item.description || '').replace(/"/g, '""')}","${item.color || ''}","${item.size || ''}",${item.requestedQty || 0},${item.availableStock || 0},"${(item.reason || '').replace(/"/g, '""')}"\n`;
     });
 
     const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csv);
@@ -818,22 +818,24 @@ export default function StockRequisitionPage() {
   const completedCount = requisitions.filter((r) => r.status === 'COMPLETED').length;
 
   const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
-  const locationOptions = [
+  const locationOptions = useMemo(() => [
     ...locations
-      .filter((l: any) => l.isStockLocation || l.warehouseId || (l.name && l.name.toLowerCase().includes('warehouse')))
+      .filter((l: any) => l.isStockLocation || l.warehouseId || (l.name && l.name.toLowerCase().includes('warehouse')) || l.code)
       .map((l: any) => ({
         value: l.id,
         label: l.code ? `${l.name} - ${l.code}` : l.name,
+        description: l.code ? `Outlet Code: ${l.code}` : 'Shop / Outlet',
       })),
     ...warehouses.map((w: any) => ({
       value: w.id,
       label: w.code ? `${w.name} - ${w.code} (Warehouse)` : `${w.name} (Warehouse)`,
+      description: 'Warehouse / Central Storage',
     }))
-  ];
-  const brandOptions = [
+  ], [locations, warehouses]);
+  const brandOptions = useMemo(() => [
     { value: 'none', label: 'No Brand Filter' },
     ...brands.map((b) => ({ value: b.id, label: b.name })),
-  ];
+  ], [brands]);
 
   const columns: ColumnDef<any>[] = useMemo(() => [
     {
@@ -1125,24 +1127,45 @@ export default function StockRequisitionPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Destination Location (Shop / Warehouse)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold text-gray-800 text-sm">
+                      Destination Location (Shop / Warehouse)
+                    </Label>
+                    {destLocationId && (
+                      <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                        Selected
+                      </span>
+                    )}
+                  </div>
                   <Autocomplete
                     options={locationOptions}
                     value={destLocationId}
                     onValueChange={setDestLocationId}
                     placeholder="Search & select destination outlet..."
-                    searchPlaceholder="Search outlet code or name..."
+                    searchPlaceholder="Search outlet code or name (e.g. nike, xinhua)..."
+                    className="h-10 text-sm font-semibold shadow-xs border-gray-300 hover:border-indigo-400 focus-visible:ring-indigo-500"
+                    popoverClassName="w-[440px] sm:w-[500px] max-w-[95vw] shadow-2xl border-indigo-100"
                   />
+                  {destLocationId && (
+                    <div className="text-[11px] text-gray-600 flex items-start gap-1 font-medium bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5 mt-1 leading-snug">
+                      <span className="text-indigo-600 font-bold shrink-0">Selected:</span>
+                      <span className="font-semibold text-gray-800 break-words">
+                        {locationOptions.find((l) => l.value === destLocationId)?.label}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Brand (Optional)</Label>
+                  <Label className="text-sm font-semibold text-gray-700">Brand (Optional)</Label>
                   <Autocomplete
                     options={brandOptions}
                     value={selectedBrandId || 'none'}
                     onValueChange={(val) => setSelectedBrandId(val === 'none' ? '' : val)}
                     placeholder="Search & select brand..."
                     searchPlaceholder="Search brand name..."
+                    className="h-10 text-sm shadow-xs border-gray-300"
+                    popoverClassName="w-[320px] sm:w-[380px] max-w-[95vw]"
                   />
                 </div>
 
@@ -1171,15 +1194,6 @@ export default function StockRequisitionPage() {
                     placeholder="e.g. SU26 2ND SHIP NEW ARRIVALS"
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Notes</Label>
-                  <Input
-                    placeholder="Additional instructions..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
                   />
                 </div>
 
@@ -1865,7 +1879,7 @@ export default function StockRequisitionPage() {
 
       {/* Skipped / Out of Stock Items Report Modal */}
       <Dialog open={skippedModalOpen} onOpenChange={setSkippedModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-6">
+        <DialogContent noScroll className="max-w-4xl max-h-[85vh] flex flex-col p-6 overflow-hidden">
           <DialogHeader className="pb-3 border-b">
             <div className="flex items-center gap-2 text-amber-600">
               <AlertTriangle className="h-6 w-6" />
@@ -1906,28 +1920,50 @@ export default function StockRequisitionPage() {
 
           {/* Skipped Items Table */}
           <div className="flex-1 overflow-hidden border rounded-lg mt-2">
-            <ScrollArea className="h-64">
-              <Table>
-                <TableHeader className="bg-gray-50/80 sticky top-0">
+            <div className="overflow-x-auto overflow-y-auto max-h-64 w-full">
+              <Table className="min-w-[850px] w-full">
+                <TableHeader className="bg-gray-50/80 sticky top-0 z-10">
                   <TableRow>
-                    <TableHead className="font-bold text-xs">SKU / BarCode</TableHead>
-                    <TableHead className="font-bold text-xs">Description</TableHead>
-                    <TableHead className="font-bold text-xs text-center">Req Qty</TableHead>
-                    <TableHead className="font-bold text-xs text-center">Warehouse Stock</TableHead>
-                    <TableHead className="font-bold text-xs">Status / Reason</TableHead>
+                    <TableHead className="font-bold text-xs whitespace-nowrap min-w-[120px]">SKU</TableHead>
+                    <TableHead className="font-bold text-xs whitespace-nowrap min-w-[130px]">Barcode</TableHead>
+                    <TableHead className="font-bold text-xs min-w-[160px]">Description</TableHead>
+                    <TableHead className="font-bold text-xs text-center whitespace-nowrap min-w-[80px]">Color</TableHead>
+                    <TableHead className="font-bold text-xs text-center whitespace-nowrap min-w-[70px]">Size</TableHead>
+                    <TableHead className="font-bold text-xs text-center whitespace-nowrap min-w-[80px]">Req Qty</TableHead>
+                    <TableHead className="font-bold text-xs text-center whitespace-nowrap min-w-[80px]">Warehouse Stock</TableHead>
+                    <TableHead className="font-bold text-xs min-w-[260px]">Status / Reason</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {skippedReportData?.skippedItems?.map((item, idx) => (
                     <TableRow key={idx} className="hover:bg-rose-50/20 text-xs">
-                      <TableCell className="font-mono font-bold text-rose-700">{item.sku}</TableCell>
-                      <TableCell className="max-w-[200px] truncate text-gray-700">{item.description || '—'}</TableCell>
-                      <TableCell className="text-center font-bold text-gray-800">{item.requestedQty || 0}</TableCell>
-                      <TableCell className="text-center font-bold text-rose-600">
+                      <TableCell className="font-mono font-bold text-rose-700 whitespace-nowrap">{item.sku}</TableCell>
+                      <TableCell className="font-mono text-gray-700 whitespace-nowrap">{item.barcode || '—'}</TableCell>
+                      <TableCell className="max-w-[180px] truncate text-gray-700" title={item.description}>{item.description || '—'}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
+                        {item.color ? (
+                          <Badge variant="outline" className="text-[10px] font-semibold bg-gray-50 border-gray-300">
+                            {item.color}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
+                        {item.size ? (
+                          <Badge variant="outline" className="text-[10px] font-bold bg-indigo-50/60 border-indigo-200 text-indigo-700">
+                            {item.size}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center font-bold text-gray-800 whitespace-nowrap">{item.requestedQty || 0}</TableCell>
+                      <TableCell className="text-center font-bold text-rose-600 whitespace-nowrap">
                         {item.availableStock || 0}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="border-rose-300 bg-rose-50 text-rose-700 font-semibold text-[11px]">
+                      <TableCell className="whitespace-normal">
+                        <Badge variant="outline" className="border-rose-300 bg-rose-50 text-rose-700 font-semibold text-[11px] leading-snug py-0.5 inline-block text-left break-words">
                           {item.reason || '0 Stock'}
                         </Badge>
                       </TableCell>
@@ -1935,7 +1971,7 @@ export default function StockRequisitionPage() {
                   ))}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           </div>
 
           <DialogFooter className="mt-4 border-t pt-4 flex flex-col sm:flex-row justify-between items-center gap-3">

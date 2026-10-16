@@ -228,12 +228,14 @@ export function SrnBulkUploadModal({
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Destination Outlet <span className="text-destructive">*</span></Label>
                                     <Autocomplete
-                                        options={locations.map(l => ({ value: l.id, label: l.code ? `${l.code} · ${l.name}` : l.name }))}
+                                        options={locations.map(l => ({ value: l.id, label: l.code ? `${l.name} - ${l.code}` : l.name, description: l.code ? `Outlet Code: ${l.code}` : undefined }))}
                                         value={toLocationId}
                                         onValueChange={setToLocationId}
                                         disabled={!!uploadId}
                                         placeholder="Search & select destination outlet..."
                                         searchPlaceholder="Search outlet code or name..."
+                                        className="h-10 text-sm font-semibold shadow-xs"
+                                        popoverClassName="w-[440px] sm:w-[480px] max-w-[95vw] shadow-xl border-indigo-100"
                                     />
                                 </div>
 
@@ -272,11 +274,6 @@ export function SrnBulkUploadModal({
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Remarks</Label>
                                     <Input value={remarks} onChange={e => setRemarks(e.target.value)} disabled={!!uploadId} placeholder="e.g. SU26 2ND SHIP" className="bg-background h-10" />
-                                </div>
-
-                                <div className="col-span-2 space-y-2">
-                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Notes</Label>
-                                    <Input value={notes} onChange={e => setNotes(e.target.value)} disabled={!!uploadId} placeholder="Additional instructions..." className="bg-background h-10" />
                                 </div>
                             </div>
                         </div>
