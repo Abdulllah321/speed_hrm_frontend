@@ -818,22 +818,24 @@ export default function StockRequisitionPage() {
   const completedCount = requisitions.filter((r) => r.status === 'COMPLETED').length;
 
   const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
-  const locationOptions = [
+  const locationOptions = useMemo(() => [
     ...locations
-      .filter((l: any) => l.isStockLocation || l.warehouseId || (l.name && l.name.toLowerCase().includes('warehouse')))
+      .filter((l: any) => l.isStockLocation || l.warehouseId || (l.name && l.name.toLowerCase().includes('warehouse')) || l.code)
       .map((l: any) => ({
         value: l.id,
         label: l.code ? `${l.name} - ${l.code}` : l.name,
+        description: l.code ? `Outlet Code: ${l.code}` : 'Shop / Outlet',
       })),
     ...warehouses.map((w: any) => ({
       value: w.id,
       label: w.code ? `${w.name} - ${w.code} (Warehouse)` : `${w.name} (Warehouse)`,
+      description: 'Warehouse / Central Storage',
     }))
-  ];
-  const brandOptions = [
+  ], [locations, warehouses]);
+  const brandOptions = useMemo(() => [
     { value: 'none', label: 'No Brand Filter' },
     ...brands.map((b) => ({ value: b.id, label: b.name })),
-  ];
+  ], [brands]);
 
   const columns: ColumnDef<any>[] = useMemo(() => [
     {
@@ -1125,24 +1127,45 @@ export default function StockRequisitionPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Destination Location (Shop / Warehouse)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold text-gray-800 text-sm">
+                      Destination Location (Shop / Warehouse)
+                    </Label>
+                    {destLocationId && (
+                      <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                        Selected
+                      </span>
+                    )}
+                  </div>
                   <Autocomplete
                     options={locationOptions}
                     value={destLocationId}
                     onValueChange={setDestLocationId}
                     placeholder="Search & select destination outlet..."
-                    searchPlaceholder="Search outlet code or name..."
+                    searchPlaceholder="Search outlet code or name (e.g. nike, xinhua)..."
+                    className="h-10 text-sm font-semibold shadow-xs border-gray-300 hover:border-indigo-400 focus-visible:ring-indigo-500"
+                    popoverClassName="w-[440px] sm:w-[500px] max-w-[95vw] shadow-2xl border-indigo-100"
                   />
+                  {destLocationId && (
+                    <div className="text-[11px] text-gray-600 flex items-start gap-1 font-medium bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5 mt-1 leading-snug">
+                      <span className="text-indigo-600 font-bold shrink-0">Selected:</span>
+                      <span className="font-semibold text-gray-800 break-words">
+                        {locationOptions.find((l) => l.value === destLocationId)?.label}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Brand (Optional)</Label>
+                  <Label className="text-sm font-semibold text-gray-700">Brand (Optional)</Label>
                   <Autocomplete
                     options={brandOptions}
                     value={selectedBrandId || 'none'}
                     onValueChange={(val) => setSelectedBrandId(val === 'none' ? '' : val)}
                     placeholder="Search & select brand..."
                     searchPlaceholder="Search brand name..."
+                    className="h-10 text-sm shadow-xs border-gray-300"
+                    popoverClassName="w-[320px] sm:w-[380px] max-w-[95vw]"
                   />
                 </div>
 
