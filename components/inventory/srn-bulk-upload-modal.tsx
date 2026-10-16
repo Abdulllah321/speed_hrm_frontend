@@ -275,11 +275,6 @@ export function SrnBulkUploadModal({
                                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Remarks</Label>
                                     <Input value={remarks} onChange={e => setRemarks(e.target.value)} disabled={!!uploadId} placeholder="e.g. SU26 2ND SHIP" className="bg-background h-10" />
                                 </div>
-
-                                <div className="col-span-2 space-y-2">
-                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Notes</Label>
-                                    <Input value={notes} onChange={e => setNotes(e.target.value)} disabled={!!uploadId} placeholder="Additional instructions..." className="bg-background h-10" />
-                                </div>
                             </div>
                         </div>
 
