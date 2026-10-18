@@ -58,6 +58,52 @@ const VOUCHER_TYPE_OPTIONS: { value: VoucherType; label: string }[] = [
 const MAX_VOUCHER_LIMIT = 500;
 const QUANTITY_PRESETS = [5, 10, 25, 50, 100, 250, 500];
 
+export interface DenominationRow {
+    id: string;
+    quantity: number;
+    faceValue: number;
+    discount: number;
+}
+
+const COMMON_CLIENT_PRESETS = [
+    { abbr: "PP", name: "PEPSI-COLA INTERNATIONAL (PVT.) LTD." },
+    { abbr: "CP", name: "CHINA POWER HUB GENERATION COMPANY (PVT.) LTD." },
+    { abbr: "TP", name: "TELENOR PAKISTAN (PVT.) LTD." },
+    { abbr: "JSA", name: "JAZZ / PMCL" },
+    { abbr: "AD", name: "ABUDAWOOD TRADING COMPANY" },
+    { abbr: "ML", name: "REBRAND (PVT.) LTD." },
+    { abbr: "CB", name: "CONTINENTAL BISCUITS LIMITED" },
+    { abbr: "HM", name: "HABIB METROPOLITAN BANK LTD." },
+];
+
+const CLIENT_ABBR_MAP: Record<string, string> = {
+    "PEPSI": "PP",
+    "CHINA POWER": "CP",
+    "TELENOR": "TP",
+    "ABUDAWOOD": "AD",
+    "CONTINENTAL": "CB",
+    "HABIB METROPOLITAN": "HM",
+    "HABIB METRO": "HM",
+    "JAZZ": "JSA",
+    "VORSON": "ML",
+    "REBRAND": "ML",
+    "HIGHNOON": "HV",
+    "GERRYS": "GV",
+    "INDUS MOTOR": "IM",
+    "K-ELECTRIC": "KE",
+    "THE LINK": "310143",
+    "ADNAN TARIQ": "310144",
+};
+
+function detectAbbreviation(name: string, fallbackCode?: string): string {
+    if (!name) return fallbackCode || "";
+    const upper = name.toUpperCase();
+    for (const [key, abbr] of Object.entries(CLIENT_ABBR_MAP)) {
+        if (upper.includes(key)) return abbr;
+    }
+    return fallbackCode || "";
+}
+
 interface CustomRow {
     id: string;
     voucherType: VoucherType;
@@ -83,8 +129,15 @@ export function VoucherFormPage({ locations }: Props) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
 
-    // Mode: 'batch' (same amount) vs 'custom' (table with individual amounts)
-    const [mode, setMode] = useState<"batch" | "custom">("batch");
+    // Mode: 'batch' (same amount) vs 'denomination' (distribution pack) vs 'custom' (table with individual amounts)
+    const [mode, setMode] = useState<"batch" | "denomination" | "custom">("batch");
+
+    // ── Corporate Denomination Pack Fields (Distributing 500 vouchers across denominations) ──
+    const [denominationRows, setDenominationRows] = useState<DenominationRow[]>([
+        { id: "1", quantity: 100, faceValue: 5000, discount: 0 },
+        { id: "2", quantity: 200, faceValue: 2000, discount: 0 },
+        { id: "3", quantity: 200, faceValue: 1000, discount: 0 },
+    ]);
 
     // ── Batch Mode Fields ──────────────────────────────────────
     const [quantity, setQuantity] = useState<number>(1);
@@ -156,7 +209,8 @@ export function VoucherFormPage({ locations }: Props) {
         if (cust) {
             setCompanyName(cust.name);
             const code = resolveCustomerCode(cust);
-            setCompanyGlCode(code);
+            const autoAbbr = detectAbbreviation(cust.name, code);
+            setCompanyGlCode(autoAbbr);
         } else {
             setCompanyName("");
             setCompanyGlCode("");
@@ -171,11 +225,12 @@ export function VoucherFormPage({ locations }: Props) {
             if (res?.status && res?.data) {
                 const newCust = res.data;
                 const code = resolveCustomerCode(newCust);
+                const autoAbbr = detectAbbreviation(newCust.name, code);
                 setCustomers((prev) => [newCust, ...prev]);
                 setSelectedCustomerId(newCust.id);
                 setCompanyName(newCust.name);
-                setCompanyGlCode(code);
-                toast.success(`Customer "${newCust.name}" created with code ${code}`, { id: "create-cust" });
+                setCompanyGlCode(autoAbbr);
+                toast.success(`Customer "${newCust.name}" created with abbreviation ${autoAbbr}`, { id: "create-cust" });
             } else {
                 toast.error(res?.message || "Failed to create customer", { id: "create-cust" });
             }
@@ -212,6 +267,75 @@ export function VoucherFormPage({ locations }: Props) {
             totalPayable,
         };
     }, [quantity, faceValue, discount]);
+
+    // ── Denomination Distribution Summary ──────────────────────
+    const denominationSummary = useMemo(() => {
+        const totalCount = denominationRows.reduce((acc, r) => acc + (Number(r.quantity) || 0), 0);
+        const totalFaceValue = denominationRows.reduce((acc, r) => acc + ((Number(r.quantity) || 0) * (Number(r.faceValue) || 0)), 0);
+        const totalDiscount = denominationRows.reduce((acc, r) => acc + ((Number(r.quantity) || 0) * (Number(r.discount) || 0)), 0);
+        const totalPayable = totalFaceValue - totalDiscount;
+
+        return {
+            totalCount,
+            totalFaceValue,
+            totalDiscount,
+            totalPayable,
+        };
+    }, [denominationRows]);
+
+    const addDenominationRow = (faceValue: number = 1000, quantity: number = 50) => {
+        setDenominationRows(prev => [
+            ...prev,
+            {
+                id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+                quantity,
+                faceValue,
+                discount: 0,
+            }
+        ]);
+    };
+
+    const removeDenominationRow = (id: string) => {
+        if (denominationRows.length <= 1) {
+            toast.error("At least 1 denomination row is required.");
+            return;
+        }
+        setDenominationRows(prev => prev.filter(r => r.id !== id));
+    };
+
+    const updateDenominationRow = (id: string, field: keyof DenominationRow, val: any) => {
+        setDenominationRows(prev => prev.map(r => r.id === id ? { ...r, [field]: val } : r));
+    };
+
+    const applyDistributionPreset = (type: "500-standard" | "500-high" | "500-uniform" | "100-pack") => {
+        if (type === "500-standard") {
+            setDenominationRows([
+                { id: "1", quantity: 100, faceValue: 5000, discount: 0 },
+                { id: "2", quantity: 200, faceValue: 2000, discount: 0 },
+                { id: "3", quantity: 200, faceValue: 1000, discount: 0 },
+            ]);
+            toast.success("Loaded 500 Vouchers Distribution (100×5k, 200×2k, 200×1k)");
+        } else if (type === "500-high") {
+            setDenominationRows([
+                { id: "1", quantity: 100, faceValue: 10000, discount: 0 },
+                { id: "2", quantity: 200, faceValue: 5000, discount: 0 },
+                { id: "3", quantity: 200, faceValue: 2500, discount: 0 },
+            ]);
+            toast.success("Loaded 500 Vouchers High Value (100×10k, 200×5k, 200×2.5k)");
+        } else if (type === "500-uniform") {
+            setDenominationRows([
+                { id: "1", quantity: 500, faceValue: 5000, discount: 0 },
+            ]);
+            toast.success("Loaded 500 Vouchers Uniform (500×5k)");
+        } else if (type === "100-pack") {
+            setDenominationRows([
+                { id: "1", quantity: 20, faceValue: 10000, discount: 0 },
+                { id: "2", quantity: 40, faceValue: 5000, discount: 0 },
+                { id: "3", quantity: 40, faceValue: 2000, discount: 0 },
+            ]);
+            toast.success("Loaded 100 Vouchers Pack (20×10k, 40×5k, 40×2k)");
+        }
+    };
 
     // ── Custom Grid Financial Totals ───────────────────────────
     const customSummary = useMemo(() => {
@@ -307,6 +431,67 @@ export function VoucherFormPage({ locations }: Props) {
 
         if (voucherType === "CORPORATE" && (!companyGlCode || !companyName)) {
             toast.error("Please select an ERP customer/company for corporate vouchers");
+            return;
+        }
+
+        if (mode === "denomination") {
+            if (voucherType === "CORPORATE" && (!companyGlCode || !companyName)) {
+                toast.error("Please enter Client Name and Client Abbreviation (e.g. PP for Pepsi-Cola)");
+                return;
+            }
+            if (denominationSummary.totalCount <= 0) {
+                toast.error("Please add at least 1 voucher to distribute");
+                return;
+            }
+            if (denominationSummary.totalCount > MAX_VOUCHER_LIMIT) {
+                toast.error(`Maximum limit of ${MAX_VOUCHER_LIMIT} vouchers per batch exceeded. Currently: ${denominationSummary.totalCount}`);
+                return;
+            }
+            for (let i = 0; i < denominationRows.length; i++) {
+                const r = denominationRows[i];
+                if (!r.quantity || r.quantity <= 0) {
+                    toast.error(`Row #${i + 1}: Please enter a valid quantity`);
+                    return;
+                }
+                if (!r.faceValue || r.faceValue <= 0) {
+                    toast.error(`Row #${i + 1}: Please enter a valid face value`);
+                    return;
+                }
+            }
+
+            startTransition(async () => {
+                const vouchersPayload: any[] = [];
+                for (const row of denominationRows) {
+                    for (let q = 0; q < row.quantity; q++) {
+                        vouchersPayload.push({
+                            voucherType,
+                            faceValue: Number(row.faceValue),
+                            discount: Number(row.discount || 0),
+                            description: description || undefined,
+                            customerId: voucherType === "CORPORATE" ? selectedCustomerId || undefined : undefined,
+                            companyName: voucherType === "CORPORATE" ? companyName || undefined : undefined,
+                            companyGlCode: voucherType === "CORPORATE" ? companyGlCode || undefined : undefined,
+                            expiresAt: expiresAt || undefined,
+                            locationIds,
+                        });
+                    }
+                }
+
+                const result = await bulkIssueVouchers({
+                    vouchers: vouchersPayload,
+                });
+
+                if (result.status && result.data) {
+                    setIssuedResult({
+                        count: result.data.count,
+                        codes: result.data.codes,
+                        vouchers: result.data.vouchers,
+                    });
+                    toast.success(`${result.data.count} vouchers distributed to ${companyName} [${companyGlCode}] successfully!`);
+                } else {
+                    toast.error(result.message || "Failed to distribute vouchers");
+                }
+            });
             return;
         }
 
@@ -510,7 +695,7 @@ export function VoucherFormPage({ locations }: Props) {
                 </div>
 
                 {/* Mode Selector Tabs */}
-                <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/50">
+                <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/50 gap-1 flex-wrap">
                     <button
                         type="button"
                         onClick={() => setMode("batch")}
@@ -521,7 +706,22 @@ export function VoucherFormPage({ locations }: Props) {
                         }`}
                     >
                         <Layers className="h-3.5 w-3.5 text-primary" />
-                        <span>Batch Issuance (Same Amount)</span>
+                        <span>Uniform Batch (Same Amount)</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setMode("denomination");
+                            setVoucherType("CORPORATE");
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition ${
+                            mode === "denomination"
+                                ? "bg-background text-foreground shadow-xs"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                        <span>Corporate Denomination Pack ({denominationSummary.totalCount} Vouchers)</span>
                     </button>
                     <button
                         type="button"
@@ -738,22 +938,71 @@ export function VoucherFormPage({ locations }: Props) {
                                             />
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/40 text-xs">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/40 text-xs">
                                             <div>
-                                                <span className="text-[11px] text-muted-foreground font-medium">Selected Customer:</span>
-                                                <p className="font-semibold text-foreground truncate mt-0.5">
+                                                <span className="text-[11px] text-muted-foreground font-medium">Corporate Client / Customer:</span>
+                                                <p className="font-bold text-foreground truncate mt-0.5">
                                                     {companyName || "—"}
                                                 </p>
                                             </div>
                                             <div>
-                                                <span className="text-[11px] text-muted-foreground font-medium">Voucher GL Code *:</span>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[11px] font-bold text-foreground">
+                                                        Client Abbreviation *:
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground">
+                                                        e.g. PP, TP, JSA
+                                                    </span>
+                                                </div>
                                                 <Input
                                                     value={companyGlCode}
-                                                    onChange={(e) => setCompanyGlCode(e.target.value)}
-                                                    placeholder="e.g. 310001"
-                                                    className="h-8 text-xs font-mono font-semibold mt-0.5 bg-background"
+                                                    onChange={(e) => setCompanyGlCode(e.target.value.toUpperCase())}
+                                                    placeholder="e.g. PP, TP, JSA"
+                                                    className="h-8 text-xs font-mono font-bold uppercase mt-0.5 bg-background tracking-wider"
                                                 />
                                             </div>
+                                        </div>
+
+                                        {/* Quick Abbreviation Presets */}
+                                        <div className="space-y-1.5 pt-1">
+                                            <span className="text-[10px] text-muted-foreground font-medium block">
+                                                Common Client Abbreviations:
+                                            </span>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                {[
+                                                    { abbr: "PP", name: "Pepsi-Cola" },
+                                                    { abbr: "TP", name: "Telenor" },
+                                                    { abbr: "JSA", name: "Jazz" },
+                                                    { abbr: "CP", name: "China Power" },
+                                                    { abbr: "AD", name: "Abudawood" },
+                                                    { abbr: "ML", name: "Rebrand" },
+                                                    { abbr: "CB", name: "Continental" },
+                                                    { abbr: "HM", name: "Habib Metro" },
+                                                ].map((preset) => (
+                                                    <button
+                                                        key={preset.abbr}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCompanyGlCode(preset.abbr);
+                                                            if (!companyName) setCompanyName(preset.name);
+                                                        }}
+                                                        className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
+                                                            companyGlCode === preset.abbr
+                                                                ? "bg-primary text-primary-foreground border-primary"
+                                                                : "bg-background text-muted-foreground hover:border-primary/50"
+                                                        }`}
+                                                    >
+                                                        {preset.abbr} ({preset.name})
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="p-2.5 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/50 dark:border-indigo-800/40 text-[11px] text-indigo-900 dark:text-indigo-200 flex items-start gap-2">
+                                            <Building2 className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+                                            <span>
+                                                Issuing <strong>{quantity} corporate voucher{quantity > 1 ? "s" : ""}</strong> to <strong>{companyName || "Client"}</strong> under abbreviation <strong className="font-mono bg-indigo-100 dark:bg-indigo-900/60 px-1 py-0.5 rounded font-bold">{companyGlCode || "—"}</strong>.
+                                            </span>
                                         </div>
                                     </div>
                                 )}
@@ -774,6 +1023,295 @@ export function VoucherFormPage({ locations }: Props) {
                                         <Label className="text-xs font-semibold flex items-center gap-1">
                                             <Calendar className="h-3 w-3 text-muted-foreground" />
                                             <span>Expiry Date (Optional)</span>
+                                        </Label>
+                                        <Input
+                                            type="date"
+                                            value={expiresAt}
+                                            onChange={(e) => setExpiresAt(e.target.value)}
+                                            min={new Date().toISOString().split("T")[0]}
+                                            className="h-9 text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODE 2: CORPORATE DENOMINATION DISTRIBUTION PACK */}
+                        {mode === "denomination" && (
+                            <div className="space-y-5">
+                                {/* Presets Header */}
+                                <div className="bg-gradient-to-r from-indigo-50/80 via-background to-blue-50/80 dark:from-indigo-950/30 dark:via-background dark:to-blue-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl p-4 shadow-xs space-y-3">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <div>
+                                            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                                <Sparkles className="h-4 w-4 text-indigo-600" />
+                                                <span>Corporate Voucher Denomination Distribution Pack</span>
+                                            </h3>
+                                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                Issue bulk vouchers distributed across mixed denominations (e.g. 500 vouchers for Pepsi-Cola under abbreviation [PP]).
+                                            </p>
+                                        </div>
+                                        <Badge variant="outline" className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border-indigo-200 self-start sm:self-auto">
+                                            {denominationSummary.totalCount} / {MAX_VOUCHER_LIMIT} Vouchers
+                                        </Badge>
+                                    </div>
+
+                                    {/* Quick Distribution Presets */}
+                                    <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-border/40">
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                            Quick Distribution Presets:
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => applyDistributionPreset("500-standard")}
+                                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold border bg-background hover:border-indigo-400 hover:text-indigo-600 transition"
+                                        >
+                                            500 Pack (100×5k, 200×2k, 200×1k)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => applyDistributionPreset("500-high")}
+                                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold border bg-background hover:border-indigo-400 hover:text-indigo-600 transition"
+                                        >
+                                            500 Pack High Value (100×10k, 200×5k, 200×2.5k)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => applyDistributionPreset("500-uniform")}
+                                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold border bg-background hover:border-indigo-400 hover:text-indigo-600 transition"
+                                        >
+                                            500 Uniform (500×5k)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => applyDistributionPreset("100-pack")}
+                                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold border bg-background hover:border-indigo-400 hover:text-indigo-600 transition"
+                                        >
+                                            100 Pack (20×10k, 40×5k, 40×2k)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Corporate Client & Abbreviation Identity Card */}
+                                <div className="bg-card border rounded-2xl p-4 space-y-3.5 shadow-xs">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold flex items-center gap-1.5 text-foreground">
+                                            <Building2 className="h-4 w-4 text-indigo-600" />
+                                            <span>Corporate Client &amp; Contract Abbreviation *</span>
+                                        </Label>
+                                        <span className="text-[10px] text-muted-foreground">
+                                            Target Company Contract
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                        <div className="sm:col-span-8 space-y-1">
+                                            <span className="text-[11px] text-muted-foreground font-medium">Search / Select ERP Customer:</span>
+                                            <Autocomplete
+                                                options={customerOptions}
+                                                value={selectedCustomerId}
+                                                onValueChange={handleCustomerSelect}
+                                                onCreateOption={handleCreateCustomer}
+                                                placeholder="Search corporate customer (e.g. Pepsi-Cola, China Power)..."
+                                                createLabel="Create customer"
+                                                className="w-full text-xs"
+                                            />
+                                        </div>
+
+                                        <div className="sm:col-span-4 space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] font-bold text-foreground">
+                                                    Client Abbreviation *:
+                                                </span>
+                                                <span className="text-[10px] text-muted-foreground">e.g. PP, TP, JSA</span>
+                                            </div>
+                                            <Input
+                                                value={companyGlCode}
+                                                onChange={(e) => setCompanyGlCode(e.target.value.toUpperCase())}
+                                                placeholder="e.g. PP, TP, JSA"
+                                                className="h-8 text-xs font-mono font-bold uppercase bg-background tracking-wider"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Quick Abbreviation Presets */}
+                                    <div className="space-y-1.5 pt-1">
+                                        <span className="text-[10px] text-muted-foreground font-medium block">
+                                            Common Corporate Clients &amp; Abbreviations:
+                                        </span>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            {COMMON_CLIENT_PRESETS.map((preset) => (
+                                                <button
+                                                    key={preset.abbr}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setCompanyGlCode(preset.abbr);
+                                                        setCompanyName(preset.name);
+                                                    }}
+                                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${
+                                                        companyGlCode === preset.abbr
+                                                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                                                            : "bg-background text-muted-foreground hover:border-indigo-300"
+                                                    }`}
+                                                >
+                                                    [{preset.abbr}] {preset.name.split(" ")[0]}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Live Contract Identity Banner */}
+                                    <div className="p-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/50 dark:border-indigo-800/40 text-xs text-indigo-900 dark:text-indigo-200 flex items-start gap-2.5">
+                                        <Building2 className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+                                        <div className="space-y-0.5">
+                                            <p>
+                                                Distributing <strong>{denominationSummary.totalCount} corporate vouchers</strong> to <strong>{companyName || "Client"}</strong> under abbreviation <strong className="font-mono bg-indigo-100 dark:bg-indigo-900/60 px-1.5 py-0.5 rounded font-bold">[{companyGlCode || "—"}]</strong>.
+                                            </p>
+                                            <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300/80">
+                                                Voucher Codes will be embossed as: <strong className="font-mono">CRP-{companyGlCode || "PP"}-******</strong> · Gross Value: <strong>{formatCurrency(denominationSummary.totalFaceValue)}</strong>.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Denomination Breakdown Table */}
+                                <div className="border rounded-2xl overflow-hidden bg-card shadow-xs">
+                                    <div className="p-3 px-4 bg-muted/40 border-b flex items-center justify-between flex-wrap gap-2">
+                                        <span className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                            <Layers className="h-3.5 w-3.5 text-primary" />
+                                            <span>Denomination Lines ({denominationRows.length})</span>
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] text-muted-foreground mr-1">Add Denomination:</span>
+                                            {[1000, 2000, 5000, 10000, 25000].map((amt) => (
+                                                <button
+                                                    key={amt}
+                                                    type="button"
+                                                    onClick={() => addDenominationRow(amt, 50)}
+                                                    className="px-2 py-0.5 rounded text-[10px] font-bold border bg-background hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                                                >
+                                                    + Rs. {amt >= 1000 ? `${amt / 1000}k` : amt}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-xs text-left">
+                                            <thead className="bg-muted/50 border-b text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                <tr>
+                                                    <th className="p-3 w-12 text-center">#</th>
+                                                    <th className="p-3 min-w-[140px]">Quantity (Vouchers) *</th>
+                                                    <th className="p-3 min-w-[160px]">Face Value per Voucher (PKR) *</th>
+                                                    <th className="p-3 min-w-[140px]">Discount per Voucher (PKR)</th>
+                                                    <th className="p-3 min-w-[150px] text-right">Subtotal Value (PKR)</th>
+                                                    <th className="p-3 w-12 text-center">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {denominationRows.map((row, idx) => {
+                                                    const lineSubtotal = (Number(row.quantity) || 0) * (Number(row.faceValue) || 0);
+                                                    return (
+                                                        <tr key={row.id} className="hover:bg-muted/20 transition">
+                                                            <td className="p-3 font-mono font-bold text-center text-muted-foreground">
+                                                                {idx + 1}
+                                                            </td>
+                                                            <td className="p-3">
+                                                                <Input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max={MAX_VOUCHER_LIMIT}
+                                                                    value={row.quantity}
+                                                                    onChange={(e) => updateDenominationRow(row.id, "quantity", e.target.value ? Number(e.target.value) : "")}
+                                                                    placeholder="100"
+                                                                    className="h-8 text-xs font-mono font-bold"
+                                                                />
+                                                            </td>
+                                                            <td className="p-3">
+                                                                <Input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    value={row.faceValue}
+                                                                    onChange={(e) => updateDenominationRow(row.id, "faceValue", e.target.value ? Number(e.target.value) : "")}
+                                                                    placeholder="5000"
+                                                                    className="h-8 text-xs font-mono font-bold"
+                                                                />
+                                                            </td>
+                                                            <td className="p-3">
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    value={row.discount}
+                                                                    onChange={(e) => updateDenominationRow(row.id, "discount", e.target.value ? Number(e.target.value) : 0)}
+                                                                    placeholder="0"
+                                                                    className="h-8 text-xs font-mono"
+                                                                />
+                                                            </td>
+                                                            <td className="p-3 text-right font-mono font-bold text-indigo-600">
+                                                                {formatCurrency(lineSubtotal)}
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                                <Button
+                                                                    type="button"
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    onClick={() => removeDenominationRow(row.id)}
+                                                                    className="h-7 w-7 text-muted-foreground hover:text-rose-600 hover:bg-rose-50"
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                            <tfoot className="bg-muted/40 border-t font-bold text-xs">
+                                                <tr>
+                                                    <td colSpan={2} className="p-3 font-mono text-foreground">
+                                                        Total: {denominationSummary.totalCount} Vouchers
+                                                    </td>
+                                                    <td colSpan={2} className="p-3 text-right text-muted-foreground">
+                                                        Total Face Value:
+                                                    </td>
+                                                    <td className="p-3 text-right font-mono text-sm text-foreground font-black">
+                                                        {formatCurrency(denominationSummary.totalFaceValue)}
+                                                    </td>
+                                                    <td></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+
+                                    <div className="p-3 bg-muted/20 border-t flex items-center justify-between">
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => addDenominationRow(5000, 50)}
+                                            className="h-8 text-xs gap-1 font-semibold"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" />
+                                            <span>Add Custom Denomination Row</span>
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Optional Expiry & Description */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-semibold">Description / Contract Notes (Optional)</Label>
+                                        <Input
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            placeholder="e.g. Annual corporate contract distribution"
+                                            className="h-9 text-xs"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-semibold flex items-center gap-1">
+                                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                                            <span>Contract Expiry Date (Optional)</span>
                                         </Label>
                                         <Input
                                             type="date"
@@ -890,7 +1428,7 @@ export function VoucherFormPage({ locations }: Props) {
                                 </div>
 
                                 {/* Shared Settings for Custom Grid */}
-                                <div className="bg-muted/20 border rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="bg-muted/20 border rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                                     <div className="space-y-1.5">
                                         <Label className="text-[11px] font-bold">Default Payment Method</Label>
                                         <Select value={paymentMode} onValueChange={(v) => setPaymentMode(v as any)}>
@@ -914,12 +1452,22 @@ export function VoucherFormPage({ locations }: Props) {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-bold">Default Corporate Client</Label>
+                                        <Label className="text-[11px] font-bold">Corporate Client</Label>
                                         <Input
                                             value={companyName}
                                             onChange={(e) => setCompanyName(e.target.value)}
-                                            placeholder="Company name..."
+                                            placeholder="e.g. Pepsi-Cola"
                                             className="h-8 text-xs"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold">Client Abbr (e.g. PP)</Label>
+                                        <Input
+                                            value={companyGlCode}
+                                            onChange={(e) => setCompanyGlCode(e.target.value.toUpperCase())}
+                                            placeholder="e.g. PP, TP, JSA"
+                                            className="h-8 text-xs font-mono font-bold uppercase tracking-wider"
                                         />
                                     </div>
                                 </div>
@@ -1020,7 +1568,11 @@ export function VoucherFormPage({ locations }: Props) {
                                     <span>Issuance Summary</span>
                                 </span>
                                 <Badge variant="secondary" className="font-mono text-xs font-bold">
-                                    {mode === "batch" ? `${batchSummary.qty} Vouchers` : `${customSummary.count} Vouchers`}
+                                    {mode === "batch"
+                                        ? `${batchSummary.qty} Vouchers`
+                                        : mode === "denomination"
+                                        ? `${denominationSummary.totalCount} Vouchers`
+                                        : `${customSummary.count} Vouchers`}
                                 </Badge>
                             </div>
 
@@ -1029,22 +1581,42 @@ export function VoucherFormPage({ locations }: Props) {
                                     <div className="flex items-center justify-between text-muted-foreground">
                                         <span>Total Vouchers:</span>
                                         <span className="font-mono font-bold text-foreground">
-                                            {mode === "batch" ? batchSummary.qty : customSummary.count} of {MAX_VOUCHER_LIMIT}
+                                            {mode === "batch"
+                                                ? batchSummary.qty
+                                                : mode === "denomination"
+                                                ? denominationSummary.totalCount
+                                                : customSummary.count} of {MAX_VOUCHER_LIMIT}
                                         </span>
                                     </div>
 
                                     <div className="flex items-center justify-between text-muted-foreground">
                                         <span>Gross Face Value:</span>
                                         <span className="font-mono font-bold text-foreground">
-                                            {formatCurrency(mode === "batch" ? batchSummary.totalFaceValue : customSummary.totalFaceValue)}
+                                            {formatCurrency(
+                                                mode === "batch"
+                                                    ? batchSummary.totalFaceValue
+                                                    : mode === "denomination"
+                                                    ? denominationSummary.totalFaceValue
+                                                    : customSummary.totalFaceValue
+                                            )}
                                         </span>
                                     </div>
 
-                                    {(mode === "batch" ? batchSummary.totalDiscount : customSummary.totalDiscount) > 0 && (
+                                    {(mode === "batch"
+                                        ? batchSummary.totalDiscount
+                                        : mode === "denomination"
+                                        ? denominationSummary.totalDiscount
+                                        : customSummary.totalDiscount) > 0 && (
                                         <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
                                             <span>Total Discount:</span>
                                             <span className="font-mono font-bold">
-                                                -{formatCurrency(mode === "batch" ? batchSummary.totalDiscount : customSummary.totalDiscount)}
+                                                -{formatCurrency(
+                                                    mode === "batch"
+                                                        ? batchSummary.totalDiscount
+                                                        : mode === "denomination"
+                                                        ? denominationSummary.totalDiscount
+                                                        : customSummary.totalDiscount
+                                                )}
                                             </span>
                                         </div>
                                     )}
@@ -1052,14 +1624,27 @@ export function VoucherFormPage({ locations }: Props) {
                                     <div className="pt-2 border-t flex items-center justify-between text-sm font-bold text-foreground">
                                         <span>Net Payable / Value:</span>
                                         <span className="font-mono text-primary font-black">
-                                            {formatCurrency(mode === "batch" ? batchSummary.totalPayable : customSummary.totalPayable)}
+                                            {formatCurrency(
+                                                mode === "batch"
+                                                    ? batchSummary.totalPayable
+                                                    : mode === "denomination"
+                                                    ? denominationSummary.totalPayable
+                                                    : customSummary.totalPayable
+                                            )}
                                         </span>
                                     </div>
                                 </div>
 
                                 <Button
                                     type="submit"
-                                    disabled={isPending || (mode === "batch" ? !faceValue : customRows.length === 0)}
+                                    disabled={
+                                        isPending ||
+                                        (mode === "batch"
+                                            ? !faceValue
+                                            : mode === "denomination"
+                                            ? denominationSummary.totalCount === 0 || !companyName || !companyGlCode
+                                            : customRows.length === 0)
+                                    }
                                     className="w-full h-10 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-xs cursor-pointer"
                                 >
                                     {isPending ? (
@@ -1068,7 +1653,20 @@ export function VoucherFormPage({ locations }: Props) {
                                         <Gift className="h-4 w-4" />
                                     )}
                                     <span>
-                                        Issue {mode === "batch" ? batchSummary.qty : customSummary.count} Voucher{((mode === "batch" ? batchSummary.qty : customSummary.count) > 1) ? "s" : ""}
+                                        Issue{" "}
+                                        {mode === "batch"
+                                            ? batchSummary.qty
+                                            : mode === "denomination"
+                                            ? denominationSummary.totalCount
+                                            : customSummary.count}{" "}
+                                        Voucher
+                                        {(mode === "batch"
+                                            ? batchSummary.qty
+                                            : mode === "denomination"
+                                            ? denominationSummary.totalCount
+                                            : customSummary.count) > 1
+                                            ? "s"
+                                            : ""}
                                     </span>
                                 </Button>
                             </CardContent>

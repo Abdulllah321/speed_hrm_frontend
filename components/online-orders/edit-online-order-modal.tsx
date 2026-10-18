@@ -12,9 +12,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { authFetch } from '@/lib/auth';
 import { toast } from 'sonner';
 import {
@@ -30,7 +35,13 @@ import {
     RotateCcw,
     Truck,
     User,
-    Package
+    Package,
+    Barcode,
+    ScanBarcode,
+    CreditCard,
+    Building2,
+    Search,
+    Sparkles,
 } from 'lucide-react';
 
 interface EditableItem {
@@ -41,13 +52,21 @@ interface EditableItem {
     name?: string;
     brand?: string;
     size?: string;
+    color?: string;
     qty: number;
     price: number;
     skuDiscounted: number;
     subTotalPrice?: number;
+    isFetching?: boolean;
     stock?: {
         available: number;
+        companyAvailable?: number;
+        localAvailable?: number;
         isAvailable: boolean;
+        isCompanyAvailable?: boolean;
+        isLocallyAvailable?: boolean;
+        requiresSourcing?: boolean;
+        locations?: Array<{ id: string; name: string; qty: number; isWarehouse?: boolean }>;
     };
 }
 
@@ -61,9 +80,13 @@ interface EditOnlineOrderModalProps {
 interface VoucherVerification {
     checking: boolean;
     code: string;
-    type?: string;
-    voucherType?: string;
+    type?: string; // 'VOUCHER' | 'COUPON' | 'ALLIANCE'
+    voucherType?: string; // 'GIFT' | 'CORPORATE' | 'CREDIT' | 'EXCHANGE'
+    discountType?: string; // 'PERCENT' | 'FIXED'
     amount?: number;
+    discountPercent?: number;
+    maxDiscount?: number | null;
+    partnerName?: string;
     isValid?: boolean;
     message?: string;
 }
@@ -89,8 +112,15 @@ export function EditOnlineOrderModal({
     // Items list
     const [items, setItems] = useState<EditableItem[]>([]);
 
-    // Voucher verification status
+    // Quick Barcode Scanner Input
+    const [quickScanBarcode, setQuickScanBarcode] = useState('');
+    const [isQuickScanning, setIsQuickScanning] = useState(false);
+
+    // Voucher / Alliance verification status
     const [voucherStatus, setVoucherStatus] = useState<VoucherVerification | null>(null);
+
+    // Flag indicating payment tender was auto-suggested via Alliance
+    const [allianceTenderAutoSet, setAllianceTenderAutoSet] = useState(false);
 
     // Saving indicator
     const [isSaving, setIsSaving] = useState(false);
@@ -107,24 +137,43 @@ export function EditOnlineOrderModal({
             setPaymentMethod(order.paymentMethod || 'Cash');
             setTrackingNumber(order.trackingNumber || '');
             setShippingCharges(Number(order.financials?.shippingCharges ?? order.items?.[0]?.shippingCharges ?? 0));
-            
+            setAllianceTenderAutoSet(false);
+
             const existingCode = (order.couponCode || order.voucherInfo?.code || '').trim();
             setCouponCode(existingCode);
 
-            // Preload voucher validation state from existing order
+            // Preload voucher/alliance validation state from existing order
             if (existingCode) {
                 if (order.voucherInfo) {
+                    const info = order.voucherInfo;
+                    const isAlliance = info.type === 'ALLIANCE';
+                    const faceVal = isAlliance
+                        ? undefined
+                        : Number(info.amount ?? info.faceValue ?? info.discountValue ?? 0);
+
                     setVoucherStatus({
                         checking: false,
                         code: existingCode,
-                        type: order.voucherInfo.type,
-                        voucherType: order.voucherInfo.voucherType,
-                        amount: order.voucherInfo.amount,
-                        isValid: order.voucherInfo.isValid,
-                        message: order.voucherInfo.isValid
-                            ? `Valid ${order.voucherInfo.type} - Value: Rs ${Number(order.voucherInfo.amount || 0).toLocaleString()}`
-                            : (order.voucherInfo.reason || 'Invalid voucher code'),
+                        type: info.type,
+                        voucherType: info.voucherType,
+                        discountType: info.discountType,
+                        amount: faceVal,
+                        discountPercent: info.discountPercent ? Number(info.discountPercent) : undefined,
+                        maxDiscount: info.maxDiscount ? Number(info.maxDiscount) : null,
+                        partnerName: info.partnerName,
+                        isValid: info.isValid,
+                        message: info.message || (
+                            info.isValid
+                                ? isAlliance
+                                    ? `Bank Alliance Discount (${info.partnerName} - ${info.discountPercent}%)`
+                                    : `Valid ${info.type} - Value: Rs ${Number(faceVal || 0).toLocaleString()}`
+                                : (info.reason || 'Invalid voucher code')
+                        ),
                     });
+
+                    if (isAlliance) {
+                        setAllianceTenderAutoSet(true);
+                    }
                 } else {
                     setVoucherStatus(null);
                 }
@@ -141,6 +190,7 @@ export function EditOnlineOrderModal({
                 name: it.name || '',
                 brand: it.brand || '',
                 size: it.size || '',
+                color: it.color || '',
                 qty: Math.max(1, Number(it.qty) || 1),
                 price: Math.max(0, Number(it.price) || 0),
                 skuDiscounted: Math.min(100, Math.max(0, Number(it.skuActualDiscount ?? it.skuDiscounted ?? 0))),
@@ -149,16 +199,17 @@ export function EditOnlineOrderModal({
             }));
 
             setItems(mappedItems.length > 0 ? mappedItems : [
-                { sku: '', name: '', qty: 1, price: 0, skuDiscounted: 0 }
+                { sku: '', barcode: '', name: '', qty: 1, price: 0, skuDiscounted: 0 }
             ]);
         }
     }, [order]);
 
-    // Live Voucher verification
+    // Live Voucher & Alliance verification
     const handleVerifyVoucher = useCallback(async (codeToVerify?: string) => {
         const code = (codeToVerify !== undefined ? codeToVerify : couponCode).trim();
         if (!code) {
             setVoucherStatus(null);
+            setAllianceTenderAutoSet(false);
             return;
         }
 
@@ -168,56 +219,89 @@ export function EditOnlineOrderModal({
         });
 
         try {
+            const locId = order?.locationId || '';
             const res = await authFetch(
-                `/pos-sales/online-orders/bulk-upload/validate-voucher?code=${encodeURIComponent(code)}`
+                `/pos-sales/online-orders/bulk-upload/validate-voucher?code=${encodeURIComponent(code)}${locId ? `&locationId=${encodeURIComponent(locId)}` : ''}`
             );
 
             if (res.ok && res.data?.status && res.data?.data) {
                 const info = res.data.data;
-                const faceVal = info.type === 'VOUCHER' ? info.faceValue : info.discountValue;
+                const isAlliance = info.type === 'ALLIANCE';
+                const faceVal = isAlliance
+                    ? undefined
+                    : Number(info.type === 'VOUCHER' ? (info.faceValue ?? 0) : (info.discountValue ?? 0));
+
                 setVoucherStatus({
                     checking: false,
                     code: info.code || code,
                     type: info.type,
                     voucherType: info.voucherType,
+                    discountType: info.discountType,
                     amount: faceVal,
+                    discountPercent: info.discountPercent ? Number(info.discountPercent) : undefined,
+                    maxDiscount: info.maxDiscount ? Number(info.maxDiscount) : null,
+                    partnerName: info.partnerName,
                     isValid: info.isValid,
-                    message: info.message || (info.isValid ? 'Valid Voucher' : 'Invalid Voucher'),
+                    message: info.message || (info.isValid ? 'Valid Code' : 'Invalid Code'),
                 });
+
+                if (info.isValid) {
+                    if (isAlliance) {
+                        // Automatically update payment tender to Card / Bank Card Alliance
+                        setPaymentMethod('Card');
+                        setAllianceTenderAutoSet(true);
+                        toast.success(
+                            `Bank Alliance detected (${info.partnerName} - ${info.discountPercent}% OFF). Payment tender auto-switched to "Card".`
+                        );
+                    } else if (info.type === 'VOUCHER') {
+                        setAllianceTenderAutoSet(false);
+                        toast.success(`Valid Voucher verified: -Rs ${Number(faceVal || 0).toLocaleString()}`);
+                    } else {
+                        setAllianceTenderAutoSet(false);
+                        toast.success(`Coupon applied: ${info.discountType === 'PERCENT' ? info.discountValue + '%' : 'Rs ' + info.discountValue}`);
+                    }
+                } else {
+                    toast.error(info.message || 'Voucher or coupon is invalid');
+                }
             } else {
                 setVoucherStatus({
                     checking: false,
                     code,
                     isValid: false,
-                    message: res.data?.message || 'Voucher not found in system',
+                    message: res.data?.message || 'Code not found in system',
                 });
+                toast.error(res.data?.message || 'Voucher or promo code not found');
             }
         } catch (err: any) {
             setVoucherStatus({
                 checking: false,
                 code,
                 isValid: false,
-                message: err.message || 'Failed to verify voucher code',
+                message: err.message || 'Failed to verify code',
             });
+            toast.error(err.message || 'Failed to verify voucher code');
         }
-    }, [couponCode]);
+    }, [couponCode, order?.locationId]);
 
     // Clear Voucher
     const handleClearVoucher = () => {
         setCouponCode('');
         setVoucherStatus(null);
-        toast.info("Voucher removed from order.");
+        setAllianceTenderAutoSet(false);
+        toast.info("Voucher/coupon removed from order.");
     };
 
-    // Item changes
+    // Update single item field
     const updateItem = (index: number, field: keyof EditableItem, value: any) => {
         setItems(prev => {
             const next = [...prev];
             const updated = { ...next[index], [field]: value };
             if (field === 'qty' && updated.stock) {
+                const required = Number(value || 1);
                 updated.stock = {
                     ...updated.stock,
-                    isAvailable: updated.stock.available >= Number(value || 1),
+                    isAvailable: (updated.stock.companyAvailable ?? updated.stock.available) >= required,
+                    isLocallyAvailable: (updated.stock.localAvailable ?? 0) >= required,
                 };
             }
             next[index] = updated;
@@ -225,42 +309,117 @@ export function EditOnlineOrderModal({
         });
     };
 
-    const handleCheckItemStock = async (index: number) => {
+    // Fetch and populate item details by Barcode or SKU
+    const handleLookupItem = async (index: number, barcodeOrSku?: string) => {
         const item = items[index];
-        const skuToLookup = item?.sku?.trim();
-        if (!skuToLookup || skuToLookup.length < 2) return;
+        const term = (barcodeOrSku !== undefined ? barcodeOrSku : (item.barcode || item.sku)).trim();
+        if (!term || term.length < 2) {
+            toast.error('Please enter a barcode or SKU to fetch product details.');
+            return;
+        }
+
+        // Set row fetching indicator
+        setItems(prev => {
+            const next = [...prev];
+            if (next[index]) next[index] = { ...next[index], isFetching: true };
+            return next;
+        });
 
         try {
-            const locId = order?.locationId;
-            const res = await authFetch(`/pos-sales/lookup`, {
-                params: {
-                    q: skuToLookup,
-                    ...(locId ? { locationId: locId } : {}),
-                },
-            });
-            if (res.ok && res.data?.status && Array.isArray(res.data.data) && res.data.data.length > 0) {
-                const found = res.data.data[0];
-                const avail = Number(found.stockQty ?? 0);
+            const locId = order?.locationId || '';
+            const res = await authFetch(
+                `/pos-sales/online-orders/bulk-upload/resolve-item?barcode=${encodeURIComponent(term)}${locId ? `&locationId=${encodeURIComponent(locId)}` : ''}`
+            );
+
+            if (res.ok && res.data?.status && res.data?.data) {
+                const prod = res.data.data;
                 setItems(prev => {
                     const next = [...prev];
                     const current = next[index];
                     if (!current) return prev;
                     next[index] = {
                         ...current,
-                        name: current.name || found.description || found.name || '',
-                        brand: current.brand || (typeof found.brand === 'object' ? found.brand?.name : found.brand) || '',
-                        size: current.size || (typeof found.size === 'object' ? found.size?.name : found.size) || '',
-                        price: current.price > 0 ? current.price : Number(found.unitPrice || 0),
-                        stock: {
-                            available: avail,
-                            isAvailable: avail >= (Number(current.qty) || 1),
-                        },
+                        barcode: prod.barcode || current.barcode || term,
+                        sku: prod.sku || current.sku || term,
+                        systemSku: prod.systemSku || current.systemSku || '',
+                        name: prod.name || current.name || '',
+                        brand: prod.brand || current.brand || '',
+                        size: prod.size || current.size || '',
+                        color: prod.color || current.color || '',
+                        price: prod.price > 0 ? prod.price : current.price,
+                        skuDiscounted: current.skuDiscounted > 0 ? current.skuDiscounted : Number(prod.discountRate || 0),
+                        stock: prod.stock,
+                        isFetching: false,
                     };
                     return next;
                 });
+
+                toast.success(
+                    `Loaded: ${prod.name} (${prod.brand || 'Brand'} ${prod.size ? '• Size ' + prod.size : ''})`
+                );
+            } else {
+                setItems(prev => {
+                    const next = [...prev];
+                    if (next[index]) next[index] = { ...next[index], isFetching: false };
+                    return next;
+                });
+                toast.error(res.data?.message || `No product found for barcode "${term}"`);
             }
-        } catch {
-            // Silently continue
+        } catch (err: any) {
+            setItems(prev => {
+                const next = [...prev];
+                if (next[index]) next[index] = { ...next[index], isFetching: false };
+                return next;
+            });
+            toast.error(err.message || 'Failed to fetch product details.');
+        }
+    };
+
+    // Quick Barcode Scanner: Fetch and append item to order
+    const handleQuickScanAdd = async () => {
+        const barcode = quickScanBarcode.trim();
+        if (!barcode || barcode.length < 2) return;
+
+        setIsQuickScanning(true);
+        try {
+            const locId = order?.locationId || '';
+            const res = await authFetch(
+                `/pos-sales/online-orders/bulk-upload/resolve-item?barcode=${encodeURIComponent(barcode)}${locId ? `&locationId=${encodeURIComponent(locId)}` : ''}`
+            );
+
+            if (res.ok && res.data?.status && res.data?.data) {
+                const prod = res.data.data;
+                const newItem: EditableItem = {
+                    barcode: prod.barcode || barcode,
+                    sku: prod.sku || barcode,
+                    systemSku: prod.systemSku || '',
+                    name: prod.name || '',
+                    brand: prod.brand || '',
+                    size: prod.size || '',
+                    color: prod.color || '',
+                    qty: 1,
+                    price: Number(prod.price || 0),
+                    skuDiscounted: Number(prod.discountRate || 0),
+                    stock: prod.stock,
+                };
+
+                setItems(prev => {
+                    // If the first row is completely empty, replace it
+                    if (prev.length === 1 && !prev[0].sku && !prev[0].barcode && !prev[0].name) {
+                        return [newItem];
+                    }
+                    return [...prev, newItem];
+                });
+
+                setQuickScanBarcode('');
+                toast.success(`Scanned & added: ${prod.name} (${prod.brand || ''} ${prod.size ? 'Size ' + prod.size : ''})`);
+            } else {
+                toast.error(res.data?.message || `No product found for barcode "${barcode}"`);
+            }
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to scan product');
+        } finally {
+            setIsQuickScanning(false);
         }
     };
 
@@ -275,11 +434,11 @@ export function EditOnlineOrderModal({
     const addItem = () => {
         setItems(prev => [
             ...prev,
-            { sku: '', name: '', qty: 1, price: 0, skuDiscounted: 0 }
+            { sku: '', barcode: '', name: '', qty: 1, price: 0, skuDiscounted: 0 }
         ]);
     };
 
-    // Real-time calculations
+    // Real-time calculations with Alliance Bank discounts
     const calculations = useMemo(() => {
         let grossSubtotal = 0;
         let itemDiscounts = 0;
@@ -306,8 +465,18 @@ export function EditOnlineOrderModal({
             if (voucherStatus.type === 'VOUCHER') {
                 voucherDeduction = Math.min(Number(voucherStatus.amount || 0), itemsNet + shipping);
             } else if (voucherStatus.type === 'COUPON') {
-                // If percent discount or fixed
-                voucherDeduction = Math.min(Number(voucherStatus.amount || 0), itemsNet);
+                if (voucherStatus.discountType === 'PERCENT') {
+                    voucherDeduction = itemsNet * (Number(voucherStatus.amount || 0) / 100);
+                } else {
+                    voucherDeduction = Math.min(Number(voucherStatus.amount || 0), itemsNet);
+                }
+            } else if (voucherStatus.type === 'ALLIANCE') {
+                const pct = Number(voucherStatus.discountPercent || 0);
+                let disc = itemsNet * (pct / 100);
+                if (voucherStatus.maxDiscount && voucherStatus.maxDiscount > 0) {
+                    disc = Math.min(disc, Number(voucherStatus.maxDiscount));
+                }
+                voucherDeduction = disc;
             }
         }
         voucherDeduction = Math.round(voucherDeduction * 100) / 100;
@@ -338,8 +507,8 @@ export function EditOnlineOrderModal({
         }
 
         for (let i = 0; i < items.length; i++) {
-            if (!items[i].sku || !items[i].sku.trim()) {
-                toast.error(`Item #${i + 1} requires a valid SKU.`);
+            if (!items[i].sku && !items[i].barcode) {
+                toast.error(`Item #${i + 1} requires a valid Barcode or SKU.`);
                 return;
             }
         }
@@ -359,7 +528,7 @@ export function EditOnlineOrderModal({
                 couponCode: couponCode.trim() || null,
                 items: items.map(it => ({
                     id: it.id,
-                    sku: it.sku.trim(),
+                    sku: (it.sku || it.barcode || '').trim(),
                     barcode: it.barcode?.trim() || undefined,
                     systemSku: it.systemSku?.trim() || undefined,
                     name: it.name?.trim() || undefined,
@@ -401,7 +570,7 @@ export function EditOnlineOrderModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 noScroll
-                className="w-[calc(100vw-2rem)] sm:max-w-[95vw] md:max-w-4xl lg:max-w-5xl h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-card"
+                className="w-[calc(100vw-2rem)] sm:max-w-[95vw] md:max-w-4xl lg:max-w-5xl h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-card"
             >
                 <DialogHeader className="p-5 md:p-6 pb-3 border-b shrink-0">
                     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -414,18 +583,18 @@ export function EditOnlineOrderModal({
                         </DialogTitle>
                     </div>
                     <DialogDescription>
-                        Modify order items, pricing, customer details, or fix wrongly applied vouchers before posting to POS Sales.
+                        Modify order products by barcode, update pricing, verify bank alliance BINs/vouchers, and optimize tender details before posting.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 min-h-0 overflow-y-auto p-5 md:p-6 space-y-5">
-                    {/* 1. Voucher / Promo Code Editor Section */}
+                    {/* 1. Voucher / Bank Card Alliance BIN Management Section */}
                     <div className="p-4 bg-muted/30 rounded-xl border border-border/80 space-y-3">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="flex items-center gap-2">
                                 <Tag className="h-4 w-4 text-primary" />
-                                <Label htmlFor="coupon-code-input" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Voucher / Promo Code Management
+                                <Label htmlFor="coupon-code-input" className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                    Voucher, Promo & Bank Alliance BIN Verification
                                 </Label>
                             </div>
                             {couponCode && (
@@ -435,7 +604,7 @@ export function EditOnlineOrderModal({
                                     onClick={handleClearVoucher}
                                     className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-1 px-2"
                                 >
-                                    <RotateCcw className="h-3 w-3" /> Clear Voucher
+                                    <RotateCcw className="h-3 w-3" /> Clear Code
                                 </Button>
                             )}
                         </div>
@@ -444,12 +613,11 @@ export function EditOnlineOrderModal({
                             <div className="relative flex-1">
                                 <Input
                                     id="coupon-code-input"
-                                    placeholder="Enter voucher or coupon code (e.g. GFT-1002, PROMO20)..."
+                                    placeholder="Enter voucher, promo code, or Bank Card BIN (e.g. 5140-10, 4902-87, GFT-1002)..."
                                     value={couponCode}
                                     onChange={(e) => {
                                         const val = e.target.value.toUpperCase();
                                         setCouponCode(val);
-                                        // Reset status if changed
                                         if (voucherStatus && voucherStatus.code !== val) {
                                             setVoucherStatus(null);
                                         }
@@ -482,28 +650,50 @@ export function EditOnlineOrderModal({
 
                         {/* Live Voucher Feedback Badge / Card */}
                         {voucherStatus && (
-                            <div className={`p-3 rounded-lg border text-xs flex items-center justify-between gap-3 ${
+                            <div className={`p-3 rounded-lg border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                                 voucherStatus.isValid
-                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                                    ? voucherStatus.type === 'ALLIANCE'
+                                        ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-100'
+                                        : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
                                     : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200'
                             }`}>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-start sm:items-center gap-2.5">
                                     {voucherStatus.isValid ? (
-                                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                        voucherStatus.type === 'ALLIANCE' ? (
+                                            <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
+                                        ) : (
+                                            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
+                                        )
                                     ) : (
-                                        <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                                        <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5 sm:mt-0" />
                                     )}
                                     <div className="space-y-0.5">
-                                        <span className="font-bold">
-                                            {voucherStatus.isValid ? 'Valid Code' : 'Invalid or Restricted Voucher'}
-                                        </span>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-bold">
+                                                {voucherStatus.isValid
+                                                    ? voucherStatus.type === 'ALLIANCE'
+                                                        ? `Bank Card Alliance: ${voucherStatus.partnerName}`
+                                                        : `Valid ${voucherStatus.type} (${voucherStatus.voucherType || 'PROMO'})`
+                                                    : 'Invalid or Restricted Code'}
+                                            </span>
+                                            {voucherStatus.isValid && voucherStatus.type === 'ALLIANCE' && (
+                                                <Badge className="bg-blue-600 text-white font-medium text-[10px] px-1.5 py-0">
+                                                    {voucherStatus.discountPercent}% OFF{voucherStatus.maxDiscount ? ` (Cap Rs ${voucherStatus.maxDiscount.toLocaleString()})` : ''}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <p className="text-[11px] opacity-90">
                                             {voucherStatus.message}
                                         </p>
+                                        {voucherStatus.isValid && voucherStatus.type === 'ALLIANCE' && allianceTenderAutoSet && (
+                                            <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1 pt-0.5">
+                                                <Sparkles className="h-3 w-3" /> Payment Tender automatically updated to &quot;Card&quot;.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                                 {voucherStatus.isValid && (
-                                    <Badge className="bg-emerald-600 text-white font-mono shrink-0">
+                                    <Badge className={`${voucherStatus.type === 'ALLIANCE' ? 'bg-blue-600' : 'bg-emerald-600'} text-white font-mono shrink-0 self-end sm:self-center`}>
                                         -Rs {calculations.voucherDeduction.toLocaleString()}
                                     </Badge>
                                 )}
@@ -577,17 +767,35 @@ export function EditOnlineOrderModal({
                             </div>
                         </div>
 
-                        {/* Payment Mode & Shipping Fee */}
+                        {/* Payment Mode / Tender & Shipping Fee */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs border-t">
                             <div className="space-y-1">
-                                <Label htmlFor="pay-method">Payment Method</Label>
-                                <Input
-                                    id="pay-method"
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="pay-method" className="flex items-center gap-1">
+                                        <CreditCard className="h-3 w-3 text-primary" /> Payment Tender
+                                    </Label>
+                                    {allianceTenderAutoSet && (
+                                        <span className="text-[10px] text-blue-600 font-medium">Alliance Match</span>
+                                    )}
+                                </div>
+                                <Select
                                     value={paymentMethod}
-                                    onChange={(e) => setPaymentMethod(e.target.value)}
-                                    placeholder="COD / Cash / Card"
-                                    className="bg-background text-xs"
-                                />
+                                    onValueChange={(val) => {
+                                        setPaymentMethod(val);
+                                        setAllianceTenderAutoSet(false);
+                                    }}
+                                >
+                                    <SelectTrigger id="pay-method" className="h-8 bg-background text-xs">
+                                        <SelectValue placeholder="Select Payment Tender" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Cash">Cash (Store Counter)</SelectItem>
+                                        <SelectItem value="Card">Card (Credit/Debit Card)</SelectItem>
+                                        <SelectItem value="Bank Card Alliance">Bank Card Alliance</SelectItem>
+                                        <SelectItem value="COD">COD (Cash on Delivery)</SelectItem>
+                                        <SelectItem value="Online Payment">Online Payment (Wallet/Bank)</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="space-y-1">
@@ -615,24 +823,56 @@ export function EditOnlineOrderModal({
                         </div>
                     </div>
 
-                    {/* 3. Items Editor Table */}
+                    {/* 3. Items Editor Section with Quick Barcode Scanner & Replace Capability */}
                     <div className="border rounded-xl overflow-hidden space-y-0">
-                        <div className="bg-muted/50 p-3 px-4 border-b flex items-center justify-between text-xs font-bold text-muted-foreground">
+                        <div className="bg-muted/50 p-3 px-4 border-b flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 text-xs font-bold text-muted-foreground">
                             <div className="flex items-center gap-2">
                                 <Package className="h-4 w-4 text-primary" />
                                 <span>Order Items ({items.length} Lines, {calculations.totalUnits} Pcs)</span>
                             </div>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={addItem}
-                                className="h-7 text-xs gap-1 bg-background"
-                            >
-                                <Plus className="h-3 w-3" /> Add Item
-                            </Button>
+
+                            {/* Quick Add By Barcode Scanner */}
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1 sm:w-64">
+                                    <Input
+                                        placeholder="Quick Scan Barcode to Add..."
+                                        value={quickScanBarcode}
+                                        onChange={(e) => setQuickScanBarcode(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleQuickScanAdd();
+                                            }
+                                        }}
+                                        className="h-7 text-xs font-mono bg-background pr-7"
+                                    />
+                                    {isQuickScanning && (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin absolute right-2 top-2 text-primary" />
+                                    )}
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleQuickScanAdd}
+                                    disabled={!quickScanBarcode.trim() || isQuickScanning}
+                                    className="h-7 text-xs gap-1 bg-background shrink-0"
+                                >
+                                    <Barcode className="h-3 w-3 text-primary" /> Scan & Add
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={addItem}
+                                    className="h-7 text-xs gap-1 bg-background shrink-0"
+                                >
+                                    <Plus className="h-3 w-3" /> Blank Row
+                                </Button>
+                            </div>
                         </div>
 
+                        {/* Items Rows */}
                         <div className="divide-y text-xs">
                             {items.map((item, idx) => {
                                 const qty = Math.max(1, Number(item.qty) || 1);
@@ -640,58 +880,154 @@ export function EditOnlineOrderModal({
                                 const disc = Math.min(100, Math.max(0, Number(item.skuDiscounted) || 0));
                                 const lineSubtotal = Math.max(0, Math.round(price * qty * (1 - disc / 100)));
 
+                                const companyStock = item.stock?.companyAvailable ?? item.stock?.available ?? 0;
+                                const localStock = item.stock?.localAvailable ?? 0;
+                                const hasCompanyStock = companyStock >= qty;
+                                const hasLocalStock = localStock >= qty;
+
                                 return (
-                                    <div key={idx} className="p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 hover:bg-muted/10">
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 flex-1 w-full">
+                                    <div key={idx} className="p-3.5 space-y-2 hover:bg-muted/10 transition-colors">
+                                        {/* Row Line Header: Item Index & Barcode Management */}
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                                            {/* Barcode with Fetch / Scan Action */}
+                                            <div className="md:col-span-4 space-y-1">
+                                                <Label className="text-[10px] text-muted-foreground font-semibold flex items-center justify-between">
+                                                    <span className="flex items-center gap-1">
+                                                        <Barcode className="h-3 w-3 text-primary" /> Barcode (Scan / Edit)
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground/70">Line #{idx + 1}</span>
+                                                </Label>
+                                                <div className="flex items-center gap-1">
+                                                    <Input
+                                                        value={item.barcode || ''}
+                                                        onChange={(e) => updateItem(idx, 'barcode', e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                handleLookupItem(idx, item.barcode);
+                                                            }
+                                                        }}
+                                                        placeholder="Enter Barcode & press Enter..."
+                                                        className="font-mono text-xs h-8 bg-background flex-1"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleLookupItem(idx, item.barcode)}
+                                                        disabled={item.isFetching || (!item.barcode?.trim() && !item.sku?.trim())}
+                                                        className="h-8 px-2 text-xs shrink-0"
+                                                        title="Fetch product details by barcode"
+                                                    >
+                                                        {item.isFetching ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                                        ) : (
+                                                            <Search className="h-3.5 w-3.5 text-primary" />
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </div>
+
                                             {/* SKU */}
-                                            <div className="space-y-1 col-span-2 sm:col-span-2">
-                                                <Label className="text-[10px] text-muted-foreground">SKU / Barcode</Label>
+                                            <div className="md:col-span-3 space-y-1">
+                                                <Label className="text-[10px] text-muted-foreground font-semibold">SKU / Style Code</Label>
                                                 <Input
                                                     value={item.sku}
                                                     onChange={(e) => updateItem(idx, 'sku', e.target.value)}
-                                                    onBlur={() => handleCheckItemStock(idx)}
-                                                    placeholder="Item SKU"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            handleLookupItem(idx, item.sku);
+                                                        }
+                                                    }}
+                                                    placeholder="Product SKU"
                                                     className="font-mono text-xs h-8 bg-background"
                                                 />
                                             </div>
 
-                                            {/* Item Name */}
-                                            <div className="space-y-1 col-span-2 sm:col-span-2">
-                                                <Label className="text-[10px] text-muted-foreground">Product Description</Label>
+                                            {/* Description / Name */}
+                                            <div className="md:col-span-4 space-y-1">
+                                                <Label className="text-[10px] text-muted-foreground font-semibold">Product Description</Label>
                                                 <Input
                                                     value={item.name || ''}
                                                     onChange={(e) => updateItem(idx, 'name', e.target.value)}
-                                                    placeholder="Product Name"
-                                                    className="text-xs h-8 bg-background"
+                                                    placeholder="Product Description"
+                                                    className="text-xs h-8 bg-background font-medium"
                                                 />
                                             </div>
 
+                                            {/* Delete Action */}
+                                            <div className="md:col-span-1 flex items-end justify-end h-full pt-4">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    disabled={items.length <= 1}
+                                                    onClick={() => removeItem(idx)}
+                                                    className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                                    title="Delete Line Item"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        {/* Row Line Sub-details: Brand, Size, Qty, Unit Price, Discount %, Line Net */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-center bg-muted/20 p-2 rounded-lg">
+                                            {/* Brand & Size */}
+                                            <div className="col-span-2 flex items-center gap-1.5 flex-wrap">
+                                                {item.brand ? (
+                                                    <Badge variant="outline" className="text-[10px] bg-background font-semibold">
+                                                        {item.brand}
+                                                    </Badge>
+                                                ) : (
+                                                    <Input
+                                                        placeholder="Brand"
+                                                        value={item.brand || ''}
+                                                        onChange={(e) => updateItem(idx, 'brand', e.target.value)}
+                                                        className="h-7 text-[11px] w-24 bg-background"
+                                                    />
+                                                )}
+                                                {item.size ? (
+                                                    <Badge variant="secondary" className="text-[10px] font-bold">
+                                                        Size: {item.size}
+                                                    </Badge>
+                                                ) : (
+                                                    <Input
+                                                        placeholder="Size"
+                                                        value={item.size || ''}
+                                                        onChange={(e) => updateItem(idx, 'size', e.target.value)}
+                                                        className="h-7 text-[11px] w-20 bg-background"
+                                                    />
+                                                )}
+                                            </div>
+
                                             {/* Qty */}
-                                            <div className="space-y-1">
+                                            <div className="space-y-0.5">
                                                 <Label className="text-[10px] text-muted-foreground">Qty</Label>
                                                 <Input
                                                     type="number"
                                                     min={1}
                                                     value={item.qty}
                                                     onChange={(e) => updateItem(idx, 'qty', Math.max(1, parseInt(e.target.value) || 1))}
-                                                    className="text-xs h-8 bg-background font-semibold"
+                                                    className="text-xs h-7 bg-background font-bold"
                                                 />
                                             </div>
 
                                             {/* Price */}
-                                            <div className="space-y-1">
+                                            <div className="space-y-0.5">
                                                 <Label className="text-[10px] text-muted-foreground">Unit Price (Rs)</Label>
                                                 <Input
                                                     type="number"
                                                     min={0}
                                                     value={item.price}
                                                     onChange={(e) => updateItem(idx, 'price', Math.max(0, parseFloat(e.target.value) || 0))}
-                                                    className="text-xs h-8 bg-background"
+                                                    className="text-xs h-7 bg-background font-semibold"
                                                 />
                                             </div>
 
                                             {/* Discount % */}
-                                            <div className="space-y-1">
+                                            <div className="space-y-0.5">
                                                 <Label className="text-[10px] text-muted-foreground">Discount %</Label>
                                                 <Input
                                                     type="number"
@@ -699,62 +1035,69 @@ export function EditOnlineOrderModal({
                                                     max={100}
                                                     value={item.skuDiscounted}
                                                     onChange={(e) => updateItem(idx, 'skuDiscounted', Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
-                                                    className="text-xs h-8 bg-background"
+                                                    className="text-xs h-7 bg-background text-rose-600 font-semibold"
                                                 />
                                             </div>
 
-                                            {/* Line Total */}
-                                            <div className="space-y-1 col-span-2 sm:col-span-1 flex flex-col justify-end">
+                                            {/* Line Net */}
+                                            <div className="space-y-0.5 text-right pr-2">
                                                 <Label className="text-[10px] text-muted-foreground">Line Net</Label>
-                                                <div className="h-8 flex items-center font-bold text-foreground">
+                                                <p className="text-xs font-bold text-foreground">
                                                     Rs {lineSubtotal.toLocaleString()}
-                                                </div>
+                                                </p>
                                             </div>
+                                        </div>
 
-                                            {/* Live Stock Badge */}
-                                            {item.stock && (
-                                                <div className="col-span-2 sm:col-span-4 md:col-span-6 pt-1 flex items-center gap-1.5">
-                                                    {item.stock.available >= qty ? (
+                                        {/* Dual Real-Time Stock Status Badge */}
+                                        {item.stock && (
+                                            <div className="pt-0.5 flex items-center justify-between flex-wrap gap-2 text-[11px]">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    {hasLocalStock ? (
                                                         <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1 font-medium">
-                                                            <CheckCircle2 className="h-3 w-3" /> Location Stock: {item.stock.available} available (Requires {qty})
+                                                            <CheckCircle2 className="h-3 w-3" /> In Local Store ({localStock} available)
+                                                        </Badge>
+                                                    ) : hasCompanyStock ? (
+                                                        <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 gap-1 font-medium">
+                                                            <Truck className="h-3 w-3" /> Sourcing Needed ({companyStock} available company-wide)
                                                         </Badge>
                                                     ) : (
                                                         <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 gap-1 font-medium">
-                                                            <AlertCircle className="h-3 w-3" /> Out of Stock: only {item.stock.available} available at this location (Requires {qty})
+                                                            <AlertCircle className="h-3 w-3" /> Out of Stock ({companyStock} available)
                                                         </Badge>
                                                     )}
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        {/* Remove row */}
-                                        <div className="shrink-0 self-end md:self-center">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                disabled={items.length <= 1}
-                                                onClick={() => removeItem(idx)}
-                                                className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                                                title="Delete Line Item"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                                    {/* Company stock details */}
+                                                    <span className="text-[10px] text-muted-foreground font-mono">
+                                                        Co. Total: {companyStock} Pcs
+                                                    </span>
+                                                </div>
+
+                                                {/* Top Stock Locations Breakdown */}
+                                                {item.stock.locations && item.stock.locations.length > 0 && (
+                                                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                        <Building2 className="h-3 w-3 text-muted-foreground/80" />
+                                                        <span>
+                                                            Stock at: {item.stock.locations.slice(0, 2).map(l => `${l.name} (${l.qty})`).join(', ')}
+                                                            {item.stock.locations.length > 2 ? ` +${item.stock.locations.length - 2} more` : ''}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
                         </div>
                     </div>
 
-                    {/* 4. Dynamic Financial Ledger Preview */}
+                    {/* 4. Dynamic Financial Ledger Preview with Tender Breakdown */}
                     <div className="p-4 bg-muted/40 rounded-xl border space-y-2 text-xs">
                         <div className="flex items-center justify-between border-b pb-2">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                <DollarSign className="h-4 w-4 text-primary" /> Projected Financial Ledger
+                                <DollarSign className="h-4 w-4 text-primary" /> Projected Financial Ledger & Tender Breakdown
                             </h4>
                             <span className="text-muted-foreground text-[11px]">
-                                Recalculates dynamically with your changes
+                                Recalculates dynamically with products, vouchers & tenders
                             </span>
                         </div>
 
@@ -778,13 +1121,23 @@ export function EditOnlineOrderModal({
                                 </p>
                             </div>
                             <div className="space-y-0.5">
-                                <span className="text-muted-foreground">4. Voucher Applied</span>
+                                <span className="text-muted-foreground flex items-center gap-1">
+                                    4. Voucher / Alliance
+                                    {voucherStatus?.type === 'ALLIANCE' && (
+                                        <Badge className="bg-blue-600 text-[9px] px-1 py-0 h-4 text-white">Bank BIN</Badge>
+                                    )}
+                                </span>
                                 <p className="font-semibold text-emerald-600 dark:text-emerald-400 text-sm">
                                     -Rs {calculations.voucherDeduction.toLocaleString()}
                                 </p>
                             </div>
                             <div className="space-y-0.5 bg-primary/10 p-2.5 rounded-lg border border-primary/20 col-span-2">
-                                <span className="text-primary text-[11px] font-bold">5. Net Grand Total (Payable)</span>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-primary text-[11px] font-bold">5. Net Grand Total</span>
+                                    <Badge variant="outline" className="text-[10px] bg-background font-mono font-medium">
+                                        Tender: {paymentMethod}
+                                    </Badge>
+                                </div>
                                 <p className="font-extrabold text-primary text-base">
                                     Rs {calculations.netGrandTotal.toLocaleString()}
                                 </p>
@@ -807,7 +1160,7 @@ export function EditOnlineOrderModal({
                         type="button"
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                        className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 font-semibold"
                     >
                         {isSaving ? (
                             <Loader2 className="h-4 w-4 animate-spin" />

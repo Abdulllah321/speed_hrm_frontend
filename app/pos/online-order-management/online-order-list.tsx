@@ -33,7 +33,8 @@ import {
     PhoneCall,
     MessageCircle,
     Clock,
-    Warehouse
+    Warehouse,
+    Store
 } from 'lucide-react';
 import { OnlineOrderBulkUploadModal } from '@/components/online-orders/online-order-bulk-upload-modal';
 import { EditOnlineOrderModal } from '@/components/online-orders/edit-online-order-modal';
@@ -71,6 +72,13 @@ import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface LocationStockItem {
+    id: string;
+    name: string;
+    type: string;
+    qty: number;
+}
+
 interface OrderItem {
     id?: string;
     itemId?: string;
@@ -84,13 +92,22 @@ interface OrderItem {
     price: number;
     subTotalPrice?: number;
     skuDiscounted?: number;
+    skuActualDiscount?: number;
+    discountPercent?: number;
+    discountAmount?: number;
     netItemTotal?: number;
     shippingCharges?: number;
     couponCode?: string;
     itemStatus?: string;
     stock?: {
         available: number;
+        companyAvailable?: number;
+        localAvailable?: number;
         isAvailable: boolean;
+        isCompanyAvailable?: boolean;
+        isLocallyAvailable?: boolean;
+        requiresSourcing?: boolean;
+        locations?: LocationStockItem[];
     };
     [key: string]: any;
 }
@@ -98,6 +115,7 @@ interface OrderItem {
 interface FinancialBreakdown {
     grossSubtotal: number;
     itemDiscounts: number;
+    discountPercent?: number;
     voucherDeduction: number;
     shippingCharges: number;
     netGrandTotal: number;
@@ -107,7 +125,8 @@ interface FinancialBreakdown {
 
 interface VoucherInfo {
     code: string;
-    type: 'VOUCHER' | 'COUPON';
+    type: 'VOUCHER' | 'COUPON' | 'ALLIANCE';
+    partnerName?: string;
     voucherType?: string;
     amount: number;
     balance?: number;
@@ -136,10 +155,12 @@ interface GroupedOrder {
     voucherInfo?: VoucherInfo;
     items: OrderItem[];
     allStockAvailable: boolean;
+    hasLocalStock?: boolean;
+    requiresSourcing?: boolean;
     orderTotal: number;
 }
 
-type TabFilter = 'all' | 'needs_confirmation' | 'confirmed' | 'stock_warning' | 'ready' | 'posted' | 'with_vouchers' | 'cancelled';
+type TabFilter = 'all' | 'needs_confirmation' | 'confirmed' | 'ready' | 'sourcing' | 'stock_warning' | 'posted' | 'with_vouchers' | 'cancelled';
 
 export function OnlineOrderList() {
     const { user } = useAuth();
@@ -204,12 +225,31 @@ export function OnlineOrderList() {
             const res = await authFetch(`/pos-sales/online-orders/bulk-upload`);
             if (res.ok && res.data?.status && res.data?.data) {
                 const formatted: GroupedOrder[] = res.data.data.map((o: any) => {
-                    const gross = Number(o.financials?.grossSubtotal ?? o.items?.reduce((s: number, i: any) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0) ?? 0);
-                    const itemDiscounts = Number(o.financials?.itemDiscounts ?? o.items?.reduce((s: number, i: any) => s + Number(i.skuDiscounted || 0), 0) ?? 0);
-                    const voucherDeduction = Number(o.financials?.voucherDeduction ?? 0);
-                    const shippingCharges = Number(o.financials?.shippingCharges ?? o.items?.[0]?.shippingCharges ?? 0);
+                    const gross = Number(
+                        o.financials?.grossSubtotal ??
+                        o.grossSubtotal ??
+                        o.items?.reduce((s: number, i: any) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0) ??
+                        0
+                    );
+
+                    // Compute true discount in Rupees (not percentage sum)
+                    let itemDiscounts = Number(o.financials?.itemDiscounts ?? o.totalDiscount ?? 0);
+                    if (!itemDiscounts && o.items) {
+                        itemDiscounts = o.items.reduce((s: number, i: any) => {
+                            const p = Number(i.price || 0);
+                            const q = Number(i.qty || 1);
+                            const pct = Number(i.skuActualDiscount || i.skuDiscounted || 0);
+                            return s + (p * q * (pct / 100));
+                        }, 0);
+                    }
+
+                    const discountPercent = gross > 0
+                        ? Number(o.financials?.discountPercent ?? Math.round((itemDiscounts / gross) * 100))
+                        : 0;
+
+                    const voucherDeduction = Number(o.financials?.voucherDeduction ?? o.voucherRedeemed ?? 0);
+                    const shippingCharges = Number(o.financials?.shippingCharges ?? o.shippingCharges ?? o.items?.[0]?.shippingCharges ?? 0);
                     const netGrandTotal = Number(o.financials?.netGrandTotal ?? o.orderTotal ?? (gross - itemDiscounts + shippingCharges - voucherDeduction));
-                    // remainingPayable matches total payable (including shipping charges)
                     const remainingPayable = Number(o.financials?.remainingPayable ?? o.payableAfterVoucher ?? netGrandTotal);
                     const totalUnits = Number(o.financials?.totalUnits ?? o.items?.reduce((s: number, i: any) => s + Number(i.qty || 1), 0) ?? 0);
 
@@ -221,6 +261,7 @@ export function OnlineOrderList() {
                         financials: {
                             grossSubtotal: gross,
                             itemDiscounts,
+                            discountPercent,
                             voucherDeduction,
                             shippingCharges,
                             netGrandTotal,
@@ -228,6 +269,8 @@ export function OnlineOrderList() {
                             totalUnits
                         },
                         allStockAvailable: o.allStockAvailable ?? true,
+                        hasLocalStock: o.hasLocalStock ?? false,
+                        requiresSourcing: o.requiresSourcing ?? false,
                     };
                 });
                 setOrders(formatted);
@@ -244,16 +287,8 @@ export function OnlineOrderList() {
     }, []);
 
     useEffect(() => {
-        if (user && user.terminal) {
-            const isOnline = user.terminal.location?.isOnline;
-            if (!isOnline) {
-                toast.error("This location is not configured for online orders.");
-                router.replace("/pos");
-                return;
-            }
-        }
         fetchOrders();
-    }, [user, router, fetchOrders]);
+    }, [fetchOrders]);
 
     // KPI Metrics
     const metrics = useMemo(() => {
@@ -263,6 +298,7 @@ export function OnlineOrderList() {
         const needsConfirmation = orders.filter(o => o.status !== 'posted' && (!o.confirmationStatus || o.confirmationStatus === 'NEEDS_CONFIRMATION' || o.confirmationStatus === 'CALL_BACK')).length;
         const confirmed = orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED').length;
         const ready = orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED' && o.allStockAvailable).length;
+        const sourcingNeeded = orders.filter(o => o.status !== 'posted' && o.allStockAvailable && o.requiresSourcing).length;
         const stockWarning = orders.filter(o => o.status !== 'posted' && !o.allStockAvailable).length;
         const cancelled = orders.filter(o => o.confirmationStatus === 'CANCELLED').length;
         const withVouchers = orders.filter(o => o.voucherInfo && o.voucherInfo.isValid).length;
@@ -276,6 +312,7 @@ export function OnlineOrderList() {
             needsConfirmation,
             confirmed,
             ready,
+            sourcingNeeded,
             stockWarning,
             cancelled,
             withVouchers,
@@ -293,6 +330,8 @@ export function OnlineOrderList() {
                 return orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED');
             case 'ready':
                 return orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED' && o.allStockAvailable);
+            case 'sourcing':
+                return orders.filter(o => o.status !== 'posted' && o.allStockAvailable && o.requiresSourcing);
             case 'stock_warning':
                 return orders.filter(o => o.status !== 'posted' && !o.allStockAvailable);
             case 'posted':
@@ -517,13 +556,32 @@ export function OnlineOrderList() {
     };
 
     const handleOrderUpdated = (updatedOrder: any) => {
-        const gross = Number(updatedOrder.grossSubtotal ?? updatedOrder.items?.reduce((s: number, i: any) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0) ?? 0);
-        const itemDiscounts = Number(updatedOrder.totalDiscount ?? updatedOrder.items?.reduce((s: number, i: any) => s + Number(i.skuDiscounted || 0), 0) ?? 0);
-        const voucherDeduction = Number(updatedOrder.voucherRedeemed ?? 0);
-        const shippingCharges = Number(updatedOrder.shippingCharges ?? 0);
-        const netGrandTotal = Number(updatedOrder.orderTotal ?? (gross - itemDiscounts + shippingCharges - voucherDeduction));
-        const remainingPayable = Number(updatedOrder.payableAfterVoucher ?? netGrandTotal);
-        const totalUnits = Number(updatedOrder.items?.reduce((s: number, i: any) => s + Number(i.qty || 1), 0) ?? 0);
+        const gross = Number(
+            updatedOrder.financials?.grossSubtotal ??
+            updatedOrder.grossSubtotal ??
+            updatedOrder.items?.reduce((s: number, i: any) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0) ??
+            0
+        );
+
+        let itemDiscounts = Number(updatedOrder.financials?.itemDiscounts ?? updatedOrder.totalDiscount ?? 0);
+        if (!itemDiscounts && updatedOrder.items) {
+            itemDiscounts = updatedOrder.items.reduce((s: number, i: any) => {
+                const p = Number(i.price || 0);
+                const q = Number(i.qty || 1);
+                const pct = Number(i.skuActualDiscount || i.skuDiscounted || 0);
+                return s + (p * q * (pct / 100));
+            }, 0);
+        }
+
+        const discountPercent = gross > 0
+            ? Number(updatedOrder.financials?.discountPercent ?? Math.round((itemDiscounts / gross) * 100))
+            : 0;
+
+        const voucherDeduction = Number(updatedOrder.financials?.voucherDeduction ?? updatedOrder.voucherRedeemed ?? 0);
+        const shippingCharges = Number(updatedOrder.financials?.shippingCharges ?? updatedOrder.shippingCharges ?? 0);
+        const netGrandTotal = Number(updatedOrder.financials?.netGrandTotal ?? updatedOrder.orderTotal ?? (gross - itemDiscounts + shippingCharges - voucherDeduction));
+        const remainingPayable = Number(updatedOrder.financials?.remainingPayable ?? updatedOrder.payableAfterVoucher ?? netGrandTotal);
+        const totalUnits = Number(updatedOrder.financials?.totalUnits ?? updatedOrder.items?.reduce((s: number, i: any) => s + Number(i.qty || 1), 0) ?? 0);
 
         const formatted: GroupedOrder = {
             ...updatedOrder,
@@ -531,6 +589,7 @@ export function OnlineOrderList() {
             financials: {
                 grossSubtotal: gross,
                 itemDiscounts,
+                discountPercent,
                 voucherDeduction,
                 shippingCharges,
                 netGrandTotal,
@@ -889,21 +948,27 @@ export function OnlineOrderList() {
                 const itemCount = order.items?.length || 0;
                 const totalUnits = order.financials.totalUnits;
                 const isAllStock = order.allStockAvailable;
+                const hasLocal = order.hasLocalStock;
+                const reqSourcing = order.requiresSourcing;
 
                 return (
                     <div className="flex flex-col gap-1.5 min-w-[170px]">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-xs font-medium text-foreground">
                                 {itemCount} {itemCount === 1 ? 'item' : 'items'} ({totalUnits} pcs)
                             </span>
                             {order.status !== 'posted' && (
-                                isAllStock ? (
-                                    <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 px-1.5 py-0 flex items-center gap-0.5">
-                                        <CheckCircle2 className="h-3 w-3" /> In Stock
+                                hasLocal ? (
+                                    <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 px-1.5 py-0 flex items-center gap-0.5 font-medium">
+                                        <CheckCircle2 className="h-3 w-3" /> In Stock (Local)
+                                    </Badge>
+                                ) : isAllStock ? (
+                                    <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 px-1.5 py-0 flex items-center gap-0.5 font-medium">
+                                        <CheckCircle2 className="h-3 w-3" /> In Network Stock
                                     </Badge>
                                 ) : (
-                                    <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 px-1.5 py-0 flex items-center gap-0.5">
-                                        <AlertTriangle className="h-3 w-3" /> Low Stock
+                                    <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 px-1.5 py-0 flex items-center gap-0.5 font-medium">
+                                        <AlertTriangle className="h-3 w-3" /> Out of Stock
                                     </Badge>
                                 )
                             )}
@@ -915,9 +980,11 @@ export function OnlineOrderList() {
                                     className={`text-[10px] px-1.5 py-0.5 rounded border whitespace-nowrap font-mono ${
                                         item.stock && !item.stock.isAvailable
                                             ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300'
+                                            : item.stock?.requiresSourcing
+                                            ? 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300'
                                             : 'bg-muted/60 text-muted-foreground border-border/60'
                                     }`}
-                                    title={`${item.sku} - Stock: ${item.stock?.available ?? 'N/A'}`}
+                                    title={`${item.sku} - Company Stock: ${item.stock?.companyAvailable ?? item.stock?.available ?? 'N/A'} (Local: ${item.stock?.localAvailable ?? 0})`}
                                 >
                                     {item.sku}
                                 </span>
@@ -929,8 +996,8 @@ export function OnlineOrderList() {
                             )}
                         </div>
 
-                        {/* Arrange Stock Trigger Button */}
-                        {order.status !== 'posted' && !isAllStock && (
+                        {/* Route Stock Trigger Button */}
+                        {order.status !== 'posted' && (!hasLocal || !isAllStock) && (
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -938,10 +1005,10 @@ export function OnlineOrderList() {
                                     setOrderToSource(order);
                                     setIsSourcingModalOpen(true);
                                 }}
-                                className="h-6 text-[10px] px-2 text-primary border-primary/30 hover:bg-primary/10 gap-1 w-fit mt-0.5 font-medium cursor-pointer"
-                                title="Locate barcodes across company warehouses & outlets"
+                                className="h-6 text-[10px] px-2 text-sky-700 border-sky-300 bg-sky-50/50 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 gap-1 w-fit mt-0.5 font-medium cursor-pointer"
+                                title="Locate items across company warehouses & outlets"
                             >
-                                <Layers className="h-3 w-3" /> Arrange Stock
+                                <Layers className="h-3 w-3" /> View & Route Stock
                             </Button>
                         )}
                     </div>
@@ -995,7 +1062,7 @@ export function OnlineOrderList() {
                         </div>
                         {fin.itemDiscounts > 0 && (
                             <div className="flex justify-between items-center text-rose-600 dark:text-rose-400 text-[11px]">
-                                <span>Disc:</span>
+                                <span>Disc{fin.discountPercent && fin.discountPercent > 0 ? ` (${fin.discountPercent}%)` : ''}:</span>
                                 <span>-Rs {fin.itemDiscounts.toLocaleString()}</span>
                             </div>
                         )}
@@ -1053,15 +1120,23 @@ export function OnlineOrderList() {
 
                 if (!order.allStockAvailable) {
                     return (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 gap-1 font-medium px-2 py-0.5">
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Low Stock
+                        <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 gap-1 font-medium px-2 py-0.5">
+                            <AlertTriangle className="h-3.5 w-3.5 text-rose-600" /> Out of Stock
+                        </Badge>
+                    );
+                }
+
+                if (order.requiresSourcing) {
+                    return (
+                        <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 gap-1 font-medium px-2 py-0.5">
+                            <PackageCheck className="h-3.5 w-3.5 text-sky-600" /> In Network
                         </Badge>
                     );
                 }
 
                 return (
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 gap-1 font-medium px-2 py-0.5">
-                        <PackageCheck className="h-3.5 w-3.5 text-blue-600" /> Ready
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 gap-1 font-medium px-2 py-0.5">
+                        <PackageCheck className="h-3.5 w-3.5 text-emerald-600" /> In Stock
                     </Badge>
                 );
             }
@@ -1288,12 +1363,23 @@ export function OnlineOrderList() {
 
                 <Card className="bg-card border-border/60 shadow-xs">
                     <CardContent className="p-4 flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-sky-600 dark:text-sky-400 mb-1">
+                            <span className="text-xs font-medium">In Network (Sourcing)</span>
+                            <Layers className="h-4 w-4" />
+                        </div>
+                        <div className="text-2xl font-bold tracking-tight text-sky-600 dark:text-sky-400">{metrics.sourcingNeeded}</div>
+                        <span className="text-[11px] text-muted-foreground mt-1">Available in company stock</span>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-card border-border/60 shadow-xs">
+                    <CardContent className="p-4 flex flex-col justify-between">
                         <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 mb-1">
-                            <span className="text-xs font-medium">Stock Alerts</span>
+                            <span className="text-xs font-medium">Out of Stock</span>
                             <AlertTriangle className="h-4 w-4" />
                         </div>
                         <div className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400">{metrics.stockWarning}</div>
-                        <span className="text-[11px] text-muted-foreground mt-1">Needs multi-store transfer</span>
+                        <span className="text-[11px] text-muted-foreground mt-1">0 available enterprise-wide</span>
                     </CardContent>
                 </Card>
 
@@ -1304,7 +1390,7 @@ export function OnlineOrderList() {
                             <PackageCheck className="h-4 w-4" />
                         </div>
                         <div className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{metrics.ready}</div>
-                        <span className="text-[11px] text-muted-foreground mt-1">Confirmed & in stock</span>
+                        <span className="text-[11px] text-muted-foreground mt-1">Confirmed & available</span>
                     </CardContent>
                 </Card>
 
@@ -1349,20 +1435,28 @@ export function OnlineOrderList() {
                             Confirmed ({metrics.confirmed})
                         </Button>
                         <Button
-                            variant={activeTab === 'stock_warning' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setActiveTab('stock_warning')}
-                            className="text-xs h-8 rounded-lg text-rose-700 dark:text-rose-400"
-                        >
-                            Stock Alerts ({metrics.stockWarning})
-                        </Button>
-                        <Button
                             variant={activeTab === 'ready' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setActiveTab('ready')}
                             className="text-xs h-8 rounded-lg text-emerald-700 dark:text-emerald-400"
                         >
                             Ready to Post ({metrics.ready})
+                        </Button>
+                        <Button
+                            variant={activeTab === 'sourcing' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setActiveTab('sourcing')}
+                            className="text-xs h-8 rounded-lg text-sky-700 dark:text-sky-400"
+                        >
+                            In Network ({metrics.sourcingNeeded})
+                        </Button>
+                        <Button
+                            variant={activeTab === 'stock_warning' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setActiveTab('stock_warning')}
+                            className="text-xs h-8 rounded-lg text-rose-700 dark:text-rose-400"
+                        >
+                            Out of Stock ({metrics.stockWarning})
                         </Button>
                         <Button
                             variant={activeTab === 'with_vouchers' ? 'default' : 'ghost'}
@@ -1816,16 +1910,50 @@ export function OnlineOrderList() {
                                                                 )}
                                                             </div>
 
-                                                            {/* Stock Badge */}
-                                                            <div className="pt-1">
-                                                                {isAvailable ? (
-                                                                    <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1">
-                                                                        <CheckCircle2 className="h-3 w-3" /> Location Stock: {availUnits} available (Requires {item.qty})
-                                                                    </Badge>
-                                                                ) : (
-                                                                    <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 gap-1">
-                                                                        <AlertCircle className="h-3 w-3" /> Out of Stock: only {availUnits} available at this location (Requires {item.qty})
-                                                                    </Badge>
+                                                            {/* Dual Stock Badges & Location Breakdown */}
+                                                            <div className="pt-1.5 flex flex-col gap-1.5">
+                                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                                    {item.stock?.isLocallyAvailable ? (
+                                                                        <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1 font-medium">
+                                                                            <CheckCircle2 className="h-3 w-3" /> Local Store: {item.stock?.localAvailable ?? 0} pcs (Requires {item.qty})
+                                                                        </Badge>
+                                                                    ) : (
+                                                                        <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 gap-1 font-medium">
+                                                                            <AlertCircle className="h-3 w-3" /> Local Store: {item.stock?.localAvailable ?? 0} pcs
+                                                                        </Badge>
+                                                                    )}
+
+                                                                    {item.stock?.isCompanyAvailable ? (
+                                                                        <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700 border-sky-300 dark:bg-sky-950/40 dark:text-sky-300 gap-1 font-semibold">
+                                                                            <CheckCircle2 className="h-3 w-3" /> Company Available Stock: {item.stock?.companyAvailable ?? item.stock?.available ?? 0} pcs
+                                                                        </Badge>
+                                                                    ) : (
+                                                                        <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 gap-1 font-medium">
+                                                                            <AlertCircle className="h-3 w-3" /> Out of Stock in Enterprise: {item.stock?.companyAvailable ?? 0} pcs
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Location Breakdown Table */}
+                                                                {item.stock?.locations && item.stock.locations.length > 0 && (
+                                                                    <div className="w-full mt-1 p-2 bg-muted/40 rounded-lg border text-[11px] space-y-1">
+                                                                        <span className="font-semibold text-muted-foreground flex items-center gap-1">
+                                                                            <Store className="h-3 w-3 text-sky-600" /> Stock Locations across Outlets & Warehouses:
+                                                                        </span>
+                                                                        <div className="grid grid-cols-2 gap-1 mt-1">
+                                                                            {item.stock.locations.slice(0, 4).map((loc: any, lIdx: number) => (
+                                                                                <div key={lIdx} className="flex justify-between items-center bg-background/80 px-2 py-0.5 rounded border text-[10px]">
+                                                                                    <span className="truncate max-w-[140px]" title={loc.name}>{loc.name}</span>
+                                                                                    <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">{loc.qty} pcs</span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                        {item.stock.locations.length > 4 && (
+                                                                            <p className="text-[10px] text-muted-foreground italic">
+                                                                                +{item.stock.locations.length - 4} more stores/warehouses holding stock
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -1836,12 +1964,17 @@ export function OnlineOrderList() {
                                                             Rs {Number(item.price || 0).toLocaleString()} <span className="text-muted-foreground text-xs font-normal">x {item.qty}</span>
                                                         </p>
                                                         <p className="text-muted-foreground text-[11px] mt-0.5">
-                                                            Subtotal: Rs {Number(item.subTotalPrice || (Number(item.price || 0) * Number(item.qty || 1))).toLocaleString()}
+                                                            Subtotal: Rs {Number(item.lineGross || (Number(item.price || 0) * Number(item.qty || 1))).toLocaleString()}
                                                         </p>
-                                                        {Number(item.skuDiscounted || 0) > 0 && (
-                                                            <p className="text-rose-600 font-medium text-[11px]">
-                                                                Disc: -Rs {Number(item.skuDiscounted).toLocaleString()}
-                                                            </p>
+                                                        {(Number(item.discountPercent || item.skuActualDiscount || item.skuDiscounted || 0) > 0) && (
+                                                            <>
+                                                                <p className="text-rose-600 font-medium text-[11px]">
+                                                                    Disc ({Number(item.discountPercent || item.skuActualDiscount || item.skuDiscounted)}%): -Rs {Math.round(Number(item.discountAmount ?? ((Number(item.price || 0) * Number(item.qty || 1)) * (Number(item.discountPercent || item.skuActualDiscount || item.skuDiscounted || 0) / 100)))).toLocaleString()}
+                                                                </p>
+                                                                <p className="text-emerald-600 font-semibold text-[11px]">
+                                                                    Net: Rs {Math.round(Number(item.netTotal ?? ((Number(item.price || 0) * Number(item.qty || 1)) - ((Number(item.price || 0) * Number(item.qty || 1)) * (Number(item.discountPercent || item.skuActualDiscount || item.skuDiscounted || 0) / 100))))).toLocaleString()}
+                                                                </p>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </div>
