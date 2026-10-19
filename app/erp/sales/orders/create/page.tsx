@@ -99,23 +99,28 @@ export default function CreateSalesOrderPage() {
         skippedCount++;
         return;
       }
+      const available = Number(importItem.availableStock ?? 0);
+      if (available <= 0) {
+        skippedCount++;
+        return;
+      }
       const newItem: SelectedItem = {
         id: importItem.id,
         sku: importItem.sku,
         description: importItem.description,
         costPrice: importItem.salePrice || 0,
         salePrice: importItem.salePrice || 0,
-        quantity: importItem.quantity,
+        quantity: Math.min(importItem.quantity, available),
         discount: 0,
-        total: importItem.salePrice * importItem.quantity || 0,
-        availableStock: importItem.availableStock,
+        total: (importItem.salePrice || 0) * Math.min(importItem.quantity, available),
+        availableStock: available,
         taxRate: importItem.taxRate || 0,
       };
       setSelectedItems((prev) => [...prev, newItem]);
       addedCount++;
     });
     if (skippedCount > 0) {
-      toast.info(addedCount + ' item(s) added. ' + skippedCount + ' duplicate(s) skipped.');
+      toast.info(addedCount + ' item(s) added. ' + skippedCount + ' out-of-stock / duplicate item(s) skipped.');
     }
   };
 
@@ -186,11 +191,14 @@ export default function CreateSalesOrderPage() {
     try {
       const res = await inventoryApi.search(query, selectedWarehouseId, undefined, appliedFilters);
       if (res.status && res.data) {
-        const options = res.data.map((item: any) => ({
-          ...item,
-          availableStock: item.totalQuantity || 0,
-          costPrice: item.unitCost || 0,
-        }));
+        // Match /pos/new-sale: filter only items that are actually in stock at this warehouse
+        const options = res.data
+          .filter((item: any) => Number(item.totalQuantity ?? item.availableQuantity ?? 0) > 0)
+          .map((item: any) => ({
+            ...item,
+            availableStock: Number(item.totalQuantity ?? item.availableQuantity ?? 0),
+            costPrice: item.unitCost || 0,
+          }));
         setItemOptions(options);
       }
     } catch (error) {
@@ -200,12 +208,32 @@ export default function CreateSalesOrderPage() {
     }
   };
 
-  // Add item to order
+  // Add item to order (matching /pos/new-sale addProductToCart)
   const addItem = (itemData: any) => {
-    const isSelected = selectedItems.find(i => i.id === itemData.id);
-    if (isSelected) {
-      // If already selected, don't add again but show message
-      toast.warning("Item already added to order");
+    const stockQty = Number(itemData.availableStock ?? itemData.stockQty ?? itemData.totalQuantity ?? 0);
+    if (stockQty <= 0 || itemData.inStock === false) {
+      toast.error(`${itemData.description || itemData.sku || "Item"} is out of stock`);
+      return;
+    }
+
+    const existing = selectedItems.find(i => i.id === itemData.id);
+    if (existing) {
+      if (existing.quantity + 1 > stockQty) {
+        toast.error(`Only ${stockQty} units available in stock`);
+        return;
+      }
+      setSelectedItems(prev =>
+        prev.map(i =>
+          i.id === itemData.id
+            ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.salePrice }
+            : i
+        )
+      );
+      return;
+    }
+
+    if (1 > stockQty) {
+      toast.error(`Only ${stockQty} units available in stock`);
       return;
     }
 
@@ -218,20 +246,26 @@ export default function CreateSalesOrderPage() {
       quantity: 1,
       discount: 0,
       total: itemData.unitPrice || 0,
-      availableStock: itemData.availableStock,
+      availableStock: stockQty,
       taxRate: Number(itemData.taxRate1 || 0),
     };
 
     setSelectedItems(prev => [...prev, newItem]);
-    // Don't close popover to allow multiple selections
-    // setItemSearchQuery("");
-    // setIsPopoverOpen(false);
   };
 
   // Update item
   const updateItem = (id: string, field: keyof SelectedItem, value: number) => {
     setSelectedItems(prev => prev.map(item => {
       if (item.id === id) {
+        if (field === 'quantity') {
+          if (value > item.availableStock) {
+            toast.error(`Only ${item.availableStock} available in stock for "${item.sku}".`);
+            return { ...item, quantity: item.availableStock };
+          }
+          if (value < 1) {
+            return { ...item, quantity: 1 };
+          }
+        }
         return { ...item, [field]: value };
       }
       return item;
@@ -258,6 +292,16 @@ export default function CreateSalesOrderPage() {
   const handleCreateOrder = async () => {
     if (!selectedCustomerId || !selectedWarehouseId || selectedItems.length === 0) {
       toast.error("Please fill all required fields and add at least one item");
+      return;
+    }
+
+    const invalidStockItem = selectedItems.find(
+      (item) => Number(item.availableStock || 0) <= 0 || Number(item.quantity) > Number(item.availableStock || 0)
+    );
+    if (invalidStockItem) {
+      toast.error(
+        `Item "${invalidStockItem.sku}" cannot be ordered (Available: ${invalidStockItem.availableStock}, Requested: ${invalidStockItem.quantity}).`
+      );
       return;
     }
 
@@ -420,6 +464,7 @@ export default function CreateSalesOrderPage() {
                 searchResults={itemOptions.map((item: any) => ({
                   ...item,
                   stockQty: item.availableStock,
+                  inStock: item.availableStock > 0,
                   unitPrice: item.unitPrice || item.salePrice
                 }))}
                 isSearching={searchLoading}
