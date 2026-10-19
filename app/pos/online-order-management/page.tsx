@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OnlineOrderManagementPage() {
     return (
-        <div className="container mx-auto py-10">
+        <div className="px-5 mx-auto py-10">
             <OnlineOrderList />
         </div>
     );

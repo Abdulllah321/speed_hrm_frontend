@@ -80,6 +80,15 @@ interface SourcingOrder {
     [key: string]: any;
 }
 
+const normalizeConfirmationStatus = (status?: string | null): string => {
+    if (!status) return 'NEEDS_CONFIRMATION';
+    const s = status.trim().toUpperCase();
+    if (['CONFIRMED', 'APPROVED', 'VERIFIED'].includes(s)) return 'CONFIRMED';
+    if (['CALL_BACK', 'CALLBACK', 'RETRY'].includes(s)) return 'CALL_BACK';
+    if (['CANCELLED', 'CANCELED', 'REJECTED'].includes(s)) return 'CANCELLED';
+    return 'NEEDS_CONFIRMATION';
+};
+
 interface LocationStock {
     locationId: string;
     locationName: string;
@@ -203,7 +212,7 @@ export default function InventorySourcingPage() {
                     .map((o: any) => ({
                         ...o,
                         customerName: o.customerName || 'Customer',
-                        confirmationStatus: (o.realMarketStatus || o.confirmationStatus || 'NEEDS_CONFIRMATION').toUpperCase(),
+                        confirmationStatus: normalizeConfirmationStatus(o.confirmationStatus || o.realMarketStatus),
                         status: o.itemStatus || 'pending',
                     }));
                 setOrders(formatted);

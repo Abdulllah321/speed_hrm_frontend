@@ -28,8 +28,8 @@ export function ItemUpdateBulkUploadModal({
             onUploadIdChange={onUploadIdChange}
             uploadType="item-update"
             apiBasePath="items/bulk-update-prices"
-            title="Bulk Price & Tax Update"
-            description="Update existing item prices (FOB/Sale Price) and Sales Tax Rates by Barcode. Missing or empty fields in the sheet will be skipped to prevent overwriting existing data."
+            title="Bulk Item Update"
+            description="Update item prices, tax rates, discount %, and season by Barcode or SKU. Uploading a new season archives the product's current active season into Old Season. Missing or empty fields in the sheet are skipped to preserve existing data."
             icon={Upload}
         />
     );

@@ -82,6 +82,15 @@ interface CallingOrder {
     };
 }
 
+const normalizeConfirmationStatus = (status?: string | null): string => {
+    if (!status) return 'NEEDS_CONFIRMATION';
+    const s = status.trim().toUpperCase();
+    if (['CONFIRMED', 'APPROVED', 'VERIFIED'].includes(s)) return 'CONFIRMED';
+    if (['CALL_BACK', 'CALLBACK', 'RETRY'].includes(s)) return 'CALL_BACK';
+    if (['CANCELLED', 'CANCELED', 'REJECTED'].includes(s)) return 'CANCELLED';
+    return 'NEEDS_CONFIRMATION';
+};
+
 const PRESET_CALL_LOGS = [
     { label: '✓ Confirmed - Dispatch ASAP', status: 'CONFIRMED', note: 'Customer confirmed order verbally. Requested dispatch ASAP.' },
     { label: '📞 Ringing / No Answer', status: 'CALL_BACK', note: 'Phone is ringing but no answer.' },
@@ -126,7 +135,7 @@ export default function OrderConfirmationsPage() {
                         customerName: o.customerName || 'Customer',
                         phone: o.phone || '',
                         city: o.city || 'Unknown',
-                        confirmationStatus: (o.realMarketStatus || o.confirmationStatus || 'NEEDS_CONFIRMATION').toUpperCase(),
+                        confirmationStatus: normalizeConfirmationStatus(o.confirmationStatus || o.realMarketStatus),
                         status: o.itemStatus || 'pending',
                         orderTotal: netGrandTotal,
                         financials: {
@@ -184,7 +193,7 @@ export default function OrderConfirmationsPage() {
             // Status match
             if (statusFilter !== 'ALL') {
                 if (statusFilter === 'NEEDS_CONFIRMATION') {
-                    if (o.confirmationStatus !== 'NEEDS_CONFIRMATION') return false;
+                    if (o.confirmationStatus !== 'NEEDS_CONFIRMATION' && o.confirmationStatus !== 'CALL_BACK') return false;
                 } else if (o.confirmationStatus !== statusFilter) {
                     return false;
                 }

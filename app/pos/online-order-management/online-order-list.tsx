@@ -160,7 +160,16 @@ interface GroupedOrder {
     orderTotal: number;
 }
 
-type TabFilter = 'all' | 'needs_confirmation' | 'confirmed' | 'ready' | 'sourcing' | 'stock_warning' | 'posted' | 'with_vouchers' | 'cancelled';
+type TabFilter = 'all' | 'pending' | 'needs_confirmation' | 'confirmed' | 'ready' | 'with_vouchers' | 'posted' | 'cancelled';
+
+const normalizeConfirmationStatus = (status?: string | null): string => {
+    if (!status) return 'NEEDS_CONFIRMATION';
+    const s = status.trim().toUpperCase();
+    if (['CONFIRMED', 'APPROVED', 'VERIFIED'].includes(s)) return 'CONFIRMED';
+    if (['CALL_BACK', 'CALLBACK', 'RETRY'].includes(s)) return 'CALL_BACK';
+    if (['CANCELLED', 'CANCELED', 'REJECTED'].includes(s)) return 'CANCELLED';
+    return 'NEEDS_CONFIRMATION';
+};
 
 export function OnlineOrderList() {
     const { user } = useAuth();
@@ -171,8 +180,8 @@ export function OnlineOrderList() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Filter & Selection State
-    const [activeTab, setActiveTab] = useState<TabFilter>('all');
+    // Filter & Selection State: Default to 'needs_confirmation' to immediately surface active orders awaiting telephonic verification
+    const [activeTab, setActiveTab] = useState<TabFilter>('needs_confirmation');
     const [selectedOrderNumbers, setSelectedOrderNumbers] = useState<Set<string>>(new Set());
 
     // Execution & Progress State
@@ -256,7 +265,7 @@ export function OnlineOrderList() {
                     return {
                         ...o,
                         id: o.orderNumber,
-                        confirmationStatus: (o.confirmationStatus || o.realMarketStatus || 'NEEDS_CONFIRMATION').toUpperCase(),
+                        confirmationStatus: normalizeConfirmationStatus(o.confirmationStatus || o.realMarketStatus),
                         note: o.note,
                         financials: {
                             grossSubtotal: gross,
@@ -295,7 +304,7 @@ export function OnlineOrderList() {
         const total = orders.length;
         const posted = orders.filter(o => o.status === 'posted').length;
         const pending = orders.filter(o => o.status !== 'posted').length;
-        const needsConfirmation = orders.filter(o => o.status !== 'posted' && (!o.confirmationStatus || o.confirmationStatus === 'NEEDS_CONFIRMATION' || o.confirmationStatus === 'CALL_BACK')).length;
+        const needsConfirmation = orders.filter(o => o.status !== 'posted' && (o.confirmationStatus === 'NEEDS_CONFIRMATION' || o.confirmationStatus === 'CALL_BACK' || !o.confirmationStatus)).length;
         const confirmed = orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED').length;
         const ready = orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED' && o.allStockAvailable).length;
         const sourcingNeeded = orders.filter(o => o.status !== 'posted' && o.allStockAvailable && o.requiresSourcing).length;
@@ -324,22 +333,21 @@ export function OnlineOrderList() {
     // Filtered orders for table
     const filteredOrders = useMemo(() => {
         switch (activeTab) {
+            case 'pending':
+                return orders.filter(o => o.status !== 'posted');
             case 'needs_confirmation':
-                return orders.filter(o => o.status !== 'posted' && (!o.confirmationStatus || o.confirmationStatus === 'NEEDS_CONFIRMATION' || o.confirmationStatus === 'CALL_BACK'));
+                return orders.filter(o => o.status !== 'posted' && (o.confirmationStatus === 'NEEDS_CONFIRMATION' || o.confirmationStatus === 'CALL_BACK' || !o.confirmationStatus));
             case 'confirmed':
                 return orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED');
             case 'ready':
                 return orders.filter(o => o.status !== 'posted' && o.confirmationStatus === 'CONFIRMED' && o.allStockAvailable);
-            case 'sourcing':
-                return orders.filter(o => o.status !== 'posted' && o.allStockAvailable && o.requiresSourcing);
-            case 'stock_warning':
-                return orders.filter(o => o.status !== 'posted' && !o.allStockAvailable);
             case 'posted':
                 return orders.filter(o => o.status === 'posted');
             case 'with_vouchers':
                 return orders.filter(o => o.voucherInfo && o.voucherInfo.isValid);
             case 'cancelled':
                 return orders.filter(o => o.confirmationStatus === 'CANCELLED');
+            case 'all':
             default:
                 return orders;
         }
@@ -958,19 +966,9 @@ export function OnlineOrderList() {
                                 {itemCount} {itemCount === 1 ? 'item' : 'items'} ({totalUnits} pcs)
                             </span>
                             {order.status !== 'posted' && (
-                                hasLocal ? (
-                                    <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 px-1.5 py-0 flex items-center gap-0.5 font-medium">
-                                        <CheckCircle2 className="h-3 w-3" /> In Stock (Local)
-                                    </Badge>
-                                ) : isAllStock ? (
-                                    <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 px-1.5 py-0 flex items-center gap-0.5 font-medium">
-                                        <CheckCircle2 className="h-3 w-3" /> In Network Stock
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 px-1.5 py-0 flex items-center gap-0.5 font-medium">
-                                        <AlertTriangle className="h-3 w-3" /> Out of Stock
-                                    </Badge>
-                                )
+                                <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 px-1.5 py-0 flex items-center gap-0.5 font-medium">
+                                    <CheckCircle2 className="h-3 w-3" /> In Stock
+                                </Badge>
                             )}
                         </div>
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
@@ -1118,21 +1116,7 @@ export function OnlineOrderList() {
                     );
                 }
 
-                if (!order.allStockAvailable) {
-                    return (
-                        <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 gap-1 font-medium px-2 py-0.5">
-                            <AlertTriangle className="h-3.5 w-3.5 text-rose-600" /> Out of Stock
-                        </Badge>
-                    );
-                }
 
-                if (order.requiresSourcing) {
-                    return (
-                        <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 gap-1 font-medium px-2 py-0.5">
-                            <PackageCheck className="h-3.5 w-3.5 text-sky-600" /> In Network
-                        </Badge>
-                    );
-                }
 
                 return (
                     <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 gap-1 font-medium px-2 py-0.5">
@@ -1276,7 +1260,6 @@ export function OnlineOrderList() {
             <OnlineOrderNav counts={{
                 totalOrders: orders.length,
                 needsConfirmation: metrics.needsConfirmation,
-                stockShortage: metrics.stockWarning,
             }} />
 
             {/* Top Header */}
@@ -1327,7 +1310,7 @@ export function OnlineOrderList() {
             </div>
 
             {/* KPI Executive Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 <Card className="bg-card border-border/60 shadow-xs">
                     <CardContent className="p-4 flex flex-col justify-between">
                         <div className="flex items-center justify-between text-muted-foreground mb-1">
@@ -1363,28 +1346,6 @@ export function OnlineOrderList() {
 
                 <Card className="bg-card border-border/60 shadow-xs">
                     <CardContent className="p-4 flex flex-col justify-between">
-                        <div className="flex items-center justify-between text-sky-600 dark:text-sky-400 mb-1">
-                            <span className="text-xs font-medium">In Network (Sourcing)</span>
-                            <Layers className="h-4 w-4" />
-                        </div>
-                        <div className="text-2xl font-bold tracking-tight text-sky-600 dark:text-sky-400">{metrics.sourcingNeeded}</div>
-                        <span className="text-[11px] text-muted-foreground mt-1">Available in company stock</span>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-card border-border/60 shadow-xs">
-                    <CardContent className="p-4 flex flex-col justify-between">
-                        <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 mb-1">
-                            <span className="text-xs font-medium">Out of Stock</span>
-                            <AlertTriangle className="h-4 w-4" />
-                        </div>
-                        <div className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400">{metrics.stockWarning}</div>
-                        <span className="text-[11px] text-muted-foreground mt-1">0 available enterprise-wide</span>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-card border-border/60 shadow-xs">
-                    <CardContent className="p-4 flex flex-col justify-between">
                         <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-1">
                             <span className="text-xs font-medium">Ready to Post</span>
                             <PackageCheck className="h-4 w-4" />
@@ -1411,20 +1372,20 @@ export function OnlineOrderList() {
                 <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/40 p-1.5 rounded-xl border border-border/60">
                     <div className="flex items-center gap-1 flex-wrap">
                         <Button
-                            variant={activeTab === 'all' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setActiveTab('all')}
-                            className="text-xs h-8 rounded-lg"
-                        >
-                            All ({orders.length})
-                        </Button>
-                        <Button
                             variant={activeTab === 'needs_confirmation' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setActiveTab('needs_confirmation')}
-                            className="text-xs h-8 rounded-lg text-amber-700 dark:text-amber-400"
+                            className="text-xs h-8 rounded-lg text-amber-700 dark:text-amber-400 font-medium"
                         >
                             Needs Call ({metrics.needsConfirmation})
+                        </Button>
+                        <Button
+                            variant={activeTab === 'pending' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setActiveTab('pending')}
+                            className="text-xs h-8 rounded-lg font-medium"
+                        >
+                            Pending ({metrics.pending})
                         </Button>
                         <Button
                             variant={activeTab === 'confirmed' ? 'default' : 'ghost'}
@@ -1438,31 +1399,15 @@ export function OnlineOrderList() {
                             variant={activeTab === 'ready' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setActiveTab('ready')}
-                            className="text-xs h-8 rounded-lg text-emerald-700 dark:text-emerald-400"
+                            className="text-xs h-8 rounded-lg text-emerald-700 dark:text-emerald-400 font-medium"
                         >
                             Ready to Post ({metrics.ready})
-                        </Button>
-                        <Button
-                            variant={activeTab === 'sourcing' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setActiveTab('sourcing')}
-                            className="text-xs h-8 rounded-lg text-sky-700 dark:text-sky-400"
-                        >
-                            In Network ({metrics.sourcingNeeded})
-                        </Button>
-                        <Button
-                            variant={activeTab === 'stock_warning' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setActiveTab('stock_warning')}
-                            className="text-xs h-8 rounded-lg text-rose-700 dark:text-rose-400"
-                        >
-                            Out of Stock ({metrics.stockWarning})
                         </Button>
                         <Button
                             variant={activeTab === 'with_vouchers' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setActiveTab('with_vouchers')}
-                            className="text-xs h-8 rounded-lg"
+                            className="text-xs h-8 rounded-lg font-medium"
                         >
                             With Vouchers ({metrics.withVouchers})
                         </Button>
@@ -1470,9 +1415,17 @@ export function OnlineOrderList() {
                             variant={activeTab === 'posted' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setActiveTab('posted')}
-                            className="text-xs h-8 rounded-lg"
+                            className="text-xs h-8 rounded-lg font-medium"
                         >
                             Posted ({metrics.posted})
+                        </Button>
+                        <Button
+                            variant={activeTab === 'all' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setActiveTab('all')}
+                            className="text-xs h-8 rounded-lg font-medium"
+                        >
+                            All ({orders.length})
                         </Button>
                         {metrics.cancelled > 0 && (
                             <Button
