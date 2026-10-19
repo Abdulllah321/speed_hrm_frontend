@@ -261,6 +261,7 @@ export default function StockRequisitionPage() {
           merged.push({
             itemId: newItem.itemId,
             sku: newItem.sku,
+            barcode: newItem.barcode || newItem.barCode || null,
             description: newItem.description,
             color: newItem.color,
             size: newItem.size,
@@ -1749,7 +1750,7 @@ export default function StockRequisitionPage() {
           </div>
 
           {replenishCandidates.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 my-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-2">
               <Card className="p-3 bg-indigo-50/50 border-indigo-100">
                 <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider block">Total Sold Items</span>
                 <span className="text-2xl font-extrabold text-indigo-900 mt-1 block">
@@ -1760,12 +1761,6 @@ export default function StockRequisitionPage() {
                 <span className="text-xs font-bold text-green-700 uppercase tracking-wider block">Fully Available</span>
                 <span className="text-2xl font-extrabold text-green-900 mt-1 block">
                   {replenishSummary.replenishFully}
-                </span>
-              </Card>
-              <Card className="p-3 bg-amber-50/50 border-amber-100">
-                <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block">Partially Available</span>
-                <span className="text-2xl font-extrabold text-amber-900 mt-1 block">
-                  {replenishSummary.replenishPartially}
                 </span>
               </Card>
               <Card className="p-3 bg-rose-50/50 border-rose-100">
@@ -1791,6 +1786,7 @@ export default function StockRequisitionPage() {
                 <TableHeader className="bg-gray-100 sticky top-0 z-10">
                   <TableRow>
                     <TableHead className="font-bold">SKU</TableHead>
+                    <TableHead className="font-bold">Barcode</TableHead>
                     <TableHead className="font-bold">Description</TableHead>
                     <TableHead className="font-bold">Size/Color</TableHead>
                     <TableHead className="font-bold text-center">Sold Qty</TableHead>
@@ -1806,6 +1802,9 @@ export default function StockRequisitionPage() {
                     return (
                       <TableRow key={candidate.itemId} className={`hover:bg-gray-50/50 ${isOos ? 'bg-rose-50/10' : ''}`}>
                         <TableCell className="font-bold text-gray-800">{candidate.sku}</TableCell>
+                        <TableCell className="font-mono text-xs text-blue-600 font-medium whitespace-nowrap">
+                          {candidate.barcode || candidate.barCode || '—'}
+                        </TableCell>
                         <TableCell className="max-w-xs md:max-w-md xl:max-w-lg truncate">{candidate.description}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">

@@ -83,6 +83,40 @@ export default function OutboundRequestsPage() {
     const [editingRequest, setEditingRequest] = useState<any | null>(null);
     const [editedItems, setEditedItems] = useState<{ [itemId: string]: number }>({});
     const [dispatchDetails, setDispatchDetails] = useState({ courierName: '', trackingNumber: '', vehicleNumber: '', riderName: '', dispatchNotes: '' });
+    const [localDrafts, setLocalDrafts] = useState<any[]>([]);
+
+    const loadLocalDrafts = () => {
+        try {
+            const raw = localStorage.getItem("direct-transfer-drafts");
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                const list = Object.values(parsed);
+                list.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+                setLocalDrafts(list);
+                return;
+            }
+        } catch {}
+        setLocalDrafts([]);
+    };
+
+    useEffect(() => {
+        loadLocalDrafts();
+    }, []);
+
+    const handleDiscardDraft = (draftId: string) => {
+        try {
+            const raw = localStorage.getItem("direct-transfer-drafts");
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                delete parsed[draftId];
+                localStorage.setItem("direct-transfer-drafts", JSON.stringify(parsed));
+                loadLocalDrafts();
+                toast.success("Draft discarded");
+            }
+        } catch {
+            toast.error("Failed to discard draft");
+        }
+    };
     
     // Filters and Search
     const [searchQuery, setSearchQuery] = useState("");
@@ -135,6 +169,14 @@ export default function OutboundRequestsPage() {
         const outboundNo = request.outboundNo || request.formattedSerialNo || null;
         const notes = request.notes || "";
         const totalQty = request.items?.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0) || 0;
+
+        const isWatchTransfer = request.items?.some((item: any) => {
+            const div = (item.item?.division?.name || item.item?.division || '').toUpperCase();
+            const brand = (item.item?.brand?.name || item.item?.brand || '').toUpperCase();
+            const desc = (item.item?.description || '').toUpperCase();
+            const watchBrands = ['WATCHES', 'TISSOT', 'RADO', 'TAG HEUER', 'ORIS', 'GUESS', 'POLICE', 'NAUTICA', 'USPA', 'TIMEX', 'DANISH DESIGN'];
+            return div.includes('WATCH') || watchBrands.includes(brand) || desc.includes('WATCH') || Boolean(item.item?.uniqueNo);
+        }) || (sourceLoc.toUpperCase().includes('WATCH')) || (destLoc.toUpperCase().includes('WATCH'));
 
         win.document.write(`
             <!DOCTYPE html>
@@ -219,26 +261,36 @@ export default function OutboundRequestsPage() {
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 6%;">S.No</th>
-                            <th style="width: 22%;">SKU / Code</th>
-                            <th style="width: 42%;">Description</th>
-                            <th class="text-center" style="width: 15%;">Size / Color</th>
-                            <th class="text-right" style="width: 15%;">Quantity</th>
+                            ${isWatchTransfer ? `
+                                <th style="width: 5%;">S.No</th>
+                                <th style="width: 20%;">SKU / Code</th>
+                                <th style="width: 35%;">Description</th>
+                                <th class="text-center" style="width: 15%;">Unique No</th>
+                                <th class="text-center" style="width: 13%;">Size / Color</th>
+                                <th class="text-right" style="width: 12%;">Quantity</th>
+                            ` : `
+                                <th style="width: 6%;">S.No</th>
+                                <th style="width: 22%;">SKU / Code</th>
+                                <th style="width: 42%;">Description</th>
+                                <th class="text-center" style="width: 15%;">Size / Color</th>
+                                <th class="text-right" style="width: 15%;">Quantity</th>
+                            `}
                         </tr>
                     </thead>
                     <tbody>
                         ${request.items.map((item: any, idx: number) => {
                             const sku = item.item?.sku || "—";
-                            const barCodeHtml = item.item?.barCode ? `<br><span style="color:#2563eb; font-size: 8px;">${item.item.barCode}</span>` : "";
-                            const uniqueNoHtml = item.item?.uniqueNo ? `<br><span style="color:#9333ea; font-size: 8px;">${item.item.uniqueNo}</span>` : "";
+                            const barCodeHtml = item.item?.barCode && item.item?.barCode !== sku ? `<br><span style="color:#2563eb; font-size: 8px;">${item.item.barCode}</span>` : "";
+                            const uniqueNo = item.item?.uniqueNo || "—";
                             const desc = item.item?.description || "Item";
                             const sizeStr = item.item?.size?.name || item.item?.size || "—";
                             const colorStr = item.item?.color?.name || item.item?.color || "—";
                             return `
                                 <tr>
                                     <td>${idx + 1}</td>
-                                    <td class="font-bold">${sku}${barCodeHtml}${uniqueNoHtml}</td>
+                                    <td class="font-bold">${sku}${barCodeHtml}</td>
                                     <td class="uppercase">${desc}</td>
+                                    ${isWatchTransfer ? `<td class="text-center font-bold" style="color: #6b21a8;">${uniqueNo}</td>` : ''}
                                     <td class="text-center">${sizeStr} / ${colorStr}</td>
                                     <td class="text-right font-bold">${Number(item.quantity)}</td>
                                 </tr>
@@ -446,6 +498,80 @@ export default function OutboundRequestsPage() {
             {/* Main Content */}
             <main className="flex-1 p-4 md:p-6 pb-20">
                 <div className="w-full space-y-6">
+                    {/* Unsaved Direct Transfer Drafts Banner */}
+                    {localDrafts.length > 0 && (
+                        <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-4 sm:p-5 backdrop-blur-md shadow-xs space-y-3.5">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/50 dark:border-amber-900/30 pb-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="relative flex h-2.5 w-2.5">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                                    </span>
+                                    <h3 className="font-bold text-amber-900 dark:text-amber-300 text-xs sm:text-sm uppercase tracking-wider">
+                                        Unsaved Direct Transfer Drafts ({localDrafts.length})
+                                    </h3>
+                                </div>
+                                <p className="text-xs text-amber-700/90 dark:text-amber-400/80">
+                                    Saved locally in browser to prevent data loss
+                                </p>
+                            </div>
+                            <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                                {localDrafts.map((draft) => {
+                                    const totalUnits = draft.items?.reduce((sum: number, i: any) => sum + (Number(i.quantity) || 0), 0) || 0;
+                                    return (
+                                        <div
+                                            key={draft.draftId}
+                                            className="flex flex-col justify-between p-3.5 rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-white/90 dark:bg-card shadow-xs transition-all duration-200 hover:shadow-sm space-y-3"
+                                        >
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                                        {draft.draftId}
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground font-mono">
+                                                        {format(new Date(draft.updatedAt), "dd MMM, hh:mm a")}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-foreground font-semibold truncate">
+                                                    {draft.destinationName ? `To: ${draft.destinationName}` : "Destination: Not selected"}
+                                                </div>
+                                                <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                                                    <span className="font-semibold text-foreground">{draft.items?.length || 0} item(s)</span>
+                                                    <span>•</span>
+                                                    <span>{totalUnits} unit(s)</span>
+                                                </div>
+                                                {draft.notes && (
+                                                    <p className="text-[11px] text-muted-foreground italic truncate">
+                                                        &ldquo;{draft.notes}&rdquo;
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
+                                                <Link href={`/pos/inventory/direct-transfer-out?draftId=${draft.draftId}`}>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        className="bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 dark:text-amber-200 font-bold h-7 text-xs"
+                                                    >
+                                                        Resume
+                                                    </Button>
+                                                </Link>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => handleDiscardDraft(draft.draftId)}
+                                                    className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                                >
+                                                    Discard
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Custom Modern Tabs */}
                     <div className="flex gap-2 p-1 bg-muted rounded-xl max-w-xs border shadow-sm">
                         <button

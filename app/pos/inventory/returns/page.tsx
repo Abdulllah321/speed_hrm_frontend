@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
     RotateCcw, ArrowLeft, RefreshCcw, Package, CheckCircle2, FileText,
     AlertTriangle, Plus, Minus, Trash2, Search, Send, ShoppingCart, Building2,
-    Calendar, PackageCheck, Printer, FileSpreadsheet
+    Calendar, PackageCheck, Printer, FileSpreadsheet, ScanBarcode
 } from "lucide-react";
 import {
     DirectTransferBulkUploadModal,
@@ -114,6 +114,7 @@ export default function ReturnRequestsPage() {
     const [itemQuery, setItemQuery] = useState('');
     const [searchResults, setSearchResults] = useState<Item[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [activeIndex, setActiveIndex] = useState<number>(-1);
     const [cart, setCart] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -337,7 +338,33 @@ export default function ReturnRequestsPage() {
         }
     }, [locationId]);
 
+    useEffect(() => {
+        setActiveIndex(-1);
+    }, [searchResults, itemQuery]);
+
     const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (searchResults.length > 0) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActiveIndex((prev) => (prev + 1) % searchResults.length);
+                return;
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveIndex((prev) => (prev - 1 + searchResults.length) % searchResults.length);
+                return;
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                setItemQuery("");
+                setSearchResults([]);
+                setActiveIndex(-1);
+                return;
+            } else if (e.key === "Enter" && activeIndex >= 0 && activeIndex < searchResults.length) {
+                e.preventDefault();
+                addToCart(searchResults[activeIndex]);
+                return;
+            }
+        }
+
         if (e.key === 'Enter') {
             e.preventDefault();
             const query = itemQuery.trim();
@@ -467,6 +494,7 @@ export default function ReturnRequestsPage() {
         });
         setItemQuery('');
         setSearchResults([]);
+        setActiveIndex(-1);
         
         // Return focus to scanner input for continuous scanning
         if (searchInputRef.current) {
@@ -768,245 +796,304 @@ export default function ReturnRequestsPage() {
                                 </div>
                             </div>
                             
+                            {/* Destination Warehouse */}
                             <Card className="border-border/50 shadow-sm">
-                                <CardHeader className="pb-4">
-                                    <CardTitle className="text-md font-bold">Destination Warehouse</CardTitle>
-                                    <CardDescription className="text-xs">Select the warehouse where the items will be returned.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
-                                        <SelectTrigger className="w-full md:w-[300px]">
-                                            <SelectValue placeholder="Select Warehouse" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {warehouses.map(w => (
-                                                <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </CardContent>
-                            </Card>
-
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                {/* Left Column: Item Search Card */}
-                                <div className="md:col-span-1 flex flex-col gap-4">
-                                    <Card className="border-border/50 shadow-sm">
-                                        <CardHeader className="pb-4">
-                                            <CardTitle className="text-md font-bold flex items-center justify-between text-foreground">
-                                                <div className="flex items-center gap-2">
-                                                    <Search className="h-5 w-5 text-orange-600" />
-                                                    Search Items
-                                                </div>
-                                                <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 gap-1 text-[10px] py-0">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                                    Scanner Ready
-                                                </Badge>
+                                <CardHeader className="py-4 px-5">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div>
+                                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                                <Building2 className="h-4 w-4 text-orange-600" />
+                                                Destination Warehouse
                                             </CardTitle>
-                                            <CardDescription className="text-xs">Scan barcode to quick-add, or find items with available stock at this outlet.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                                                <Input
-                                                    ref={searchInputRef}
-                                                    autoFocus
-                                                    placeholder="Scan barcode or type SKU..."
-                                                    value={itemQuery}
-                                                    onChange={(e) => setItemQuery(e.target.value)}
-                                                    onKeyDown={handleKeyDown}
-                                            className="pl-9 h-11 bg-muted/20 border-border/50"
-                                        />
-                                    </div>
-
-                                    {/* Search Results */}
-                                    <ScrollArea className="h-[250px] rounded-lg border border-border/50 bg-muted/5">
-                                        {isSearching ? (
-                                            <div className="p-4 space-y-2">
-                                                {[1, 2, 3].map(i => (
-                                                    <Skeleton key={i} className="h-12 w-full rounded-md" />
-                                                ))}
-                                            </div>
-                                        ) : searchResults.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center h-[200px] text-center p-4">
-                                                <Package className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                                                <p className="text-xs font-medium text-muted-foreground">
-                                                    {itemQuery ? "No matching items with stock found" : "Type to search available stock"}
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <div className="divide-y divide-border/50">
-                                                {searchResults.map((item) => (
-                                                    <button
-                                                        key={item.id}
-                                                        type="button"
-                                                        onClick={() => addToCart(item)}
-                                                        className="w-full text-left p-3 hover:bg-orange-50/50 dark:hover:bg-orange-950/20 transition-colors flex items-center justify-between gap-4 group"
-                                                    >
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center flex-wrap gap-1.5 mb-1">
-                                                                <span className="font-mono text-[9px] font-bold bg-muted px-1.5 py-0.5 rounded text-muted-foreground group-hover:bg-orange-100 group-hover:text-orange-700 dark:group-hover:bg-orange-950/40 dark:group-hover:text-orange-300 transition-colors">
-                                                                    {item.sku}
-                                                                </span>
-                                                                {item.barCode && (
-                                                                    <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium font-mono text-blue-600 bg-blue-50 border-blue-200">
-                                                                        {item.barCode}
-                                                                    </Badge>
-                                                                )}
-                                                                {item.uniqueNo && (
-                                                                    <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium font-mono text-purple-600 bg-purple-50 border-purple-200">
-                                                                        {item.uniqueNo}
-                                                                    </Badge>
-                                                                )}
-                                                                {item.size?.name && (
-                                                                    <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium">
-                                                                        Size: {item.size.name}
-                                                                    </Badge>
-                                                                )}
-                                                                {item.color?.name && (
-                                                                    <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium">
-                                                                        Color: {item.color.name}
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-xs font-semibold truncate text-foreground">{item.description}</p>
-                                                        </div>
-                                                        <div className="text-right flex-none">
-                                                            <span className="text-[9px] block font-bold text-muted-foreground uppercase tracking-wider">Available</span>
-                                                            <span className="text-xs font-bold text-emerald-600">{item.totalQuantity} units</span>
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </ScrollArea>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Right Column: Return Cart */}
-                        <div className="md:col-span-3">
-                            <Card className="border-border/50 shadow-sm h-full flex flex-col min-h-[450px]">
-                                <CardHeader className="pb-4 border-b border-border/50 flex flex-row items-center justify-between">
-                                    <div>
-                                        <CardTitle className="text-md font-bold flex items-center gap-2 text-foreground">
-                                            <ShoppingCart className="h-5 w-5 text-orange-600" />
-                                            Return List
-                                        </CardTitle>
-                                        <CardDescription className="text-xs">Items selected for return.</CardDescription>
-                                    </div>
-                                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100/80 dark:bg-orange-950/40 dark:text-orange-300 font-bold">
-                                        {cart.length} {cart.length === 1 ? 'item' : 'items'}
-                                    </Badge>
-                                </CardHeader>
-
-                                <div className="flex-1 flex flex-col justify-between">
-                                    {/* Cart Items */}
-                                    <ScrollArea className="flex-1 max-h-[300px]">
-                                        {cart.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center py-20 text-center p-6">
-                                                <ShoppingCart className="h-12 w-12 text-muted-foreground/20 mb-3" />
-                                                <h4 className="font-bold text-muted-foreground text-sm">Return List is Empty</h4>
-                                                <p className="text-xs text-muted-foreground/60 max-w-xs mt-1">
-                                                    Search and select items on the left to add them to your return request.
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <div className="divide-y divide-border/50">
-                                                {cart.map(({ item, quantity }) => (
-                                                    <div key={item.id} className="p-4 flex items-center justify-between gap-4">
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                                                <p className="font-mono text-xs font-bold text-orange-600">{item.sku}</p>
-                                                                {item.barCode && <span className="text-[10px] text-blue-600 font-medium px-1 bg-blue-50 rounded border border-blue-200 font-mono">{item.barCode}</span>}
-                                                                {item.uniqueNo && <span className="text-[10px] text-purple-600 font-medium px-1 bg-purple-50 rounded border border-purple-200 font-mono">{item.uniqueNo}</span>}
-                                                            </div>
-                                                            <h4 className="text-sm font-semibold text-foreground truncate">{item.description}</h4>
-                                                            <div className="flex items-center gap-2 mt-1.5">
-                                                                {item.size?.name && (
-                                                                    <span className="text-[10px] text-muted-foreground">Size: <span className="font-bold text-foreground">{item.size.name}</span></span>
-                                                                )}
-                                                                {item.color?.name && (
-                                                                    <span className="text-[10px] text-muted-foreground">Color: <span className="font-bold text-foreground">{item.color.name}</span></span>
-                                                                )}
-                                                                <span className="text-[10px] text-muted-foreground">Available: <span className="font-bold text-emerald-600">{item.totalQuantity}</span></span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center gap-4 flex-none">
-                                                            {/* Quantity Selector */}
-                                                            <div className="flex items-center border border-border/50 rounded-lg overflow-hidden bg-background shadow-sm h-9">
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-full w-8 rounded-none border-r border-border/50 hover:bg-muted"
-                                                                    onClick={() => updateCartQuantity(item.id, quantity - 1)}
-                                                                    disabled={quantity <= 1}
-                                                                >
-                                                                    <Minus className="h-3 w-3" />
-                                                                </Button>
-                                                                <span className="w-10 text-center font-mono text-xs font-bold">{quantity}</span>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-full w-8 rounded-none border-l border-border/50 hover:bg-muted"
-                                                                    onClick={() => updateCartQuantity(item.id, quantity + 1)}
-                                                                    disabled={quantity >= item.totalQuantity}
-                                                                >
-                                                                    <Plus className="h-3 w-3" />
-                                                                </Button>
-                                                            </div>
-
-                                                            {/* Delete Button */}
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-9 w-9 rounded-lg"
-                                                                onClick={() => removeFromCart(item.id)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </ScrollArea>
-
-                                    {/* Footer & Notes */}
-                                    <div className="p-4 md:p-6 border-t border-border/50 bg-muted/5 space-y-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="return-notes" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Return Reason / Notes</Label>
-                                            <Textarea
-                                                id="return-notes"
-                                                placeholder="Specify the reason for returning these items..."
-                                                value={notes}
-                                                onChange={(e) => setNotes(e.target.value)}
-                                                rows={2}
-                                                className="bg-background resize-none border-border/50"
-                                            />
+                                            <CardDescription className="text-xs mt-0.5">Select the warehouse where the items will be returned.</CardDescription>
                                         </div>
+                                        <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
+                                            <SelectTrigger className="w-full sm:w-[280px] h-9">
+                                                <SelectValue placeholder="Select Warehouse" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {warehouses.map(w => (
+                                                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </CardHeader>
+                            </Card>
 
-                                        <Button
-                                            onClick={handleSubmitReturn}
-                                            className="w-full h-12 text-md font-bold gap-2 shadow-lg shadow-orange-100 dark:shadow-none bg-orange-600 hover:bg-orange-700 text-white"
-                                            disabled={isSubmitting || cart.length === 0}
-                                        >
-                                            {isSubmitting ? (
-                                                <RefreshCcw className="h-5 w-5 animate-spin" />
-                                            ) : (
-                                                <Send className="h-5 w-5" />
-                                            )}
-                                            {isSubmitting ? "Submitting..." : "Submit Return Request"}
-                                        </Button>
+                            {/* Top Search Bar (Search Bar Uper) */}
+                            <div className="rounded-xl border border-primary/20 bg-card p-4 shadow-sm relative z-50">
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                                    <div className="flex flex-col gap-1 pr-4 border-r border-border/50 hidden lg:flex">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                            Return Item Entry
+                                        </span>
+                                        <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 gap-1 text-[10px] py-0 px-1.5 w-fit">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                            Scanner Ready
+                                        </Badge>
+                                    </div>
+
+                                    <div className="relative flex-1">
+                                        <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                        <Input
+                                            ref={searchInputRef}
+                                            autoFocus
+                                            placeholder="Scan barcode or type SKU / item name to add..."
+                                            value={itemQuery}
+                                            onChange={(e) => setItemQuery(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            className="pl-9 h-11 bg-muted/20 border-input text-sm w-full"
+                                        />
+
+                                        {/* Autocomplete Dropdown Search Results */}
+                                        {itemQuery.trim().length > 0 && (searchResults.length > 0 || isSearching) && (
+                                            <div className="absolute left-0 right-0 top-12 bg-popover border border-border shadow-xl rounded-xl overflow-hidden z-[500] max-h-72 overflow-y-auto">
+                                                {isSearching ? (
+                                                    <div className="p-4 text-xs text-muted-foreground flex items-center justify-center gap-2">
+                                                        <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
+                                                        Searching available stock...
+                                                    </div>
+                                                ) : (
+                                                    <ul className="flex flex-col divide-y divide-border/40">
+                                                        {searchResults.map((item, idx) => (
+                                                            <li
+                                                                key={item.id}
+                                                                className={`px-4 py-3 hover:bg-orange-50/70 dark:hover:bg-orange-950/20 cursor-pointer flex items-center justify-between transition-colors ${
+                                                                    idx === activeIndex ? "bg-orange-100/60 dark:bg-orange-950/40 border-l-4 border-l-orange-600" : ""
+                                                                }`}
+                                                                onClick={() => addToCart(item)}
+                                                            >
+                                                                <div className="min-w-0 flex-1 pr-3">
+                                                                    <div className="flex items-center flex-wrap gap-1.5 mb-1">
+                                                                        <span className="font-mono text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded text-foreground">
+                                                                            {item.sku}
+                                                                        </span>
+                                                                        {item.barCode && (
+                                                                            <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium font-mono text-blue-600 bg-blue-50 border-blue-200">
+                                                                                {item.barCode}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {item.uniqueNo && (
+                                                                            <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium font-mono text-purple-600 bg-purple-50 border-purple-200">
+                                                                                {item.uniqueNo}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {item.size?.name && (
+                                                                            <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium">
+                                                                                Size: {item.size.name}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {item.color?.name && (
+                                                                            <Badge variant="outline" className="text-[9px] py-0 px-1 font-medium">
+                                                                                Color: {item.color.name}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs font-semibold truncate text-foreground">{item.description}</p>
+                                                                </div>
+                                                                <div className="text-right flex-none">
+                                                                    <span className="text-[9px] block font-bold text-muted-foreground uppercase tracking-wider">Available</span>
+                                                                    <span className="text-xs font-bold text-emerald-600">{item.totalQuantity} units</span>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            </Card>
+                            </div>
+
+                            {/* Return Items (Items Neechy Show Karo) */}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                {/* Left Column: Items List */}
+                                <div className="lg:col-span-8">
+                                    <Card className="border-border/50 shadow-sm overflow-hidden rounded-xl bg-card">
+                                        <CardHeader className="bg-muted/20 border-b border-border/60 px-5 py-4 flex flex-row items-center justify-between">
+                                            <div>
+                                                <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                                                    <ShoppingCart className="h-5 w-5 text-orange-600" />
+                                                    Return List
+                                                </CardTitle>
+                                                <CardDescription className="text-xs">Items selected for return.</CardDescription>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100/80 dark:bg-orange-950/40 dark:text-orange-300 font-bold">
+                                                    {cart.length} {cart.length === 1 ? 'item' : 'items'}
+                                                </Badge>
+                                                {cart.length > 0 && (
+                                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold">
+                                                        {cart.reduce((sum, i) => sum + i.quantity, 0)} Total Units
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="p-0">
+                                            {cart.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center py-16 text-center p-6 space-y-3">
+                                                    <div className="rounded-full bg-muted/50 p-4 w-16 h-16 mx-auto flex items-center justify-center">
+                                                        <ShoppingCart className="h-8 w-8 text-muted-foreground/30" />
+                                                    </div>
+                                                    <h4 className="font-bold text-foreground text-sm">Return List is Empty</h4>
+                                                    <p className="text-xs text-muted-foreground max-w-sm">
+                                                        Scan a barcode or search products in the search bar above to add items to this return request.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="divide-y divide-border/50 max-h-[500px] overflow-y-auto">
+                                                    {cart.map(({ item, quantity }, index) => (
+                                                        <div key={item.id} className="p-4 flex items-center justify-between gap-4 hover:bg-muted/10 transition-colors">
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <span className="text-xs font-mono font-bold text-muted-foreground w-6 text-center flex-none">
+                                                                    #{index + 1}
+                                                                </span>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                                        <span className="font-mono text-xs font-bold text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-900/50">
+                                                                            {item.sku}
+                                                                        </span>
+                                                                        {item.barCode && (
+                                                                            <span className="text-[10px] text-blue-600 font-medium px-1 bg-blue-50 dark:bg-blue-950/40 rounded border border-blue-200 dark:border-blue-900/50 font-mono">
+                                                                                {item.barCode}
+                                                                            </span>
+                                                                        )}
+                                                                        {item.uniqueNo && (
+                                                                            <span className="text-[10px] text-purple-600 font-medium px-1 bg-purple-50 dark:bg-purple-950/40 rounded border border-purple-200 dark:border-purple-900/50 font-mono">
+                                                                                {item.uniqueNo}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <h4 className="text-sm font-semibold text-foreground truncate">{item.description}</h4>
+                                                                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                                                        {item.size?.name && (
+                                                                            <span>Size: <strong className="font-bold text-foreground">{item.size.name}</strong></span>
+                                                                        )}
+                                                                        {item.color?.name && (
+                                                                            <span>Color: <strong className="font-bold text-foreground">{item.color.name}</strong></span>
+                                                                        )}
+                                                                        <span>Available: <strong className="font-bold text-emerald-600">{item.totalQuantity}</strong></span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-3 flex-none">
+                                                                {/* Quantity Selector */}
+                                                                <div className="flex items-center border border-border/60 rounded-lg overflow-hidden bg-background shadow-xs h-9">
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-full w-8 rounded-none border-r border-border/50 hover:bg-muted"
+                                                                        onClick={() => updateCartQuantity(item.id, quantity - 1)}
+                                                                        disabled={quantity <= 1}
+                                                                    >
+                                                                        <Minus className="h-3 w-3" />
+                                                                    </Button>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        max={item.totalQuantity}
+                                                                        value={quantity}
+                                                                        onChange={(e) => {
+                                                                            const val = parseInt(e.target.value, 10);
+                                                                            if (!isNaN(val)) updateCartQuantity(item.id, val);
+                                                                        }}
+                                                                        className="w-12 text-center font-mono text-xs font-bold bg-transparent border-0 focus:outline-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                    />
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-full w-8 rounded-none border-l border-border/50 hover:bg-muted"
+                                                                        onClick={() => updateCartQuantity(item.id, quantity + 1)}
+                                                                        disabled={quantity >= item.totalQuantity}
+                                                                    >
+                                                                        <Plus className="h-3 w-3" />
+                                                                    </Button>
+                                                                </div>
+
+                                                                {/* Delete Button */}
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-destructive hover:bg-destructive/10 hover:text-destructive h-9 w-9 rounded-lg"
+                                                                    onClick={() => removeFromCart(item.id)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
+
+                                {/* Right Column: Return Details & Submission */}
+                                <div className="lg:col-span-4 space-y-4">
+                                    <Card className="border-border/50 shadow-sm rounded-xl bg-card">
+                                        <CardHeader className="bg-muted/20 border-b border-border/60 px-5 py-4">
+                                            <CardTitle className="text-base font-bold">Return Details</CardTitle>
+                                            <CardDescription className="text-xs">Summary & reason</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="p-5 space-y-4">
+                                            <div className="p-3 bg-muted/30 rounded-lg border border-border/50 space-y-1">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                                    Destination Warehouse
+                                                </span>
+                                                <p className="text-xs font-bold text-foreground">
+                                                    {warehouses.find(w => w.id === selectedWarehouseId)?.name || "Not Selected"}
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="return-notes" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                                    Return Reason / Notes
+                                                </Label>
+                                                <Textarea
+                                                    id="return-notes"
+                                                    placeholder="Specify the reason for returning these items..."
+                                                    value={notes}
+                                                    onChange={(e) => setNotes(e.target.value)}
+                                                    rows={3}
+                                                    className="bg-background resize-none border-border/50 text-sm"
+                                                />
+                                            </div>
+
+                                            <div className="pt-3 border-t border-border/50 space-y-2">
+                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                    <span>Total Line Items:</span>
+                                                    <span className="font-bold font-mono text-foreground">{cart.length}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-muted-foreground font-medium">Total Return Units:</span>
+                                                    <span className="font-bold font-mono text-foreground text-base">
+                                                        {cart.reduce((sum, i) => sum + i.quantity, 0)}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <Button
+                                                onClick={handleSubmitReturn}
+                                                className="w-full h-11 text-sm font-bold gap-2 shadow-md bg-orange-600 hover:bg-orange-700 text-white"
+                                                disabled={isSubmitting || cart.length === 0}
+                                            >
+                                                {isSubmitting ? (
+                                                    <RefreshCcw className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Send className="h-4 w-4" />
+                                                )}
+                                                {isSubmitting ? "Submitting..." : "Submit Return Request"}
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
             ) : (
                         <>
                     {/* Tabs */}
