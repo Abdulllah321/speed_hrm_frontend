@@ -1749,7 +1749,7 @@ export default function StockRequisitionPage() {
           </div>
 
           {replenishCandidates.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 my-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-2">
               <Card className="p-3 bg-indigo-50/50 border-indigo-100">
                 <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider block">Total Sold Items</span>
                 <span className="text-2xl font-extrabold text-indigo-900 mt-1 block">
@@ -1760,12 +1760,6 @@ export default function StockRequisitionPage() {
                 <span className="text-xs font-bold text-green-700 uppercase tracking-wider block">Fully Available</span>
                 <span className="text-2xl font-extrabold text-green-900 mt-1 block">
                   {replenishSummary.replenishFully}
-                </span>
-              </Card>
-              <Card className="p-3 bg-amber-50/50 border-amber-100">
-                <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block">Partially Available</span>
-                <span className="text-2xl font-extrabold text-amber-900 mt-1 block">
-                  {replenishSummary.replenishPartially}
                 </span>
               </Card>
               <Card className="p-3 bg-rose-50/50 border-rose-100">

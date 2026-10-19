@@ -44,6 +44,7 @@ import {
   Minus,
   Plus,
   CircleDot,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createTransferRequest } from "@/lib/actions/transfer-request";
@@ -57,6 +58,29 @@ import {
   DirectTransferImportItem,
 } from "@/components/pos/inventory/direct-transfer-bulk-upload-modal";
 import { Autocomplete } from "@/components/ui/autocomplete";
+
+export interface DirectTransferDraft {
+  draftId: string;
+  destinationId: string;
+  destinationName?: string;
+  items: TransferItem[];
+  notes: string;
+  dispatchDetails: {
+    courierName: string;
+    trackingNumber: string;
+    vehicleNumber: string;
+    riderName: string;
+  };
+  updatedAt: string;
+}
+
+const generateDraftId = () => {
+  const now = new Date();
+  const yr = now.getFullYear().toString().slice(-2);
+  const mo = (now.getMonth() + 1).toString().padStart(2, "0");
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `DTO-${yr}${mo}-${rand}`;
+};
 
 interface TransferItem {
   id: string;
@@ -82,6 +106,14 @@ function DirectTransferForm() {
   const size = searchParams?.get("size") || "";
   const color = searchParams?.get("color") || "";
   const availableStock = parseFloat(searchParams?.get("availableStock") || "0");
+
+  const [draftId, setDraftId] = useState<string>(() => {
+    const urlDraftId = searchParams?.get("draftId");
+    return urlDraftId || generateDraftId();
+  });
+  const [localDrafts, setLocalDrafts] = useState<DirectTransferDraft[]>([]);
+  const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState<boolean>(false);
 
   const [items, setItems] = useState<TransferItem[]>([]);
   const [notes, setNotes] = useState("");
@@ -144,6 +176,331 @@ function DirectTransferForm() {
   const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   const fromLocationId = user?.terminal?.location?.id || user?.locationId;
+
+  // Load drafts from localStorage
+  const loadLocalDrafts = useCallback(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("direct-transfer-drafts");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const list: DirectTransferDraft[] = Object.values(parsed);
+        list.sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        );
+        setLocalDrafts(list);
+        return list;
+      }
+    } catch (err) {
+      console.error("Error loading direct transfer drafts", err);
+    }
+    setLocalDrafts([]);
+    return [];
+  }, []);
+
+  // Verify live stock from current outlet location
+  const verifyStockForItems = useCallback(
+    async (currentItems: TransferItem[], locId: string): Promise<TransferItem[]> => {
+      if (!currentItems.length || !locId) return currentItems;
+
+      try {
+        const res = await authFetch("/pos-sales/check-stock", {
+          method: "POST",
+          body: JSON.stringify({
+            itemIds: currentItems.map((i) => i.id),
+            locationId: locId,
+          }),
+        });
+
+        if (res.ok && res.data?.status && res.data.data) {
+          const liveStockMap: Record<string, number> = res.data.data;
+          const outOfStockItems: TransferItem[] = [];
+          const adjustedItems: { item: TransferItem; oldQty: number; newQty: number }[] = [];
+
+          const updated = currentItems.map((item) => {
+            const liveStock =
+              liveStockMap[item.id] !== undefined ? liveStockMap[item.id] : 0;
+
+            if (liveStock <= 0) {
+              outOfStockItems.push({ ...item, availableStock: 0 });
+              return { ...item, availableStock: 0, quantity: 0 };
+            }
+
+            let newQty = item.quantity;
+            if (item.quantity > liveStock) {
+              adjustedItems.push({
+                item,
+                oldQty: item.quantity,
+                newQty: liveStock,
+              });
+              newQty = liveStock;
+            }
+
+            return {
+              ...item,
+              availableStock: liveStock,
+              quantity: newQty,
+            };
+          });
+
+          if (outOfStockItems.length > 0) {
+            const skus = outOfStockItems
+              .map((i) => i.sku || i.barCode || i.description)
+              .join(", ");
+            toast.error(
+              `⚠️ Stock Alert: ${outOfStockItems.length} item(s) (${skus}) are OUT OF STOCK (sold out) and removed from this transfer!`,
+              { duration: 8000 },
+            );
+          }
+
+          if (adjustedItems.length > 0) {
+            adjustedItems.forEach(({ item, oldQty, newQty }) => {
+              toast.warning(
+                `Quantity for ${item.sku} adjusted from ${oldQty} to ${newQty} based on current available stock.`,
+                { duration: 6000 },
+              );
+            });
+          }
+
+          // Filter out sold-out (0 stock) items so they cannot be transferred
+          const validItems = updated.filter((i) => i.availableStock > 0);
+          return validItems;
+        }
+      } catch (err) {
+        console.error("Error verifying live stock:", err);
+      }
+      return currentItems;
+    },
+    [],
+  );
+
+  const applyDraft = useCallback(
+    async (draft: DirectTransferDraft) => {
+      setDraftId(draft.draftId);
+      setSelectedDestId(draft.destinationId || "");
+      setNotes(draft.notes || "");
+      setDispatchDetails(
+        draft.dispatchDetails || {
+          courierName: "",
+          trackingNumber: "",
+          vehicleNumber: "",
+          riderName: "",
+        },
+      );
+      setLastSavedTime(new Date(draft.updatedAt));
+
+      const initialItems = draft.items || [];
+      if (!initialItems.length) {
+        setItems([]);
+        return;
+      }
+
+      if (fromLocationId) {
+        const toastId = toast.loading("Checking live outlet stock...");
+        const validated = await verifyStockForItems(initialItems, fromLocationId);
+        toast.dismiss(toastId);
+        setItems(validated);
+
+        if (validated.length > 0) {
+          toast.success(`Draft restored (${validated.length} item(s) available)`);
+        } else {
+          toast.error("Draft restored, but all item(s) were sold out and cannot be transferred.", {
+            duration: 8000,
+          });
+        }
+      } else {
+        setItems(initialItems);
+      }
+    },
+    [fromLocationId, verifyStockForItems],
+  );
+
+  // Automatically re-verify items stock when fromLocationId is resolved
+  useEffect(() => {
+    if (fromLocationId && items.length > 0) {
+      verifyStockForItems(items, fromLocationId).then((validated) => {
+        if (validated.length !== items.length) {
+          setItems(validated);
+        }
+      });
+    }
+  }, [fromLocationId]);
+
+  const handleDiscardDraft = useCallback(
+    (idToDiscard: string) => {
+      try {
+        const raw = localStorage.getItem("direct-transfer-drafts");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          delete parsed[idToDiscard];
+          localStorage.setItem(
+            "direct-transfer-drafts",
+            JSON.stringify(parsed),
+          );
+          loadLocalDrafts();
+
+          if (draftId === idToDiscard) {
+            setItems([]);
+            setSelectedDestId("");
+            setNotes("");
+            setDispatchDetails({
+              courierName: "",
+              trackingNumber: "",
+              vehicleNumber: "",
+              riderName: "",
+            });
+            setDraftId(generateDraftId());
+            setLastSavedTime(null);
+          }
+          toast.success("Draft discarded");
+        }
+      } catch (e) {
+        console.error("Failed to discard draft", e);
+      }
+    },
+    [draftId, loadLocalDrafts],
+  );
+
+  // Restore draft on mount (matching journal voucher flow)
+  useEffect(() => {
+    const allDrafts = loadLocalDrafts();
+    const urlDraftId = searchParams?.get("draftId");
+
+    if (urlDraftId) {
+      const target = allDrafts.find((d) => d.draftId === urlDraftId);
+      if (target) {
+        applyDraft(target);
+        toast.success(`Restored draft: ${target.draftId}`);
+        return;
+      }
+    }
+
+    if (itemId) return;
+
+    if (allDrafts.length === 1) {
+      const single = allDrafts[0];
+      const hasContent =
+        single.items?.length > 0 ||
+        single.notes ||
+        single.destinationId ||
+        single.dispatchDetails?.courierName;
+
+      if (hasContent) {
+        const totalUnits =
+          single.items?.reduce(
+            (sum, i) => sum + (Number(i.quantity) || 0),
+            0,
+          ) || 0;
+        toast(
+          `You have an unsaved draft (${single.draftId}) with ${single.items?.length || 0} item(s) (${totalUnits} unit(s)).`,
+          {
+            action: {
+              label: "Restore",
+              onClick: () => {
+                applyDraft(single);
+                toast.success("Draft restored!");
+              },
+            },
+            cancel: {
+              label: "Discard",
+              onClick: () => {
+                handleDiscardDraft(single.draftId);
+              },
+            },
+            duration: 15000,
+          },
+        );
+      }
+    } else if (allDrafts.length > 1) {
+      toast(`You have ${allDrafts.length} unsaved direct transfer drafts.`, {
+        action: {
+          label: "View Drafts",
+          onClick: () => {
+            const el = document.getElementById("unsaved-drafts-section");
+            el?.scrollIntoView({ behavior: "smooth" });
+          },
+        },
+        duration: 15000,
+      });
+    }
+  }, []);
+
+  // Debounced auto-save draft logic (1000ms, matching journal voucher)
+  useEffect(() => {
+    if (isSuccess || !draftId) return;
+
+    const hasItems = items.length > 0;
+    const hasDest = !!selectedDestId;
+    const hasNotes = !!notes.trim();
+    const hasDispatch =
+      !!dispatchDetails.courierName ||
+      !!dispatchDetails.trackingNumber ||
+      !!dispatchDetails.vehicleNumber ||
+      !!dispatchDetails.riderName;
+
+    const hasContent = hasItems || hasDest || hasNotes || hasDispatch;
+
+    if (!hasContent) {
+      // Clean empty draft from storage
+      try {
+        const raw = localStorage.getItem("direct-transfer-drafts");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed[draftId]) {
+            delete parsed[draftId];
+            localStorage.setItem(
+              "direct-transfer-drafts",
+              JSON.stringify(parsed),
+            );
+            loadLocalDrafts();
+          }
+        }
+      } catch {}
+      return;
+    }
+
+    setIsSavingDraft(true);
+    const timeout = setTimeout(() => {
+      try {
+        const raw = localStorage.getItem("direct-transfer-drafts") || "{}";
+        const drafts = JSON.parse(raw);
+        const destName = destinations.find((d) => d.id === selectedDestId)?.name;
+
+        drafts[draftId] = {
+          draftId,
+          destinationId: selectedDestId,
+          destinationName: destName,
+          items,
+          notes,
+          dispatchDetails,
+          updatedAt: new Date().toISOString(),
+        };
+
+        localStorage.setItem(
+          "direct-transfer-drafts",
+          JSON.stringify(drafts),
+        );
+        setLastSavedTime(new Date());
+        setIsSavingDraft(false);
+        loadLocalDrafts();
+      } catch (e) {
+        console.error("Error auto-saving direct transfer draft", e);
+        setIsSavingDraft(false);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [
+    items,
+    selectedDestId,
+    notes,
+    dispatchDetails,
+    draftId,
+    destinations,
+    isSuccess,
+    loadLocalDrafts,
+  ]);
 
   // Load initial item if present in search params
   useEffect(() => {
@@ -567,15 +924,54 @@ function DirectTransferForm() {
         toast.error(`Please enter a valid quantity for item ${item.sku}`);
         return;
       }
-      if (item.quantity > item.availableStock) {
+      if (item.quantity > item.availableStock || item.availableStock <= 0) {
         toast.error(
-          `Quantity for ${item.sku} exceeds available stock (${item.availableStock} units)`,
+          `Cannot transfer item ${item.sku}: available stock is ${item.availableStock} units`,
         );
         return;
       }
     }
 
     setIsSubmitting(true);
+
+    // Pre-flight check: Re-verify live stock immediately before submitting
+    try {
+      const liveStockRes = await authFetch("/pos-sales/check-stock", {
+        method: "POST",
+        body: JSON.stringify({
+          itemIds: items.map((i) => i.id),
+          locationId: fromLocationId,
+        }),
+      });
+
+      if (liveStockRes.ok && liveStockRes.data?.status && liveStockRes.data.data) {
+        const liveMap: Record<string, number> = liveStockRes.data.data;
+        for (const item of items) {
+          const live = liveMap[item.id] !== undefined ? liveMap[item.id] : item.availableStock;
+          if (live <= 0) {
+            toast.error(
+              `Cannot transfer "${item.sku}": Item was recently sold out (0 available in your outlet).`,
+            );
+            setItems((prev) => prev.filter((p) => p.id !== item.id));
+            setIsSubmitting(false);
+            return;
+          }
+          if (item.quantity > live) {
+            toast.error(
+              `Cannot transfer ${item.quantity} units of "${item.sku}". Only ${live} available in outlet.`,
+            );
+            setItems((prev) =>
+              prev.map((p) => (p.id === item.id ? { ...p, availableStock: live, quantity: live } : p)),
+            );
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Pre-flight stock check error:", e);
+    }
+
     try {
       const res = await createTransferRequest({
         fromLocationId: fromLocationId,
@@ -594,6 +990,22 @@ function DirectTransferForm() {
       });
 
       if (res.status) {
+        // Clean submitted draft from localStorage
+        try {
+          const raw = localStorage.getItem("direct-transfer-drafts");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed[draftId]) {
+              delete parsed[draftId];
+              localStorage.setItem(
+                "direct-transfer-drafts",
+                JSON.stringify(parsed),
+              );
+              loadLocalDrafts();
+            }
+          }
+        } catch {}
+
         setCreatedRequest(res.data);
         setIsSuccess(true);
         toast.success(
@@ -797,7 +1209,30 @@ function DirectTransferForm() {
               Outlet to Outlet direct transfer
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex flex-col items-end mr-2">
+              <span className="font-mono text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                Draft: <strong className="text-foreground">{draftId}</strong>
+              </span>
+              {lastSavedTime && (
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  {isSavingDraft
+                    ? "Saving draft..."
+                    : `Auto-saved at ${format(lastSavedTime, "hh:mm:ss a")}`}
+                </span>
+              )}
+            </div>
+            {(items.length > 0 || notes || selectedDestId) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDiscardDraft(draftId)}
+                className="text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 h-10"
+              >
+                Clear Form
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setCsvImportOpen(true)}
@@ -891,6 +1326,28 @@ function DirectTransferForm() {
                       </Button>
                       <Button
                         type="button"
+                        variant="default"
+                        className="w-full h-11 font-bold gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() => {
+                          setIsSuccess(false);
+                          setCreatedRequest(null);
+                          setItems([]);
+                          setSelectedDestId("");
+                          setNotes("");
+                          setDispatchDetails({
+                            courierName: "",
+                            trackingNumber: "",
+                            vehicleNumber: "",
+                            riderName: "",
+                          });
+                          setDraftId(generateDraftId());
+                          setLastSavedTime(null);
+                        }}
+                      >
+                        <Plus className="h-4 w-4" /> Create Another Direct Transfer
+                      </Button>
+                      <Button
+                        type="button"
                         variant="outline"
                         className="w-full h-11 font-bold"
                         onClick={handleClose}
@@ -904,6 +1361,122 @@ function DirectTransferForm() {
             </div>
           ) : (
             <div className="space-y-6">
+              {/* Unsaved Drafts Banner (Matching Journal Voucher) */}
+              {localDrafts.length > 0 && (
+                <div
+                  id="unsaved-drafts-section"
+                  className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-4 sm:p-5 backdrop-blur-md shadow-xs space-y-3.5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/50 dark:border-amber-900/30 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                      </span>
+                      <h3 className="font-bold text-amber-900 dark:text-amber-300 text-xs sm:text-sm uppercase tracking-wider">
+                        Unsaved Drafts ({localDrafts.length})
+                      </h3>
+                    </div>
+                    <p className="text-xs text-amber-700/90 dark:text-amber-400/80">
+                      Saved in browser local storage to prevent data loss
+                    </p>
+                  </div>
+                  <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    {localDrafts.map((draft) => {
+                      const totalUnits =
+                        draft.items?.reduce(
+                          (sum, i) => sum + (Number(i.quantity) || 0),
+                          0,
+                        ) || 0;
+                      const isCurrentlyActive = draft.draftId === draftId;
+                      return (
+                        <div
+                          key={draft.draftId}
+                          className={cn(
+                            "flex flex-col justify-between p-3.5 rounded-lg border bg-white/90 dark:bg-card shadow-xs transition-all duration-200 hover:shadow-sm space-y-3",
+                            isCurrentlyActive
+                              ? "border-amber-500 ring-2 ring-amber-400/30 bg-amber-50/30 dark:bg-amber-950/30"
+                              : "border-amber-200/60 dark:border-amber-900/40",
+                          )}
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                  {draft.draftId}
+                                </span>
+                                {isCurrentlyActive && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] px-1.5 py-0 bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border-amber-300"
+                                  >
+                                    Active
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                {format(
+                                  new Date(draft.updatedAt),
+                                  "dd MMM, hh:mm a",
+                                )}
+                              </span>
+                            </div>
+                            <div className="text-xs text-foreground font-semibold truncate">
+                              {draft.destinationName
+                                ? `To: ${draft.destinationName}`
+                                : "Destination: Not selected"}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                              <span className="font-semibold text-foreground">
+                                {draft.items?.length || 0} item(s)
+                              </span>
+                              <span>•</span>
+                              <span>{totalUnits} unit(s)</span>
+                            </div>
+                            {draft.notes && (
+                              <p className="text-[11px] text-muted-foreground italic truncate">
+                                &ldquo;{draft.notes}&rdquo;
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
+                            {!isCurrentlyActive ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                  applyDraft(draft);
+                                  toast.success(
+                                    `Resumed draft ${draft.draftId}`,
+                                  );
+                                }}
+                                className="bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 dark:text-amber-200 font-bold h-7 text-xs"
+                              >
+                                Resume
+                              </Button>
+                            ) : (
+                              <span className="text-[11px] font-medium text-amber-800 dark:text-amber-400">
+                                Editing in form
+                              </span>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                handleDiscardDraft(draft.draftId)
+                              }
+                              className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                            >
+                              Discard
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Product Search Bar */}
               <div className="rounded-xl border border-primary/20 bg-card p-4 shadow-sm relative z-50">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -1353,7 +1926,16 @@ function DirectTransferForm() {
                           </Button>
                           <Button
                             type="submit"
-                            disabled={isSubmitting || items.length === 0}
+                            disabled={
+                              isSubmitting ||
+                              items.length === 0 ||
+                              items.some(
+                                (i) =>
+                                  i.availableStock <= 0 ||
+                                  i.quantity <= 0 ||
+                                  i.quantity > i.availableStock,
+                              )
+                            }
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider text-xs h-11 px-6 shadow-lg shadow-emerald-600/20 w-full sm:w-auto"
                           >
                             {isSubmitting ? (
