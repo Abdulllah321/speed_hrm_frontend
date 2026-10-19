@@ -119,6 +119,7 @@ export function printStockAdjustmentNote(
                   val: number;
                   skus: Array<{
                     sku: string;
+                    barCode?: string;
                     description: string;
                     color: string;
                     size: string;

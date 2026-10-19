@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -731,6 +731,14 @@ export function NewStockAdjustmentForm({
             Submit Request
           </Button>
         </div>
+      </div>
+
+      {/* Informational Banner */}
+      <div className="flex items-center gap-2 p-3 text-xs rounded-lg border border-blue-200 bg-blue-50/70 text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/20 dark:text-blue-300">
+        <AlertCircle className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+        <span>
+          <strong>ERP Stock Control:</strong> Creating or submitting an adjustment records a pending request. Inventory counts and stock ledgers are updated only once accepted/approved in the ERP.
+        </span>
       </div>
 
       {/* Toggle Mode Tabs */}

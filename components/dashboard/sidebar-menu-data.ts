@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Monitor,
   ChartNoAxesGantt,
+  Upload,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -2242,6 +2243,20 @@ export const menuData: MenuItem[] = [
         href: "/pos/terminal/logout",
         permissions: ["pos.terminal.logout"],
       },
+    ],
+  },
+  {
+    title: "Import History",
+    icon: Upload,
+    href: "/erp/imports",
+    environment: "ERP",
+    permissions: [
+      "erp.item.bulk-upload",
+      "erp.finance.chart-of-account.bulk-upload",
+      "erp.item.read",
+      "erp.finance.chart-of-account.read",
+      "inventory.read",
+      "procurement.read",
     ],
   },
 ];

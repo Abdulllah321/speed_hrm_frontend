@@ -87,8 +87,8 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
     // Handle Submit / Post
     const handleSubmit = () => {
         const confirmMsg = isPendingApproval
-            ? "Are you sure you want to approve this stock adjustment? If you adjusted counts, only the difference (delta) will be applied."
-            : "Are you sure you want to post this stock adjustment?";
+            ? "Are you sure you want to approve this stock adjustment and apply it to live inventory?"
+            : "Are you sure you want to post this stock adjustment to live inventory?";
 
         if (!confirm(confirmMsg)) return;
 
@@ -289,7 +289,7 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-amber-400">
                     <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
                     <span>
-                        This adjustment was <strong>applied immediately</strong> to stock upon creation. Click &quot;Submit / Post Stock&quot; to finalize it, or delete to revert the stock changes.
+                        This document is a <strong>Draft</strong>. Live inventory has not been modified. Click &quot;Submit / Post Stock&quot; to accept the adjustment and post it to live inventory.
                     </span>
                 </div>
             )}
@@ -298,7 +298,7 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                 <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-md text-sm dark:bg-blue-950/20 dark:border-blue-900/50 dark:text-blue-400">
                     <AlertCircle className="h-4 w-4 shrink-0 text-blue-600" />
                     <span>
-                        This request is <strong>Pending Approval</strong> from Outlet/POS. The requested adjustment was already applied to live stock on creation. If you alter physical counts below, only the difference (delta) will be adjusted on approval. Rejecting will reverse the adjustment back to original stock.
+                        This request is <strong>Pending Approval</strong>. Live inventory has not been modified yet. Click &quot;Approve &amp; Post Stock&quot; to accept the adjustment and update live inventory.
                     </span>
                 </div>
             )}

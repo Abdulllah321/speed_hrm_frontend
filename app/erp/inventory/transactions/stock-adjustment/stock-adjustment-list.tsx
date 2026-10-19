@@ -6,13 +6,14 @@ import DataTable from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Eye, Plus, Printer, Repeat, ClipboardList, ChevronDown, Check, SlidersHorizontal } from "lucide-react";
+import { Eye, Plus, Printer, Repeat, ClipboardList, ChevronDown, Check, SlidersHorizontal, CheckCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { getStockAdjustments } from "@/lib/actions/stock-adjustment";
+import { getStockAdjustments, submitStockAdjustment } from "@/lib/actions/stock-adjustment";
 import { getLocations } from "@/lib/actions/location";
 import { printStockAdjustmentNote } from "@/lib/utils/print-stock-adjustment";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "sonner";
 
 export interface StockAdjustmentRow {
     id: string;
@@ -54,7 +55,77 @@ const STATUS_META: Record<string, { label: string; badgeClass: string }> = {
     },
 };
 
-const columns: ColumnDef<StockAdjustmentRow>[] = [
+function ActionCell({
+    row,
+    onSuccess,
+}: {
+    row: StockAdjustmentRow;
+    onSuccess: () => void;
+}) {
+    const [loading, setLoading] = useState(false);
+
+    const handleAccept = async () => {
+        const confirmed = window.confirm(
+            `Accept & post stock adjustment "${row.adjustmentNo}"?\n\nThis will apply all inventory stock changes and post them to the stock ledger in the ERP.`
+        );
+        if (!confirmed) return;
+
+        setLoading(true);
+        try {
+            const res = await submitStockAdjustment(row.id);
+            if (res?.status === false) {
+                toast.error(res?.message || "Failed to accept stock adjustment");
+            } else {
+                toast.success(`Adjustment ${row.adjustmentNo} accepted and inventory stock updated!`);
+                onSuccess();
+            }
+        } catch (err: any) {
+            toast.error(err.message || "An unexpected error occurred");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const isPendingAccept = row.status === "DRAFT" || row.status === "PENDING_APPROVAL";
+
+    return (
+        <div className="flex items-center gap-1.5">
+            {isPendingAccept && (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2 text-xs font-semibold text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/40 gap-1"
+                    title="Accept & Post Stock to Inventory"
+                    disabled={loading}
+                    onClick={handleAccept}
+                >
+                    {loading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                        <CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    )}
+                    <span>Accept</span>
+                </Button>
+            )}
+            <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Print Adjustment Note"
+                onClick={() => printStockAdjustmentNote(row)}
+            >
+                <Printer className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            </Button>
+            <Link href={`/erp/inventory/transactions/stock-adjustment/${row.id}`}>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Details">
+                    <Eye className="h-4 w-4" />
+                </Button>
+            </Link>
+        </div>
+    );
+}
+
+const getColumns = (onRefresh: () => void): ColumnDef<StockAdjustmentRow>[] => [
     {
         accessorKey: "adjustmentDate",
         header: "Date",
@@ -158,24 +229,7 @@ const columns: ColumnDef<StockAdjustmentRow>[] = [
     {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => (
-            <div className="flex items-center gap-1.5">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    title="Print Adjustment Note"
-                    onClick={() => printStockAdjustmentNote(row.original)}
-                >
-                    <Printer className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </Button>
-                <Link href={`/erp/inventory/transactions/stock-adjustment/${row.original.id}`}>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Details">
-                        <Eye className="h-4 w-4" />
-                    </Button>
-                </Link>
-            </div>
-        ),
+        cell: ({ row }) => <ActionCell row={row.original} onSuccess={onRefresh} />,
     },
 ];
 
@@ -351,6 +405,12 @@ export function StockAdjustmentList({ initialEntries, initialMeta }: StockAdjust
         },
         [activeStatus, meta.limit, fetchPage]
     );
+
+    const handleRefresh = useCallback(() => {
+        fetchPage({ pageIndex: 0, pageSize: meta.limit }, activeStatus);
+    }, [fetchPage, meta.limit, activeStatus]);
+
+    const columns = useMemo(() => getColumns(handleRefresh), [handleRefresh]);
 
     const attributeOptions = useMemo(() => {
         const locations = new Set<string>();
