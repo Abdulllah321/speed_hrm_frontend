@@ -136,6 +136,14 @@ export default function OutboundRequestsPage() {
         const notes = request.notes || "";
         const totalQty = request.items?.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0) || 0;
 
+        const isWatchTransfer = request.items?.some((item: any) => {
+            const div = (item.item?.division?.name || item.item?.division || '').toUpperCase();
+            const brand = (item.item?.brand?.name || item.item?.brand || '').toUpperCase();
+            const desc = (item.item?.description || '').toUpperCase();
+            const watchBrands = ['WATCHES', 'TISSOT', 'RADO', 'TAG HEUER', 'ORIS', 'GUESS', 'POLICE', 'NAUTICA', 'USPA', 'TIMEX', 'DANISH DESIGN'];
+            return div.includes('WATCH') || watchBrands.includes(brand) || desc.includes('WATCH') || Boolean(item.item?.uniqueNo);
+        }) || (sourceLoc.toUpperCase().includes('WATCH')) || (destLoc.toUpperCase().includes('WATCH'));
+
         win.document.write(`
             <!DOCTYPE html>
             <html>
@@ -219,26 +227,36 @@ export default function OutboundRequestsPage() {
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 6%;">S.No</th>
-                            <th style="width: 22%;">SKU / Code</th>
-                            <th style="width: 42%;">Description</th>
-                            <th class="text-center" style="width: 15%;">Size / Color</th>
-                            <th class="text-right" style="width: 15%;">Quantity</th>
+                            ${isWatchTransfer ? `
+                                <th style="width: 5%;">S.No</th>
+                                <th style="width: 20%;">SKU / Code</th>
+                                <th style="width: 35%;">Description</th>
+                                <th class="text-center" style="width: 15%;">Unique No</th>
+                                <th class="text-center" style="width: 13%;">Size / Color</th>
+                                <th class="text-right" style="width: 12%;">Quantity</th>
+                            ` : `
+                                <th style="width: 6%;">S.No</th>
+                                <th style="width: 22%;">SKU / Code</th>
+                                <th style="width: 42%;">Description</th>
+                                <th class="text-center" style="width: 15%;">Size / Color</th>
+                                <th class="text-right" style="width: 15%;">Quantity</th>
+                            `}
                         </tr>
                     </thead>
                     <tbody>
                         ${request.items.map((item: any, idx: number) => {
                             const sku = item.item?.sku || "—";
-                            const barCodeHtml = item.item?.barCode ? `<br><span style="color:#2563eb; font-size: 8px;">${item.item.barCode}</span>` : "";
-                            const uniqueNoHtml = item.item?.uniqueNo ? `<br><span style="color:#9333ea; font-size: 8px;">${item.item.uniqueNo}</span>` : "";
+                            const barCodeHtml = item.item?.barCode && item.item?.barCode !== sku ? `<br><span style="color:#2563eb; font-size: 8px;">${item.item.barCode}</span>` : "";
+                            const uniqueNo = item.item?.uniqueNo || "—";
                             const desc = item.item?.description || "Item";
                             const sizeStr = item.item?.size?.name || item.item?.size || "—";
                             const colorStr = item.item?.color?.name || item.item?.color || "—";
                             return `
                                 <tr>
                                     <td>${idx + 1}</td>
-                                    <td class="font-bold">${sku}${barCodeHtml}${uniqueNoHtml}</td>
+                                    <td class="font-bold">${sku}${barCodeHtml}</td>
                                     <td class="uppercase">${desc}</td>
+                                    ${isWatchTransfer ? `<td class="text-center font-bold" style="color: #6b21a8;">${uniqueNo}</td>` : ''}
                                     <td class="text-center">${sizeStr} / ${colorStr}</td>
                                     <td class="text-right font-bold">${Number(item.quantity)}</td>
                                 </tr>
