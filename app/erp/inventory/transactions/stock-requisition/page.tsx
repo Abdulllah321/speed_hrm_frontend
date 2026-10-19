@@ -261,6 +261,7 @@ export default function StockRequisitionPage() {
           merged.push({
             itemId: newItem.itemId,
             sku: newItem.sku,
+            barcode: newItem.barcode || newItem.barCode || null,
             description: newItem.description,
             color: newItem.color,
             size: newItem.size,
@@ -1785,6 +1786,7 @@ export default function StockRequisitionPage() {
                 <TableHeader className="bg-gray-100 sticky top-0 z-10">
                   <TableRow>
                     <TableHead className="font-bold">SKU</TableHead>
+                    <TableHead className="font-bold">Barcode</TableHead>
                     <TableHead className="font-bold">Description</TableHead>
                     <TableHead className="font-bold">Size/Color</TableHead>
                     <TableHead className="font-bold text-center">Sold Qty</TableHead>
@@ -1800,6 +1802,9 @@ export default function StockRequisitionPage() {
                     return (
                       <TableRow key={candidate.itemId} className={`hover:bg-gray-50/50 ${isOos ? 'bg-rose-50/10' : ''}`}>
                         <TableCell className="font-bold text-gray-800">{candidate.sku}</TableCell>
+                        <TableCell className="font-mono text-xs text-blue-600 font-medium whitespace-nowrap">
+                          {candidate.barcode || candidate.barCode || '—'}
+                        </TableCell>
                         <TableCell className="max-w-xs md:max-w-md xl:max-w-lg truncate">{candidate.description}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">

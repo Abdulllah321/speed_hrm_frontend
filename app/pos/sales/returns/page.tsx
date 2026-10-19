@@ -1179,43 +1179,42 @@ export default function ReturnsPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-5 p-6 px-10 max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/pos/sales/history")}
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Returns, Exchanges & Claims
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Supports multiple receipts in one exchange
-            </p>
+      <div className="flex flex-col gap-4 p-4 sm:p-6 w-full max-w-[1500px] mx-auto">
+        {/* Header & Policy */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/pos/sales/history")}
+              className="gap-1.5 h-8 px-2.5 text-xs"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight leading-none">
+                Returns, Exchanges & Claims
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Supports multiple receipts in one exchange
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/80 dark:bg-blue-950/20 px-3 py-1.5 text-xs text-blue-700 dark:text-blue-400">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong>Policy:</strong> Refunds are always at the{" "}
+              <strong>price the customer paid</strong>. Add multiple receipts for a consolidated exchange.
+            </span>
           </div>
         </div>
 
-        {/* Policy notice */}
-        <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/20 px-4 py-3 text-sm">
-          <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-          <p className="text-blue-700 dark:text-blue-400">
-            <strong>Policy:</strong> Refunds are always at the{" "}
-            <strong>price the customer paid</strong>. Add multiple receipts for
-            a consolidated exchange. Claims go to ERP for approval.
-          </p>
-        </div>
-
         {/* Order search — add multiple */}
-        <div className="rounded-xl border bg-card p-5 space-y-3">
-          <Label className="text-sm font-semibold">
+        <div className="rounded-xl border bg-card p-3.5 space-y-2.5 shadow-sm">
+          <Label className="text-xs font-semibold flex items-center gap-2">
             Add Receipt(s)
             {isMultiOrder && (
-              <Badge variant="secondary" className="ml-2 text-xs">
+              <Badge variant="secondary" className="text-[11px] py-0 px-1.5 font-normal">
                 {loadedOrders.length} orders
               </Badge>
             )}
@@ -1226,16 +1225,17 @@ export default function ReturnsPage() {
               value={orderSearch}
               onChange={(e) => setOrderSearch(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddOrder()}
-              className="flex-1 font-mono"
+              className="flex-1 font-mono h-9 text-xs"
             />
             <Button
               onClick={handleAddOrder}
               disabled={isSearching || !orderSearch.trim()}
+              className="h-9 px-4 text-xs font-semibold"
             >
               {isSearching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Search className="h-4 w-4" />
+                <Search className="h-3.5 w-3.5" />
               )}
               <span className="ml-1.5 hidden sm:inline">Add</span>
             </Button>
@@ -1243,35 +1243,35 @@ export default function ReturnsPage() {
 
           {/* Loaded orders chips */}
           {loadedOrders.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 pt-0.5">
               {loadedOrders.map((o) => (
                 <div
                   key={o.id}
-                  className="flex items-center gap-2.5 rounded-full bg-gradient-to-r from-emerald-500/10 to-teal-500/10 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-300/80 dark:border-emerald-700/80 px-4 py-2 shadow-sm transition-all hover:shadow duration-200"
+                  className="flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500/10 to-teal-500/10 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-300/80 dark:border-emerald-700/80 px-3 py-1 shadow-xs transition-all hover:shadow duration-200"
                 >
-                  <div className="p-1 bg-emerald-500 text-white rounded-full">
-                    <Receipt className="h-3 w-3 shrink-0" />
+                  <div className="p-0.5 bg-emerald-500 text-white rounded-full">
+                    <Receipt className="h-2.5 w-2.5 shrink-0" />
                   </div>
-                  <span className="font-mono font-extrabold text-emerald-700 dark:text-emerald-300 text-sm tracking-wide">
+                  <span className="font-mono font-extrabold text-emerald-700 dark:text-emerald-300 text-xs tracking-wide">
                     {o.orderNumber}
                   </span>
                   {o.locationName && (
                     <Badge
                       variant="outline"
-                      className="bg-emerald-100/60 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 text-[10px] font-medium py-0 px-2"
+                      className="bg-emerald-100/60 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 text-[9px] font-medium py-0 px-1.5"
                     >
                       Sold at: {o.locationName}
                     </Badge>
                   )}
-                  <div className="h-3 w-px bg-emerald-300/60 dark:bg-emerald-700/60" />
+                  <div className="h-2.5 w-px bg-emerald-300/60 dark:bg-emerald-700/60" />
                   <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">
                     {formatCurrency(o.grandTotal)}
                   </span>
                   <button
                     onClick={() => removeOrder(o.id)}
-                    className="text-emerald-600 hover:text-destructive dark:text-emerald-400 dark:hover:text-red-400 transition-colors ml-1 hover:scale-110 duration-200"
+                    className="text-emerald-600 hover:text-destructive dark:text-emerald-400 dark:hover:text-red-400 transition-colors ml-0.5 hover:scale-110 duration-200"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}
@@ -1434,14 +1434,14 @@ export default function ReturnsPage() {
                   className="mt-4 space-y-4"
                 >
                   {/* Items table — grouped by order */}
-                  <div className="rounded-xl border bg-card overflow-hidden">
-                    <div className="px-5 py-3 border-b bg-muted/30 flex items-center gap-2">
+                  <div className="rounded-xl border bg-card overflow-hidden shadow-xs">
+                    <div className="px-4 py-2.5 border-b bg-muted/30 flex items-center gap-2">
                       <RotateCcw className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-semibold text-sm">
+                      <span className="font-semibold text-xs uppercase tracking-wider">
                         Items to Return
                       </span>
                       {isMultiOrder && (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground font-normal">
                           — from {loadedOrders.length} receipts
                         </span>
                       )}
@@ -1450,38 +1450,38 @@ export default function ReturnsPage() {
                       <TableHeader>
                         <TableRow className="hover:bg-transparent bg-muted/20">
                           {isMultiOrder && (
-                            <TableHead className="text-xs uppercase text-muted-foreground">
+                            <TableHead className="text-xs uppercase text-muted-foreground w-[130px] py-2 px-2.5">
                               Receipt
                             </TableHead>
                           )}
-                          <TableHead className="text-xs uppercase">
+                          <TableHead className="text-xs uppercase min-w-[170px] py-2 px-2.5">
                             Item
                           </TableHead>
-                          <TableHead className="text-center text-xs uppercase">
+                          <TableHead className="text-center text-xs uppercase w-14 py-2 px-2">
                             Size
                           </TableHead>
-                          <TableHead className="text-center text-xs uppercase">
+                          <TableHead className="text-center text-xs uppercase min-w-[100px] max-w-[140px] py-2 px-2">
                             Color
                           </TableHead>
-                          <TableHead className="text-right text-xs uppercase">
-                            Ordered
+                          <TableHead className="text-center text-xs uppercase w-14 py-2 px-2">
+                            Ord
                           </TableHead>
-                          <TableHead className="text-right text-xs uppercase">
+                          <TableHead className="text-right text-xs uppercase w-20 py-2 px-2.5">
                             Unit Price
                           </TableHead>
-                          <TableHead className="text-right text-xs uppercase">
+                          <TableHead className="text-right text-xs uppercase w-16 py-2 px-2">
                             {isAllianceCase ? "Disc Amt" : "Disc %"}
                           </TableHead>
-                          <TableHead className="text-right text-xs uppercase">
+                          <TableHead className="text-right text-xs uppercase w-14 py-2 px-2">
                             Tax %
                           </TableHead>
-                          <TableHead className="text-right text-xs uppercase text-emerald-700">
+                          <TableHead className="text-right text-xs uppercase text-emerald-700 w-24 py-2 px-2.5">
                             Paid/Unit
                           </TableHead>
-                          <TableHead className="text-center text-xs uppercase">
+                          <TableHead className="text-center text-xs uppercase w-28 py-2 px-2">
                             Return Qty
                           </TableHead>
-                          <TableHead className="text-right text-xs uppercase text-destructive">
+                          <TableHead className="text-right text-xs uppercase text-destructive w-24 py-2 px-2.5">
                             Refund
                           </TableHead>
                         </TableRow>
@@ -1491,35 +1491,40 @@ export default function ReturnsPage() {
                           <TableRow
                             key={line.orderItemId}
                             className={cn(
-                              line.returnQty > 0 && "bg-destructive/5",
+                              "transition-colors",
+                              line.returnQty > 0 && "bg-destructive/5 font-medium",
                             )}
                           >
                             {isMultiOrder && (
-                              <TableCell>
+                              <TableCell className="w-[130px] py-2 px-2.5">
                                 <span className="font-mono text-xs text-muted-foreground">
                                   {line.orderNumber}
                                 </span>
                               </TableCell>
                             )}
-                            <TableCell>
-                              <p className="font-medium text-sm">{line.name}</p>
-                              <p className="text-xs text-muted-foreground font-mono">
+                            <TableCell className="min-w-[170px] py-2 px-2.5">
+                              <p className="font-semibold text-xs leading-snug line-clamp-1" title={line.name}>
+                                {line.name}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground font-mono">
                                 {line.sku}
                               </p>
                             </TableCell>
-                            <TableCell className="text-center text-sm font-semibold">
+                            <TableCell className="text-center text-xs font-semibold w-14 py-2 px-2">
                               {line.size || "—"}
                             </TableCell>
-                            <TableCell className="text-center text-sm font-semibold">
-                              {line.color || "—"}
+                            <TableCell className="text-center text-xs font-medium min-w-[100px] max-w-[140px] py-2 px-2">
+                              <span className="truncate block" title={line.color || "—"}>
+                                {line.color || "—"}
+                              </span>
                             </TableCell>
-                            <TableCell className="text-right text-sm">
+                            <TableCell className="text-center text-xs font-medium w-14 py-2 px-2">
                               {line.orderedQty}
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
+                            <TableCell className="text-right text-xs font-mono w-20 py-2 px-2.5">
                               {formatCurrency(line.originalUnitPrice)}
                             </TableCell>
-                            <TableCell className="text-right text-sm">
+                            <TableCell className="text-right text-xs w-16 py-2 px-2">
                               {isAllianceCase ? (
                                 line.discountAmount &&
                                 line.discountAmount > 0 ? (
@@ -1542,7 +1547,7 @@ export default function ReturnsPage() {
                                 <span className="text-muted-foreground">—</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-right text-sm">
+                            <TableCell className="text-right text-xs w-14 py-2 px-2">
                               {line.taxPercent && line.taxPercent > 0 ? (
                                 <span className="text-muted-foreground font-medium">
                                   {line.taxPercent}%
@@ -1551,18 +1556,18 @@ export default function ReturnsPage() {
                                 <span className="text-muted-foreground">—</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-right font-bold text-sm font-mono text-emerald-700">
+                            <TableCell className="text-right font-bold text-xs font-mono text-emerald-700 w-24 py-2 px-2.5">
                               {formatCurrency(line.paidPerUnit)}
-                              <div className="text-[10px] text-muted-foreground font-normal">
-                                (incl. tax & disc)
+                              <div className="text-[9px] text-muted-foreground font-normal">
+                                (net)
                               </div>
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center justify-center gap-1.5">
+                            <TableCell className="w-28 py-2 px-2">
+                              <div className="flex items-center justify-center gap-1">
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  className="h-7 w-7"
+                                  className="h-6 w-6"
                                   onClick={() =>
                                     setReturnQty(
                                       line.orderItemId,
@@ -1573,13 +1578,13 @@ export default function ReturnsPage() {
                                 >
                                   <Minus className="h-3 w-3" />
                                 </Button>
-                                <span className="w-8 text-center font-bold tabular-nums">
+                                <span className="w-7 text-center font-bold text-xs tabular-nums">
                                   {line.returnQty}
                                 </span>
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  className="h-7 w-7"
+                                  className="h-6 w-6"
                                   onClick={() =>
                                     setReturnQty(
                                       line.orderItemId,
@@ -1592,9 +1597,9 @@ export default function ReturnsPage() {
                                 </Button>
                               </div>
                             </TableCell>
-                            <TableCell className="text-right font-bold text-sm font-mono text-destructive">
+                            <TableCell className="text-right font-bold text-xs font-mono text-destructive w-24 py-2 px-2.5">
                               {line.returnQty > 0
-                                ? `${formatCurrency(line.paidPerUnit * line.returnQty)}`
+                                ? formatCurrency(line.paidPerUnit * line.returnQty)
                                 : "—"}
                             </TableCell>
                           </TableRow>
@@ -1678,22 +1683,16 @@ export default function ReturnsPage() {
                                   <TableHead className="text-xs uppercase">
                                     Item
                                   </TableHead>
-                                  <TableHead className="text-center text-xs uppercase">
-                                    Size
-                                  </TableHead>
-                                  <TableHead className="text-center text-xs uppercase">
-                                    Color
-                                  </TableHead>
-                                  <TableHead className="text-right text-xs uppercase">
+                                  <TableHead className="text-right text-xs uppercase w-24">
                                     Price
                                   </TableHead>
-                                  <TableHead className="text-center text-xs uppercase">
+                                  <TableHead className="text-center text-xs uppercase w-28">
                                     Qty
                                   </TableHead>
-                                  <TableHead className="text-center text-xs uppercase text-primary">
+                                  <TableHead className="text-center text-xs uppercase text-primary w-24">
                                     Disc %
                                   </TableHead>
-                                  <TableHead className="text-right text-xs uppercase">
+                                  <TableHead className="text-right text-xs uppercase w-28">
                                     Net Total
                                   </TableHead>
                                 </TableRow>
@@ -1873,470 +1872,491 @@ export default function ReturnsPage() {
                     </div>
                   )}
 
-                  {/* Summary */}
+                  {/* Summary & Actions */}
                   {selectedLines.length > 0 && (
-                    <div className="rounded-xl border bg-card p-5 space-y-4">
-                      <h3 className="font-semibold text-sm">Summary</h3>
-                      <div className="space-y-2 text-sm">
-                        {isMultiOrder && (
-                          <div className="flex justify-between text-muted-foreground">
-                            <span>Receipts</span>
-                            <span>
-                              {loadedOrders.length} orders (
-                              {formatCurrency(
-                                loadedOrders.reduce(
-                                  (s, o) => s + o.grandTotal,
-                                  0,
-                                ),
-                              )}{" "}
-                              total)
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Items returning
-                          </span>
-                          <span>
-                            {selectedLines.reduce((s, l) => s + l.returnQty, 0)}{" "}
-                            unit(s)
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-destructive font-medium">
-                          <span>
-                            {mode === "claim"
-                              ? "Claimed amount"
-                              : "Return value (at paid price)"}
-                          </span>
-                          <span>{formatCurrency(refundTotal)}</span>
-                        </div>
-                        {mode === "exchange" && newLines.length > 0 && (
-                          <>
-                            <div className="flex justify-between text-muted-foreground">
-                              <span>New items subtotal</span>
-                              <span className="font-mono">
-                                {formatCurrency(newSubtotal)}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start pt-1">
+                      {/* Left Column: Customer & Notes / Claim Details */}
+                      <div className="lg:col-span-7 space-y-3">
+                        {/* Customer Info Card / Selection (For Return, Refund, Claim) */}
+                        <div className="space-y-3 rounded-xl border border-border/80 bg-card p-3.5 shadow-xs">
+                          <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                            <div className="flex items-center gap-2">
+                              <UserRound className="h-4 w-4 text-primary" />
+                              <span className="font-bold text-xs uppercase tracking-wider text-foreground">
+                                {mode === "claim"
+                                  ? "Claim Customer Info"
+                                  : "Return Recipient Customer"}
+                                {mode === "claim" && <span className="text-destructive">*</span>}
                               </span>
                             </div>
-                            {newItemDiscTotal > 0 && (
-                              <div className="flex justify-between text-destructive">
-                                <span>Item discounts</span>
-                                <span className="font-mono">
-                                  −{formatCurrency(newItemDiscTotal)}
-                                </span>
-                              </div>
-                            )}
-                            {memoDiscAmt > 0 && (
-                              <div className="flex justify-between text-primary">
-                                <span>
-                                  Memo discount (
-                                  {memoDiscType === "pct"
-                                    ? `${memoDiscValue}%`
-                                    : `flat ${formatCurrency(memoDiscValue)}`}
-                                  )
-                                </span>
-                                <span className="font-mono">
-                                  −{formatCurrency(memoDiscAmt)}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex justify-between text-blue-600 font-medium">
-                              <span>New items net total</span>
-                              <span className="font-mono">
-                                {formatCurrency(newTotal)}
-                              </span>
-                            </div>
-                            <Separator />
-                            <div
-                              className={cn(
-                                "flex justify-between font-bold text-base",
-                                diff > 0
-                                  ? "text-destructive"
-                                  : diff < 0
-                                    ? "text-emerald-600"
-                                    : "text-muted-foreground",
-                              )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              type="button"
+                              onClick={() => setShowAddCustomer(true)}
+                              className="h-7 text-[11px] gap-1 bg-card hover:bg-muted font-semibold"
                             >
-                              <span>
-                                {diff > 0
-                                  ? "Customer pays extra"
-                                  : diff < 0
-                                    ? "Refund to customer"
-                                    : "No balance"}
-                              </span>
-                              <span>{formatCurrency(Math.abs(diff))}</span>
-                            </div>
-                          </>
-                        )}
-                        {mode === "return" && (
-                          <>
-                            <Separator />
-                            <div className="flex justify-between font-bold text-base text-emerald-600">
-                              <span>Total</span>
-                              <span>{formatCurrency(refundTotal)}</span>
-                            </div>
-                          </>
-                        )}
-                        {mode === "claim" && (
-                          <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 px-3 py-2 text-xs text-amber-700">
-                            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                            <span>
-                              Claim sent to ERP. Refund not processed until ERP
-                              approves.
-                            </span>
+                              <Plus className="h-3 w-3" /> Add Customer
+                            </Button>
                           </div>
-                        )}
-                        {mode !== "claim" &&
-                          selectedLines.some((l) => l.discountPercent > 0) && (
-                            <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 px-3 py-2 text-xs text-amber-700">
-                              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                              <span>
-                                Refund is at the discounted price paid, not the
-                                original list price.
-                              </span>
-                            </div>
-                          )}
-                      </div>
-                      {/* Customer Info Card / Selection (For Return, Refund, Claim) */}
-                      <div className="space-y-3 rounded-xl border border-border/80 bg-muted/20 p-3.5 shadow-sm">
-                        <div className="flex items-center justify-between pb-2 border-b border-border/60">
-                          <div className="flex items-center gap-2">
-                            <UserRound className="h-4 w-4 text-primary" />
-                            <span className="font-bold text-xs uppercase tracking-wider text-foreground">
-                              {mode === "claim"
-                                ? "Claim Customer Info"
-                                : "Return Recipient Customer"}
-                              {mode === "claim" && <span className="text-destructive">*</span>}
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            type="button"
-                            onClick={() => setShowAddCustomer(true)}
-                            className="h-7 text-[11px] gap-1 bg-card hover:bg-muted font-semibold"
-                          >
-                            <Plus className="h-3 w-3" /> Add Customer
-                          </Button>
-                        </div>
 
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
-                            <span>Search Customer {mode === "claim" && <span className="text-destructive">*</span>}</span>
-                            <span className="text-[10px] text-muted-foreground font-normal">F6 / Search</span>
-                          </Label>
-                          <div className="flex gap-1.5 relative">
-                            <div className="flex-1 relative">
-                              <Input
-                                id="claim-customer-search-input"
-                                ref={customerSearchRef}
-                                placeholder="Search name, phone or code..."
-                                value={customerSearch}
-                                onChange={(e) => {
-                                  setCustomerSearch(e.target.value);
-                                  setShowCustomerDropdown(true);
-                                }}
-                                onFocus={() => setShowCustomerDropdown(true)}
-                                onBlur={() => {
-                                  setTimeout(() => setShowCustomerDropdown(false), 200);
-                                }}
-                                onKeyDown={handleCustomerKeyDown}
-                                className={cn(
-                                  "w-full bg-card h-9 text-xs",
-                                  claimErrors.customerName && !selectedCustomer && "border-destructive focus-visible:ring-destructive"
-                                )}
-                              />
-                              {showCustomerDropdown && (
-                                <div className="absolute left-0 right-0 top-10 bg-popover border border-border shadow-lg rounded-md overflow-hidden z-[500] max-h-56 overflow-y-auto">
-                                  <ul className="flex flex-col divide-y divide-border/50">
-                                    {isLoadingCustomers ? (
-                                      <div className="p-3 text-center text-xs text-muted-foreground flex items-center justify-center">
-                                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Loading customers...
-                                      </div>
-                                    ) : customers.length === 0 ? (
-                                      <div className="p-3 text-center text-xs text-muted-foreground italic">
-                                        No matching customers found
-                                      </div>
-                                    ) : (
-                                      customers.map((c, idx) => (
-                                        <li
-                                          key={c.id}
-                                          className={cn(
-                                            "px-3 py-2 hover:bg-muted cursor-pointer flex flex-col transition-colors text-left text-xs",
-                                            idx === activeCustomerIndex && "bg-primary/10 border-l-4 border-l-primary",
-                                          )}
-                                          onMouseDown={() => handleSelectCustomer(c)}
-                                        >
-                                          <span className="font-bold text-foreground">{c.name}</span>
-                                          {c.contactNo && (
-                                            <span className="text-[10px] text-muted-foreground font-mono">
-                                              {c.contactNo}
-                                            </span>
-                                          )}
-                                        </li>
-                                      ))
-                                    )}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Selected Customer Card or Direct Input */}
-                        {selectedCustomer ? (
-                          <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 animate-in fade-in">
-                            <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 leading-none">
-                                  {selectedCustomer.name}
-                                </p>
-                                {loadedOrders[0]?.customer?.id &&
-                                  selectedCustomer.id !== loadedOrders[0].customer.id && (
-                                    <span className="text-[9px] px-1.5 py-0.5 rounded font-medium border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10">
-                                      Changed from Buyer
-                                    </span>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                              <span>Search Customer {mode === "claim" && <span className="text-destructive">*</span>}</span>
+                              <span className="text-[10px] text-muted-foreground font-normal">F6 / Search</span>
+                            </Label>
+                            <div className="flex gap-1.5 relative">
+                              <div className="flex-1 relative">
+                                <Input
+                                  id="claim-customer-search-input"
+                                  ref={customerSearchRef}
+                                  placeholder="Search name, phone or code..."
+                                  value={customerSearch}
+                                  onChange={(e) => {
+                                    setCustomerSearch(e.target.value);
+                                    setShowCustomerDropdown(true);
+                                  }}
+                                  onFocus={() => setShowCustomerDropdown(true)}
+                                  onBlur={() => {
+                                    setTimeout(() => setShowCustomerDropdown(false), 200);
+                                  }}
+                                  onKeyDown={handleCustomerKeyDown}
+                                  className={cn(
+                                    "w-full bg-card h-8 text-xs",
+                                    claimErrors.customerName && !selectedCustomer && "border-destructive focus-visible:ring-destructive"
                                   )}
+                                />
+                                {showCustomerDropdown && (
+                                  <div className="absolute left-0 right-0 top-10 bg-popover border border-border shadow-lg rounded-md overflow-hidden z-[500] max-h-56 overflow-y-auto">
+                                    <ul className="flex flex-col divide-y divide-border/50">
+                                      {isLoadingCustomers ? (
+                                        <div className="p-3 text-center text-xs text-muted-foreground flex items-center justify-center">
+                                          <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Loading customers...
+                                        </div>
+                                      ) : customers.length === 0 ? (
+                                        <div className="p-3 text-center text-xs text-muted-foreground italic">
+                                          No matching customers found
+                                        </div>
+                                      ) : (
+                                        customers.map((c, idx) => (
+                                          <li
+                                            key={c.id}
+                                            className={cn(
+                                              "px-3 py-2 hover:bg-muted cursor-pointer flex flex-col transition-colors text-left text-xs",
+                                              idx === activeCustomerIndex && "bg-primary/10 border-l-4 border-l-primary",
+                                            )}
+                                            onMouseDown={() => handleSelectCustomer(c)}
+                                          >
+                                            <span className="font-bold text-foreground">{c.name}</span>
+                                            {c.contactNo && (
+                                              <span className="text-[10px] text-muted-foreground font-mono">
+                                                {c.contactNo}
+                                              </span>
+                                            )}
+                                          </li>
+                                        ))
+                                      )}
+                                    </ul>
+                                  </div>
+                                )}
                               </div>
-                              {selectedCustomer.contactNo && (
-                                <p className="text-[10px] text-muted-foreground mt-1 truncate font-mono">
-                                  {selectedCustomer.contactNo}
-                                </p>
-                              )}
-                              {loadedOrders[0]?.customer?.name &&
-                                selectedCustomer.id !== loadedOrders[0].customer.id && (
-                                  <p className="text-[10px] text-muted-foreground/80 mt-0.5 italic">
-                                    Original buyer: {loadedOrders[0].customer.name}
+                            </div>
+                          </div>
+
+                          {/* Selected Customer Card or Direct Input */}
+                          {selectedCustomer ? (
+                            <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 animate-in fade-in">
+                              <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 leading-none">
+                                    {selectedCustomer.name}
+                                  </p>
+                                  {loadedOrders[0]?.customer?.id &&
+                                    selectedCustomer.id !== loadedOrders[0].customer.id && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded font-medium border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10">
+                                        Changed from Buyer
+                                      </span>
+                                    )}
+                                </div>
+                                {selectedCustomer.contactNo && (
+                                  <p className="text-[10px] text-muted-foreground mt-1 truncate font-mono">
+                                    {selectedCustomer.contactNo}
                                   </p>
                                 )}
+                                {loadedOrders[0]?.customer?.name &&
+                                  selectedCustomer.id !== loadedOrders[0].customer.id && (
+                                    <p className="text-[10px] text-muted-foreground/80 mt-0.5 italic">
+                                      Original buyer: {loadedOrders[0].customer.name}
+                                    </p>
+                                  )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleClearCustomer}
+                                className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                                title="Clear customer selection"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={handleClearCustomer}
-                              className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                              title="Clear customer selection"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2 pt-0.5">
+                              {/* Customer Name */}
+                              <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                                  <span>Customer Name {mode === "claim" && <span className="text-destructive">*</span>}</span>
+                                </Label>
+                                <Input
+                                  placeholder="Customer name..."
+                                  value={claimCustomerName}
+                                  onChange={(e) => {
+                                    setClaimCustomerName(e.target.value);
+                                    if (e.target.value.trim()) {
+                                      setClaimErrors((prev) => ({ ...prev, customerName: false }));
+                                    }
+                                  }}
+                                  className={cn(
+                                    "h-8 text-xs bg-card",
+                                    claimErrors.customerName && "border-destructive focus-visible:ring-destructive"
+                                  )}
+                                />
+                              </div>
+
+                              {/* Contact Number */}
+                              <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                                  <span>Contact Number {mode === "claim" && <span className="text-destructive">*</span>}</span>
+                                </Label>
+                                <Input
+                                  placeholder="0300-1234567..."
+                                  value={claimCustomerPhone}
+                                  onChange={(e) => {
+                                    setClaimCustomerPhone(e.target.value);
+                                    if (e.target.value.trim()) {
+                                      setClaimErrors((prev) => ({ ...prev, customerPhone: false }));
+                                    }
+                                  }}
+                                  className={cn(
+                                    "h-8 text-xs bg-card font-mono",
+                                    claimErrors.customerPhone && "border-destructive focus-visible:ring-destructive"
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {mode === "claim" ? (
+                          <div className="space-y-3 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 shadow-xs">
+                            {/* Claim Reason Category */}
+                            <div className="space-y-1">
+                              <Label className="text-xs font-semibold text-foreground">
+                                Claim Reason Category <span className="text-destructive">*</span>
+                              </Label>
+                              <Select value={reasonCode} onValueChange={setReasonCode}>
+                                <SelectTrigger className="h-8 text-xs bg-card">
+                                  <SelectValue placeholder="Select defect reason" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="DEFECTIVE">Manufacturing / Fabric Defect</SelectItem>
+                                  <SelectItem value="DAMAGED">Damaged in Store / Transit</SelectItem>
+                                  <SelectItem value="COLOR_FADING">Color Fading / Bleeding</SelectItem>
+                                  <SelectItem value="STITCHING_ISSUE">Stitching / Zipper Issue</SelectItem>
+                                  <SelectItem value="SOLE_PASTE_ISSUE">Sole / Pasting Defect</SelectItem>
+                                  <SelectItem value="OTHER">Other Defect / Reason</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Claim Reason Details */}
+                            <div className="space-y-1">
+                              <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                                <span>Claim Reason Details <span className="text-destructive">*</span></span>
+                                {notesError && (
+                                  <span className="text-[10px] text-destructive font-normal">Reason details are required</span>
+                                )}
+                              </Label>
+                              <Textarea
+                                placeholder="Explain the defect/claim reason in detail..."
+                                value={notes}
+                                onChange={(e) => {
+                                  setNotes(e.target.value);
+                                  if (e.target.value.trim()) {
+                                    setNotesError(false);
+                                    setClaimErrors((prev) => ({ ...prev, reason: false }));
+                                  }
+                                }}
+                                rows={2}
+                                className={cn(
+                                  "resize-none text-xs bg-card",
+                                  notesError && "border-destructive focus-visible:ring-destructive"
+                                )}
+                              />
+                            </div>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-2 gap-2 pt-1">
-                            {/* Customer Name */}
-                            <div className="space-y-1">
-                              <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
-                                <span>Customer Name {mode === "claim" && <span className="text-destructive">*</span>}</span>
-                              </Label>
-                              <Input
-                                placeholder="Customer name..."
-                                value={claimCustomerName}
-                                onChange={(e) => {
-                                  setClaimCustomerName(e.target.value);
-                                  if (e.target.value.trim()) {
-                                    setClaimErrors((prev) => ({ ...prev, customerName: false }));
-                                  }
-                                }}
-                                className={cn(
-                                  "h-8 text-xs bg-card",
-                                  claimErrors.customerName && "border-destructive focus-visible:ring-destructive"
-                                )}
-                              />
-                            </div>
-
-                            {/* Contact Number */}
-                            <div className="space-y-1">
-                              <Label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
-                                <span>Contact Number {mode === "claim" && <span className="text-destructive">*</span>}</span>
-                              </Label>
-                              <Input
-                                placeholder="0300-1234567..."
-                                value={claimCustomerPhone}
-                                onChange={(e) => {
-                                  setClaimCustomerPhone(e.target.value);
-                                  if (e.target.value.trim()) {
-                                    setClaimErrors((prev) => ({ ...prev, customerPhone: false }));
-                                  }
-                                }}
-                                className={cn(
-                                  "h-8 text-xs bg-card font-mono",
-                                  claimErrors.customerPhone && "border-destructive focus-visible:ring-destructive"
-                                )}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {mode === "claim" ? (
-                        <div className="space-y-3 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 shadow-sm">
-                          {/* Claim Reason Category */}
-                          <div className="space-y-1">
-                            <Label className="text-xs font-semibold text-foreground">
-                              Claim Reason Category <span className="text-destructive">*</span>
-                            </Label>
-                            <Select value={reasonCode} onValueChange={setReasonCode}>
-                              <SelectTrigger className="h-9 text-xs bg-card">
-                                <SelectValue placeholder="Select defect reason" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="DEFECTIVE">Manufacturing / Fabric Defect</SelectItem>
-                                <SelectItem value="DAMAGED">Damaged in Store / Transit</SelectItem>
-                                <SelectItem value="COLOR_FADING">Color Fading / Bleeding</SelectItem>
-                                <SelectItem value="STITCHING_ISSUE">Stitching / Zipper Issue</SelectItem>
-                                <SelectItem value="SOLE_PASTE_ISSUE">Sole / Pasting Defect</SelectItem>
-                                <SelectItem value="OTHER">Other Defect / Reason</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Claim Reason Details */}
-                          <div className="space-y-1">
-                            <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
-                              <span>Claim Reason Details <span className="text-destructive">*</span></span>
-                              {notesError && (
-                                <span className="text-[10px] text-destructive font-normal">Reason details are required</span>
+                          <div className="space-y-1.5 rounded-xl border border-border/80 bg-card p-3.5 shadow-xs">
+                            <Label
+                              className={cn(
+                                "text-xs font-semibold",
+                                notesError
+                                  ? "text-destructive"
+                                  : "text-foreground",
+                              )}
+                            >
+                              Notes{" "}
+                              {mode === "refund" && (
+                                <span className="text-destructive">*</span>
                               )}
                             </Label>
                             <Textarea
-                              placeholder="Explain the defect/claim reason in detail..."
+                              placeholder={`Reason for ${mode === "return" ? "Return" : "Refund"}...`}
                               value={notes}
                               onChange={(e) => {
                                 setNotes(e.target.value);
-                                if (e.target.value.trim()) {
-                                  setNotesError(false);
-                                  setClaimErrors((prev) => ({ ...prev, reason: false }));
-                                }
+                                if (e.target.value.trim()) setNotesError(false);
                               }}
                               rows={2}
                               className={cn(
                                 "resize-none text-xs bg-card",
-                                notesError && "border-destructive focus-visible:ring-destructive"
+                                notesError &&
+                                  "border-destructive focus-visible:ring-destructive",
                               )}
                             />
+                            {notesError && (
+                              <p className="text-xs text-destructive flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Notes are required before processing
+                              </p>
+                            )}
                           </div>
+                        )}
+                      </div>
+
+                      {/* Right Column: Calculation Summary & Action Buttons */}
+                      <div className="lg:col-span-5 rounded-xl border bg-card p-4 shadow-xs space-y-3.5">
+                        <div className="flex items-center justify-between pb-2 border-b">
+                          <h3 className="font-semibold text-xs uppercase tracking-wider text-foreground">Summary</h3>
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {selectedLines.reduce((s, l) => s + l.returnQty, 0)} item(s) returning
+                          </span>
                         </div>
-                      ) : (
-                        <div className="space-y-1.5">
-                          <Label
-                            className={cn(
-                              "text-xs font-medium",
-                              notesError
-                                ? "text-destructive"
-                                : "text-muted-foreground",
+                        <div className="space-y-2 text-xs">
+                          {isMultiOrder && (
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>Receipts</span>
+                              <span className="font-medium text-foreground">
+                                {loadedOrders.length} orders (
+                                {formatCurrency(
+                                  loadedOrders.reduce(
+                                    (s, o) => s + o.grandTotal,
+                                    0,
+                                  ),
+                                )})
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              Items returning
+                            </span>
+                            <span className="font-medium text-foreground">
+                              {selectedLines.reduce((s, l) => s + l.returnQty, 0)}{" "}
+                              unit(s)
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-destructive font-semibold">
+                            <span>
+                              {mode === "claim"
+                                ? "Claimed amount"
+                                : "Return value (at paid price)"}
+                            </span>
+                            <span className="font-mono">{formatCurrency(refundTotal)}</span>
+                          </div>
+                          {mode === "exchange" && newLines.length > 0 && (
+                            <>
+                              <div className="flex justify-between text-muted-foreground">
+                                <span>New items subtotal</span>
+                                <span className="font-mono">
+                                  {formatCurrency(newSubtotal)}
+                                </span>
+                              </div>
+                              {newItemDiscTotal > 0 && (
+                                <div className="flex justify-between text-destructive">
+                                  <span>Item discounts</span>
+                                  <span className="font-mono">
+                                    −{formatCurrency(newItemDiscTotal)}
+                                  </span>
+                                </div>
+                              )}
+                              {memoDiscAmt > 0 && (
+                                <div className="flex justify-between text-primary">
+                                  <span>
+                                    Memo discount (
+                                    {memoDiscType === "pct"
+                                      ? `${memoDiscValue}%`
+                                      : `flat ${formatCurrency(memoDiscValue)}`}
+                                    )
+                                  </span>
+                                  <span className="font-mono">
+                                    −{formatCurrency(memoDiscAmt)}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-blue-600 font-medium">
+                                <span>New items net total</span>
+                                <span className="font-mono">
+                                  {formatCurrency(newTotal)}
+                                </span>
+                              </div>
+                              <Separator />
+                              <div
+                                className={cn(
+                                  "flex justify-between font-bold text-sm",
+                                  diff > 0
+                                    ? "text-destructive"
+                                    : diff < 0
+                                      ? "text-emerald-600"
+                                      : "text-muted-foreground",
+                                )}
+                              >
+                                <span>
+                                  {diff > 0
+                                    ? "Customer pays extra"
+                                    : diff < 0
+                                      ? "Refund to customer"
+                                      : "No balance"}
+                                </span>
+                                <span className="font-mono">{formatCurrency(Math.abs(diff))}</span>
+                              </div>
+                            </>
+                          )}
+                          {mode === "return" && (
+                            <>
+                              <Separator />
+                              <div className="flex justify-between font-bold text-base text-emerald-600">
+                                <span>Total Refund</span>
+                                <span className="font-mono">{formatCurrency(refundTotal)}</span>
+                              </div>
+                            </>
+                          )}
+                          {mode === "refund" && (
+                            <>
+                              <Separator />
+                              <div className="flex justify-between font-bold text-base text-indigo-600">
+                                <span>Cash Refund</span>
+                                <span className="font-mono">{formatCurrency(refundTotal)}</span>
+                              </div>
+                            </>
+                          )}
+                          {mode === "claim" && (
+                            <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                              <span>
+                                Claim sent to ERP. Refund not processed until ERP
+                                approves.
+                              </span>
+                            </div>
+                          )}
+                          {mode !== "claim" &&
+                            selectedLines.some((l) => l.discountPercent > 0) && (
+                              <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 px-2.5 py-1.5 text-[11px] text-amber-700">
+                                <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                                <span>
+                                  Refund is at the discounted price paid, not list price.
+                                </span>
+                              </div>
                             )}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex gap-2.5 pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            className="flex-1 h-9 text-xs"
+                            onClick={() => router.push("/pos/sales/history")}
                           >
-                            Notes{" "}
-                            {mode === "refund" && (
-                              <span className="text-destructive">*</span>
-                            )}
-                          </Label>
-                          <Textarea
-                            placeholder={`Reason for ${mode === "return" ? "Return" : "Refund"}...`}
-                            value={notes}
-                            onChange={(e) => {
-                              setNotes(e.target.value);
-                              if (e.target.value.trim()) setNotesError(false);
-                            }}
-                            rows={2}
+                            Cancel
+                          </Button>
+                          <Button
                             className={cn(
-                              "resize-none text-sm",
-                              notesError &&
-                                "border-destructive focus-visible:ring-destructive",
+                              "flex-1 gap-1.5 h-9 text-xs font-semibold shadow-xs",
+                              mode === "exchange"
+                                ? "bg-blue-600 hover:bg-blue-700"
+                                : mode === "claim"
+                                  ? "bg-amber-600 hover:bg-amber-700"
+                                  : "bg-destructive hover:bg-destructive/90",
                             )}
-                          />
-                          {notesError && (
-                            <p className="text-xs text-destructive flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              Notes are required before processing
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      <div className="flex gap-3 pt-1">
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => router.push("/pos/sales/history")}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          className={cn(
-                            "flex-1 gap-2",
-                            mode === "exchange"
-                              ? "bg-blue-600 hover:bg-blue-700"
-                              : mode === "claim"
-                                ? "bg-amber-600 hover:bg-amber-700"
-                                : "bg-destructive hover:bg-destructive/90",
-                          )}
-                          onClick={
-                            mode === "claim"
-                              ? () => {
-                                  let hasError = false;
-                                  const errs: { customerName?: boolean; customerPhone?: boolean; reason?: boolean } = {};
-                                  if (!claimCustomerName.trim()) {
-                                    errs.customerName = true;
-                                    hasError = true;
-                                  }
-                                  if (!claimCustomerPhone.trim()) {
-                                    errs.customerPhone = true;
-                                    hasError = true;
-                                  }
-                                  if (!notes.trim()) {
-                                    errs.reason = true;
-                                    setNotesError(true);
-                                    hasError = true;
-                                  }
-                                  setClaimErrors(errs);
-                                  if (hasError) {
-                                    toast.error("Please fill all mandatory claim fields (Customer Name, Contact Number, and Reason)");
-                                    return;
-                                  }
-                                  setShowVerify(true);
-                                }
-                              : mode === "refund"
+                            onClick={
+                              mode === "claim"
                                 ? () => {
+                                    let hasError = false;
+                                    const errs: { customerName?: boolean; customerPhone?: boolean; reason?: boolean } = {};
+                                    if (!claimCustomerName.trim()) {
+                                      errs.customerName = true;
+                                      hasError = true;
+                                    }
+                                    if (!claimCustomerPhone.trim()) {
+                                      errs.customerPhone = true;
+                                      hasError = true;
+                                    }
                                     if (!notes.trim()) {
+                                      errs.reason = true;
                                       setNotesError(true);
-                                      toast.error("Notes are required");
+                                      hasError = true;
+                                    }
+                                    setClaimErrors(errs);
+                                    if (hasError) {
+                                      toast.error("Please fill all mandatory claim fields (Customer Name, Contact Number, and Reason)");
                                       return;
                                     }
-                                    setNotesError(false);
                                     setShowVerify(true);
                                   }
-                                : () => handleSubmit()
-                          }
-                          disabled={
-                            isSubmitting ||
-                            selectedLines.length === 0 ||
-                            (mode === "exchange" && newLines.length === 0) ||
-                            (mode === "return" && !canReturn) ||
-                            (mode === "exchange" && !canExchange) ||
-                            (mode === "refund" && !canReturn) ||
-                            (mode === "claim" && !canClaim)
-                          }
-                        >
-                          {isSubmitting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : mode === "return" ? (
-                            <RotateCcw className="h-4 w-4" />
-                          ) : mode === "exchange" ? (
-                            <ArrowLeftRight className="h-4 w-4" />
-                          ) : mode === "refund" ? (
-                            <Receipt className="h-4 w-4" />
-                          ) : (
-                            <Send className="h-4 w-4" />
-                          )}
-                          {isSubmitting
-                            ? "Processing..."
-                            : mode === "return"
-                              ? `Process Return${isMultiOrder ? ` (${loadedOrders.length} receipts)` : ""}`
-                              : mode === "exchange"
-                                ? `Process Exchange${isMultiOrder ? ` (${loadedOrders.length} receipts)` : ""}`
                                 : mode === "refund"
-                                  ? `Process Cash Refund${isMultiOrder ? ` (${loadedOrders.length} receipts)` : ""}`
-                                  : "Submit Claim to ERP"}
-                        </Button>
+                                  ? () => {
+                                      if (!notes.trim()) {
+                                        setNotesError(true);
+                                        toast.error("Notes are required");
+                                        return;
+                                      }
+                                      setNotesError(false);
+                                      setShowVerify(true);
+                                    }
+                                  : () => handleSubmit()
+                            }
+                            disabled={
+                              isSubmitting ||
+                              selectedLines.length === 0 ||
+                              (mode === "exchange" && newLines.length === 0) ||
+                              (mode === "return" && !canReturn) ||
+                              (mode === "exchange" && !canExchange) ||
+                              (mode === "refund" && !canReturn) ||
+                              (mode === "claim" && !canClaim)
+                            }
+                          >
+                            {isSubmitting ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : mode === "return" ? (
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            ) : mode === "exchange" ? (
+                              <ArrowLeftRight className="h-3.5 w-3.5" />
+                            ) : mode === "refund" ? (
+                              <Receipt className="h-3.5 w-3.5" />
+                            ) : (
+                              <Send className="h-3.5 w-3.5" />
+                            )}
+                            {isSubmitting
+                              ? "Processing..."
+                              : mode === "return"
+                                ? `Process Return${isMultiOrder ? ` (${loadedOrders.length})` : ""}`
+                                : mode === "exchange"
+                                  ? `Process Exchange${isMultiOrder ? ` (${loadedOrders.length})` : ""}`
+                                  : mode === "refund"
+                                    ? `Process Refund${isMultiOrder ? ` (${loadedOrders.length})` : ""}`
+                                    : "Submit Claim"}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}
