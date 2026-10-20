@@ -206,12 +206,12 @@ export default function SalesReturnDetailPage({ params }: { params: Promise<{ id
                   <span className="text-gray-600">Return Warehouse:</span>
                   <span>{salesReturn.warehouse?.name || 'N/A'}</span>
                 </div>
-                {(salesReturn as any).finalWarehouse && (
+                {((salesReturn as any).finalWarehouse || (salesReturn as any).finalLocation) && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Final Destination:</span>
                     <span className="flex items-center gap-1 text-green-700 font-semibold">
                       <span className="text-gray-400 text-xs">→</span>
-                      {(salesReturn as any).finalWarehouse.name}
+                      {(salesReturn as any).finalWarehouse?.name || (salesReturn as any).finalLocation?.name}
                       <span className="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Auto-transfer</span>
                     </span>
                   </div>
