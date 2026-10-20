@@ -181,6 +181,8 @@ export function OverallAvailableReservedStockView({
             quantity: node.totals?.quantity ?? node.quantity ?? 0,
             transit: node.totals?.transit ?? node.transit ?? 0,
             reserved: node.totals?.reserved ?? node.reserved ?? 0,
+            pendingInvoice:
+              node.totals?.pendingInvoice ?? node.pendingInvoice ?? 0,
             total: node.totals?.total ?? node.total ?? 0,
             locationStocks:
               node.totals?.locationStocks || node.locationStocks || {},

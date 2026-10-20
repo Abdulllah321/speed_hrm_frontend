@@ -74,6 +74,7 @@ interface ImportRecord {
   failedRecords: number;
   skippedRecords: number;
   message: string | null;
+  uploadedFilePath: string | null;
   createdAt: string;
   completedAt: string | null;
 }
@@ -182,6 +183,12 @@ function ImportDetailModal({
     window.open(`${apiBase}/import-history/${record.id}/error-report?token=${token}`, "_blank");
   };
 
+  const handleDownloadOriginal = () => {
+    const apiBase = getApiBaseUrl();
+    const token = Cookies.get("accessToken");
+    window.open(`${apiBase}/import-history/${record.id}/download?token=${token}`, "_blank");
+  };
+
   return (
     <Dialog open={!!record} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
@@ -274,6 +281,18 @@ function ImportDetailModal({
             >
               <Download className="h-4 w-4" />
               Download Error Report ({record.failedRecords} rows)
+            </Button>
+          )}
+
+          {/* Download Original Upload Button */}
+          {record.uploadedFilePath && (
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-900/50 dark:hover:bg-indigo-950/20"
+              onClick={handleDownloadOriginal}
+            >
+              <Download className="h-4 w-4" />
+              Download Original File
             </Button>
           )}
         </div>
@@ -692,6 +711,27 @@ export default function ImportHistoryClient() {
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>Download error report</TooltipContent>
+                            </Tooltip>
+                          )}
+
+                          {record.uploadedFilePath && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const apiBase = getApiBaseUrl();
+                                    const token = Cookies.get("accessToken");
+                                    window.open(`${apiBase}/import-history/${record.id}/download?token=${token}`, "_blank");
+                                  }}
+                                >
+                                  <FileText className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Download original file</TooltipContent>
                             </Tooltip>
                           )}
                         </div>

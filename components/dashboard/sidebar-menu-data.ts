@@ -540,10 +540,12 @@ export const masterMenuData: MenuItem[] = [
     title: "Rebate Nature",
     environment: "MASTER",
     module: "HR",
-    permissions: ["master.rebate-nature.read", "master.rebate-nature.create", "hr.rebate-nature.read"],
-    children: [
-      { title: "View", href: "/master/rebate-nature" },
+    permissions: [
+      "master.rebate-nature.read",
+      "master.rebate-nature.create",
+      "hr.rebate-nature.read",
     ],
+    children: [{ title: "View", href: "/master/rebate-nature" }],
   },
 
   // ── POS ──────────────────────────────────────────────────────────────────────
@@ -843,7 +845,10 @@ export const menuData: MenuItem[] = [
           {
             title: "Warehouse",
             href: "/erp/inventory/warehouse/add",
-            permissions: ["erp.inventory.warehouse.create", "erp.warehouse.create"],
+            permissions: [
+              "erp.inventory.warehouse.create",
+              "erp.warehouse.create",
+            ],
           },
           {
             title: "Inventory Explorer",
@@ -1122,10 +1127,7 @@ export const menuData: MenuItem[] = [
     title: "PLM Claims",
     icon: FileText,
     environment: "ERP",
-    permissions: [
-      "erp.claims.read",
-      "erp.inventory.claims.acknowledge",
-    ],
+    permissions: ["erp.claims.read", "erp.inventory.claims.acknowledge"],
     children: [
       {
         title: "Inspection Return Claims",
@@ -1657,7 +1659,12 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Tax Rebate",
-        permissions: ["hr.rebate.read", "hr.rebate.create", "hr.payroll.read", "hr.payroll.create"],
+        permissions: [
+          "hr.rebate.read",
+          "hr.rebate.create",
+          "hr.payroll.read",
+          "hr.payroll.create",
+        ],
         children: [
           {
             title: "Create",
@@ -1945,11 +1952,6 @@ export const menuData: MenuItem[] = [
         title: "Alliance Register",
         permissions: ["pos.report.view"],
       },
-      {
-        href: "/erp/reports/corporate-voucher-report",
-        title: "Corporate Voucher Register",
-        permissions: ["pos.report.view", "pos.voucher.view"],
-      },
     ],
   },
 
@@ -2125,7 +2127,11 @@ export const menuData: MenuItem[] = [
           {
             title: "Corporate Voucher Register",
             href: "/erp/reports/corporate-voucher-report",
-            permissions: ["erp.report.sales.sales-register.view", "pos.report.view", "pos.voucher.view"],
+            permissions: [
+              "erp.report.sales.sales-register.view",
+              "pos.report.view",
+              "pos.voucher.view",
+            ],
           },
         ],
       },
@@ -2183,7 +2189,10 @@ export const menuData: MenuItem[] = [
           {
             title: "Corporate Voucher Register",
             href: "/erp/reports/corporate-voucher-report",
-            permissions: ["erp.report.finance.voucher-register.view", "pos.voucher.view"],
+            permissions: [
+              "erp.report.finance.voucher-register.view",
+              "pos.voucher.view",
+            ],
           },
           {
             title: "Claim Register",
@@ -2410,4 +2419,3 @@ export function filterMenuByPermissions(
 
   return filterItems(items);
 }
-
