@@ -308,12 +308,12 @@ function RequestTransferForm() {
           notes,
         });
       } else {
-        // Stock Requisition (SRN) from Warehouse
+        // Stock Requisition (SRN) from Warehouse (Requires Head Office Approval first)
         res = await createStockRequisition({
           fromWarehouseId: fromWarehouseId,
           toLocationId: toLocationId,
           documentType: "Outlet Request",
-          status: "PENDING",
+          status: "DRAFT",
           items: items.map((item) => ({
             itemId: item.id,
             quantity: item.quantity,

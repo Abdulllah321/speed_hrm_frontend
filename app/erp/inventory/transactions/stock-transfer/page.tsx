@@ -66,6 +66,7 @@ import {
   Truck,
   Bike,
   User,
+  Lock,
 } from "lucide-react";
 import {
   Table,
@@ -111,14 +112,18 @@ function StockTransferContent() {
   const requisitionId = searchParams.get("requisitionId");
   const { user, hasPermission, isAdmin } = useAuth();
 
-  const isWarehouseUser = useMemo(() => {
+  const canAcceptWarehouseReturn = useMemo(() => {
     if (!user) return false;
-    if (isAdmin()) return false;
+    if (isAdmin()) return true;
     const roleName = (user.role?.name || (user as any)?.role || "").toLowerCase();
     return (
       roleName.includes("warehouse") ||
+      roleName.includes("wh") ||
       hasPermission("erp.inventory.warehouse.stock-transfer") ||
-      hasPermission("erp.inventory.warehouse.stock-requisition.pending")
+      hasPermission("erp.inventory.warehouse.stock-requisition.pending") ||
+      hasPermission("erp.inventory.warehouse.view") ||
+      hasPermission("erp.inventory.warehouse.inventory.view") ||
+      hasPermission("erp.inventory.transfer.accept")
     );
   }, [user, isAdmin, hasPermission]);
 
@@ -590,13 +595,7 @@ function StockTransferContent() {
     try {
       const res = await stockRequisitionApi.getAll();
       if (res.status) {
-        let pending = res.data.filter((req: any) => req.status === "PENDING");
-        if (isWarehouseUser) {
-          pending = pending.filter(
-            (req: any) =>
-              (req.documentType || "").toLowerCase().trim() !== "outlet request",
-          );
-        }
+        const pending = res.data.filter((req: any) => req.status === "PENDING");
         setPendingRequisitions(pending);
       }
     } catch (error) {
@@ -622,6 +621,10 @@ function StockTransferContent() {
   };
 
   const handleAcceptReturn = async (requestId: string) => {
+    if (!canAcceptWarehouseReturn) {
+      toast.error("Only users with Warehouse role or permission can accept returns into warehouse");
+      return;
+    }
     setAcceptingReturnId(requestId);
     try {
       const res = await acceptTransferRequest(requestId, user?.id);
@@ -765,21 +768,11 @@ function StockTransferContent() {
           const res = await stockRequisitionApi.getById(requisitionId);
           if (res.status && res.data) {
             const req = res.data;
-            if (
-              isWarehouseUser &&
-              (req.documentType || "").toLowerCase().trim() === "outlet request"
-            ) {
-              toast.error(
-                "Warehouse users are not permitted to transfer Outlet Request requisitions to STN.",
-              );
-              router.push("/erp/inventory/transactions/stock-requisition");
-              return;
-            }
             if (req.status === "PENDING") {
               await handleSelectRequisition(req);
             } else {
               toast.error(
-                `Requisition is in ${req.status} status. Only PENDING requisitions can be converted.`,
+                `Requisition is in ${req.status} status. Only PENDING (Head Office Approved) requisitions can be converted.`,
               );
             }
           }
@@ -2828,19 +2821,40 @@ function StockTransferContent() {
                                     <Printer className="h-3.5 w-3.5 mr-1" /> View / Slip
                                   </Link>
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 shadow-sm"
-                                  disabled={acceptingReturnId === req.id}
-                                  onClick={() => handleAcceptReturn(req.id)}
-                                >
-                                  {acceptingReturnId === req.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                                  ) : (
-                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                                  )}
-                                  Accept
-                                </Button>
+                                {canAcceptWarehouseReturn ? (
+                                  <Button
+                                    size="sm"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 shadow-sm"
+                                    disabled={acceptingReturnId === req.id}
+                                    onClick={() => handleAcceptReturn(req.id)}
+                                  >
+                                    {acceptingReturnId === req.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                                    ) : (
+                                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                    )}
+                                    Accept
+                                  </Button>
+                                ) : (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="text-xs h-8 text-gray-400 border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                                          disabled
+                                        >
+                                          <Lock className="h-3.5 w-3.5 mr-1 text-gray-400" />
+                                          Accept (WH Only)
+                                        </Button>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      Only users with Warehouse role or permission can accept returns
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
