@@ -1,4 +1,6 @@
 import { getRsrvVouchers } from "@/lib/actions/receipt-voucher";
+import { getLocations } from "@/lib/actions/location";
+import { getChartOfAccountsDropdown } from "@/lib/actions/chart-of-account";
 import { RetailSaleReceiptVoucherList } from "../components/retail-sale-receipt-voucher-list";
 import {
     Breadcrumb,
@@ -13,13 +15,17 @@ import { hasPermission } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 export default async function RetailSaleReceiptVoucherListPage() {
-    const { data: vouchers } = await getRsrvVouchers();
+    const [{ data: vouchers }, locationsRes, accountsRes] = await Promise.all([
+        getRsrvVouchers().catch(() => ({ status: false, data: [] })),
+        getLocations().catch(() => ({ status: false, data: [] })),
+        getChartOfAccountsDropdown().catch(() => ({ status: false, data: [] })),
+    ]);
 
-    const canCreate = true;
-    const canRead = true;
-    const canUpdate = true;
-    const canDelete = true;
-    const canApprove = true;
+    const canCreate = (await hasPermission("erp.finance.receipt-voucher.create").catch(() => true)) ?? true;
+    const canRead = (await hasPermission("erp.finance.receipt-voucher.read").catch(() => true)) ?? true;
+    const canUpdate = (await hasPermission("erp.finance.receipt-voucher.update").catch(() => true)) ?? true;
+    const canDelete = (await hasPermission("erp.finance.receipt-voucher.delete").catch(() => true)) ?? true;
+    const canApprove = (await hasPermission("erp.finance.receipt-voucher.approve").catch(() => true)) ?? true;
 
     return (
         <div className="flex-1 flex flex-col">
@@ -46,6 +52,8 @@ export default async function RetailSaleReceiptVoucherListPage() {
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 bg-[#F8F9FA] dark:bg-background">
                 <RetailSaleReceiptVoucherList
                     initialData={vouchers || []}
+                    locations={locationsRes?.data || []}
+                    accounts={accountsRes?.data || []}
                     permissions={{ canCreate, canRead, canUpdate, canDelete, canApprove }}
                 />
             </div>

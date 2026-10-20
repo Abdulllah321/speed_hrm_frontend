@@ -2175,8 +2175,7 @@ export const menuData: MenuItem[] = [
           {
             title: "Corporate Voucher Register",
             href: "/erp/reports/corporate-voucher-report",
-            permissions: [
-              "erp.report.finance.voucher-register.view",            ],
+            permissions: ["erp.report.finance.voucher-register.view"],
           },
           {
             title: "Claim Register",

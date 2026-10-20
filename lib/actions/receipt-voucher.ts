@@ -17,11 +17,13 @@ export interface ReceiptVoucherDetail {
     refBillNo?: string;
     refBillNo2?: string;
     taxType?: string;
+    account?: { id?: string; code?: string; name?: string };
+    tagAccount?: { id?: string; code?: string; name?: string };
 }
 
 export interface ReceiptVoucher {
     id: string;
-    type: "bank" | "cash";
+    type: "bank" | "cash" | "rs_rv" | string;
     rvNo: string;
     rvDate: string;
     refBillNo?: string;
@@ -50,7 +52,7 @@ export interface ReceiptVoucher {
     folio?: string | null;
     lastPrintedAt?: string | null;
     createdAt: string;
-    createdBy: string;
+    createdBy?: string;
 }
 
 export interface ReceiptVoucherFilters {
