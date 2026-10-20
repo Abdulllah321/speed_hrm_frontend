@@ -448,6 +448,7 @@ export default function CheckoutPage() {
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
   const [holdOrderId, setHoldOrderId] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string>("");
 
   // ── Customer state ──────────────────────────────────────────────────
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -1077,6 +1078,7 @@ export default function CheckoutPage() {
             discountPercent: item.discountPercent,
             taxPercent: item.taxPercent,
           })),
+          notes: notes ? notes.trim() : undefined,
         };
         const res = await authFetch("/pos-sales/orders/hold", {
           method: "POST",
@@ -1095,7 +1097,7 @@ export default function CheckoutPage() {
         setIsHolding(false);
       }
     },
-    [cartItems, router],
+    [cartItems, router, notes],
   );
 
   // ── Confirm sale ───────────────────────────────────────────────────
@@ -1220,6 +1222,7 @@ export default function CheckoutPage() {
         voucherRedemptions:
           appliedVouchers.length > 0 ? appliedVouchers : undefined,
         cashierUserId: selectedCashierId || null,
+        notes: notes ? notes.trim() : undefined,
       };
 
       if (holdOrderId) body.holdOrderId = holdOrderId;
@@ -1280,6 +1283,7 @@ export default function CheckoutPage() {
           cashier: chosenSalesman || res.data.data?.cashier,
         };
         setCompletedOrder(orderData);
+        setNotes("");
         sessionStorage.removeItem("pos_cart");
         sessionStorage.removeItem("pos_hold_order_id");
         sessionStorage.removeItem("pos_selected_cashier_id");
@@ -1319,6 +1323,7 @@ export default function CheckoutPage() {
     tenderCardholderName,
     tenderCardLast4,
     tenderSlip,
+    notes,
   ]);
 
   // ── Credit Sale ────────────────────────────────────────────────────
@@ -1429,6 +1434,7 @@ export default function CheckoutPage() {
         isCreditSale: true,
         creditAmount: balanceDue,
         isGiftReceipt,
+        notes: notes ? notes.trim() : undefined,
       };
 
       if (holdOrderId) body.holdOrderId = holdOrderId;
@@ -1492,6 +1498,7 @@ export default function CheckoutPage() {
           cashier: chosenSalesman || res.data.data?.cashier,
         };
         setCompletedOrder(orderData);
+        setNotes("");
         sessionStorage.removeItem("pos_cart");
         sessionStorage.removeItem("pos_hold_order_id");
         sessionStorage.removeItem("pos_selected_cashier_id");
@@ -1525,6 +1532,7 @@ export default function CheckoutPage() {
     holdOrderId,
     isGiftReceipt,
     selectedMerchant,
+    notes,
   ]);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────
@@ -1861,6 +1869,8 @@ export default function CheckoutPage() {
               }
             }}
             onClearCustomer={() => setSelectedCustomer(null)}
+            notes={notes}
+            onNotesChange={setNotes}
             cartItems={cartItems}
             discountMode={discountMode}
             orderDiscount={orderDiscount}
@@ -2060,6 +2070,7 @@ export default function CheckoutPage() {
             grandTotal,
             fbrPosFee: activeFbrFee,
             changeAmount,
+            notes: notes ? notes.trim() : undefined,
             isGiftReceipt: false,
             promo: selectedPromo ? { code: selectedPromo.code } : undefined,
             coupon: appliedCoupon ? { code: appliedCoupon.code } : undefined,

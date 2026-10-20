@@ -93,14 +93,30 @@ export default function StockRequisitionPage() {
     );
   }, [user, isAdmin, hasPermission]);
 
+  const canApproveOutletRequest = useMemo(() => {
+    if (!user) return false;
+    if (isAdmin()) return true;
+    return (
+      hasPermission('erp.inventory.stock-requisition.outlet-request.manage') ||
+      hasPermission('erp.inventory.stock-requisition.outlet-request.approve')
+    );
+  }, [user, isAdmin, hasPermission]);
+
+  const canEditOutletRequest = useMemo(() => {
+    if (!user) return false;
+    if (isAdmin()) return true;
+    return (
+      hasPermission('erp.inventory.stock-requisition.outlet-request.manage') ||
+      hasPermission('erp.inventory.stock-requisition.outlet-request.edit')
+    );
+  }, [user, isAdmin, hasPermission]);
+
   const canTransferToSTN = (req: any) => {
     if (!req || req.status !== 'PENDING') return false;
-    const docType = (req.documentType || '').toLowerCase().trim();
-    if (isWarehouseUser && docType === 'outlet request') {
-      return false;
-    }
     return true;
   };
+
+  const [originalItemQuantities, setOriginalItemQuantities] = useState<Record<string, number>>({});
 
   const [activeTab, setActiveTab] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(true);
@@ -141,6 +157,7 @@ export default function StockRequisitionPage() {
   const [isConverting, setIsConverting] = useState<boolean>(false);
   const [stnQuantities, setStnQuantities] = useState<Record<string, number>>({});
   const [editId, setEditId] = useState<string | null>(null);
+  const [editingRequisition, setEditingRequisition] = useState<any>(null);
 
   // Replenishment Modal State
   const [replenishModalOpen, setReplenishModalOpen] = useState<boolean>(false);
@@ -372,6 +389,11 @@ export default function StockRequisitionPage() {
   };
 
   const addManualItem = (item: any) => {
+    if (editId && (documentType || '').toLowerCase().trim() === 'outlet request') {
+      toast.error('Cannot add new items to an Outlet Request. Only reducing quantities or removing requested items is allowed.');
+      return;
+    }
+
     // Check if already in list
     const exists = requisitionItems.find((i) => i.itemId === item.id);
     if (exists) {
@@ -531,6 +553,15 @@ export default function StockRequisitionPage() {
 
   const updateItemQty = (itemId: string, qty: number) => {
     if (qty < 1) return;
+    if (editId && (documentType || '').toLowerCase().trim() === 'outlet request') {
+      const maxQty = originalItemQuantities[itemId];
+      if (maxQty !== undefined && qty > maxQty) {
+        toast.warning(
+          `Cannot increase quantity above original requested quantity (${maxQty}). You can only decrease or remove items.`,
+        );
+        return;
+      }
+    }
     setRequisitionItems((prev) =>
       prev.map((item) => (item.itemId === itemId ? { ...item, quantity: qty } : item)),
     );
@@ -585,15 +616,28 @@ export default function StockRequisitionPage() {
   };
 
   const handleStartEdit = (req: any) => {
+    const isOutletReq = (req.documentType || '').toLowerCase().trim() === 'outlet request';
+    if (isOutletReq && !canEditOutletRequest) {
+      toast.error('You do not have permission to edit Outlet Requests');
+      return;
+    }
+    setEditingRequisition(req);
     setEditId(req.id);
     setEditRequisitionNo(req.requisitionNo);
-    setSelectedWarehouseId(req.fromWarehouseId);
-    setDestLocationId(req.toLocationId);
-    setSelectedBrandId(req.brandId || 'none');
+    setSelectedWarehouseId(req.fromWarehouseId || req.fromWarehouse?.id || req.fromLocationId || req.fromLocation?.id || '');
+    setDestLocationId(req.toLocationId || req.toLocation?.id || '');
+    setSelectedBrandId(req.brandId || req.brand?.id || 'none');
     setDocumentType(req.documentType);
     setFinancialYear(req.financialYear || '25-26');
     setRemarks(req.remarks || '');
     setNotes(req.notes || '');
+
+    const origQtys: Record<string, number> = {};
+    req.items?.forEach((item: any) => {
+      origQtys[item.itemId] = Number(item.quantity);
+    });
+    setOriginalItemQuantities(origQtys);
+
     setRequisitionItems(
       req.items.map((item: any) => ({
         itemId: item.itemId,
@@ -611,23 +655,125 @@ export default function StockRequisitionPage() {
     );
     setDetailSheetOpen(false);
     setActiveTab('create');
-    toast.info(`Editing Outlet Request: ${req.requisitionNo}`);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    toast.info(`Editing ${req.documentType || 'Requisition'}: ${req.requisitionNo}`);
   };
 
   const handleCancelEdit = () => {
+    setEditingRequisition(null);
     setEditId(null);
     setEditRequisitionNo('');
+    setOriginalItemQuantities({});
     setRequisitionItems([]);
     setRemarks('');
     setNotes('');
-    toast.info('Edit cancelled');
+    setActiveTab('all');
+  };
+
+  const handleConfirmAndSendToWarehouse = async () => {
+    if (!editId) return;
+    const isOutletReq = (documentType || '').toLowerCase().trim() === 'outlet request';
+    if (isOutletReq && !canApproveOutletRequest) {
+      toast.error('You do not have permission to approve Outlet Requests');
+      return;
+    }
+    if (requisitionItems.length === 0) {
+      toast.error('Requisition must have at least one item');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        fromWarehouseId: selectedWarehouseId,
+        toLocationId: destLocationId,
+        brandId: selectedBrandId && selectedBrandId !== 'none' ? selectedBrandId : undefined,
+        documentType,
+        remarks,
+        notes,
+        financialYear,
+        items: requisitionItems.map((i) => ({
+          itemId: i.itemId,
+          quantity: i.quantity,
+        })),
+      };
+
+      const updateRes = await stockRequisitionApi.update(editId, payload);
+      if (!updateRes.status) {
+        throw new Error((updateRes as any).message || 'Failed to update requisition');
+      }
+
+      const approveRes = await stockRequisitionApi.approve(editId);
+      if (!approveRes.status) {
+        throw new Error((approveRes as any).message || 'Failed to approve requisition');
+      }
+
+      toast.success(`SRN ${editRequisitionNo} confirmed and sent to Warehouse for STN transfer!`);
+      handleCancelEdit();
+      await loadRequisitions();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to confirm requisition');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveDraftEdit = async () => {
+    if (!editId) return;
+    const isOutletReq = (documentType || '').toLowerCase().trim() === 'outlet request';
+    if (isOutletReq && !canEditOutletRequest) {
+      toast.error('You do not have permission to edit Outlet Requests');
+      return;
+    }
+    if (requisitionItems.length === 0) {
+      toast.error('Requisition must have at least one item');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        fromWarehouseId: selectedWarehouseId,
+        toLocationId: destLocationId,
+        brandId: selectedBrandId && selectedBrandId !== 'none' ? selectedBrandId : undefined,
+        documentType,
+        remarks,
+        notes,
+        financialYear,
+        items: requisitionItems.map((i) => ({
+          itemId: i.itemId,
+          quantity: i.quantity,
+        })),
+      };
+
+      const updateRes = await stockRequisitionApi.update(editId, payload);
+      if (!updateRes.status) {
+        throw new Error((updateRes as any).message || 'Failed to update requisition');
+      }
+
+      toast.success(`Draft SRN ${editRequisitionNo} updated successfully!`);
+      handleCancelEdit();
+      await loadRequisitions();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save draft');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterSearch, setFilterSearch] = useState<string>('');
 
-  const handleApproveRequisition = async (id: string) => {
+  const handleApproveRequisition = async (id: string, reqDocType?: string) => {
+    const docType = reqDocType || requisitions.find((r) => r.id === id)?.documentType;
+    const isOutletReq = (docType || '').toLowerCase().trim() === 'outlet request';
+    if (isOutletReq && !canApproveOutletRequest) {
+      toast.error('You do not have permission to approve Outlet Requests');
+      return;
+    }
     setApprovingId(id);
     try {
       const res = await stockRequisitionApi.approve(id);
@@ -680,6 +826,7 @@ export default function StockRequisitionPage() {
           toast.success('Outlet Request updated successfully!');
           setEditId(null);
           setEditRequisitionNo('');
+          setOriginalItemQuantities({});
           setRequisitionItems([]);
           setRemarks('');
           setNotes('');
@@ -883,14 +1030,17 @@ export default function StockRequisitionPage() {
       header: () => <div className="text-right font-bold whitespace-nowrap">Actions</div>,
       cell: ({ row }) => {
         const req = row.original;
+        const isOutletReq = (req.documentType || '').toLowerCase().trim() === 'outlet request';
+        const allowApprove = !isOutletReq || canApproveOutletRequest;
+        const allowEdit = !isOutletReq || canEditOutletRequest;
         return (
           <div className="flex justify-end items-center gap-2 flex-nowrap whitespace-nowrap">
-            {req.status === 'DRAFT' && (
+            {req.status === 'DRAFT' && allowApprove && (
               <Button
                 size="sm"
                 className="bg-green-600 hover:bg-green-700 text-white font-bold h-8 text-xs"
                 disabled={approvingId === req.id}
-                onClick={() => handleApproveRequisition(req.id)}
+                onClick={() => handleApproveRequisition(req.id, req.documentType)}
               >
                 {approvingId === req.id ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
@@ -911,7 +1061,7 @@ export default function StockRequisitionPage() {
                 </Link>
               </Button>
             )}
-            {req.status === 'DRAFT' && (
+            {req.status === 'DRAFT' && allowEdit && (
               <Button
                 size="sm"
                 variant="outline"
@@ -1014,7 +1164,7 @@ export default function StockRequisitionPage() {
               className="font-bold data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 px-6 py-2.5"
             >
               <Plus className="h-4 w-4 mr-2" />
-              {editId ? 'Edit Requisition' : 'New Requisition'}
+              {editId ? `Edit Requisition (${editRequisitionNo})` : 'New Requisition'}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -1202,18 +1352,35 @@ export default function StockRequisitionPage() {
                 {editId ? (
                   <div className="space-y-2 pt-2">
                     <Button
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold"
+                      className="w-full bg-green-600 hover:bg-green-700 font-bold text-white shadow-md"
                       size="lg"
                       disabled={submitting || requisitionItems.length === 0}
-                      onClick={() => handleCreateRequisition(false)}
+                      onClick={handleConfirmAndSendToWarehouse}
                     >
                       {submitting ? (
                         <>
-                          <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Updating...
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Confirming & Sending...
                         </>
                       ) : (
                         <>
-                          <Save className="h-5 w-5 mr-2" /> Update Requisition
+                          <CheckCircle className="h-5 w-5 mr-2" /> Confirm & Send to Warehouse (STN)
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      className="w-full border-2 border-amber-500 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold"
+                      size="lg"
+                      variant="outline"
+                      disabled={submitting || requisitionItems.length === 0}
+                      onClick={handleSaveDraftEdit}
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Saving Draft...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-5 w-5 mr-2 text-amber-600" /> Save as Draft
                         </>
                       )}
                     </Button>
@@ -1290,31 +1457,35 @@ export default function StockRequisitionPage() {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-indigo-600 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold h-9 shadow-sm"
-                    onClick={() => setBulkImportModalOpen(true)}
-                  >
-                    <FileSpreadsheet className="h-4 w-4 mr-1.5 text-indigo-600" />
-                    Import Excel / CSV
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs font-semibold h-9"
-                    onClick={handleDownloadTemplate}
-                  >
-                    <Download className="h-3.5 w-3.5 mr-1" /> Template
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-amber-600 text-amber-700 bg-amber-50 hover:bg-amber-100 font-bold h-9"
-                    onClick={openReplenishModal}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-1.5" /> Auto Replenish
-                  </Button>
+                  {!(editId && (documentType || '').toLowerCase().trim() === 'outlet request') && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-indigo-600 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold h-9 shadow-sm"
+                        onClick={() => setBulkImportModalOpen(true)}
+                      >
+                        <FileSpreadsheet className="h-4 w-4 mr-1.5 text-indigo-600" />
+                        Import Excel / CSV
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs font-semibold h-9"
+                        onClick={handleDownloadTemplate}
+                      >
+                        <Download className="h-3.5 w-3.5 mr-1" /> Template
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-amber-600 text-amber-700 bg-amber-50 hover:bg-amber-100 font-bold h-9"
+                        onClick={openReplenishModal}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-1.5" /> Auto Replenish
+                      </Button>
+                    </>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -1324,7 +1495,7 @@ export default function StockRequisitionPage() {
                   >
                     <Printer className="h-4 w-4 mr-1.5" /> Print Preview
                   </Button>
-                  {requisitionItems.length > 0 && (
+                  {requisitionItems.length > 0 && !(editId && (documentType || '').toLowerCase().trim() === 'outlet request') && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1339,47 +1510,59 @@ export default function StockRequisitionPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
-                {/* Manual Item Add bar */}
-                <div className="relative">
-                  <div className="flex items-center border rounded-md px-3 bg-gray-50/50">
-                    <Search className="h-4 w-4 text-muted-foreground mr-2" />
-                    <Input
-                      placeholder="Type SKU or barcode to manually search and add..."
-                      value={searchQuery}
-                      onChange={(e) => handleItemSearch(e.target.value)}
-                      className="border-0 shadow-none focus-visible:ring-0 bg-transparent py-6"
-                    />
-                    {searchingItems && <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />}
-                  </div>
-
-                  {searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 w-full bg-white border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto mt-1">
-                      {searchResults.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex justify-between items-center p-3 hover:bg-indigo-50 cursor-pointer transition-colors border-b last:border-b-0"
-                          onClick={() => addManualItem(item)}
-                        >
-                          <div>
-                            <p className="font-bold text-sm text-gray-800">{item.sku}</p>
-                            <p className="text-xs text-muted-foreground">{item.description}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                              Avail: {item.totalQuantity}
-                            </span>
-                            {Number(item.reservedQuantity || 0) > 0 && (
-                              <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                                Phys: {item.physicalQuantity ?? item.totalQuantity} · Res: {item.reservedQuantity}
-                              </span>
-                            )}
-                            <Plus className="h-4 w-4 text-indigo-600" />
-                          </div>
-                        </div>
-                      ))}
+                {editId && (documentType || '').toLowerCase().trim() === 'outlet request' ? (
+                  <div className="bg-amber-50 border border-amber-300 rounded-lg p-3.5 flex items-center gap-3 text-amber-900 shadow-sm">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                    <div className="text-xs">
+                      <p className="font-bold text-amber-950">Outlet Request Head Office Review</p>
+                      <p className="text-amber-800">
+                        You can reduce quantities or delete items. You cannot add new items or increase quantity beyond what the outlet requested.
+                      </p>
                     </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  /* Manual Item Add bar */
+                  <div className="relative">
+                    <div className="flex items-center border rounded-md px-3 bg-gray-50/50">
+                      <Search className="h-4 w-4 text-muted-foreground mr-2" />
+                      <Input
+                        placeholder="Type SKU or barcode to manually search and add..."
+                        value={searchQuery}
+                        onChange={(e) => handleItemSearch(e.target.value)}
+                        className="border-0 shadow-none focus-visible:ring-0 bg-transparent py-6"
+                      />
+                      {searchingItems && <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />}
+                    </div>
+
+                    {searchResults.length > 0 && (
+                      <div className="absolute top-full left-0 w-full bg-white border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto mt-1">
+                        {searchResults.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex justify-between items-center p-3 hover:bg-indigo-50 cursor-pointer transition-colors border-b last:border-b-0"
+                            onClick={() => addManualItem(item)}
+                          >
+                            <div>
+                              <p className="font-bold text-sm text-gray-800">{item.sku}</p>
+                              <p className="text-xs text-muted-foreground">{item.description}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                                Avail: {item.totalQuantity}
+                              </span>
+                              {Number(item.reservedQuantity || 0) > 0 && (
+                                <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                  Phys: {item.physicalQuantity ?? item.totalQuantity} · Res: {item.reservedQuantity}
+                                </span>
+                              )}
+                              <Plus className="h-4 w-4 text-indigo-600" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {requisitionItems.length === 0 ? (
                   <div className="border-2 border-dashed rounded-lg p-12 text-center text-muted-foreground flex flex-col items-center justify-center space-y-2 bg-gray-50/30">
@@ -1426,10 +1609,16 @@ export default function StockRequisitionPage() {
                               <Input
                                 type="number"
                                 min={1}
+                                max={originalItemQuantities[item.itemId] || undefined}
                                 value={item.quantity}
                                 onChange={(e) => updateItemQty(item.itemId, parseInt(e.target.value) || 1)}
                                 className="w-24 text-center font-bold"
                               />
+                              {editId && (documentType || '').toLowerCase().trim() === 'outlet request' && originalItemQuantities[item.itemId] !== undefined && (
+                                <span className="text-[10px] text-muted-foreground block text-center mt-0.5">
+                                  Orig: {originalItemQuantities[item.itemId]}
+                                </span>
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
                               <Button
@@ -1610,25 +1799,29 @@ export default function StockRequisitionPage() {
                     <div className="flex gap-2 items-center flex-wrap">
                       {selectedRequisition.status === 'DRAFT' && (
                         <>
-                          <Button
-                            variant="outline"
-                            className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold"
-                            onClick={() => handleStartEdit(selectedRequisition)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            className="bg-green-600 hover:bg-green-700 font-bold text-white"
-                            onClick={() => handleApproveRequisition(selectedRequisition.id)}
-                            disabled={approvingId === selectedRequisition.id}
-                          >
-                            {approvingId === selectedRequisition.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                            ) : (
-                              <CheckCircle className="h-4 w-4 mr-1.5" />
-                            )}
-                            Approve & Reserve
-                          </Button>
+                          {(!((selectedRequisition.documentType || '').toLowerCase().trim() === 'outlet request') || canEditOutletRequest) && (
+                            <Button
+                              variant="outline"
+                              className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold"
+                              onClick={() => handleStartEdit(selectedRequisition)}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                          {(!((selectedRequisition.documentType || '').toLowerCase().trim() === 'outlet request') || canApproveOutletRequest) && (
+                            <Button
+                              className="bg-green-600 hover:bg-green-700 font-bold text-white"
+                              onClick={() => handleApproveRequisition(selectedRequisition.id, selectedRequisition.documentType)}
+                              disabled={approvingId === selectedRequisition.id}
+                            >
+                              {approvingId === selectedRequisition.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 mr-1.5" />
+                              )}
+                              Approve & Reserve
+                            </Button>
+                          )}
                         </>
                       )}
                       {selectedRequisition.status === 'PENDING' && canTransferToSTN(selectedRequisition) && (
@@ -1990,6 +2183,7 @@ export default function StockRequisitionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       {/* Dedicated Bulk Import Modal matching /erp/items/list */}
       <SrnItemsBulkImportModal
         open={bulkImportModalOpen}

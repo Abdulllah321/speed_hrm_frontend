@@ -46,10 +46,6 @@ export default function StockRequisitionPendingPage() {
 
   const canTransferToSTN = (req: any) => {
     if (!req || req.status !== 'PENDING') return false;
-    const docType = (req.documentType || '').toLowerCase().trim();
-    if (isWarehouseUser && docType === 'outlet request') {
-      return false;
-    }
     return true;
   };
 

@@ -8,8 +8,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
-    Loader2, ShoppingCart, UserRound, Search, Plus, CheckCircle2, Trash2,
+    Loader2, ShoppingCart, UserRound, Search, Plus, CheckCircle2, Trash2, FileText,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import type { Customer } from "./page";
@@ -35,6 +36,9 @@ interface OrderSummaryProps {
     onAddCustomer: () => void;
     onEditCustomer: () => void;
     onClearCustomer: () => void;
+    // Notes
+    notes?: string;
+    onNotesChange?: (val: string) => void;
     // Cart items
     cartItems: CartItem[];
     discountMode: DiscountMode;
@@ -48,6 +52,7 @@ export function OrderSummary({
     customers, selectedCustomer, customerSearch, isLoadingCustomers,
     requireCustomer, canAddCustomer, onCustomerChange, onCustomerSearch,
     onAddCustomer, onEditCustomer, onClearCustomer,
+    notes, onNotesChange,
     cartItems, discountMode, orderDiscount, allianceSharePerItem, fmtCurrency,
 }: OrderSummaryProps) {
     const [showDropdown, setShowDropdown] = React.useState(false);
@@ -266,6 +271,24 @@ export function OrderSummary({
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* Order Notes (Optional) */}
+            <div className="px-4 py-3 border-b space-y-1.5 bg-muted/5">
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="order-notes-input" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5" /> Order Notes
+                    </Label>
+                    <span className="text-[10px] text-muted-foreground italic font-mono">[Optional]</span>
+                </div>
+                <Textarea
+                    id="order-notes-input"
+                    placeholder="Add order notes / remarks (optional)..."
+                    value={notes || ""}
+                    onChange={(e) => onNotesChange?.(e.target.value)}
+                    className="w-full bg-muted/20 border-border/40 text-xs min-h-[50px] max-h-[80px] resize-none focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/60"
+                    rows={2}
+                />
             </div>
 
             {/* Cart Items List */}

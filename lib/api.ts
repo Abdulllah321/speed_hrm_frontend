@@ -838,6 +838,8 @@ export interface SalesReturn {
   salesInvoiceId?: string;
   customerId: string;
   warehouseId: string;
+  finalWarehouseId?: string;
+  finalLocationId?: string;
   returnDate: string;
   returnType: 'DEFECTIVE' | 'EXCESS' | 'WRONG_ITEM' | 'DAMAGED' | 'SHORTAGE';
   reason?: string;
@@ -856,6 +858,8 @@ export interface SalesReturn {
   deliveryChallan?: any;
   customer?: any;
   warehouse?: any;
+  finalWarehouse?: any;
+  finalLocation?: any;
   creditNote?: CreditNote;
 }
 
@@ -880,6 +884,8 @@ export interface CreateSalesReturnDto {
   salesInvoiceId?: string;
   customerId: string;
   warehouseId: string;
+  finalWarehouseId?: string;
+  finalLocationId?: string;
   returnType?: 'DEFECTIVE' | 'EXCESS' | 'WRONG_ITEM' | 'DAMAGED' | 'SHORTAGE';
   reason?: string;
   notes?: string;

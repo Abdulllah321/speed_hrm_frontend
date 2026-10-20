@@ -1,12 +1,12 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useMemo } from 'react';
 import { getTransferRequests, updateTransferRequestStatus, acceptTransferRequest } from '@/lib/actions/transfer-request';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Printer, ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, ShieldAlert, Clock, ThumbsUp, Package, RotateCcw } from 'lucide-react';
+import { Printer, ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, ShieldAlert, Clock, ThumbsUp, Package, RotateCcw, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -53,6 +53,21 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
   const [transfer, setTransfer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { user, isAdmin, hasPermission } = useAuth();
+
+  const canAcceptWarehouseReturn = useMemo(() => {
+    if (!user) return false;
+    if (isAdmin()) return true;
+    const roleName = (user.role?.name || (user as any)?.role || '').toLowerCase();
+    return (
+      roleName.includes('warehouse') ||
+      roleName.includes('wh') ||
+      hasPermission('erp.inventory.warehouse.stock-transfer') ||
+      hasPermission('erp.inventory.warehouse.stock-requisition.pending') ||
+      hasPermission('erp.inventory.warehouse.view') ||
+      hasPermission('erp.inventory.warehouse.inventory.view') ||
+      hasPermission('erp.inventory.transfer.accept')
+    );
+  }, [user, isAdmin, hasPermission]);
   const [submitting, setSubmitting] = useState(false);
 
   const isSuperAdmin = isAdmin();
@@ -88,6 +103,10 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
   };
 
   const handleAcceptReturn = async () => {
+    if (!canAcceptWarehouseReturn) {
+      toast.error('Only users with Warehouse role or permission can accept returns into warehouse');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await acceptTransferRequest(id, user?.id);
@@ -317,14 +336,20 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                     </p>
                   </div>
                   {transfer.status !== 'COMPLETED' && transfer.status !== 'REJECTED' && (
-                    <Button 
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shrink-0 shadow-md"
-                      disabled={submitting}
-                      onClick={handleAcceptReturn}
-                    >
-                      {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                      Accept Return into Warehouse
-                    </Button>
+                    canAcceptWarehouseReturn ? (
+                      <Button 
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shrink-0 shadow-md"
+                        disabled={submitting}
+                        onClick={handleAcceptReturn}
+                      >
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                        Accept Return into Warehouse
+                      </Button>
+                    ) : (
+                      <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 text-xs px-3 py-1.5 flex items-center gap-1.5 font-semibold">
+                        <Lock className="h-3.5 w-3.5 text-amber-600" /> Awaiting Warehouse Acceptance (WH Staff Only)
+                      </Badge>
+                    )
                   )}
                 </div>
               </CardContent>

@@ -7,9 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Printer, Calendar } from 'lucide-react';
-import { salesReturnApi, CreateSalesReturnDto, warehouseApi } from '@/lib/api';
+import { salesReturnApi, CreateSalesReturnDto, warehouseApi, locationApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PermissionGuard } from "@/components/auth/permission-guard";
 
@@ -77,6 +77,7 @@ export default function CreateSalesReturnPage() {
   const [eligibleDocs, setEligibleDocs] = useState<SourceDocument[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<SourceDocument | null>(null);
   const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [nextReturnNumber, setNextReturnNumber] = useState<string>('');
   const [periodPreset, setPeriodPreset] = useState<string>('fy-current');
   
@@ -131,6 +132,7 @@ export default function CreateSalesReturnPage() {
     customerId: '',
     warehouseId: '',
     finalWarehouseId: '',
+    finalLocationId: '',
     returnType: 'DEFECTIVE',
     reason: '',
     notes: '',
@@ -141,6 +143,7 @@ export default function CreateSalesReturnPage() {
   useEffect(() => {
     loadEligibleDocuments();
     loadWarehouses();
+    loadLocations();
     fetchNextReturnNumber();
   }, []);
 
@@ -159,6 +162,16 @@ export default function CreateSalesReturnPage() {
       setWarehouses(data);
     } catch (error) {
       console.error('Error loading warehouses:', error);
+    }
+  };
+
+  const loadLocations = async () => {
+    try {
+      const res = await locationApi.getAll();
+      const locList = Array.isArray(res) ? res : (res?.data || []);
+      setLocations(locList);
+    } catch (error) {
+      console.error('Error loading locations:', error);
     }
   };
 
@@ -258,6 +271,7 @@ export default function CreateSalesReturnPage() {
       await salesReturnApi.create({
         ...formData,
         finalWarehouseId: formData.finalWarehouseId || undefined,
+        finalLocationId: formData.finalLocationId || undefined,
         items: apiItems,
       });
       router.push('/erp/sales/sales-returns');
@@ -376,24 +390,76 @@ export default function CreateSalesReturnPage() {
                   </div>
 
                   <div>
-                    <Label>Final Destination Warehouse <span className="text-gray-400 text-xs font-normal">(optional — e.g. PLM)</span></Label>
-                    <Select 
-                      value={formData.finalWarehouseId || ''}
-                      onValueChange={(val) => setFormData({ ...formData, finalWarehouseId: val || '' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Same as return warehouse" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {warehouses
-                          .filter((wh) => wh.id !== formData.warehouseId)
-                          .map((wh) => (
-                            <SelectItem key={wh.id} value={wh.id}>
-                              {wh.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Final Destination <span className="text-gray-400 text-xs font-normal">(optional — e.g. PLM)</span></Label>
+                    {(() => {
+                      const selectedDestination = formData.finalLocationId
+                        ? `loc_${formData.finalLocationId}`
+                        : formData.finalWarehouseId
+                        ? `wh_${formData.finalWarehouseId}`
+                        : 'none';
+
+                      const handleDestinationChange = (val: string) => {
+                        if (!val || val === 'none') {
+                          setFormData({ ...formData, finalWarehouseId: '', finalLocationId: '' });
+                        } else if (val.startsWith('loc_')) {
+                          const locId = val.replace('loc_', '');
+                          setFormData({ ...formData, finalLocationId: locId, finalWarehouseId: '' });
+                        } else if (val.startsWith('wh_')) {
+                          const whId = val.replace('wh_', '');
+                          setFormData({ ...formData, finalWarehouseId: whId, finalLocationId: '' });
+                        }
+                      };
+
+                      const plmLocation = locations.find((l) =>
+                        l.name?.toLowerCase().includes('product line management') ||
+                        l.name?.toLowerCase().includes('plm') ||
+                        l.code === 'C20001'
+                      );
+                      const otherLocations = locations.filter((l) => l.id !== plmLocation?.id);
+
+                      return (
+                        <Select 
+                          value={selectedDestination}
+                          onValueChange={handleDestinationChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Same as return warehouse" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Same as return warehouse</SelectItem>
+                            
+                            {locations.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>Locations</SelectLabel>
+                                {plmLocation && (
+                                  <SelectItem key={plmLocation.id} value={`loc_${plmLocation.id}`} className="font-semibold text-blue-700">
+                                    {plmLocation.name} {plmLocation.code ? `(${plmLocation.code})` : ''}
+                                  </SelectItem>
+                                )}
+                                {otherLocations.map((loc) => (
+                                  <SelectItem key={loc.id} value={`loc_${loc.id}`}>
+                                    {loc.name} {loc.code ? `(${loc.code})` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+
+                            {warehouses.filter((wh) => wh.id !== formData.warehouseId).length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>Warehouses</SelectLabel>
+                                {warehouses
+                                  .filter((wh) => wh.id !== formData.warehouseId)
+                                  .map((wh) => (
+                                    <SelectItem key={wh.id} value={`wh_${wh.id}`}>
+                                      {wh.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectGroup>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                     <p className="text-xs text-gray-400 mt-1">If selected, stock auto-transfers here on approval (3 ledger entries)</p>
                   </div>
                 </div>
