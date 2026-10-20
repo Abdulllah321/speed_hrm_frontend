@@ -619,11 +619,6 @@ export const masterMenuData: MenuItem[] = [
         href: "/master/pos-config/vouchers",
         permissions: ["pos.voucher.view"],
       },
-      {
-        title: "Corporate Voucher Register",
-        href: "/erp/reports/corporate-voucher-report",
-        permissions: ["pos.voucher.view"],
-      },
     ],
   },
   {
@@ -2124,15 +2119,6 @@ export const menuData: MenuItem[] = [
             href: "/erp/sales/reports/wholesale-return-register",
             permissions: ["erp.report.sales.wholesale-return.view"],
           },
-          {
-            title: "Corporate Voucher Register",
-            href: "/erp/reports/corporate-voucher-report",
-            permissions: [
-              "erp.report.sales.sales-register.view",
-              "pos.report.view",
-              "pos.voucher.view",
-            ],
-          },
         ],
       },
       {
@@ -2190,9 +2176,7 @@ export const menuData: MenuItem[] = [
             title: "Corporate Voucher Register",
             href: "/erp/reports/corporate-voucher-report",
             permissions: [
-              "erp.report.finance.voucher-register.view",
-              "pos.voucher.view",
-            ],
+              "erp.report.finance.voucher-register.view",            ],
           },
           {
             title: "Claim Register",

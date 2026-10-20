@@ -75,6 +75,7 @@ interface ImportRecord {
   skippedRecords: number;
   message: string | null;
   uploadedFilePath: string | null;
+  successReportPath: string | null;
   createdAt: string;
   completedAt: string | null;
 }
@@ -183,6 +184,12 @@ function ImportDetailModal({
     window.open(`${apiBase}/import-history/${record.id}/error-report?token=${token}`, "_blank");
   };
 
+  const handleDownloadSuccess = () => {
+    const apiBase = getApiBaseUrl();
+    const token = Cookies.get("accessToken");
+    window.open(`${apiBase}/import-history/${record.id}/success-report?token=${token}`, "_blank");
+  };
+
   const handleDownloadOriginal = () => {
     const apiBase = getApiBaseUrl();
     const token = Cookies.get("accessToken");
@@ -270,6 +277,18 @@ function ImportDetailModal({
               <span className="font-medium text-foreground block mb-1">Note</span>
               {record.message}
             </div>
+          )}
+
+          {/* Success Report Button */}
+          {(record.successReportPath || record.successRecords > 0) && (
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-900/50 dark:hover:bg-emerald-950/20"
+              onClick={handleDownloadSuccess}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Download Success Report ({record.successRecords.toLocaleString()} rows)
+            </Button>
           )}
 
           {/* Error Report Button */}
@@ -697,6 +716,27 @@ export default function ImportHistoryClient() {
                             </TooltipTrigger>
                             <TooltipContent>View details</TooltipContent>
                           </Tooltip>
+
+                          {(record.successReportPath || record.successRecords > 0) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const apiBase = getApiBaseUrl();
+                                    const token = Cookies.get("accessToken");
+                                    window.open(`${apiBase}/import-history/${record.id}/success-report?token=${token}`, "_blank");
+                                  }}
+                                >
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Download success report</TooltipContent>
+                            </Tooltip>
+                          )}
 
                           {record.failedRecords > 0 && (
                             <Tooltip>
