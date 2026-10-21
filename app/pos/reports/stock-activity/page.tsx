@@ -1,7 +1,12 @@
 "use client";
 
-import { StockActivityView } from "@/components/reports/stock-activity/stock-activity-view";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function PosStockActivityReportPage() {
-  return <StockActivityView isPosLevel={true} />;
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/erp/reports/stock-activity");
+  }, [router]);
+  return null;
 }
