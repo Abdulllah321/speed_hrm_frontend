@@ -1407,6 +1407,11 @@ export const menuData: MenuItem[] = [
             permissions: ["hr.payroll.read"],
           },
           {
+            title: "Tax Deduction Report",
+            href: "/hr/payroll-setup/payroll/tax-report",
+            permissions: ["hr.payroll.read"],
+          },
+          {
             title: "Payslips Emails",
             href: "/hr/payroll-setup/payroll/payslips",
             permissions: ["hr.payroll.read"],

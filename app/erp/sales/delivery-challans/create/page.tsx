@@ -147,8 +147,8 @@ export default function CreateDeliveryChallanPage() {
       await deliveryChallanApi.create(challanData);
       toast.success("Delivery challan created successfully");
       router.push("/erp/sales/delivery-challans");
-    } catch (error) {
-      toast.error("Failed to create delivery challan");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to create delivery challan");
       console.error('Create challan error:', error);
     } finally {
       setCreateLoading(false);
