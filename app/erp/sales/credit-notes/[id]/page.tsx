@@ -140,12 +140,13 @@ function groupCreditNoteItems(items: any[]): CreditNoteCategoryGroup[] {
     const wostUnitPrice = unitPrice / (1 + rate / 100);
     const wostTotal = wostUnitPrice * qty;
 
-    const valueExclTax = Math.max(0, wostTotal - discount);
-    const salesTax = (valueExclTax * rate) / 100;
+    const taxableAmount = Math.max(0, wostTotal - discount);
+    const valueExclTax = wostTotal;
+    const salesTax = (taxableAmount * rate) / 100;
     const addTax = 0;
     const taxPayable = salesTax + addTax;
 
-    const valueInclTax = valueExclTax + taxPayable;
+    const valueInclTax = taxableAmount + taxPayable;
 
     if (!categoryMap.has(catName)) {
       categoryMap.set(catName, {

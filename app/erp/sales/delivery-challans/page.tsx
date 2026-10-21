@@ -190,8 +190,8 @@ export default function DeliveryChallansPage() {
       console.log('Reloading challans after creation...'); // Debug log
       await loadChallans();
       console.log('Challans reloaded successfully'); // Debug log
-    } catch (error) {
-      toast.error("Failed to create delivery challan");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to create delivery challan");
       console.error('Create challan error:', error);
     } finally {
       setCreateLoading(false);
