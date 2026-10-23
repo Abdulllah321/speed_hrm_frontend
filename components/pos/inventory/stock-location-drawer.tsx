@@ -162,7 +162,10 @@ export function StockLocationDrawer({
                                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 shadow-sm"
                                     onClick={() => {
                                         if (item) {
-                                            const url = `/pos/inventory/direct-transfer-out?itemId=${item.id}&sku=${encodeURIComponent(item.sku)}&description=${encodeURIComponent(item.description)}&size=${encodeURIComponent(item.size || "")}&color=${encodeURIComponent(item.color || "")}&availableStock=${currentOutletStock}`;
+                                            const uniqueParam = (item as any).uniqueNo ? `&uniqueNo=${encodeURIComponent((item as any).uniqueNo)}` : "";
+                                            const brandParam = (item as any).brand ? `&brand=${encodeURIComponent(typeof (item as any).brand === "object" ? (item as any).brand.name : (item as any).brand)}` : "";
+                                            const divParam = (item as any).division ? `&division=${encodeURIComponent(typeof (item as any).division === "object" ? (item as any).division.name : (item as any).division)}` : "";
+                                            const url = `/pos/inventory/direct-transfer-out?itemId=${item.id}&sku=${encodeURIComponent(item.sku)}&description=${encodeURIComponent(item.description)}&size=${encodeURIComponent(item.size || "")}&color=${encodeURIComponent(item.color || "")}&availableStock=${currentOutletStock}${uniqueParam}${brandParam}${divParam}`;
                                             router.push(url);
                                         }
                                     }}

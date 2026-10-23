@@ -41,6 +41,9 @@ interface DirectTransferModalProps {
     description: string;
     size?: string;
     color?: string;
+    uniqueNo?: string;
+    brand?: string;
+    division?: string;
   } | null;
   availableStock: number;
   isOpen: boolean;
@@ -175,6 +178,24 @@ export function DirectTransferModal({
       destinations.find((d) => d.id === selectedDestId)?.name ||
       "Destination Outlet";
 
+    const reqItem = createdRequest?.items?.[0]?.item || item;
+    const uniqueNoVal = reqItem?.uniqueNo || item?.uniqueNo || "";
+    const itemDivision = (reqItem?.division?.name || reqItem?.division || item?.division || "").toUpperCase();
+    const itemBrand = (reqItem?.brand?.name || reqItem?.brand || item?.brand || "").toUpperCase();
+    const itemDesc = (reqItem?.description || item?.description || "").toUpperCase();
+    const watchBrands = [
+      "WATCHES", "TISSOT", "RADO", "TAG HEUER", "ORIS",
+      "GUESS", "POLICE", "NAUTICA", "USPA", "TIMEX", "DANISH DESIGN"
+    ];
+    const isWatchTransfer = (
+      sourceLoc.toUpperCase().includes("WATCH") ||
+      destLoc.toUpperCase().includes("WATCH") ||
+      itemDivision.includes("WATCH") ||
+      watchBrands.some((b) => itemBrand.includes(b)) ||
+      itemDesc.includes("WATCH") ||
+      Boolean(uniqueNoVal && uniqueNoVal.trim() !== "" && uniqueNoVal !== "—")
+    );
+
     win.document.write(`
             <html><head><title>Transfer Out - ${refNo}</title>
             <style>
@@ -193,6 +214,7 @@ export function DirectTransferModal({
                 
                 table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
                 th { background-color: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 10px 12px; border-bottom: 2px solid #cbd5e1; text-align: left; }
+                th.text-center, td.text-center { text-align: center; }
                 td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #334155; }
                 .text-right { text-align: right; }
                 .font-bold { font-weight: 700; }
@@ -242,12 +264,13 @@ export function DirectTransferModal({
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 60px;">S.No</th>
-                            <th>SKU Code</th>
+                            <th style="width: 50px;">S.No</th>
+                            <th style="width: 140px;">SKU Code</th>
                             <th>Item Description</th>
-                            <th>Size</th>
-                            <th>Color</th>
-                            <th class="text-right" style="width: 100px;">Quantity</th>
+                            ${isWatchTransfer ? `<th class="text-center" style="width: 130px;">Unique No</th>` : ""}
+                            <th style="width: 80px;">Size</th>
+                            <th style="width: 80px;">Color</th>
+                            <th class="text-right" style="width: 90px;">Quantity</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -255,6 +278,11 @@ export function DirectTransferModal({
                             <td>1</td>
                             <td class="font-bold">${item?.sku || "—"}</td>
                             <td>${item?.description || "Item"}</td>
+                            ${isWatchTransfer ? `
+                                <td class="text-center font-bold" style="color: #6b21a8; font-family: monospace;">
+                                    ${uniqueNoVal && uniqueNoVal.trim() !== "" ? uniqueNoVal : "—"}
+                                </td>
+                            ` : ""}
                             <td>${item?.size || "—"}</td>
                             <td>${item?.color || "—"}</td>
                             <td class="text-right font-bold">${quantity}</td>

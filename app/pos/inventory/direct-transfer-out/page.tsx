@@ -88,6 +88,8 @@ interface TransferItem {
   uniqueNo?: string;
   barCode?: string;
   description: string;
+  brand?: string;
+  division?: string;
   size?: string;
   color?: string;
   availableStock: number;
@@ -105,6 +107,9 @@ function DirectTransferForm() {
   const description = searchParams?.get("description") || "";
   const size = searchParams?.get("size") || "";
   const color = searchParams?.get("color") || "";
+  const uniqueNo = searchParams?.get("uniqueNo") || "";
+  const brand = searchParams?.get("brand") || "";
+  const division = searchParams?.get("division") || "";
   const availableStock = parseFloat(searchParams?.get("availableStock") || "0");
 
   const [draftId, setDraftId] = useState<string>(() => {
@@ -146,7 +151,11 @@ function DirectTransferForm() {
             updated.push({
               id: newItem.id,
               sku: newItem.sku,
+              uniqueNo: (newItem as any).uniqueNo || "",
+              barCode: (newItem as any).barCode || "",
               description: newItem.description,
+              brand: (newItem as any).brand || "",
+              division: (newItem as any).division || "",
               size: newItem.size,
               color: newItem.color,
               availableStock: newItem.availableStock,
@@ -509,7 +518,11 @@ function DirectTransferForm() {
         {
           id: itemId,
           sku: sku,
+          uniqueNo: uniqueNo,
+          barCode: "",
           description: description,
+          brand: brand,
+          division: division,
           size: size,
           color: color,
           availableStock: availableStock,
@@ -517,7 +530,7 @@ function DirectTransferForm() {
         },
       ]);
     }
-  }, [itemId, sku, description, size, color, availableStock]);
+  }, [itemId, sku, description, size, color, availableStock, uniqueNo, brand, division]);
 
   useEffect(() => {
     if (fromLocationId) {
@@ -601,6 +614,8 @@ function DirectTransferForm() {
           uniqueNo: product.uniqueNo || "",
           barCode: product.barCode || "",
           description: product.description || "Unknown Item",
+          brand: typeof product.brand === "object" ? product.brand?.name : (product.brand || ""),
+          division: typeof product.division === "object" ? product.division?.name : (product.division || ""),
           size: prodSize || "",
           color: prodColor || "",
           availableStock: prodStock,
@@ -1029,14 +1044,13 @@ function DirectTransferForm() {
     const refNo = createdRequest.requestNo || "N/A";
     const typeTitle = "DIRECT OUTLET-TO-OUTLET TRANSFER OUT";
     const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-        const win = iframe.contentWindow;
-        if (!win) {
-            toast.error("Failed to create print frame");
-            setPrintingId(null);
-            return;
-        }
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    const win = iframe.contentWindow;
+    if (!win) {
+      toast.error("Failed to create print frame");
+      return;
+    }
 
     const dateStr = format(new Date(), "dd MMM yyyy HH:mm");
     const companyName = "Speed (pvt.) Limited";
@@ -1045,18 +1059,75 @@ function DirectTransferForm() {
       destinations.find((d) => d.id === selectedDestId)?.name ||
       "Destination Outlet";
 
-    const itemsHtml = items
+    // Combine createdRequest items with local items to ensure uniqueNo, brand, division are present
+    const printItems = (createdRequest?.items && createdRequest.items.length > 0)
+      ? createdRequest.items.map((it: any) => {
+          const matchedLocal = items.find((i) => i.id === (it.itemId || it.item?.id));
+          return {
+            sku: it.item?.sku || matchedLocal?.sku || "—",
+            barCode: it.item?.barCode || matchedLocal?.barCode || "",
+            description: it.item?.description || matchedLocal?.description || "Item",
+            uniqueNo: it.item?.uniqueNo || matchedLocal?.uniqueNo || "",
+            size: it.item?.size?.name || it.item?.size || matchedLocal?.size || "—",
+            color: it.item?.color?.name || it.item?.color || matchedLocal?.color || "—",
+            quantity: Number(it.quantity || matchedLocal?.quantity || 1),
+            division: it.item?.division?.name || it.item?.division || matchedLocal?.division || "",
+            brand: it.item?.brand?.name || it.item?.brand || matchedLocal?.brand || "",
+          };
+        })
+      : items.map((i) => ({
+          sku: i.sku || "—",
+          barCode: i.barCode || "",
+          description: i.description || "Item",
+          uniqueNo: i.uniqueNo || "",
+          size: i.size || "—",
+          color: i.color || "—",
+          quantity: Number(i.quantity || 1),
+          division: i.division || "",
+          brand: i.brand || "",
+        }));
+
+    const watchBrands = [
+      'WATCHES', 'TISSOT', 'RADO', 'TAG HEUER', 'ORIS', 
+      'GUESS', 'POLICE', 'NAUTICA', 'USPA', 'TIMEX', 'DANISH DESIGN'
+    ];
+
+    const isWatchTransfer = (
+      sourceLoc.toUpperCase().includes('WATCH') ||
+      destLoc.toUpperCase().includes('WATCH') ||
+      printItems.some((it: any) => {
+        const div = (it.division || '').toUpperCase();
+        const brand = (it.brand || '').toUpperCase();
+        const desc = (it.description || '').toUpperCase();
+        return (
+          div.includes('WATCH') ||
+          watchBrands.some((b) => brand.includes(b)) ||
+          desc.includes('WATCH') ||
+          Boolean(it.uniqueNo && it.uniqueNo.trim() !== '' && it.uniqueNo !== '—')
+        );
+      })
+    );
+
+    const itemsHtml = printItems
       .map(
-        (item, index) => `
+        (item, index) => {
+          const uniqueNoVal = item.uniqueNo && item.uniqueNo.trim() !== "" ? item.uniqueNo : "—";
+          return `
             <tr>
                 <td>${index + 1}</td>
                 <td class="font-bold">${item.sku || "—"}</td>
                 <td>${item.description || "Item"}</td>
+                ${isWatchTransfer ? `
+                    <td class="text-center font-bold" style="color: #6b21a8; font-family: monospace;">
+                        ${uniqueNoVal}
+                    </td>
+                ` : ""}
                 <td>${item.size || "—"}</td>
                 <td>${item.color || "—"}</td>
                 <td class="text-right font-bold">${item.quantity}</td>
             </tr>
-        `,
+          `;
+        }
       )
       .join("");
 
@@ -1078,6 +1149,7 @@ function DirectTransferForm() {
                 
                 table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
                 th { background-color: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 10px 12px; border-bottom: 2px solid #cbd5e1; text-align: left; }
+                th.text-center, td.text-center { text-align: center; }
                 td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #334155; }
                 .text-right { text-align: right; }
                 .font-bold { font-weight: 700; }
@@ -1127,12 +1199,13 @@ function DirectTransferForm() {
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 60px;">S.No</th>
-                            <th>SKU Code</th>
+                            <th style="width: 50px;">S.No</th>
+                            <th style="width: 140px;">SKU Code</th>
                             <th>Item Description</th>
-                            <th>Size</th>
-                            <th>Color</th>
-                            <th class="text-right" style="width: 100px;">Quantity</th>
+                            ${isWatchTransfer ? `<th class="text-center" style="width: 130px;">Unique No</th>` : ""}
+                            <th style="width: 80px;">Size</th>
+                            <th style="width: 80px;">Color</th>
+                            <th class="text-right" style="width: 90px;">Quantity</th>
                         </tr>
                     </thead>
                     <tbody>
