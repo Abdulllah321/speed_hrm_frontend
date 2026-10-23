@@ -710,6 +710,7 @@ export default function ReturnsPage() {
             locationName: found.location?.name || undefined,
             locationId: found.locationId || undefined,
             customer: orderCustomer || undefined,
+            claims: found.claims || [],
           },
         ]);
 
@@ -1295,6 +1296,29 @@ export default function ReturnsPage() {
                       Sold at: {o.locationName}
                     </Badge>
                   )}
+                  {o.claims && o.claims.length > 0 && (() => {
+                    const underReview = o.claims.some((c: any) =>
+                      ["SUBMITTED", "UNDER_REVIEW", "APPROVED", "PARTIALLY_APPROVED"].includes(c.status)
+                    );
+                    const acked = o.claims.some((c: any) =>
+                      ["COMPLETED", "ACKNOWLEDGED"].includes(c.status)
+                    );
+                    if (underReview) {
+                      return (
+                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[9px] font-semibold py-0 px-1.5">
+                          ⏳ Claim Under Review
+                        </Badge>
+                      );
+                    }
+                    if (acked) {
+                      return (
+                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-[9px] font-semibold py-0 px-1.5">
+                          ✓ Claim Approved
+                        </Badge>
+                      );
+                    }
+                    return null;
+                  })()}
                   <div className="h-2.5 w-px bg-emerald-300/60 dark:bg-emerald-700/60" />
                   <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">
                     {formatCurrency(o.grandTotal)}

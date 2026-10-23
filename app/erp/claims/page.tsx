@@ -23,7 +23,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import DataTable from "@/components/common/data-table";
 import {
-    Eye, CheckCircle2, XCircle, Clock, FileText, Loader2, ChevronDown, ChevronUp,
+    Eye, CheckCircle2, XCircle, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
@@ -54,12 +54,42 @@ const ITEM_STATUS_META: Record<string, { label: string; cls: string }> = {
     MENDED:             { label: "Mended",    cls: "bg-amber-100 text-amber-700" },
 };
 
+function getCustomerInfo(claim: any) {
+    let name = claim.salesOrder?.customer?.name;
+    let phone = claim.salesOrder?.customer?.contactNo;
+    if (!name || !phone) {
+        const match = claim.reasonNotes?.match(/\[Customer:\s*([^|]+)\s*\|\s*Phone:\s*([^\]]+)\]/);
+        if (match) {
+            const parsedName = match[1]?.trim();
+            const parsedPhone = match[2]?.trim();
+            if (!name && parsedName && parsedName !== '-') name = parsedName;
+            if (!phone && parsedPhone && parsedPhone !== '-') phone = parsedPhone;
+        }
+    }
+    return { name: name || "—", phone: phone || "—" };
+}
+
+function getItemAttributes(claim: any) {
+    const brands = Array.from(new Set((claim.items || []).map((i: any) => i.item?.brand?.name || i.item?.brand).filter(Boolean)));
+    const colors = Array.from(new Set((claim.items || []).map((i: any) => i.item?.color?.name || i.item?.color).filter(Boolean)));
+    const sizes = Array.from(new Set((claim.items || []).map((i: any) => i.item?.size?.name || i.item?.size).filter(Boolean)));
+    return {
+        brand: brands.join(", ") || "—",
+        color: colors.join(", ") || "—",
+        size: sizes.join(", ") || "—",
+        brands,
+        colors,
+        sizes,
+    };
+}
+
 export default function ClaimsPage() {
     const [claims, setClaims] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [selectedClaim, setSelectedClaim] = useState<any>(null);
     const [showDetail, setShowDetail] = useState(false);
+    const [isEditingDecision, setIsEditingDecision] = useState(false);
     const [isStartingReview, setIsStartingReview] = useState(false);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [isAcknowledging, setIsAcknowledging] = useState(false);
@@ -68,7 +98,7 @@ export default function ClaimsPage() {
     const [rejectionReason, setRejectionReason] = useState("");
     const [reviewNotes, setReviewNotes] = useState("");
     // Per-item approved qty state
-    const [itemApprovals, setItemApprovals] = useState<Record<string, { approvedQty: number; notes: string }>>({});
+    const [itemApprovals, setItemApprovals] = useState<Record<string, { approvedQty: number; notes: string; status: string }>>({});
 
     const fetchClaims = useCallback(async () => {
         setIsLoading(true);
@@ -90,26 +120,41 @@ export default function ClaimsPage() {
             const full = res.data.data;
             setSelectedClaim(full);
             
-            const isClaimReviewable = ["SUBMITTED", "UNDER_REVIEW"].includes(full.status);
+            const isInitialReview = ["SUBMITTED", "UNDER_REVIEW"].includes(full.status);
+            setIsEditingDecision(isInitialReview);
             
             // Init approvals from existing data
-            const init: Record<string, { approvedQty: number; notes: string; status: string; remainingStatus?: string }> = {};
+            const init: Record<string, { approvedQty: number; notes: string; status: string }> = {};
             (full.items || []).forEach((i: any) => {
-                if (isClaimReviewable && i.itemStatus === 'PENDING') {
-                    for (let idx = 0; idx < i.claimedQty; idx++) {
-                        init[`${i.id}-${idx}`] = { 
-                            approvedQty: 1, 
-                            notes: i.reviewNotes ?? "",
-                            status: "APPROVED"
-                        };
+                for (let idx = 0; idx < i.claimedQty; idx++) {
+                    const unitApproved = idx < (i.approvedQty || 0);
+                    let initialStatus = "APPROVED";
+                    if (isInitialReview) {
+                        initialStatus = i.itemStatus === 'REJECTED' ? 'REJECTED' : (i.itemStatus === 'MENDED' ? 'MENDED' : 'APPROVED');
+                    } else {
+                        // Already decided claim
+                        if (i.itemStatus === 'REJECTED') {
+                            initialStatus = 'REJECTED';
+                        } else if (i.itemStatus === 'MENDED') {
+                            initialStatus = 'MENDED';
+                        } else if (unitApproved || i.itemStatus === 'APPROVED') {
+                            initialStatus = 'APPROVED';
+                        } else {
+                            initialStatus = 'REJECTED';
+                        }
                     }
-                } else {
-                    init[i.id] = { 
-                        approvedQty: i.approvedQty || (i.itemStatus === 'REJECTED' || i.itemStatus === 'MENDED' ? 0 : i.claimedQty), 
+
+                    init[`${i.id}-${idx}`] = { 
+                        approvedQty: initialStatus === 'APPROVED' ? 1 : 0, 
                         notes: i.reviewNotes ?? "",
-                        status: i.itemStatus || "APPROVED"
+                        status: initialStatus
                     };
                 }
+                init[i.id] = { 
+                    approvedQty: i.approvedQty || (i.itemStatus === 'REJECTED' || i.itemStatus === 'MENDED' ? 0 : i.claimedQty), 
+                    notes: i.reviewNotes ?? "",
+                    status: i.itemStatus || "APPROVED"
+                };
             });
             setItemApprovals(init);
             setReviewNotes(full.reviewNotes ?? "");
@@ -124,6 +169,7 @@ export default function ClaimsPage() {
             const res = await authFetch(`/pos-claims/${selectedClaim.id}/start-review`, { method: "POST" });
             if (res.ok && res.data?.status) {
                 setSelectedClaim((prev: any) => ({ ...prev, status: "UNDER_REVIEW" }));
+                setIsEditingDecision(true);
                 toast.success("Claim is now under review");
                 fetchClaims();
             } else { toast.error(res.data?.message || "Failed"); }
@@ -131,14 +177,16 @@ export default function ClaimsPage() {
         finally { setIsStartingReview(false); }
     };
 
-    const canReview = selectedClaim && ["SUBMITTED", "UNDER_REVIEW"].includes(selectedClaim.status);
+    const isAcknowledged = Boolean(selectedClaim && ["COMPLETED", "ACKNOWLEDGED"].includes(selectedClaim.status));
+    const canEditDecision = Boolean(selectedClaim && !isAcknowledged && selectedClaim.status !== 'CANCELLED');
+    const canReview = isEditingDecision;
 
     const renderedItems = useMemo(() => {
         if (!selectedClaim || !selectedClaim.items) return [];
         const list: any[] = [];
         for (const item of selectedClaim.items) {
-            // Expand any PENDING claim item by its claimed quantity
-            if (canReview && item.itemStatus === 'PENDING') {
+            // Expand any claim item by its claimed quantity when in review/edit mode
+            if (canReview) {
                 for (let idx = 0; idx < item.claimedQty; idx++) {
                     list.push({
                         ...item,
@@ -300,7 +348,80 @@ export default function ClaimsPage() {
         {
             id: "orderNumber",
             header: "Order",
-            cell: ({ row }) => <span className="font-mono text-sm">{row.original.salesOrder?.orderNumber}</span>,
+            accessorFn: (row) => row.salesOrder?.orderNumber || "—",
+            cell: ({ row }) => <span className="font-mono text-sm">{row.original.salesOrder?.orderNumber || "—"}</span>,
+        },
+        {
+            id: "customerName",
+            header: "Customer",
+            accessorFn: (row) => getCustomerInfo(row).name,
+            cell: ({ row }) => {
+                const { name } = getCustomerInfo(row.original);
+                return <span className="text-sm font-medium">{name}</span>;
+            },
+        },
+        {
+            id: "customerPhone",
+            header: "Phone #",
+            accessorFn: (row) => getCustomerInfo(row).phone,
+            cell: ({ row }) => {
+                const { phone } = getCustomerInfo(row.original);
+                return <span className="font-mono text-xs text-muted-foreground">{phone}</span>;
+            },
+        },
+        {
+            id: "brand",
+            header: "Brand",
+            accessorFn: (row) => getItemAttributes(row).brand,
+            cell: ({ row }) => {
+                const { brands } = getItemAttributes(row.original);
+                if (brands.length === 0) return <span className="text-muted-foreground">—</span>;
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {brands.map((b: any, idx: number) => (
+                            <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0 font-medium bg-zinc-50 dark:bg-zinc-900 border-zinc-200">
+                                {String(b)}
+                            </Badge>
+                        ))}
+                    </div>
+                );
+            },
+        },
+        {
+            id: "size",
+            header: "Size",
+            accessorFn: (row) => getItemAttributes(row).size,
+            cell: ({ row }) => {
+                const { sizes } = getItemAttributes(row.original);
+                if (sizes.length === 0) return <span className="text-muted-foreground">—</span>;
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {sizes.map((s: any, idx: number) => (
+                            <Badge key={idx} variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-semibold bg-zinc-100 text-zinc-800 border-zinc-200">
+                                {String(s)}
+                            </Badge>
+                        ))}
+                    </div>
+                );
+            },
+        },
+        {
+            id: "color",
+            header: "Color",
+            accessorFn: (row) => getItemAttributes(row).color,
+            cell: ({ row }) => {
+                const { colors } = getItemAttributes(row.original);
+                if (colors.length === 0) return <span className="text-muted-foreground">—</span>;
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {colors.map((c: any, idx: number) => (
+                            <span key={idx} className="text-xs font-medium text-muted-foreground">
+                                {String(c)}
+                            </span>
+                        ))}
+                    </div>
+                );
+            },
         },
         {
             accessorKey: "claimType",
@@ -374,7 +495,13 @@ export default function ClaimsPage() {
                 </div>
 
                 <DataTable columns={columns} data={claims} isLoading={isLoading} tableId="erp-claims"
-                    searchFields={[{ key: "claimNumber", label: "Claim #" }]} />
+                    searchFields={[
+                        { key: "claimNumber", label: "Claim #" },
+                        { key: "orderNumber", label: "Order #" },
+                        { key: "customerName", label: "Customer" },
+                        { key: "customerPhone", label: "Phone #" },
+                        { key: "brand", label: "Brand" },
+                    ]} />
 
                 {/* Detail / Review Sheet */}
                 <Sheet open={showDetail} onOpenChange={setShowDetail}>
@@ -453,11 +580,19 @@ export default function ClaimsPage() {
                                                 <TableHead className="text-right text-xs uppercase">Claimed Qty</TableHead>
                                                 <TableHead className="text-right text-xs uppercase">Paid/Unit</TableHead>
                                                 <TableHead className="text-right text-xs uppercase">Claimed Amt</TableHead>
-                                                {canReview && <TableHead className="text-center text-xs uppercase text-indigo-700">Decision</TableHead>}
-                                                {canReview && <TableHead className="text-center text-xs uppercase text-emerald-700">Approve Qty</TableHead>}
-                                                {canReview && <TableHead className="text-right text-xs uppercase text-emerald-700">Approved Amt</TableHead>}
-                                                {!canReview && <TableHead className="text-center text-xs uppercase">Status</TableHead>}
-                                                {!canReview && <TableHead className="text-right text-xs uppercase">Approved</TableHead>}
+                                                {canReview ? (
+                                                    <>
+                                                        <TableHead className="text-center text-xs uppercase text-indigo-700">Decision</TableHead>
+                                                        <TableHead className="text-center text-xs uppercase text-emerald-700">Approve Qty</TableHead>
+                                                        <TableHead className="text-right text-xs uppercase text-emerald-700">Approved Amt</TableHead>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <TableHead className="text-center text-xs uppercase">Status</TableHead>
+                                                        <TableHead className="text-center text-xs uppercase">Approve Qty</TableHead>
+                                                        <TableHead className="text-right text-xs uppercase">Approved Amt</TableHead>
+                                                    </>
+                                                )}
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -471,9 +606,19 @@ export default function ClaimsPage() {
                                                         <TableCell>
                                                             <div className="flex items-center gap-2 flex-wrap">
                                                                 <p className="font-medium text-sm">{item.item?.description}</p>
+                                                                {item.item?.brand?.name && (
+                                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-semibold">
+                                                                        {item.item.brand.name}
+                                                                    </Badge>
+                                                                )}
                                                                 {item.item?.size?.name && (
                                                                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-semibold bg-zinc-100 text-zinc-800 border-zinc-200">
                                                                         Size: {item.item.size.name}
+                                                                    </Badge>
+                                                                )}
+                                                                {item.item?.color?.name && (
+                                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-medium text-muted-foreground">
+                                                                        Color: {item.item.color.name}
                                                                     </Badge>
                                                                 )}
                                                             </div>
@@ -482,7 +627,7 @@ export default function ClaimsPage() {
                                                         <TableCell className="text-right text-sm">{item.displayQty}</TableCell>
                                                         <TableCell className="text-right font-mono text-sm">Rs. {fmt(item.unitPaidPrice)}</TableCell>
                                                         <TableCell className="text-right font-mono text-sm text-destructive">Rs. {fmt(Number(item.unitPaidPrice) * item.displayQty)}</TableCell>
-                                                        {canReview && item.itemStatus === 'PENDING' ? (
+                                                        {canReview ? (
                                                             <>
                                                                 <TableCell className="text-center">
                                                                     <Select 
@@ -519,11 +664,9 @@ export default function ClaimsPage() {
                                                             </>
                                                         ) : (
                                                             <>
-                                                                {canReview && (
-                                                                    <TableCell className="text-center">
-                                                                        <Badge className={cn("text-[10px] px-1.5", isMeta.cls)}>{isMeta.label}</Badge>
-                                                                    </TableCell>
-                                                                )}
+                                                                <TableCell className="text-center">
+                                                                    <Badge className={cn("text-[10px] px-1.5", isMeta.cls)}>{isMeta.label}</Badge>
+                                                                </TableCell>
                                                                 <TableCell className="text-center">
                                                                     <span className="text-sm font-medium">{item.approvedQty}</span>
                                                                 </TableCell>
@@ -566,8 +709,16 @@ export default function ClaimsPage() {
 
                                 <SheetFooter className="shrink-0 border-t px-6 py-4 gap-2 flex-row justify-end">
                                     <Button variant="ghost" onClick={() => setShowDetail(false)}>Close</Button>
-                                    {canReview && (
+                                    {canReview ? (
                                         <PermissionGuard permissions="erp.claims.approve" fallback={null}>
+                                            {!["SUBMITTED", "UNDER_REVIEW"].includes(selectedClaim.status) && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    onClick={() => setIsEditingDecision(false)}
+                                                >
+                                                    Cancel Edit
+                                                </Button>
+                                            )}
                                             {!hasAnyApproved && (
                                                 <Button 
                                                     variant="destructive" 
@@ -580,21 +731,24 @@ export default function ClaimsPage() {
                                             )}
                                             <Button onClick={handleSubmitReview} disabled={isSubmittingReview} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
                                                 {isSubmittingReview ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                                Submit Decision
+                                                {["SUBMITTED", "UNDER_REVIEW"].includes(selectedClaim.status) ? "Submit Decision" : "Save Changes"}
                                             </Button>
                                         </PermissionGuard>
-                                    )}
-                                    {["APPROVED", "PARTIALLY_APPROVED"].includes(selectedClaim.status) && (
-                                        <PermissionGuard permissions="erp.inventory.claims.acknowledge" fallback={null}>
-                                            <Button 
-                                                onClick={handleAcknowledgeClaim} 
-                                                disabled={isAcknowledging} 
-                                                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                                            >
-                                                {isAcknowledging ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                                Acknowledge Receipt
-                                            </Button>
-                                        </PermissionGuard>
+                                    ) : (
+                                        <>
+                                            {canEditDecision && (
+                                                <PermissionGuard permissions="erp.claims.approve" fallback={null}>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        onClick={() => setIsEditingDecision(true)} 
+                                                        className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400"
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                        Edit Decision
+                                                    </Button>
+                                                </PermissionGuard>
+                                            )}
+                                        </>
                                     )}
                                 </SheetFooter>
                             </>

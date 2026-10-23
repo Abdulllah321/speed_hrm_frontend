@@ -451,12 +451,14 @@ function ClaimBody({
 
   const totalUnits = claimedLines.reduce((s, l) => s + l.claimedQty, 0);
   const isApproved =
-    status === "APPROVED" ||
-    status === "PARTIALLY_APPROVED" ||
     status === "COMPLETED" ||
     status === "ACKNOWLEDGED";
   const isRejected = status === "REJECTED";
-  const isPending = status === "SUBMITTED" || status === "UNDER_REVIEW";
+  const isPending =
+    status === "SUBMITTED" ||
+    status === "UNDER_REVIEW" ||
+    status === "APPROVED" ||
+    status === "PARTIALLY_APPROVED";
 
   // Status badge styling
   const statusColor = isApproved
@@ -464,7 +466,11 @@ function ClaimBody({
     : isRejected
       ? "#ef4444"
       : "#f59e0b";
-  const statusText = status.replace(/_/g, " ");
+  const statusText = isPending
+    ? "UNDER REVIEW"
+    : isApproved
+      ? "APPROVED"
+      : status.replace(/_/g, " ");
 
   return (
     <div className="font-mono text-xs w-full max-w-[72.1mm] mx-auto space-y-2">
@@ -779,10 +785,10 @@ function ClaimBody({
         {isPending && (
           <>
             <p className="font-bold text-center" style={{ color: statusColor }}>
-              ⏳ CLAIM UNDER PROCESS ⏳
+              ⏳ CLAIM UNDER REVIEW ⏳
             </p>
             <p className="text-center">
-              Your claim is being reviewed. Please check back later.
+              Your claim is currently under review by Head Office / PLM.
             </p>
 
             {/* ── Important Disclaimer ── */}

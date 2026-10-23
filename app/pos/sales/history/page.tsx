@@ -612,17 +612,17 @@ export default function SalesHistoryPage() {
                 // Determine claim status badge
                 let claimBadge = null;
                 if (hasClaims) {
-                    const pendingClaims = claims.filter((c: any) => c.status === 'SUBMITTED' || c.status === 'UNDER_REVIEW');
-                    const approvedClaims = claims.filter((c: any) => c.status === 'APPROVED' || c.status === 'PARTIALLY_APPROVED');
+                    const underReviewClaims = claims.filter((c: any) => ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'PARTIALLY_APPROVED'].includes(c.status));
+                    const completedClaims = claims.filter((c: any) => ['COMPLETED', 'ACKNOWLEDGED'].includes(c.status));
                     const rejectedClaims = claims.filter((c: any) => c.status === 'REJECTED');
                     
-                    if (pendingClaims.length > 0) {
+                    if (underReviewClaims.length > 0) {
                         claimBadge = (
                             <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 border-amber-300 ml-1">
-                                ⏳ Claim Pending
+                                ⏳ Claim Under Review
                             </Badge>
                         );
-                    } else if (approvedClaims.length > 0) {
+                    } else if (completedClaims.length > 0) {
                         claimBadge = (
                             <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0 h-5 bg-green-500/10 text-green-700 border-green-300 ml-1">
                                 ✓ Claim Approved

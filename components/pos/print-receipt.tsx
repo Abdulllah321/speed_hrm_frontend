@@ -1160,6 +1160,23 @@ function ReceiptBody({
         />
         {cashierName && <Row label="Sales By" value={cashierName} />}
         {terminalName && <Row label="Terminal" value={terminalName} />}
+        {(() => {
+          const claims = order?.claims || [];
+          if (claims.length === 0) return null;
+          const underReview = claims.some((c: any) =>
+            ["SUBMITTED", "UNDER_REVIEW", "APPROVED", "PARTIALLY_APPROVED"].includes(c.status)
+          );
+          const acked = claims.some((c: any) =>
+            ["COMPLETED", "ACKNOWLEDGED"].includes(c.status)
+          );
+          if (underReview) {
+            return <Row label="Claim Status" value="UNDER REVIEW" bold />;
+          }
+          if (acked) {
+            return <Row label="Claim Status" value="APPROVED" bold />;
+          }
+          return null;
+        })()}
       </div>
 
       {/* ── Customer & Delivery Details ── */}
