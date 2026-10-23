@@ -12,8 +12,10 @@ interface ExportExcelOptions {
     exportMode?: "hierarchy" | "flat" | "both";
     dateFromStr?: string;
     dateToStr?: string;
+    asOfDate?: string;
     companyName?: string;
     isPosLevel?: boolean;
+    isPosOnly?: boolean;
     onProgress?: (percent: number, message: string) => void;
 }
 
@@ -28,17 +30,22 @@ export async function exportAvailableStockSummaryToExcel({
     exportMode = "both",
     dateFromStr,
     dateToStr,
+    asOfDate,
     companyName = "Speed Limit ERP",
     isPosLevel = false,
+    isPosOnly,
     onProgress,
 }: ExportExcelOptions): Promise<void> {
+    const isPos = isPosOnly !== undefined ? isPosOnly : isPosLevel;
     try {
         onProgress?.(5, "Initializing non-blocking Excel generator...");
         await yieldToMain();
 
         const formattedDate = new Date().toLocaleString();
-        const dateRangeStr = `Period: ${dateFromStr || "All Time"} to ${dateToStr || "Present"}`;
-        const reportTitleSuffix = isPosLevel ? " (POS LEVEL)" : "";
+        const fyStartStr = dateFromStr || "1st July";
+        const asOfStr = asOfDate || dateToStr || new Date().toISOString().slice(0, 10);
+        const dateRangeStr = `As Of Date: ${asOfStr} (Fiscal Period: ${fyStartStr} to ${asOfStr})`;
+        const reportTitleSuffix = isPos ? " (POS LEVEL)" : "";
 
         // ─── 1. Build Color-Coded Hierarchy View HTML Table ─────────────────────────
         let hierarchyRowsHtml = "";
@@ -62,8 +69,8 @@ export async function exportAvailableStockSummaryToExcel({
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
         ];
-        if (!isPosLevel) {
-            hierarchyHeader.push("Unit Cost (Rs.)", "Unit Value (Rs.)");
+        if (!isPos) {
+            hierarchyHeader.push("Unit Cost (Rs.)", "Cost Value (Rs.)");
         }
         hierarchyFlatRows.push(hierarchyHeader);
 
@@ -107,7 +114,7 @@ export async function exportAvailableStockSummaryToExcel({
                     node.totals.unitPrice || "",
                     node.totals.value,
                 ];
-                if (!isPosLevel) {
+                if (!isPos) {
                     rowData.push(node.totals.unitCost || "", node.totals.costingValue);
                 }
                 hierarchyFlatRows.push(rowData);
@@ -163,7 +170,7 @@ export async function exportAvailableStockSummaryToExcel({
                 "",
                 grandTotals.value,
             ];
-            if (!isPosLevel) {
+            if (!isPos) {
                 hierarchyGrandTotalRow.push("", grandTotals.costingValue);
             }
             hierarchyFlatRows.push(hierarchyGrandTotalRow);
@@ -198,8 +205,8 @@ export async function exportAvailableStockSummaryToExcel({
             "Selling Price (Rs.)",
             "Selling Value (Rs.)",
         ];
-        if (!isPosLevel) {
-            flatHeaders.push("Unit Cost (Rs.)", "Unit Value (Rs.)");
+        if (!isPos) {
+            flatHeaders.push("Unit Cost (Rs.)", "Cost Value (Rs.)");
         }
         flatDataRows.push(flatHeaders);
 
@@ -232,7 +239,7 @@ export async function exportAvailableStockSummaryToExcel({
                     item.unitPrice,
                     item.value,
                 ];
-                if (!isPosLevel) {
+                if (!isPos) {
                     flatRow.push(item.unitCost, item.costingValue);
                 }
                 flatDataRows.push(flatRow);
@@ -287,7 +294,7 @@ export async function exportAvailableStockSummaryToExcel({
                 "",
                 grandTotals.value,
             ];
-            if (!isPosLevel) {
+            if (!isPos) {
                 flatGrandTotalRow.push("", grandTotals.costingValue);
             }
             flatDataRows.push(flatGrandTotalRow);
@@ -306,7 +313,7 @@ export async function exportAvailableStockSummaryToExcel({
                 { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
                 { wch: 18 }, { wch: 18 },
             ];
-            if (!isPosLevel) {
+            if (!isPos) {
                 hierarchyCols.push({ wch: 18 }, { wch: 18 });
             }
             wsHierarchy["!cols"] = hierarchyCols;
@@ -322,14 +329,14 @@ export async function exportAvailableStockSummaryToExcel({
                 { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
                 { wch: 18 }, { wch: 18 },
             ];
-            if (!isPosLevel) {
+            if (!isPos) {
                 flatCols.push({ wch: 18 }, { wch: 18 });
             }
             wsFlat["!cols"] = flatCols;
             XLSX.utils.book_append_sheet(workbook, wsFlat, "Flat Detail Ledger");
         }
 
-        const posPrefix = isPosLevel ? "pos-" : "";
+        const posPrefix = isPos ? "pos-" : "";
         const fileName = `available-stock-summary-${posPrefix}${exportMode}-${reportType}-${new Date().toISOString().slice(0, 10)}.xlsx`;
         const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
 

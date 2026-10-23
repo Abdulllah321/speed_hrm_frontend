@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useTransition, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import {
-    getStockValuationReport,
     queueStockValuationReportExport,
     getStockValuationReportExportStatus,
     queueStockValuationPreview,
@@ -13,7 +12,6 @@ import { useReportSse } from "@/hooks/use-report-sse";
 import { ReportQueueProgress } from "@/components/reports/ReportQueueProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
     Download,
@@ -324,19 +322,9 @@ function BreakdownTooltip({
 export default function PosStockValuationReportPage() {
     const { user } = useAuth();
 
-    // Default to start of current Fiscal Year (July 1st)
-    const getFiscalYearStart = () => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth(); // 0 = Jan, 6 = July
-        const fyYear = month >= 6 ? year : year - 1;
-        return new Date(fyYear, 6, 1);
-    };
-
-    const [dateRange, setDateRange] = useState<DateRange>({
-        from: getFiscalYearStart(),
-        to: new Date(),
-    });
+    const [asOfDate, setAsOfDate] = useState<string>(
+        format(new Date(), "yyyy-MM-dd"),
+    );
 
     const [groupingLevels, setGroupingLevels] = useState({
         brand: true,
@@ -418,15 +406,14 @@ export default function PosStockValuationReportPage() {
     const sseState = useReportSse(previewJobId, "valuation");
 
     const fetchReport = useCallback(() => {
-        if (!dateRange.from || !dateRange.to) return;
+        if (!asOfDate) return;
         setIsQueueingJob(true);
         setIsFetchingResult(false);
         setPreviewJobId(null);
 
         startTransition(async () => {
             const queueRes = await queueStockValuationPreview({
-                startDate: dateRange.from?.toISOString(),
-                endDate: dateRange.to?.toISOString(),
+                asOfDate,
                 summaryOnly,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
@@ -447,7 +434,7 @@ export default function PosStockValuationReportPage() {
                 toast.error("Failed to queue stock valuation report preview");
             }
         });
-    }, [dateRange, groupingLevels, summaryOnly]);
+    }, [asOfDate, groupingLevels, summaryOnly]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -555,7 +542,7 @@ export default function PosStockValuationReportPage() {
     }, [pdfExportState, pdfJobId]);
 
     const handleExportExcelClick = async (exportType: "hierarchical" | "flat" = "hierarchical") => {
-        if (!dateRange.from || !dateRange.to) return;
+        if (!asOfDate) return;
 
         // If completed, trigger download
         if (exportState === "completed" && exportJobId) {
@@ -574,8 +561,7 @@ export default function PosStockValuationReportPage() {
         setExportState("queueing");
         try {
             const res = await queueStockValuationReportExport({
-                startDate: dateRange.from.toISOString(),
-                endDate: dateRange.to.toISOString(),
+                asOfDate,
                 format: "xlsx",
                 exportType,
                 filterBrands: [...filterBrands],
@@ -612,7 +598,7 @@ export default function PosStockValuationReportPage() {
     };
 
     const handleExportPdfClick = async () => {
-        if (!dateRange.from || !dateRange.to) return;
+        if (!asOfDate) return;
 
         // If completed, trigger download
         if (pdfExportState === "completed" && pdfJobId) {
@@ -631,8 +617,7 @@ export default function PosStockValuationReportPage() {
         setPdfExportState("queueing");
         try {
             const res = await queueStockValuationReportExport({
-                startDate: dateRange.from.toISOString(),
-                endDate: dateRange.to.toISOString(),
+                asOfDate,
                 format: "pdf",
                 filterBrands: [...filterBrands],
                 filterDivisions: [...filterDivisions],
@@ -1183,27 +1168,23 @@ export default function PosStockValuationReportPage() {
                 <h1 className="text-2xl font-bold text-center text-slate-900">Stock Valuation Report</h1>
                 <p className="text-sm text-center text-slate-600 mt-1">Company-Wide Stock Valuation</p>
                 <p className="text-xs text-center text-slate-500">
-                    Period: {dateRange.from ? format(dateRange.from, "dd MMM yyyy") : "Start"} to{" "}
-                    {dateRange.to ? format(dateRange.to, "dd MMM yyyy") : "End"}
+                    As Of Date: {asOfDate ? format(new Date(asOfDate), "dd MMM yyyy") : format(new Date(), "dd MMM yyyy")}
                 </p>
             </div>
 
             {/* Filters Row */}
             <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
                 <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        Date Period:
-                    </span>
-                    <DateRangePicker
-                        initialDateFrom={dateRange.from}
-                        initialDateTo={dateRange.to}
-                        onUpdate={({ range }: { range: DateRange }) => {
-                            if (range) {
-                                setDateRange(range);
-                            }
-                        }}
-                    />
+                    <div className="flex items-center gap-1.5 bg-muted/40 p-1.5 rounded-xl border border-border">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                        <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">As Of:</span>
+                        <input
+                            type="date"
+                            value={asOfDate}
+                            onChange={(e) => setAsOfDate(e.target.value)}
+                            className="text-xs bg-transparent text-foreground border-0 focus:ring-0 p-0 font-medium cursor-pointer"
+                        />
+                    </div>
                     <Button
                         variant="ghost"
                         size="sm"

@@ -4,5 +4,11 @@ import React from "react";
 import { AvailableStockSummaryView } from "@/components/reports/available-stock-summary/available-stock-summary-view";
 
 export default function PosAvailableStockSummaryPage() {
-    return <AvailableStockSummaryView title="Available Stock Summary (POS)" isPosLevel={true} />;
+    return (
+        <AvailableStockSummaryView
+            title="Available Stock Summary (POS)"
+            isPosLevel={true}
+            isPosOnly={true}
+        />
+    );
 }

@@ -58,6 +58,7 @@ export async function exportOverallAvailableReservedStockToPdf({
                     <td style="text-align: right; color: #059669; font-weight: bold;">${item.quantity.toLocaleString()}</td>
                     <td style="text-align: right; color: #D97706;">${item.transit.toLocaleString()}</td>
                     <td style="text-align: right; color: #9333EA;">${item.reserved.toLocaleString()}</td>
+                    <td style="text-align: right; color: #DB2777;">${(item.pendingInvoice || 0).toLocaleString()}</td>
                     <td style="text-align: right; font-weight: bold;">${item.total.toLocaleString()}</td>
                     <td style="text-align: right;">Rs. ${item.unitPrice ? item.unitPrice.toLocaleString() : "-"}</td>
                     <td style="text-align: right; font-weight: bold;">Rs. ${item.value.toLocaleString()}</td>
@@ -134,6 +135,7 @@ export async function exportOverallAvailableReservedStockToPdf({
                             <th style="text-align: right;">Available Qty</th>
                             <th style="text-align: right;">Transit</th>
                             <th style="text-align: right;">Reserved</th>
+                            <th style="text-align: right;">Pending Inv</th>
                             <th style="text-align: right;">Total Bal</th>
                             <th style="text-align: right;">Price</th>
                             <th style="text-align: right;">Value</th>
@@ -153,6 +155,7 @@ export async function exportOverallAvailableReservedStockToPdf({
                             <td style="text-align: right; color: #34D399;">${grandTotals.quantity.toLocaleString()}</td>
                             <td style="text-align: right; color: #FBBF24;">${grandTotals.transit.toLocaleString()}</td>
                             <td style="text-align: right; color: #C084FC;">${grandTotals.reserved.toLocaleString()}</td>
+                            <td style="text-align: right; color: #F472B6;">${(grandTotals.pendingInvoice || 0).toLocaleString()}</td>
                             <td style="text-align: right; color: #38BDF8;">${grandTotals.total.toLocaleString()}</td>
                             <td style="text-align: right;"></td>
                             <td style="text-align: right; color: #818CF8;">Rs. ${grandTotals.value.toLocaleString()}</td>

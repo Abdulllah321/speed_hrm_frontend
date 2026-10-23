@@ -216,6 +216,7 @@ export async function getStockValuationReport(filters: {
 
 export async function queueStockValuationReportExport(filters: {
     locationId?: string;
+    asOfDate?: string;
     startDate?: string;
     endDate?: string;
     format: "xlsx" | "pdf";
@@ -234,6 +235,7 @@ export async function queueStockValuationReportExport(filters: {
     showSilhouette?: boolean;
     showArticle?: boolean;
     showVariant?: boolean;
+    previewJobId?: string;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const url = `/stock-ledger/valuation-report/export/queue`;
@@ -242,6 +244,7 @@ export async function queueStockValuationReportExport(filters: {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 ...(filters.locationId ? { locationId: filters.locationId } : {}),
+                asOfDate: filters.asOfDate,
                 startDate: filters.startDate,
                 endDate: filters.endDate,
                 format: filters.format,
@@ -260,7 +263,7 @@ export async function queueStockValuationReportExport(filters: {
                 showSilhouette: filters.showSilhouette,
                 showArticle: filters.showArticle,
                 showVariant: filters.showVariant,
-                previewJobId: (filters as any).previewJobId,
+                previewJobId: filters.previewJobId,
             }),
         });
         return response.data ?? { status: false, message: "No response from server" };
@@ -272,6 +275,7 @@ export async function queueStockValuationReportExport(filters: {
 
 export async function queueStockValuationPreview(filters: {
     locationId?: string;
+    asOfDate?: string;
     startDate?: string;
     endDate?: string;
     summaryOnly?: boolean;
@@ -452,6 +456,7 @@ export async function getAvailableStockSummaryReport(filters: {
 export async function queueAvailableStockSummaryPreview(filters: {
     locationId?: string;
     warehouseId?: string;
+    asOfDate?: string;
     startDate?: string;
     endDate?: string;
     reportType?: "merged" | "separate";
@@ -491,6 +496,7 @@ export async function getAvailableStockSummaryResult(jobId: string) {
 export async function queueAvailableStockSummaryReportExport(filters: {
     locationId?: string;
     warehouseId?: string;
+    asOfDate?: string;
     startDate?: string;
     endDate?: string;
     format: "xlsx" | "pdf";

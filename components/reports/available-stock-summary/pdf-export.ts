@@ -11,8 +11,10 @@ interface ExportPdfOptions {
     exportMode?: "hierarchy" | "flat";
     dateFromStr?: string;
     dateToStr?: string;
+    asOfDate?: string;
     companyName?: string;
     isPosLevel?: boolean;
+    isPosOnly?: boolean;
     onProgress?: (percent: number, message: string) => void;
 }
 
@@ -26,10 +28,13 @@ export async function exportAvailableStockSummaryToPdf({
     exportMode = "hierarchy",
     dateFromStr,
     dateToStr,
+    asOfDate,
     companyName = "Speed Limit ERP",
     isPosLevel = false,
+    isPosOnly,
     onProgress,
 }: ExportPdfOptions): Promise<void> {
+    const isPos = isPosOnly !== undefined ? isPosOnly : isPosLevel;
     try {
         onProgress?.(10, "Initializing non-blocking PDF/Print layout generator...");
         await yieldToMain();
@@ -88,7 +93,7 @@ export async function exportAvailableStockSummaryToPdf({
                         <td style="text-align: right; font-weight: bold;">${node.totals.total.toLocaleString()}</td>
                         <td style="text-align: right;">${node.totals.unitPrice ? "Rs. " + node.totals.unitPrice.toLocaleString() : "-"}</td>
                         <td style="text-align: right; font-weight: bold;">Rs. ${node.totals.value.toLocaleString()}</td>
-                        ${!isPosLevel ? `
+                        ${!isPos ? `
                         <td style="text-align: right;">${node.totals.unitCost ? "Rs. " + node.totals.unitCost.toLocaleString() : "-"}</td>
                         <td style="text-align: right; font-weight: bold;">Rs. ${node.totals.costingValue.toLocaleString()}</td>
                         ` : ""}
@@ -128,7 +133,7 @@ export async function exportAvailableStockSummaryToPdf({
                         <td style="text-align: right; font-weight: bold;">${item.total.toLocaleString()}</td>
                         <td style="text-align: right;">Rs. ${item.unitPrice.toLocaleString()}</td>
                         <td style="text-align: right; font-weight: bold;">Rs. ${item.value.toLocaleString()}</td>
-                        ${!isPosLevel ? `
+                        ${!isPos ? `
                         <td style="text-align: right;">Rs. ${item.unitCost.toLocaleString()}</td>
                         <td style="text-align: right; font-weight: bold;">Rs. ${item.costingValue.toLocaleString()}</td>
                         ` : ""}
@@ -148,40 +153,40 @@ export async function exportAvailableStockSummaryToPdf({
 
         const tableHeaderHtml = exportMode === "hierarchy" ? `
             <tr>
-                <th style="${isPosLevel ? "width: 30%;" : "width: 28%;"}">GPC / Category / Product / Barcode</th>
-                <th style="${isPosLevel ? "width: 6%;" : "width: 6%;"} text-align: center;">Size</th>
-                <th style="${isPosLevel ? "width: 10%;" : "width: 10%;"} text-align: center;">Color</th>
-                <th style="${isPosLevel ? "width: 9%;" : "width: 8%;"} text-align: right;">Available Qty</th>
-                <th style="${isPosLevel ? "width: 7%;" : "width: 7%;"} text-align: right;">In Transit</th>
-                <th style="${isPosLevel ? "width: 7%;" : "width: 7%;"} text-align: right;">Reserved</th>
-                <th style="${isPosLevel ? "width: 7%;" : "width: 7%;"} text-align: right;">Pending Inv</th>
-                <th style="${isPosLevel ? "width: 8%;" : "width: 8%;"} text-align: right;">Total Balance</th>
-                <th style="${isPosLevel ? "width: 8%;" : "width: 7%;"} text-align: right;">Selling Price</th>
-                <th style="${isPosLevel ? "width: 8%;" : "width: 7%;"} text-align: right;">Selling Value</th>
-                ${!isPosLevel ? `
+                <th style="${isPos ? "width: 30%;" : "width: 28%;"}">GPC / Category / Product / Barcode</th>
+                <th style="${isPos ? "width: 6%;" : "width: 6%;"} text-align: center;">Size</th>
+                <th style="${isPos ? "width: 10%;" : "width: 10%;"} text-align: center;">Color</th>
+                <th style="${isPos ? "width: 9%;" : "width: 8%;"} text-align: right;">Available Qty</th>
+                <th style="${isPos ? "width: 7%;" : "width: 7%;"} text-align: right;">In Transit</th>
+                <th style="${isPos ? "width: 7%;" : "width: 7%;"} text-align: right;">Reserved</th>
+                <th style="${isPos ? "width: 7%;" : "width: 7%;"} text-align: right;">Pending Inv</th>
+                <th style="${isPos ? "width: 8%;" : "width: 8%;"} text-align: right;">Total Balance</th>
+                <th style="${isPos ? "width: 8%;" : "width: 7%;"} text-align: right;">Selling Price</th>
+                <th style="${isPos ? "width: 8%;" : "width: 7%;"} text-align: right;">Selling Value</th>
+                ${!isPos ? `
                 <th style="width: 6%; text-align: right;">Unit Cost</th>
-                <th style="width: 6%; text-align: right;">Unit Value</th>
+                <th style="width: 6%; text-align: right;">Cost Value</th>
                 ` : ""}
             </tr>
         ` : `
             <tr>
-                <th style="${isPosLevel ? "width: 13%;" : "width: 12%;"}">Location</th>
-                <th style="${isPosLevel ? "width: 10%;" : "width: 9%;"} text-align: center;">Barcode</th>
-                <th style="${isPosLevel ? "width: 9%;" : "width: 8%;"} text-align: center;">SKU</th>
-                <th style="${isPosLevel ? "width: 20%;" : "width: 17%;"}">Article Name</th>
-                <th style="${isPosLevel ? "width: 9%;" : "width: 8%;"}">Brand</th>
-                <th style="${isPosLevel ? "width: 6%;" : "width: 5%;"} text-align: center;">Size</th>
-                <th style="${isPosLevel ? "width: 7%;" : "width: 7%;"} text-align: center;">Color</th>
-                <th style="${isPosLevel ? "width: 5%;" : "width: 5%;"} text-align: right;">Qty</th>
-                <th style="${isPosLevel ? "width: 5%;" : "width: 5%;"} text-align: right;">Transit</th>
-                <th style="${isPosLevel ? "width: 5%;" : "width: 5%;"} text-align: right;">Reserved</th>
-                <th style="${isPosLevel ? "width: 5%;" : "width: 5%;"} text-align: right;">Pend Inv</th>
-                <th style="${isPosLevel ? "width: 5%;" : "width: 5%;"} text-align: right;">Total</th>
-                <th style="${isPosLevel ? "width: 6%;" : "width: 5%;"} text-align: right;">Price</th>
-                <th style="${isPosLevel ? "width: 7%;" : "width: 7%;"} text-align: right;">Value</th>
-                ${!isPosLevel ? `
+                <th style="${isPos ? "width: 13%;" : "width: 12%;"}">Location</th>
+                <th style="${isPos ? "width: 10%;" : "width: 9%;"} text-align: center;">Barcode</th>
+                <th style="${isPos ? "width: 9%;" : "width: 8%;"} text-align: center;">SKU</th>
+                <th style="${isPos ? "width: 20%;" : "width: 17%;"}">Article Name</th>
+                <th style="${isPos ? "width: 9%;" : "width: 8%;"}">Brand</th>
+                <th style="${isPos ? "width: 6%;" : "width: 5%;"} text-align: center;">Size</th>
+                <th style="${isPos ? "width: 7%;" : "width: 7%;"} text-align: center;">Color</th>
+                <th style="${isPos ? "width: 5%;" : "width: 5%;"} text-align: right;">Qty</th>
+                <th style="${isPos ? "width: 5%;" : "width: 5%;"} text-align: right;">Transit</th>
+                <th style="${isPos ? "width: 5%;" : "width: 5%;"} text-align: right;">Reserved</th>
+                <th style="${isPos ? "width: 5%;" : "width: 5%;"} text-align: right;">Pend Inv</th>
+                <th style="${isPos ? "width: 5%;" : "width: 5%;"} text-align: right;">Total</th>
+                <th style="${isPos ? "width: 6%;" : "width: 5%;"} text-align: right;">Price</th>
+                <th style="${isPos ? "width: 7%;" : "width: 7%;"} text-align: right;">Value</th>
+                ${!isPos ? `
                 <th style="width: 5%; text-align: right;">Unit Cost</th>
-                <th style="width: 7%; text-align: right;">Unit Value</th>
+                <th style="width: 7%; text-align: right;">Cost Value</th>
                 ` : ""}
             </tr>
         `;
@@ -209,8 +214,8 @@ export async function exportAvailableStockSummaryToPdf({
             <body>
                 <div class="header">
                     <h1>${companyName}</h1>
-                    <p><strong>AVAILABLE STOCK SUMMARY REPORT${isPosLevel ? " (POS LEVEL)" : ""} (${reportType.toUpperCase()} ${exportMode.toUpperCase()} VIEW)</strong></p>
-                    <p>Period: ${dateFromStr || "All Time"} to ${dateToStr || "Present"} | Generated: ${new Date().toLocaleString()}</p>
+                    <p><strong>AVAILABLE STOCK SUMMARY REPORT${isPos ? " (POS LEVEL)" : ""} (${reportType.toUpperCase()} ${exportMode.toUpperCase()} VIEW)</strong></p>
+                    <p>As Of Date: <strong>${asOfDate || dateToStr || new Date().toISOString().slice(0, 10)}</strong> (Fiscal Period: ${dateFromStr || "1st July"} to ${asOfDate || dateToStr || new Date().toISOString().slice(0, 10)}) | Generated: ${new Date().toLocaleString()}</p>
                 </div>
 
                 <table>
@@ -230,7 +235,7 @@ export async function exportAvailableStockSummaryToPdf({
                             <td style="text-align: right; color: #38BDF8;">${grandTotals.total.toLocaleString()}</td>
                             <td style="text-align: right;"></td>
                             <td style="text-align: right; color: #818CF8;">Rs. ${grandTotals.value.toLocaleString()}</td>
-                            ${!isPosLevel ? `
+                            ${!isPos ? `
                             <td style="text-align: right;"></td>
                             <td style="text-align: right; color: #2DD4BF;">Rs. ${grandTotals.costingValue.toLocaleString()}</td>
                             ` : ""}
@@ -259,7 +264,7 @@ export async function exportAvailableStockSummaryToPdf({
 
         try {
             const blob = new Blob([printHtml], { type: "text/html" });
-            const posPrefix = isPosLevel ? "pos-" : "";
+            const posPrefix = isPos ? "pos-" : "";
             const fileName = `available-stock-summary-${posPrefix}${exportMode}-${reportType}-${new Date().toISOString().slice(0, 10)}.html`;
             const formData = new FormData();
             formData.append("file", blob, fileName);

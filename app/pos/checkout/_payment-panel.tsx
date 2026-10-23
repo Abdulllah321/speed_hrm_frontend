@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/select";
 import {
     Loader2, Plus, Trash2, CreditCard, Banknote, Building2, Ticket, BookOpen,
-    CheckCircle2, XCircle, Award,
+    CheckCircle2, XCircle, Award, Sparkles, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tender, Customer, AllianceConfig, DiscountMode } from "./page";
+import type { CartItem } from "@/components/pos/new-sale/cart-table";
+import { analyzeCartContext, getAllianceMatchMeta } from "./_discount-panel";
 
 export interface MerchantConfig {
     id: string;
@@ -85,6 +87,10 @@ interface PaymentPanelProps {
     onVoucherCodeChange: (val: string) => void;
     onVoucherValidate: (code: string) => void;
     fmtCurrency: (v: number) => string;
+    // Alliance props
+    alliances?: AllianceConfig[];
+    cartItems?: CartItem[];
+    onSelectAlliance?: (a: AllianceConfig | null, binNumber?: string) => void;
 }
 
 export function PaymentPanel({
@@ -93,6 +99,7 @@ export function PaymentPanel({
     merchants, selectedMerchant, isLoadingMerchants, onMerchantChange,
     voucherCode, validatedVoucher, voucherError, voucherValidating,
     allianceMeta, onAllianceMetaChange,
+    alliances, cartItems, onSelectAlliance,
     tenderAmountRef,
     onTenderMethodChange, onTenderAmountChange,
     onTenderCardholderNameChange, onTenderCardLast4Change, onTenderSlipChange, onTenderRemarksChange,
@@ -100,6 +107,19 @@ export function PaymentPanel({
     onVoucherCodeChange, onVoucherValidate,
     fmtCurrency,
 }: PaymentPanelProps) {
+    const [cardBinInput, setCardBinInput] = React.useState("");
+    const cartCtx = React.useMemo(() => analyzeCartContext(cartItems || []), [cartItems]);
+    const quickAllianceMatches = React.useMemo(() => {
+        const clean = cardBinInput.trim();
+        if (clean.length < 4 || !alliances) return [];
+        return alliances
+            .filter((a) => a.binNumbers.some((bin) => bin.startsWith(clean) || clean.startsWith(bin)))
+            .map((a) => ({
+                alliance: a,
+                meta: getAllianceMatchMeta(a, cartCtx, clean),
+            }))
+            .sort((x, y) => y.meta.score - x.meta.score);
+    }, [alliances, cardBinInput, cartCtx]);
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/30">
@@ -165,21 +185,83 @@ export function PaymentPanel({
                     {tenderMethod === "credit_account" && selectedCustomer && (
                         <div className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs text-emerald-700">
                             <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                            <span>Will be posted to <strong>{selectedCustomer.name}</strong>'s Credit Account as an outstanding receivable.</span>
+                            <span>Will be posted to <strong>{selectedCustomer.name}</strong>&apos;s Credit Account as an outstanding receivable.</span>
                         </div>
                     )}
 
                     {/* Card / bank transfer extra fields */}
                     {(tenderMethod === "card" || tenderMethod === "bank_transfer") && (
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                              {/* Alliance context banner */}
                              {(discountMode === "alliance" || discountMode === "manual") && selectedAlliance && (
-                                 <div className="flex items-start gap-2 rounded-lg border border-blue-300/60 bg-blue-50/60 dark:bg-blue-950/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
-                                     <CreditCard className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                                     <span>
-                                         Card details below will be recorded for the{" "}
-                                         <strong>{selectedAlliance.partnerName}</strong> alliance discount on this order.
-                                     </span>
+                                 <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-300">
+                                     <Sparkles className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />
+                                     <div className="flex-1">
+                                         <span>
+                                             Card payment for <strong>{selectedAlliance.partnerName}</strong> ({selectedAlliance.description || selectedAlliance.code}) • {selectedAlliance.discountPercent}% off
+                                             {selectedAlliance.maxDiscount ? ` (Cap: ${fmtCurrency(Number(selectedAlliance.maxDiscount))})` : ""}
+                                         </span>
+                                     </div>
+                                 </div>
+                             )}
+
+                             {/* Quick Alliance Checker if paying by card without an active alliance */}
+                             {discountMode === "none" && (tenderMethod === "card" || tenderMethod === "bank_transfer") && alliances && alliances.length > 0 && onSelectAlliance && (
+                                 <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2.5 space-y-2">
+                                     <div className="flex items-center justify-between">
+                                         <Label className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                                             <Sparkles className="h-3.5 w-3.5" /> Check Bank Card Alliance
+                                         </Label>
+                                         <span className="text-[10px] text-muted-foreground font-sans">Type first 6 digits</span>
+                                     </div>
+                                     <div className="relative">
+                                         <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                         <Input
+                                             className="pl-8 h-8 text-xs font-mono"
+                                             placeholder="Enter card BIN (e.g. 517420) to check discount..."
+                                             maxLength={8}
+                                             value={cardBinInput}
+                                             onChange={(e) => setCardBinInput(e.target.value.replace(/\D/g, ""))}
+                                         />
+                                     </div>
+                                     {quickAllianceMatches.length > 0 && (
+                                         <div className="space-y-1.5 pt-1">
+                                             {quickAllianceMatches.map(({ alliance: a, meta }) => {
+                                                 const targetBin = meta.matchedBin || cardBinInput.trim() || (a.binNumbers?.[0] || "");
+                                                 return (
+                                                     <div
+                                                         key={a.id}
+                                                         className="flex items-center justify-between gap-2 p-2 rounded-md bg-card border text-xs"
+                                                     >
+                                                         <div className="min-w-0 flex-1">
+                                                             <div className="flex items-center gap-1.5 flex-wrap">
+                                                                 <span className="font-semibold">{a.partnerName}</span>
+                                                                 {meta.badgeText && (
+                                                                     <span className={cn("text-[8px] px-1.5 py-0.2 rounded-full border", meta.badgeClass)}>
+                                                                         {meta.badgeText}
+                                                                     </span>
+                                                                 )}
+                                                             </div>
+                                                             <p className="text-[10px] text-muted-foreground truncate">
+                                                                 {a.description || a.code} • {a.discountPercent}% off{a.maxDiscount ? ` (Cap: ${fmtCurrency(Number(a.maxDiscount))})` : ""}
+                                                             </p>
+                                                         </div>
+                                                         <Button
+                                                             size="sm"
+                                                             type="button"
+                                                             className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                                                             onClick={() => {
+                                                                 onSelectAlliance(a, targetBin);
+                                                                 setCardBinInput("");
+                                                             }}
+                                                         >
+                                                             Apply
+                                                         </Button>
+                                                     </div>
+                                                 );
+                                             })}
+                                         </div>
+                                     )}
                                  </div>
                              )}
 
@@ -260,10 +342,21 @@ export function PaymentPanel({
                                 {/* ── BIN Number selector ── */}
                                 {(discountMode === "alliance" || discountMode === "manual") && selectedAlliance && selectedAlliance.binNumbers?.length > 0 && (
                                     <div>
-                                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                                            Card BIN Number
-                                            <span className="text-destructive ml-0.5">*</span>
-                                        </Label>
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                                                Card BIN Number
+                                                <span className="text-destructive ml-0.5">*</span>
+                                            </Label>
+                                            {allianceMeta?.binNumber ? (
+                                                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                                                    ✓ Pre-selected
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] text-amber-600 font-medium">
+                                                    Selection required
+                                                </span>
+                                            )}
+                                        </div>
                                         <Select
                                             value={allianceMeta?.binNumber || ""}
                                             onValueChange={(val) => {
@@ -273,7 +366,14 @@ export function PaymentPanel({
                                                 });
                                             }}
                                         >
-                                            <SelectTrigger className="mt-1 h-9">
+                                            <SelectTrigger
+                                                className={cn(
+                                                    "mt-1 h-9",
+                                                    allianceMeta?.binNumber
+                                                        ? "border-emerald-500/40 bg-emerald-500/5 font-mono font-medium"
+                                                        : "border-amber-400 focus:ring-amber-400"
+                                                )}
+                                            >
                                                 <SelectValue placeholder="Select BIN..." />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -288,12 +388,16 @@ export function PaymentPanel({
                                             <p className="text-[10px] text-amber-600 mt-1">Select qualifying BIN number</p>
                                         )}
                                         {allianceMeta?.binNumber && (
-                                            <div className="mt-1.5 flex items-center gap-3 rounded-md bg-muted/30 border px-2.5 py-1.5 text-xs">
-                                                <CreditCard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                    <span className="font-medium">Selected BIN: </span>
-                                                    <span className="font-mono font-bold text-primary">{allianceMeta.binNumber}</span>
+                                            <div className="mt-1.5 flex items-center justify-between rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 text-xs text-emerald-800 dark:text-emerald-300">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <CreditCard className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                                    <span className="truncate">
+                                                        Selected BIN: <strong className="font-mono font-bold">{allianceMeta.binNumber}</strong>
+                                                    </span>
                                                 </div>
+                                                <span className="text-[9px] text-muted-foreground font-sans shrink-0">
+                                                    (Dropdown to change)
+                                                </span>
                                             </div>
                                         )}
                                     </div>

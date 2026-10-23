@@ -823,6 +823,73 @@ export default function CheckoutPage() {
     }
   }, [couponInput, subtotalAfterItems]);
 
+  const handleSelectAlliance = useCallback(
+    (a: AllianceConfig | null, binNumber?: string) => {
+      if (a === null) {
+        setSelectedAlliance(null);
+        setAllianceMeta((prev) => ({ ...prev, binNumber: "" }));
+        return;
+      }
+      if (discountMode === "manual") {
+        setSelectedAlliance(a);
+        const cleanSearch = allianceSearch.trim();
+        const matchedFromSearch = a.binNumbers?.find((b) =>
+          cleanSearch && (b.startsWith(cleanSearch) || cleanSearch.startsWith(b))
+        );
+        const autoBin =
+          binNumber ||
+          matchedFromSearch ||
+          (a.binNumbers?.length ? a.binNumbers[0] : "");
+        if (autoBin) {
+          setAllianceMeta((prev) => ({ ...prev, binNumber: autoBin }));
+        }
+        return;
+      }
+      if (tenders.some((t) => t.method === "cash")) {
+        toast.error(
+          "Alliance discount cannot be applied when cash payment is added.",
+        );
+        return;
+      }
+      // Clear any previously added tenders so the amount resets against new discount
+      setTenders([]);
+      setAppliedVouchers([]);
+      setTenderAmount(0);
+      clearDiscount();
+      setSelectedAlliance(a);
+      setDiscountMode("alliance");
+
+      // Auto-switch tender method to card since Alliance requires card
+      if (tenderMethod === "cash") {
+        setTenderMethod("card");
+      }
+
+      // Determine the auto-selected BIN:
+      // 1. Explicitly passed binNumber
+      // 2. Searched BIN if it matches a.binNumbers
+      // 3. First BIN if available
+      const cleanSearch = allianceSearch.trim();
+      const matchedFromSearch = a.binNumbers?.find((b) =>
+        cleanSearch && (b.startsWith(cleanSearch) || cleanSearch.startsWith(b))
+      );
+      const autoBin =
+        binNumber ||
+        matchedFromSearch ||
+        (a.binNumbers?.length ? a.binNumbers[0] : "");
+
+      if (autoBin) {
+        setAllianceMeta((prev) => ({
+          ...prev,
+          binNumber: autoBin,
+        }));
+        toast.success(`Applied ${a.partnerName} (${autoBin})`, {
+          duration: 2500,
+        });
+      }
+    },
+    [discountMode, allianceSearch, tenders, clearDiscount, tenderMethod],
+  );
+
   const addTender = () => {
     if (!tenderAmount || tenderAmount <= 0) return;
 
@@ -1924,30 +1991,7 @@ export default function CheckoutPage() {
             allianceDetailsRef={allianceDetailsRef}
             allianceSearchRef={allianceSearchRef}
             onAllianceSearch={setAllianceSearch}
-            onSelectAlliance={(a) => {
-              if (a === null) {
-                setSelectedAlliance(null);
-                return;
-              }
-              if (discountMode === "manual") {
-                setSelectedAlliance(a);
-                return;
-              }
-              if (tenders.some((t) => t.method === "cash")) {
-                toast.error(
-                  "Alliance discount cannot be applied when cash payment is added.",
-                );
-                return;
-              }
-              // Clear any previously added tenders (e.g. bank_transfer) so the
-              // amount resets against the new alliance-discounted grand total
-              setTenders([]);
-              setAppliedVouchers([]);
-              setTenderAmount(0);
-              clearDiscount();
-              setSelectedAlliance(a);
-              setDiscountMode("alliance");
-            }}
+            onSelectAlliance={handleSelectAlliance}
             manualDiscountType={manualDiscountType}
             manualDiscountValue={manualDiscountValue}
             onManualDiscountTypeChange={setManualDiscountType}
@@ -2036,6 +2080,9 @@ export default function CheckoutPage() {
               onVoucherCodeChange={handleVoucherCodeChange}
               onVoucherValidate={validateVoucherCode}
               fmtCurrency={fmtCurrency}
+              alliances={alliances}
+              cartItems={cartItems}
+              onSelectAlliance={handleSelectAlliance}
             />
             {/* Action buttons */}
             <ActionButtons

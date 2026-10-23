@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,168 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
     Tag, TicketPercent, Handshake, Wallet, Loader2, Search,
     CheckCircle2, XCircle, ChevronDown, ChevronUp, Percent,
+    Sparkles,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import { cn } from "@/lib/utils";
 import type { PromoConfig, AllianceConfig, AppliedCoupon, DiscountMode, Tender } from "./page";
+
+// ─── Smart Cart Intelligence & Alliance Classification ───────────────────
+
+export interface CartContext {
+    hasTagHeuer: boolean;
+    hasWatches: boolean;
+    watchBrandNames: string[];
+    tagHeuerCount: number;
+    watchCount: number;
+}
+
+const KNOWN_WATCH_BRANDS = [
+    "TAG HEUER", "TAGHEUER", "TAG-HEUER", "TISSOT", "RADO", "TIMEX",
+    "CASIO", "G-SHOCK", "BABY-G", "EDIFICE", "CITIZEN", "SEIKO",
+    "FOSSIL", "DANISH DESIGN", "ORIS", "ROAMER", "CERTINA", "LONGINES",
+    "SWATCH", "POLICE", "NAUTICA", "GUESS", "FENDI"
+];
+
+export function analyzeCartContext(cartItems: CartItem[]): CartContext {
+    let tagHeuerCount = 0;
+    let watchCount = 0;
+    const watchBrandsFound = new Set<string>();
+
+    for (const item of cartItems) {
+        const brand = (item.brand || "").trim().toUpperCase();
+        const name = (item.name || "").trim().toUpperCase();
+        const qty = item.quantity || 1;
+
+        const isTag =
+            brand.includes("TAG HEUER") ||
+            brand.includes("TAGHEUER") ||
+            name.includes("TAG HEUER") ||
+            name.includes("TAGHEUER");
+
+        const isKnownWatch =
+            isTag ||
+            KNOWN_WATCH_BRANDS.some((wb) => brand.includes(wb)) ||
+            name.includes("WATCH") ||
+            brand.includes("WATCH") ||
+            name.includes("CHRONOGRAPH");
+
+        if (isTag) {
+            tagHeuerCount += qty;
+            watchBrandsFound.add("TAG HEUER");
+        } else if (isKnownWatch) {
+            watchCount += qty;
+            if (brand) watchBrandsFound.add(brand);
+            else watchBrandsFound.add("Watch");
+        }
+    }
+
+    return {
+        hasTagHeuer: tagHeuerCount > 0,
+        hasWatches: (tagHeuerCount + watchCount) > 0,
+        watchBrandNames: Array.from(watchBrandsFound),
+        tagHeuerCount,
+        watchCount,
+    };
+}
+
+export type AllianceCategory = "tagheuer" | "watches" | "standard";
+
+export function getAllianceCategory(a: AllianceConfig): AllianceCategory {
+    const text = `${a.code} ${a.partnerName} ${a.description || ""}`.toUpperCase();
+    if (
+        text.includes("TAGHEUER") ||
+        text.includes("TAG HEUER") ||
+        text.includes("TAG-HEUER") ||
+        a.code === "510201"
+    ) {
+        return "tagheuer";
+    }
+    if (text.includes("WATCH") || a.code === "510102") {
+        return "watches";
+    }
+    return "standard";
+}
+
+export interface AllianceMatchMeta {
+    category: AllianceCategory;
+    isRecommended: boolean;
+    badgeText: string;
+    badgeClass: string;
+    score: number;
+    helperText?: string;
+    matchedBin?: string;
+}
+
+export function getAllianceMatchMeta(
+    a: AllianceConfig,
+    cartCtx: CartContext,
+    searchTerm: string
+): AllianceMatchMeta {
+    const cat = getAllianceCategory(a);
+    const cleanSearch = searchTerm.trim();
+
+    // Check if a searched numeric BIN matches any binNumber
+    const matchedBin = cleanSearch && cleanSearch.match(/^\d+/)
+        ? a.binNumbers.find((bin) => bin.startsWith(cleanSearch) || cleanSearch.startsWith(bin))
+        : undefined;
+
+    let score = 0;
+    let isRecommended = false;
+    let badgeText = "";
+    let badgeClass = "";
+    let helperText = "";
+
+    if (cat === "tagheuer") {
+        if (cartCtx.hasTagHeuer) {
+            isRecommended = true;
+            score = 100;
+            badgeText = "TAG Heuer (200k Cap)";
+            badgeClass = "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-semibold";
+            helperText = "Matches TAG Heuer in cart (Rs. 200,000 cap)";
+        } else if (cartCtx.hasWatches) {
+            score = 25;
+            badgeText = "TAG Heuer (200k Cap)";
+            badgeClass = "bg-muted text-muted-foreground border-border";
+            helperText = "For TAG Heuer watches";
+        } else {
+            score = 10;
+        }
+    } else if (cat === "watches") {
+        if (!cartCtx.hasTagHeuer && cartCtx.hasWatches) {
+            isRecommended = true;
+            score = 90;
+            badgeText = "Watches (20k Cap)";
+            badgeClass = "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30 font-semibold";
+            helperText = "Matches watches in cart (Rs. 20,000 cap)";
+        } else if (cartCtx.hasTagHeuer) {
+            score = 45;
+            badgeText = "Watches (20k Cap)";
+            badgeClass = "bg-muted text-muted-foreground border-border";
+            helperText = "For general watches";
+        } else {
+            score = 15;
+        }
+    } else {
+        // Standard retail alliance (normal baseline, no badges or highlights)
+        score = 50;
+    }
+
+    // Boost if searched BIN explicitly matches
+    if (matchedBin) {
+        score += 200;
+    }
+
+    return {
+        category: cat,
+        isRecommended,
+        badgeText,
+        badgeClass,
+        score,
+        helperText,
+        matchedBin,
+    };
+}
 
 interface DiscountPanelProps {
     // Modes & data
@@ -57,7 +215,7 @@ interface DiscountPanelProps {
     allianceDetailsRef: React.RefObject<HTMLDetailsElement | null>;
     allianceSearchRef: React.RefObject<HTMLInputElement | null>;
     onAllianceSearch: (val: string) => void;
-    onSelectAlliance: (a: AllianceConfig | null) => void;
+    onSelectAlliance: (a: AllianceConfig | null, binNumber?: string) => void;
     // Manual discount
     manualDiscountType: "percent" | "flat";
     manualDiscountValue: number;
@@ -89,26 +247,62 @@ export function DiscountPanel({
     onClearDiscount, fmtCurrency, calcPromoDiscount,
 }: DiscountPanelProps) {
     const [activeAllianceIndex, setActiveAllianceIndex] = React.useState(-1);
-    const [tempManualDiscountValue, setTempManualDiscountValue] = useState<string>("");
+    const [prevManualDiscountValue, setPrevManualDiscountValue] = useState(manualDiscountValue);
+    const [tempManualDiscountValue, setTempManualDiscountValue] = useState<string>(
+        manualDiscountValue ? String(manualDiscountValue) : ""
+    );
     const [manualAllianceSearch, setManualAllianceSearch] = useState("");
 
-    useEffect(() => {
+    if (manualDiscountValue !== prevManualDiscountValue) {
+        setPrevManualDiscountValue(manualDiscountValue);
         setTempManualDiscountValue(manualDiscountValue ? String(manualDiscountValue) : "");
-    }, [manualDiscountValue]);
+    }
 
-    const filteredAlliances = alliances.filter(
-        (a) =>
-            a.partnerName.toLowerCase().includes(allianceSearch.toLowerCase()) ||
-            a.code.toLowerCase().includes(allianceSearch.toLowerCase()) ||
-            (allianceSearch.match(/^\d+/) && a.binNumbers.some((bin) => bin.startsWith(allianceSearch.trim())))
-    );
+    // Analyze cart items to distinguish TAG Heuer vs Watches vs Fashion/Sports
+    const cartCtx = React.useMemo(() => analyzeCartContext(cartItems), [cartItems]);
 
-    const filteredManualAlliances = alliances.filter(
-        (a) =>
-            a.partnerName.toLowerCase().includes(manualAllianceSearch.toLowerCase()) ||
-            a.code.toLowerCase().includes(manualAllianceSearch.toLowerCase()) ||
-            (manualAllianceSearch.match(/^\d+/) && a.binNumbers.some((bin) => bin.startsWith(manualAllianceSearch.trim())))
-    );
+    // Filter, score, and rank alliances intelligently based on cart context
+    const filteredAlliances = React.useMemo(() => {
+        const clean = allianceSearch.trim().toLowerCase();
+        const matches = alliances.filter((a) => {
+            if (!clean) return true;
+            const inPartner = a.partnerName.toLowerCase().includes(clean);
+            const inCode = a.code.toLowerCase().includes(clean);
+            const inDesc = a.description?.toLowerCase().includes(clean);
+            const inBins = a.binNumbers.some(
+                (bin) => bin.startsWith(clean) || clean.startsWith(bin)
+            );
+            return inPartner || inCode || inDesc || inBins;
+        });
+
+        return matches
+            .map((a) => ({
+                alliance: a,
+                meta: getAllianceMatchMeta(a, cartCtx, allianceSearch),
+            }))
+            .sort((x, y) => y.meta.score - x.meta.score);
+    }, [alliances, allianceSearch, cartCtx]);
+
+    const filteredManualAlliances = React.useMemo(() => {
+        const clean = manualAllianceSearch.trim().toLowerCase();
+        const matches = alliances.filter((a) => {
+            if (!clean) return true;
+            const inPartner = a.partnerName.toLowerCase().includes(clean);
+            const inCode = a.code.toLowerCase().includes(clean);
+            const inDesc = a.description?.toLowerCase().includes(clean);
+            const inBins = a.binNumbers.some(
+                (bin) => bin.startsWith(clean) || clean.startsWith(bin)
+            );
+            return inPartner || inCode || inDesc || inBins;
+        });
+
+        return matches
+            .map((a) => ({
+                alliance: a,
+                meta: getAllianceMatchMeta(a, cartCtx, manualAllianceSearch),
+            }))
+            .sort((x, y) => y.meta.score - x.meta.score);
+    }, [alliances, manualAllianceSearch, cartCtx]);
 
     React.useEffect(() => {
         setActiveAllianceIndex(-1);
@@ -119,15 +313,21 @@ export function DiscountPanel({
 
         if (e.key === "ArrowDown") {
             e.preventDefault();
-            setActiveAllianceIndex(idx => (idx + 1) % filteredAlliances.length);
+            setActiveAllianceIndex((idx) => (idx + 1) % filteredAlliances.length);
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
-            setActiveAllianceIndex(idx => (idx - 1 + filteredAlliances.length) % filteredAlliances.length);
+            setActiveAllianceIndex(
+                (idx) => (idx - 1 + filteredAlliances.length) % filteredAlliances.length
+            );
         } else if (e.key === "Enter") {
             e.preventDefault();
             const idx = activeAllianceIndex >= 0 ? activeAllianceIndex : 0;
             if (idx < filteredAlliances.length) {
-                onSelectAlliance(filteredAlliances[idx]);
+                const item = filteredAlliances[idx];
+                const targetBin =
+                    item.meta.matchedBin ||
+                    (item.alliance.binNumbers.length === 1 ? item.alliance.binNumbers[0] : item.alliance.binNumbers[0]);
+                onSelectAlliance(item.alliance, targetBin);
                 setActiveAllianceIndex(-1);
             }
         }
@@ -267,7 +467,11 @@ export function DiscountPanel({
                                                                                     checked={promoScopedItems.has(item.id)}
                                                                                     onCheckedChange={(v) => {
                                                                                         const next = new Set(promoScopedItems);
-                                                                                        v ? next.add(item.id) : next.delete(item.id);
+                                                                                        if (v) {
+                                                                                            next.add(item.id);
+                                                                                        } else {
+                                                                                            next.delete(item.id);
+                                                                                        }
                                                                                         onSetPromoScopedItems(next);
                                                                                         onSetPromoScopeAll(next.size === cartItems.length);
                                                                                     }}
@@ -348,7 +552,24 @@ export function DiscountPanel({
                                 <Badge variant="outline" className="text-[10px]">Disabled</Badge>
                             )}
                         </summary>
-                        <div className="p-3 space-y-2">
+                        <div className="p-3 space-y-2.5">
+                            {/* Smart Cart Context Indicator */}
+                            {cartCtx.hasTagHeuer ? (
+                                <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1.5 rounded-md">
+                                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                    <span>
+                                        Cart contains <strong>TAG Heuer</strong> ({cartCtx.tagHeuerCount} item{cartCtx.tagHeuerCount > 1 ? "s" : ""}) — <strong>TAG Heuer 200k Capping</strong> prioritized.
+                                    </span>
+                                </div>
+                            ) : cartCtx.hasWatches ? (
+                                <div className="flex items-center gap-1.5 text-[11px] text-sky-800 dark:text-sky-300 bg-sky-500/10 border border-sky-500/25 px-2.5 py-1.5 rounded-md">
+                                    <Sparkles className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+                                    <span>
+                                        Cart contains <strong>Watches ({cartCtx.watchBrandNames.join(", ") || "General"})</strong> — <strong>Watches 20k Capping</strong> prioritized.
+                                    </span>
+                                </div>
+                            ) : null}
+
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                                 <Input
@@ -360,17 +581,18 @@ export function DiscountPanel({
                                     onKeyDown={handleAllianceKeyDown}
                                 />
                             </div>
+
                             {isLoadingConfig ? (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Loading alliances...
                                 </div>
                             ) : (
-                                <div className="max-h-[200px] overflow-y-auto">
-                                    <div className="space-y-1.5 pr-1">
+                                <div className="max-h-[240px] overflow-y-auto">
+                                    <div className="space-y-2 pr-1">
                                         {filteredAlliances.length === 0 && (
-                                            <p className="text-xs text-muted-foreground italic py-1">No matching alliances.</p>
+                                            <p className="text-xs text-muted-foreground italic py-1">No matching alliances found.</p>
                                         )}
-                                        {filteredAlliances.map((a, idx) => {
+                                        {filteredAlliances.map(({ alliance: a, meta }, idx) => {
                                             let disc = 0;
                                             const allianceBase = subtotal;
                                             if (a.maxDiscount) {
@@ -383,44 +605,122 @@ export function DiscountPanel({
                                             }
                                             const isSelected = selectedAlliance?.id === a.id && discountMode === "alliance";
                                             const disabled = discountMode !== "none" && !isSelected;
+                                            const targetBin =
+                                                meta.matchedBin ||
+                                                (a.binNumbers.length === 1 ? a.binNumbers[0] : a.binNumbers[0] || "");
+
                                             return (
-                                                <div key={a.id}>
+                                                <div key={a.id} className="space-y-1">
                                                     <button
+                                                        type="button"
                                                         disabled={disabled}
                                                         onClick={() => {
-                                                            if (isSelected) { onClearDiscount(); return; }
-                                                            onSelectAlliance(a);
+                                                            if (isSelected) {
+                                                                onClearDiscount();
+                                                                return;
+                                                            }
+                                                            onSelectAlliance(a, targetBin);
                                                         }}
                                                         className={cn(
-                                                            "w-full text-left rounded-lg border px-3 py-2 transition-all text-sm",
-                                                            isSelected ? "border-primary bg-primary/10 ring-1 ring-primary" : "hover:border-muted-foreground",
-                                                            idx === activeAllianceIndex && "bg-primary/10 border-l-4 border-l-primary font-medium",
+                                                            "w-full text-left rounded-lg border p-2.5 transition-all text-sm relative",
+                                                            isSelected
+                                                                ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
+                                                                : meta.isRecommended
+                                                                    ? "border-emerald-500/50 bg-emerald-500/5 hover:border-emerald-500 hover:bg-emerald-500/10 shadow-sm"
+                                                                    : "hover:border-muted-foreground bg-card",
+                                                            idx === activeAllianceIndex && "ring-2 ring-primary border-primary",
                                                             disabled && "opacity-40 cursor-not-allowed"
                                                         )}
                                                     >
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
-                                                                <p className="font-medium text-xs">{a.partnerName}</p>
-                                                                <p className="text-[10px] text-muted-foreground">{a.description || a.code}</p>
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="space-y-1 min-w-0 flex-1">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <span className="font-semibold text-xs text-foreground">
+                                                                        {a.partnerName}
+                                                                    </span>
+                                                                    {meta.badgeText && (
+                                                                        <span
+                                                                            className={cn(
+                                                                                "text-[9px] px-1.5 py-0.5 rounded-full font-medium border flex items-center gap-1",
+                                                                                meta.badgeClass
+                                                                            )}
+                                                                        >
+                                                                            {meta.isRecommended && (
+                                                                                <Sparkles className="h-2.5 w-2.5 shrink-0" />
+                                                                            )}
+                                                                            {meta.badgeText}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                <p className="text-[11px] text-muted-foreground line-clamp-1 font-medium">
+                                                                    {a.description || a.code}
+                                                                </p>
+
+                                                                {/* Interactive BIN Pills */}
                                                                 {a.binNumbers.length > 0 && (
-                                                                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                                                                        BIN: {a.binNumbers.slice(0, 3).join(", ")}{a.binNumbers.length > 3 ? ` +${a.binNumbers.length - 3}` : ""}
-                                                                    </p>
+                                                                    <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                                                                        <span className="text-[9px] font-semibold text-muted-foreground uppercase">
+                                                                            BINs:
+                                                                        </span>
+                                                                        {a.binNumbers.slice(0, 4).map((bin) => {
+                                                                            const isMatched = meta.matchedBin === bin;
+                                                                            return (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    key={bin}
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        if (!disabled) onSelectAlliance(a, bin);
+                                                                                    }}
+                                                                                    title={`Select alliance with BIN ${bin}`}
+                                                                                    className={cn(
+                                                                                        "font-mono text-[10px] px-1.5 py-0.5 rounded border transition-colors",
+                                                                                        isMatched
+                                                                                            ? "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/40 font-bold"
+                                                                                            : "bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted hover:text-foreground"
+                                                                                    )}
+                                                                                >
+                                                                                    {bin}
+                                                                                    {isMatched && " ✓"}
+                                                                                </button>
+                                                                            );
+                                                                        })}
+                                                                        {a.binNumbers.length > 4 && (
+                                                                            <span className="text-[9px] text-muted-foreground font-mono">
+                                                                                +{a.binNumbers.length - 4} more
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                            <div className="text-right shrink-0 ml-2">
-                                                                <p className="font-bold text-primary font-mono text-xs">−{fmtCurrency(disc)}</p>
-                                                                <p className="text-[10px] text-muted-foreground">{a.discountPercent}% off</p>
+
+                                                            <div className="text-right shrink-0 ml-1">
+                                                                <p className="font-bold text-primary font-mono text-sm leading-tight">
+                                                                    −{fmtCurrency(disc)}
+                                                                </p>
+                                                                <p className="text-[10px] font-semibold text-foreground mt-0.5">
+                                                                    {a.discountPercent}% off
+                                                                </p>
+                                                                {a.maxDiscount && (
+                                                                    <p className="text-[9px] text-muted-foreground font-mono">
+                                                                        Cap {fmtCurrency(Number(a.maxDiscount))}
+                                                                    </p>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </button>
 
-                                                    {/* Alliance selected — card details are captured in the Payment section */}
+                                                    {/* Active alliance status */}
                                                     {isSelected && (
-                                                        <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-                                                            <p className="text-xs text-primary font-medium">
-                                                                ✓ Alliance selected — enter card details in the Payment section below.
-                                                            </p>
+                                                        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                                                <span>
+                                                                    Alliance applied • Selected BIN: <strong className="font-mono">{targetBin || "Ready"}</strong>
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[10px] opacity-80">(Auto-passed to Payment)</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -457,7 +757,7 @@ export function DiscountPanel({
                             )}
                             <RadioGroup
                                 value={manualDiscountType}
-                                onValueChange={(v: any) => onManualDiscountTypeChange(v)}
+                                onValueChange={(v) => onManualDiscountTypeChange(v as "percent" | "flat")}
                                 className="flex gap-4"
                                 disabled={discountMode !== "none" && discountMode !== "manual"}
                             >
@@ -563,13 +863,16 @@ export function DiscountPanel({
                                               <span className="font-medium">-- No Alliance Attached --</span>
                                               {!selectedAlliance && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                           </button>
-                                          {filteredManualAlliances.map((a) => {
+                                          {filteredManualAlliances.map(({ alliance: a, meta }) => {
                                               const isSelected = selectedAlliance?.id === a.id;
+                                              const targetBin =
+                                                  meta.matchedBin ||
+                                                  (a.binNumbers?.length === 1 ? a.binNumbers[0] : a.binNumbers?.[0] || "");
                                               return (
                                                   <button
                                                       type="button"
                                                       key={a.id}
-                                                      onClick={() => onSelectAlliance(a)}
+                                                      onClick={() => onSelectAlliance(a, targetBin)}
                                                       className={cn(
                                                           "w-full text-left rounded-lg px-3 py-2 transition-all text-xs flex justify-between items-center border",
                                                           isSelected 

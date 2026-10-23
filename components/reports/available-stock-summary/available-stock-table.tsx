@@ -40,6 +40,7 @@ interface TableProps {
     searchQuery: string;
     isLoading: boolean;
     isPosLevel?: boolean;
+    isPosOnly?: boolean;
 }
 
 interface FlatRowItem {
@@ -50,7 +51,15 @@ interface FlatRowItem {
     isExpanded: boolean;
 }
 
-export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoading, isPosLevel = false }: TableProps) {
+export function AvailableStockTable({
+    treeData,
+    grandTotals,
+    searchQuery,
+    isLoading,
+    isPosLevel = false,
+    isPosOnly,
+}: TableProps) {
+    const isPos = isPosOnly !== undefined ? isPosOnly : isPosLevel;
     const parentRef = useRef<HTMLDivElement>(null);
     const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
 
@@ -126,7 +135,7 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                 ref={parentRef}
                 className="max-h-[680px] overflow-y-auto relative scrollbar-thin scrollbar-thumb-border"
             >
-                <div className={isPosLevel ? "min-w-[1100px]" : "min-w-[1400px]"}>
+                <div className={isPos ? "min-w-[1100px]" : "min-w-[1400px]"}>
                     {/* Header Row */}
                     <div className="sticky top-0 z-20 border-b border-border bg-muted/95 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider text-muted-foreground shadow-sm flex items-center h-10 px-4">
                         <div className="flex-1 min-w-[340px] pr-3">GPC / Category / Product / Barcode</div>
@@ -139,10 +148,10 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                         <div className="w-28 text-right shrink-0">Total Balance</div>
                         <div className="w-32 text-right shrink-0">Selling Price</div>
                         <div className="w-36 text-right shrink-0">Selling Value</div>
-                        {!isPosLevel && (
+                        {!isPos && (
                             <>
                                 <div className="w-32 text-right shrink-0">Unit Cost</div>
-                                <div className="w-36 text-right shrink-0">Unit Value</div>
+                                <div className="w-36 text-right shrink-0">Cost Value</div>
                             </>
                         )}
                     </div>
@@ -327,7 +336,7 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                                         {formatCurrency(node.totals.value)}
                                     </div>
 
-                                    {!isPosLevel && (
+                                    {!isPos && (
                                         <>
                                             {/* Column 10: Cost Price */}
                                             <div
@@ -356,7 +365,7 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
             {/* Sticky Grand Totals Footer */}
             <div className={cn(
                 "border-t-2 border-border bg-muted/95 backdrop-blur-md px-4 h-11 text-xs font-bold text-foreground shadow-inner flex items-center",
-                isPosLevel ? "min-w-[1100px]" : "min-w-[1400px]"
+                isPos ? "min-w-[1100px]" : "min-w-[1400px]"
             )}>
                 <div className="flex-1 min-w-[340px] uppercase tracking-wider text-muted-foreground">GRAND TOTAL</div>
                 <div className="w-20 text-center text-muted-foreground/60">-</div>
@@ -398,7 +407,7 @@ export function AvailableStockTable({ treeData, grandTotals, searchQuery, isLoad
                 >
                     {formatCurrency(grandTotals.value)}
                 </div>
-                {!isPosLevel && (
+                {!isPos && (
                     <>
                         <div className="w-32 text-right text-muted-foreground/60">-</div>
                         <div

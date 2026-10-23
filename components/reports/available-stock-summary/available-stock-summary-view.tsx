@@ -8,8 +8,7 @@ import {
     getAvailableStockSummaryResult,
 } from "@/lib/actions/stock-ledger";
 import { useReportSse } from "@/hooks/use-report-sse";
-import { DateRange } from "@/components/ui/date-range-picker";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import { format } from "date-fns";
 import { toast } from "sonner";
 
 import { FlatItemRecord, GroupingLevels } from "./types";
@@ -26,23 +25,32 @@ interface AvailableStockSummaryViewProps {
     title?: string;
     companyName?: string;
     isPosLevel?: boolean;
+    isPosOnly?: boolean;
 }
 
 export function AvailableStockSummaryView({
     title = "Available Stock Summary",
     companyName = "Speed Limit ERP",
     isPosLevel = false,
+    isPosOnly,
 }: AvailableStockSummaryViewProps) {
+    const isPos = isPosOnly !== undefined ? isPosOnly : isPosLevel;
     const { user } = useAuth();
     const posLocationId = user?.terminal?.location?.id || user?.locationId || (user as any)?.location?.id;
     const posWarehouseId = (user as any)?.warehouseId || (user as any)?.warehouse?.id;
     const posLocationName = user?.terminal?.location?.name || (user as any)?.location?.name || (user as any)?.warehouse?.name || "Current Store";
 
-    const now = new Date();
-    const [dateRange, setDateRange] = useState<DateRange>({
-        from: startOfMonth(now),
-        to: endOfMonth(now),
-    });
+    const [asOfDate, setAsOfDate] = useState<string>(
+        format(new Date(), "yyyy-MM-dd")
+    );
+
+    const getFiscalYearStart = (asOfStr: string) => {
+        const d = new Date(asOfStr);
+        const year = d.getFullYear();
+        const month = d.getMonth(); // 0 = Jan, 6 = July
+        const fyStartYear = month >= 6 ? year : year - 1;
+        return new Date(fyStartYear, 6, 1, 0, 0, 0, 0);
+    };
 
     const [locations, setLocations] = useState<Location[]>([]);
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -51,11 +59,11 @@ export function AvailableStockSummaryView({
 
     // Enforce POS terminal location/warehouse when on POS level
     useEffect(() => {
-        if (isPosLevel) {
+        if (isPos) {
             if (posLocationId) setSelectedLocationIds([posLocationId]);
             if (posWarehouseId) setSelectedWarehouseIds([posWarehouseId]);
         }
-    }, [isPosLevel, posLocationId, posWarehouseId]);
+    }, [isPos, posLocationId, posWarehouseId]);
 
     const [searchQuery, setSearchQuery] = useState("");
     const [reportType, setReportType] = useState<"merged" | "separate">("separate");
@@ -109,17 +117,22 @@ export function AvailableStockSummaryView({
         loadMetadata();
     }, []);
 
-    // Main Single API Fetch function (runs on initial load, date range change, or manual refresh)
+    // Main Single API Fetch function (runs on initial load, as-of date change, or manual refresh)
     const fetchDataset = useCallback(() => {
-        if (!dateRange.from || !dateRange.to) return;
+        if (!asOfDate) return;
 
         setIsFetchingData(true);
         setFetchProgressMessage("Queueing available stock summary query...");
         setPreviewJobId(null);
 
+        const fyStartDate = getFiscalYearStart(asOfDate);
+        const endDateObj = new Date(asOfDate);
+        endDateObj.setHours(23, 59, 59, 999);
+
         queueAvailableStockSummaryPreview({
-            startDate: dateRange.from?.toISOString(),
-            endDate: dateRange.to?.toISOString(),
+            asOfDate,
+            startDate: fyStartDate.toISOString(),
+            endDate: endDateObj.toISOString(),
             reportType: "separate", // Always fetch per-location stock separately from server
         }).then((queueRes) => {
             if (queueRes && queueRes.status && queueRes.data?.jobId) {
@@ -131,14 +144,14 @@ export function AvailableStockSummaryView({
                 toast.error("Failed to queue stock data fetch");
             }
         });
-    }, [dateRange]);
+    }, [asOfDate]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchDataset();
         }, 300);
         return () => clearTimeout(timer);
-    }, [dateRange]);
+    }, [asOfDate]);
 
     // Handle SSE progress & completed event
     useEffect(() => {
@@ -213,16 +226,19 @@ export function AvailableStockSummaryView({
         setExportProgressMessage("Preparing Excel file...");
 
         try {
+            const fyStartStr = format(getFiscalYearStart(asOfDate), "yyyy-MM-dd");
             await exportAvailableStockSummaryToExcel({
                 treeData,
                 filteredItems,
                 grandTotals,
                 reportType,
                 exportMode,
-                dateFromStr: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
-                dateToStr: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
+                dateFromStr: fyStartStr,
+                dateToStr: asOfDate,
+                asOfDate,
                 companyName,
-                isPosLevel,
+                isPosLevel: isPos,
+                isPosOnly: isPos,
                 onProgress: (percent, message) => {
                     setExportProgressPercent(percent);
                     setExportProgressMessage(message);
@@ -248,16 +264,19 @@ export function AvailableStockSummaryView({
         setExportProgressMessage("Preparing PDF print layout...");
 
         try {
+            const fyStartStr = format(getFiscalYearStart(asOfDate), "yyyy-MM-dd");
             await exportAvailableStockSummaryToPdf({
                 treeData,
                 filteredItems,
                 grandTotals,
                 reportType,
                 exportMode,
-                dateFromStr: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
-                dateToStr: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
+                dateFromStr: fyStartStr,
+                dateToStr: asOfDate,
+                asOfDate,
                 companyName,
-                isPosLevel,
+                isPosLevel: isPos,
+                isPosOnly: isPos,
                 onProgress: (percent, message) => {
                     setExportProgressPercent(percent);
                     setExportProgressMessage(message);
@@ -288,15 +307,16 @@ export function AvailableStockSummaryView({
                 grandTotals={grandTotals}
                 totalItemsCount={filteredItems.length}
                 isLoading={isFetchingData}
-                isPosLevel={isPosLevel}
+                isPosLevel={isPos}
             />
 
             {/* Filters Toolbar */}
             <AvailableStockFilters
-                isPosLevel={isPosLevel}
+                isPosLevel={isPos}
+                posLocationId={posLocationId}
                 posLocationName={posLocationName}
-                dateRange={dateRange}
-                setDateRange={setDateRange}
+                asOfDate={asOfDate}
+                setAsOfDate={setAsOfDate}
                 locations={locations}
                 warehouses={warehouses}
                 selectedLocationIds={selectedLocationIds}
@@ -341,7 +361,7 @@ export function AvailableStockSummaryView({
                 grandTotals={grandTotals}
                 searchQuery={searchQuery}
                 isLoading={isFetchingData}
-                isPosLevel={isPosLevel}
+                isPosLevel={isPos}
             />
         </div>
     );
