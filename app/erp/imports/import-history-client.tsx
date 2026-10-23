@@ -179,21 +179,15 @@ function ImportDetailModal({
   const failPct = record.totalRecords > 0 ? Math.round((record.failedRecords / record.totalRecords) * 100) : 0;
 
   const handleDownloadErrors = () => {
-    const apiBase = getApiBaseUrl();
-    const token = Cookies.get("accessToken");
-    window.open(`${apiBase}/import-history/${record.id}/error-report?token=${token}`, "_blank");
+    window.open(`/api/import-history/${record.id}/error-report`, "_blank");
   };
 
   const handleDownloadSuccess = () => {
-    const apiBase = getApiBaseUrl();
-    const token = Cookies.get("accessToken");
-    window.open(`${apiBase}/import-history/${record.id}/success-report?token=${token}`, "_blank");
+    window.open(`/api/import-history/${record.id}/success-report`, "_blank");
   };
 
   const handleDownloadOriginal = () => {
-    const apiBase = getApiBaseUrl();
-    const token = Cookies.get("accessToken");
-    window.open(`${apiBase}/import-history/${record.id}/download?token=${token}`, "_blank");
+    window.open(`/api/import-history/${record.id}/download`, "_blank");
   };
 
   return (
@@ -397,9 +391,7 @@ export default function ImportHistoryClient() {
 
   const handleDownloadErrors = (record: ImportRecord, e: React.MouseEvent) => {
     e.stopPropagation();
-    const apiBase = getApiBaseUrl();
-    const token = Cookies.get("accessToken");
-    window.open(`${apiBase}/import-history/${record.id}/error-report?token=${token}`, "_blank");
+    window.open(`/api/import-history/${record.id}/error-report`, "_blank");
   };
 
   return (
@@ -726,9 +718,7 @@ export default function ImportHistoryClient() {
                                   className="h-8 w-8 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const apiBase = getApiBaseUrl();
-                                    const token = Cookies.get("accessToken");
-                                    window.open(`${apiBase}/import-history/${record.id}/success-report?token=${token}`, "_blank");
+                                    window.open(`/api/import-history/${record.id}/success-report`, "_blank");
                                   }}
                                 >
                                   <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -763,9 +753,7 @@ export default function ImportHistoryClient() {
                                   className="h-8 w-8 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const apiBase = getApiBaseUrl();
-                                    const token = Cookies.get("accessToken");
-                                    window.open(`${apiBase}/import-history/${record.id}/download?token=${token}`, "_blank");
+                                    window.open(`/api/import-history/${record.id}/download`, "_blank");
                                   }}
                                 >
                                   <FileText className="h-4 w-4" />

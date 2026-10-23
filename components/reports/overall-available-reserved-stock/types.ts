@@ -27,7 +27,6 @@ export interface FlatItemRecord {
     quantity: number; // Available Stock Qty
     transit: number;  // In Transit Qty
     reserved: number; // Reserved Qty
-    pendingInvoice?: number; // Pending Invoice Qty
     total: number;    // Total Balance Qty
     locationStocks?: Record<string, number>;
     warehouseStocks?: Record<string, number>;
@@ -37,7 +36,6 @@ export interface StockTotals {
     quantity: number;
     transit: number;
     reserved: number;
-    pendingInvoice?: number;
     total: number;
     unitPrice: number;
     value: number;

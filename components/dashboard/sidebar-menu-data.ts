@@ -1893,11 +1893,6 @@ export const menuData: MenuItem[] = [
         permissions: ["pos.shift.view"],
       },
       {
-        title: "Stock Activity",
-        href: "/pos/reports/stock-activity",
-        permissions: ["pos.report.view"],
-      },
-      {
         title: "Available Stock Summary",
         href: "/pos/reports/available-stock-summary",
         permissions: ["pos.report.view"],
@@ -2028,9 +2023,14 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.inventory.aging.view"],
           },
           {
-            title: "POS Stock Activity",
-            href: "/erp/reports/pos/stock-activity",
+            title: "Stock Activity",
+            href: "/erp/reports/stock-activity",
             permissions: ["erp.report.inventory.pos-stock-activity.view"],
+          },
+          {
+            title: "Stock Position",
+            href: "/erp/reports/stock-position",
+            permissions: ["erp.report.finance.stock-valuation.view"],
           },
           {
             title: "Warehouse Stock Activity",
