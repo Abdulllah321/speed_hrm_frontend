@@ -815,6 +815,8 @@ export const menuData: MenuItem[] = [
       "erp.inventory.delivery-note.read",
       "erp.inventory.stock-ledger.read",
       "erp.inventory.transfer.create",
+      "erp.inventory.stock-adjustment.read",
+      "erp.inventory.stock-adjustment.create",
     ],
     children: [
       {
@@ -895,6 +897,8 @@ export const menuData: MenuItem[] = [
           "erp.inventory.delivery-note.read",
           "erp.inventory.stock-transfer.read",
           "erp.inventory.transfer.create",
+          "erp.inventory.stock-adjustment.read",
+          "erp.inventory.stock-adjustment.create",
         ],
         children: [
           {
@@ -906,6 +910,8 @@ export const menuData: MenuItem[] = [
             title: "Stock Adjustment",
             href: "/erp/inventory/transactions/stock-adjustment",
             permissions: [
+              "erp.inventory.stock-adjustment.read",
+              "erp.inventory.stock-adjustment.create",
               "erp.inventory.stock-ledger.read",
               "erp.inventory.stock-ledger.update",
             ],

@@ -14,6 +14,7 @@ import { getLocations } from "@/lib/actions/location";
 import { printStockAdjustmentNote } from "@/lib/utils/print-stock-adjustment";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export interface StockAdjustmentRow {
     id: string;
@@ -532,12 +533,14 @@ export function StockAdjustmentList({ initialEntries, initialMeta }: StockAdjust
 
     const toolbarSlot = (
         <div className="flex items-center gap-2">
-            <Link href="/erp/inventory/transactions/stock-adjustment/new">
-                <Button className="gap-2 bg-primary text-primary-foreground font-semibold hover:bg-primary/95 transition-all">
-                    <Plus className="h-4 w-4" />
-                    New Adjustment
-                </Button>
-            </Link>
+            <PermissionGuard permissions={["erp.inventory.stock-adjustment.create", "erp.inventory.stock-ledger.read"]} fallback={null}>
+                <Link href="/erp/inventory/transactions/stock-adjustment/new">
+                    <Button className="gap-2 bg-primary text-primary-foreground font-semibold hover:bg-primary/95 transition-all">
+                        <Plus className="h-4 w-4" />
+                        New Adjustment
+                    </Button>
+                </Link>
+            </PermissionGuard>
         </div>
     );
 

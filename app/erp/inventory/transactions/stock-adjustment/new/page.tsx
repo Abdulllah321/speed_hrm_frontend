@@ -23,7 +23,7 @@ export default async function NewStockAdjustmentPage() {
     const activeLocations = locationsArray.filter((l) => l.status === "active");
 
     return (
-        <PermissionGuard permissions="erp.inventory.stock-ledger.read">
+        <PermissionGuard permissions={["erp.inventory.stock-adjustment.create", "erp.inventory.stock-ledger.read"]}>
             <div className="flex-1 space-y-4 p-8 pt-6">
                 <NewStockAdjustmentForm
                     warehouses={activeWarehouses}

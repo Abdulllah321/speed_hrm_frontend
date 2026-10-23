@@ -28,7 +28,7 @@ export default async function StockAdjustmentDetailPage({ params }: PageProps) {
         }
 
         return (
-            <PermissionGuard permissions="erp.inventory.stock-ledger.read">
+            <PermissionGuard permissions={["erp.inventory.stock-adjustment.read", "erp.inventory.stock-ledger.read"]}>
                 <div className="flex-1 space-y-4 p-8 pt-6">
                     <StockAdjustmentDetail adjustment={adjustment} />
                 </div>

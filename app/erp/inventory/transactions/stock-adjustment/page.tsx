@@ -25,7 +25,7 @@ export default async function StockAdjustmentPage() {
         const meta = result.meta;
 
         return (
-            <PermissionGuard permissions="erp.inventory.stock-ledger.read">
+            <PermissionGuard permissions={["erp.inventory.stock-adjustment.read", "erp.inventory.stock-ledger.read"]}>
                 <div className="flex-1 space-y-4 p-8 pt-6">
                     <div className="flex flex-col gap-1">
                         <h2 className="text-3xl font-bold tracking-tight">Stock Adjustments</h2>
