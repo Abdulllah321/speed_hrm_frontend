@@ -237,3 +237,35 @@ export async function getPendingCounts(locationId: string) {
         return { status: false, data: {} };
     }
 }
+
+export async function getTransferReportSummary(params?: {
+    startDate?: string;
+    endDate?: string;
+    transferType?: string;
+    status?: string;
+    fromLocationId?: string;
+    toLocationId?: string;
+    fromWarehouseId?: string;
+    toWarehouseId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+}): Promise<{ status: boolean; data?: any; message?: string }> {
+    try {
+        const queryParams = new URLSearchParams();
+        if (params) {
+            Object.entries(params).forEach(([key, val]) => {
+                if (val !== undefined && val !== null && val !== '') {
+                    queryParams.append(key, String(val));
+                }
+            });
+        }
+        const qs = queryParams.toString();
+        const response = await authFetch(`/transfer-request/report-summary${qs ? `?${qs}` : ''}`);
+        return response.data ?? { status: false, message: "No data returned from server" };
+    } catch (error) {
+        console.error("Get transfer report summary error:", error);
+        return { status: false, message: error instanceof Error ? error.message : "Failed to load transfer report" };
+    }
+}
+

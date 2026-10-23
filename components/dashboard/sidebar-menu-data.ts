@@ -1969,6 +1969,7 @@ export const menuData: MenuItem[] = [
       "erp.report.inventory.pos-available-stock.view",
       "erp.report.inventory.pos-aging.view",
       "erp.report.inventory.transaction-details.view",
+      "erp.report.inventory.stock-transfers.view",
       "erp.report.sales.gross-summary.view",
       "erp.report.sales.gross-return.view",
       "erp.report.sales.net-summary.view",
@@ -2003,6 +2004,7 @@ export const menuData: MenuItem[] = [
           "erp.report.inventory.pos-available-stock.view",
           "erp.report.inventory.pos-aging.view",
           "erp.report.inventory.transaction-details.view",
+          "erp.report.inventory.stock-transfers.view",
         ],
         children: [
           {
@@ -2050,6 +2052,14 @@ export const menuData: MenuItem[] = [
             href: "/erp/reports/pos/stock-transaction-detail",
             permissions: ["erp.report.inventory.transaction-details.view"],
           },
+          // {
+          //   title: "Stock Transfer Movement & Status",
+          //   href: "/erp/reports/stock-transfer-summary",
+          //   permissions: [
+          //     "erp.report.inventory.stock-transfers.view",
+          //     "erp.inventory.stock-transfer.read",
+          //   ],
+          // },
         ],
       },
       {
