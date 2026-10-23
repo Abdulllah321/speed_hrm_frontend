@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
 import { GroupingLevels } from "./types";
@@ -118,9 +117,10 @@ function FilterDropdown({
 
 interface FiltersProps {
     isPosLevel?: boolean;
+    posLocationId?: string;
     posLocationName?: string;
-    dateRange: DateRange;
-    setDateRange: React.Dispatch<React.SetStateAction<DateRange>>;
+    asOfDate: string;
+    setAsOfDate: (date: string) => void;
     locations: Location[];
     warehouses: Warehouse[];
     selectedLocationIds: string[];
@@ -169,9 +169,10 @@ interface FiltersProps {
 
 export function AvailableStockFilters({
     isPosLevel = false,
+    posLocationId,
     posLocationName = "Current Store",
-    dateRange,
-    setDateRange,
+    asOfDate,
+    setAsOfDate,
     locations,
     warehouses,
     selectedLocationIds,
@@ -263,7 +264,7 @@ export function AvailableStockFilters({
             <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-border bg-card shadow-sm">
                 <div className="flex flex-wrap items-center gap-2.5">
                     {/* Outlets & Warehouses Selectors */}
-                    {isPosLevel ? (
+                    {isPosLevel && posLocationId ? (
                         <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
                             <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <span>Current Store: {posLocationName}</span>
@@ -292,14 +293,17 @@ export function AvailableStockFilters({
                         </>
                     )}
 
-                    {/* Date Range Picker */}
-                    <DateRangePicker
-                        initialDateFrom={dateRange?.from}
-                        initialDateTo={dateRange?.to}
-                        onUpdate={({ range }) => {
-                            if (range) setDateRange(range);
-                        }}
-                    />
+                    {/* As Of Date Picker */}
+                    <div className="flex items-center gap-1.5 bg-muted/40 p-1.5 rounded-xl border border-border">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                        <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">As Of:</span>
+                        <input
+                            type="date"
+                            value={asOfDate}
+                            onChange={(e) => setAsOfDate(e.target.value)}
+                            className="text-xs bg-transparent text-foreground border-0 focus:ring-0 p-0 font-medium cursor-pointer"
+                        />
+                    </div>
 
                     {/* Manual Refresh Button */}
                     <Button

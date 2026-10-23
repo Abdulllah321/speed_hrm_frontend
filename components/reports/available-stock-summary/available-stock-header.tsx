@@ -11,13 +11,21 @@ interface HeaderProps {
     totalItemsCount: number;
     isLoading: boolean;
     isPosLevel?: boolean;
+    isPosOnly?: boolean;
 }
 
-export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, isPosLevel = false }: HeaderProps) {
+export function AvailableStockHeader({
+    grandTotals,
+    totalItemsCount,
+    isLoading,
+    isPosLevel = false,
+    isPosOnly,
+}: HeaderProps) {
+    const isPos = isPosOnly !== undefined ? isPosOnly : isPosLevel;
     return (
         <div className={cn(
             "grid gap-3 mb-4",
-            isPosLevel
+            isPos
                 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-7"
                 : "grid-cols-2 sm:grid-cols-4 lg:grid-cols-8"
         )}>
@@ -140,7 +148,7 @@ export function AvailableStockHeader({ grandTotals, totalItemsCount, isLoading, 
                 </CardContent>
             </Card>
 
-            {!isPosLevel && (
+            {!isPos && (
                 <Card
                     className="bg-card border-border shadow-sm overflow-hidden"
                     title={`Costing Value: ${formatCurrency(grandTotals.costingValue)}`}

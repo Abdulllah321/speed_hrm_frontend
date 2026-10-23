@@ -102,6 +102,7 @@ export function OverallAvailableReservedTable({
                         <div className="w-24 text-right shrink-0">Total Qty</div>
                         <div className="w-20 text-right shrink-0">Transit</div>
                         <div className="w-20 text-right shrink-0">Reserved</div>
+                        <div className="w-24 text-right shrink-0">Pending Inv</div>
                         <div className="w-24 text-right shrink-0">Total Bal</div>
                         <div className="w-28 text-right shrink-0">Price</div>
                         <div className="w-24 text-right shrink-0">Disc. %</div>
@@ -205,6 +206,14 @@ export function OverallAvailableReservedTable({
                                         title={`Reserved: ${item.reserved.toLocaleString()} pcs`}
                                     >
                                         {item.reserved.toLocaleString()}
+                                    </div>
+
+                                    {/* Pending Invoice */}
+                                    <div
+                                        className={cn("w-24 text-right shrink-0 font-medium", item.pendingInvoice > 0 ? "text-pink-600 dark:text-pink-400 font-bold" : "text-muted-foreground")}
+                                        title={`Pending Invoice: ${(item.pendingInvoice || 0).toLocaleString()} pcs`}
+                                    >
+                                        {(item.pendingInvoice || 0).toLocaleString()}
                                     </div>
 
                                     {/* Total Balance */}
@@ -313,6 +322,12 @@ export function OverallAvailableReservedTable({
                             title={`Grand Total Reserved: ${grandTotals.reserved.toLocaleString()} pcs`}
                         >
                             {grandTotals.reserved.toLocaleString()}
+                        </div>
+                        <div
+                            className="w-24 text-right shrink-0 text-pink-600 dark:text-pink-400 font-bold"
+                            title={`Grand Total Pending Invoice: ${(grandTotals.pendingInvoice || 0).toLocaleString()} pcs`}
+                        >
+                            {(grandTotals.pendingInvoice || 0).toLocaleString()}
                         </div>
                         <div
                             className="w-24 text-right shrink-0 text-cyan-600 dark:text-cyan-400"

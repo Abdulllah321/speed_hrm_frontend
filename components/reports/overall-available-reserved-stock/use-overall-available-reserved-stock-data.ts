@@ -10,6 +10,7 @@ function createEmptyTotals(): StockTotals {
         quantity: 0,
         transit: 0,
         reserved: 0,
+        pendingInvoice: 0,
         total: 0,
         unitPrice: 0,
         value: 0,
@@ -217,11 +218,13 @@ export function useOverallAvailableReservedStockData({
             const itemUnitCost = Number(item.unitCost || 0);
             const itemTransit = Number(item.transit || 0);
             const itemReserved = Number(item.reserved || 0);
-            const itemTotal = itemAvailableQty + itemTransit + itemReserved;
+            const itemPendingInvoice = Number(item.pendingInvoice || 0);
+            const itemTotal = itemAvailableQty + itemTransit + itemReserved + itemPendingInvoice;
 
             totals.quantity += itemAvailableQty;
             totals.transit += itemTransit;
             totals.reserved += itemReserved;
+            totals.pendingInvoice += itemPendingInvoice;
             totals.total += itemTotal;
             totals.value += itemAvailableQty * itemUnitPrice;
             totals.costingValue += itemAvailableQty * itemUnitCost;
