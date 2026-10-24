@@ -92,14 +92,14 @@ export interface RetailSaleReceiptVoucherListProps {
         search?: string;
     };
     statusCounts?: {
-        total: number;
-        all: number;
-        draft: number;
-        pending_check: number;
-        pending_approval: number;
-        approved: number;
-        rejected: number;
-    } | null;
+        total?: number | { count: number; totalAmount: number };
+        all?: number | { count: number; totalAmount: number };
+        draft?: number | { count: number; totalAmount: number };
+        pending_check?: number | { count: number; totalAmount: number };
+        pending_approval?: number | { count: number; totalAmount: number };
+        approved?: number | { count: number; totalAmount: number };
+        rejected?: number | { count: number; totalAmount: number };
+    } | Record<string, { count: number; totalAmount: number } | number> | null;
     locations?: Location[];
     accounts?: ChartOfAccount[];
     permissions?: {
@@ -109,6 +109,21 @@ export interface RetailSaleReceiptVoucherListProps {
         canDelete: boolean;
         canApprove: boolean;
     };
+}
+
+type StatusCountValue = number | { count: number; totalAmount: number } | undefined | null;
+
+function getStatusCount(item: StatusCountValue, fallback = 0): number {
+    if (item === undefined || item === null) return fallback;
+    if (typeof item === "number") return item;
+    if (typeof item === "object" && typeof item.count === "number") return item.count;
+    return fallback;
+}
+
+function getStatusAmount(item: StatusCountValue, fallback = 0): number {
+    if (item === undefined || item === null) return fallback;
+    if (typeof item === "object" && typeof item.totalAmount === "number") return item.totalAmount;
+    return fallback;
 }
 
 type DatePreset =
@@ -1009,10 +1024,10 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-extrabold text-gray-900 font-mono">
-                                    {statusCounts?.total ?? pagination?.total ?? metrics.totalCount}
+                                    {getStatusCount(statusCounts?.total ?? statusCounts?.all, pagination?.total ?? metrics.totalCount)}
                                 </span>
                                 <span className="text-xs text-gray-500 font-medium font-mono">
-                                    PKR {Math.round(metrics.totalPkr).toLocaleString()}
+                                    PKR {Math.round(getStatusAmount(statusCounts?.total ?? statusCounts?.all, metrics.totalPkr)).toLocaleString()}
                                 </span>
                             </div>
                         </div>
@@ -1041,10 +1056,10 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-extrabold text-amber-800 font-mono">
-                                    {statusCounts?.pending_check ?? metrics.pendingCheckCount}
+                                    {getStatusCount(statusCounts?.pending_check, metrics.pendingCheckCount)}
                                 </span>
                                 <span className="text-xs text-amber-600 font-medium font-mono">
-                                    PKR {Math.round(metrics.pendingCheckPkr).toLocaleString()}
+                                    PKR {Math.round(getStatusAmount(statusCounts?.pending_check, metrics.pendingCheckPkr)).toLocaleString()}
                                 </span>
                             </div>
                         </div>
@@ -1073,10 +1088,10 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-extrabold text-indigo-800 font-mono">
-                                    {statusCounts?.pending_approval ?? metrics.pendingApprovalCount}
+                                    {getStatusCount(statusCounts?.pending_approval, metrics.pendingApprovalCount)}
                                 </span>
                                 <span className="text-xs text-indigo-600 font-medium font-mono">
-                                    PKR {Math.round(metrics.pendingApprovalPkr).toLocaleString()}
+                                    PKR {Math.round(getStatusAmount(statusCounts?.pending_approval, metrics.pendingApprovalPkr)).toLocaleString()}
                                 </span>
                             </div>
                         </div>
@@ -1105,10 +1120,10 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-extrabold text-emerald-800 font-mono">
-                                    {statusCounts?.approved ?? metrics.approvedCount}
+                                    {getStatusCount(statusCounts?.approved, metrics.approvedCount)}
                                 </span>
                                 <span className="text-xs text-emerald-600 font-medium font-mono">
-                                    PKR {Math.round(metrics.approvedPkr).toLocaleString()}
+                                    PKR {Math.round(getStatusAmount(statusCounts?.approved, metrics.approvedPkr)).toLocaleString()}
                                 </span>
                             </div>
                         </div>
@@ -1134,19 +1149,19 @@ export function RetailSaleReceiptVoucherList({
                         >
                             <TabsList className="grid grid-cols-5 w-full md:w-auto text-xs h-9">
                                 <TabsTrigger value="all" className="text-xs px-3">
-                                    All ({statusCounts?.total ?? pagination?.total ?? metrics.totalCount})
+                                    All ({getStatusCount(statusCounts?.total ?? statusCounts?.all, pagination?.total ?? metrics.totalCount)})
                                 </TabsTrigger>
                                 <TabsTrigger value="pending_check" className="text-xs px-3">
-                                    Check ({statusCounts?.pending_check ?? metrics.pendingCheckCount})
+                                    Check ({getStatusCount(statusCounts?.pending_check, metrics.pendingCheckCount)})
                                 </TabsTrigger>
                                 <TabsTrigger value="pending_approval" className="text-xs px-3">
-                                    Approval ({statusCounts?.pending_approval ?? metrics.pendingApprovalCount})
+                                    Approval ({getStatusCount(statusCounts?.pending_approval, metrics.pendingApprovalCount)})
                                 </TabsTrigger>
                                 <TabsTrigger value="approved" className="text-xs px-3">
-                                    Approved ({statusCounts?.approved ?? metrics.approvedCount})
+                                    Approved ({getStatusCount(statusCounts?.approved, metrics.approvedCount)})
                                 </TabsTrigger>
                                 <TabsTrigger value="rejected" className="text-xs px-3">
-                                    Rejected ({statusCounts?.rejected ?? metrics.rejectedCount})
+                                    Rejected ({getStatusCount(statusCounts?.rejected, metrics.rejectedCount)})
                                 </TabsTrigger>
                             </TabsList>
                         </Tabs>
