@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -76,6 +77,29 @@ import { RetailSaleReceiptVoucherPrint } from "./retail-sale-receipt-voucher-pri
 
 export interface RetailSaleReceiptVoucherListProps {
     initialData: ReceiptVoucher[];
+    pagination?: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    };
+    initialFilters?: {
+        page?: number;
+        limit?: number;
+        status?: string;
+        fromDate?: string;
+        toDate?: string;
+        search?: string;
+    };
+    statusCounts?: {
+        total: number;
+        all: number;
+        draft: number;
+        pending_check: number;
+        pending_approval: number;
+        approved: number;
+        rejected: number;
+    } | null;
     locations?: Location[];
     accounts?: ChartOfAccount[];
     permissions?: {
@@ -99,24 +123,42 @@ type DatePreset =
 
 export function RetailSaleReceiptVoucherList({
     initialData,
+    pagination,
+    initialFilters,
+    statusCounts,
     locations = [],
     accounts = [],
     permissions,
 }: RetailSaleReceiptVoucherListProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [isPending, startTransition] = useTransition();
+
     const [vouchers, setVouchers] = useState<ReceiptVoucher[]>(initialData);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // Filters state
-    const [statusTab, setStatusTab] = useState<string>("all");
-    const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
-    const [toDate, setToDate] = useState<Date | undefined>(undefined);
-    const [activeDatePreset, setActiveDatePreset] = useState<DatePreset>("all_time");
+    // Filters state synchronized with URL searchParams & initialFilters
+    const [statusTab, setStatusTab] = useState<string>(
+        searchParams.get("status") || initialFilters?.status || "all"
+    );
+    const [fromDate, setFromDate] = useState<Date | undefined>(
+        searchParams.get("fromDate") ? new Date(searchParams.get("fromDate")!) : initialFilters?.fromDate ? new Date(initialFilters.fromDate) : undefined
+    );
+    const [toDate, setToDate] = useState<Date | undefined>(
+        searchParams.get("toDate") ? new Date(searchParams.get("toDate")!) : initialFilters?.toDate ? new Date(initialFilters.toDate) : undefined
+    );
+    const [activeDatePreset, setActiveDatePreset] = useState<DatePreset>(
+        searchParams.get("fromDate") || initialFilters?.fromDate ? "custom" : "all_time"
+    );
 
     const [selectedOutlet, setSelectedOutlet] = useState<string>("all");
     const [selectedChannel, setSelectedChannel] = useState<string>("all");
     const [minAmount, setMinAmount] = useState<string>("");
     const [maxAmount, setMaxAmount] = useState<string>("");
-    const [searchQuery, setSearchQuery] = useState<string>("");
+    const [searchQuery, setSearchQuery] = useState<string>(
+        searchParams.get("search") || initialFilters?.search || ""
+    );
 
     // Selection & Bulk Processing
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -128,13 +170,41 @@ export function RetailSaleReceiptVoucherList({
     const [printingVoucher, setPrintingVoucher] = useState<ReceiptVoucher | null>(null);
     const [mounted, setMounted] = useState(false);
 
+    const updateUrlParams = (updates: Record<string, string | null | undefined>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        Object.entries(updates).forEach(([key, val]) => {
+            if (val === undefined || val === null || val === "" || val === "all") {
+                params.delete(key);
+            } else {
+                params.set(key, val);
+            }
+        });
+        if (!("page" in updates)) {
+            params.delete("page");
+        }
+        startTransition(() => {
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        });
+    };
+
     useEffect(() => {
         setMounted(true);
     }, []);
 
     useEffect(() => {
-        setVouchers([...initialData].sort((a: ReceiptVoucher, b: ReceiptVoucher) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        setVouchers(initialData);
     }, [initialData]);
+
+    useEffect(() => {
+        const s = searchParams.get("status") || initialFilters?.status || "all";
+        setStatusTab(s);
+        const q = searchParams.get("search") || initialFilters?.search || "";
+        setSearchQuery(q);
+        const fd = searchParams.get("fromDate") || initialFilters?.fromDate;
+        setFromDate(fd ? new Date(fd) : undefined);
+        const td = searchParams.get("toDate") || initialFilters?.toDate;
+        setToDate(td ? new Date(td) : undefined);
+    }, [searchParams, initialFilters]);
 
     useEffect(() => {
         const handleAfterPrint = () => setPrintingVoucher(null);
@@ -299,64 +369,47 @@ export function RetailSaleReceiptVoucherList({
         if (preset === "all_time") {
             setFromDate(undefined);
             setToDate(undefined);
+            updateUrlParams({ fromDate: undefined, toDate: undefined });
             return;
         }
+
+        let start: Date;
+        let end: Date;
 
         if (preset === "today") {
-            const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-            const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-            setFromDate(start);
-            setToDate(end);
-            return;
-        }
-
-        if (preset === "yesterday") {
+            start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+            end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        } else if (preset === "yesterday") {
             const y = new Date(now);
             y.setDate(y.getDate() - 1);
-            const start = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 0, 0, 0, 0);
-            const end = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59, 999);
-            setFromDate(start);
-            setToDate(end);
-            return;
-        }
-
-        if (preset === "last_7_days") {
-            const start = new Date(now);
+            start = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 0, 0, 0, 0);
+            end = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59, 999);
+        } else if (preset === "last_7_days") {
+            start = new Date(now);
             start.setDate(start.getDate() - 6);
             start.setHours(0, 0, 0, 0);
-            const end = new Date(now);
+            end = new Date(now);
             end.setHours(23, 59, 59, 999);
-            setFromDate(start);
-            setToDate(end);
-            return;
-        }
-
-        if (preset === "this_month") {
-            const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-            setFromDate(start);
-            setToDate(end);
-            return;
-        }
-
-        if (preset === "last_month") {
-            const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-            const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-            setFromDate(start);
-            setToDate(end);
-            return;
-        }
-
-        if (preset === "last_30_days") {
-            const start = new Date(now);
+        } else if (preset === "this_month") {
+            start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        } else if (preset === "last_month") {
+            start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+            end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        } else {
+            start = new Date(now);
             start.setDate(start.getDate() - 29);
             start.setHours(0, 0, 0, 0);
-            const end = new Date(now);
+            end = new Date(now);
             end.setHours(23, 59, 59, 999);
-            setFromDate(start);
-            setToDate(end);
-            return;
         }
+
+        setFromDate(start);
+        setToDate(end);
+        updateUrlParams({
+            fromDate: format(start, "yyyy-MM-dd"),
+            toDate: format(end, "yyyy-MM-dd"),
+        });
     };
 
     // Reset all filters
@@ -371,6 +424,13 @@ export function RetailSaleReceiptVoucherList({
         setMaxAmount("");
         setSearchQuery("");
         setSelectedIds([]);
+        updateUrlParams({
+            status: undefined,
+            fromDate: undefined,
+            toDate: undefined,
+            search: undefined,
+            page: undefined,
+        });
     };
 
     // Calculate voucher breakdown (Cash, Card, Commission)
@@ -932,7 +992,10 @@ export function RetailSaleReceiptVoucherList({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* 1. Total RSRV Volume */}
                 <Card
-                    onClick={() => setStatusTab("all")}
+                    onClick={() => {
+                        setStatusTab("all");
+                        updateUrlParams({ status: undefined });
+                    }}
                     className={`cursor-pointer transition-all hover:shadow-md border ${
                         statusTab === "all"
                             ? "ring-2 ring-blue-500 bg-blue-50/20 border-blue-200"
@@ -946,7 +1009,7 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-extrabold text-gray-900 font-mono">
-                                    {metrics.totalCount}
+                                    {statusCounts?.total ?? pagination?.total ?? metrics.totalCount}
                                 </span>
                                 <span className="text-xs text-gray-500 font-medium font-mono">
                                     PKR {Math.round(metrics.totalPkr).toLocaleString()}
@@ -961,7 +1024,10 @@ export function RetailSaleReceiptVoucherList({
 
                 {/* 2. Pending Verification (Pending Check) */}
                 <Card
-                    onClick={() => setStatusTab("pending_check")}
+                    onClick={() => {
+                        setStatusTab("pending_check");
+                        updateUrlParams({ status: "pending_check" });
+                    }}
                     className={`cursor-pointer transition-all hover:shadow-md border ${
                         statusTab === "pending_check"
                             ? "ring-2 ring-amber-500 bg-amber-50/30 border-amber-300"
@@ -975,7 +1041,7 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-extrabold text-amber-800 font-mono">
-                                    {metrics.pendingCheckCount}
+                                    {statusCounts?.pending_check ?? metrics.pendingCheckCount}
                                 </span>
                                 <span className="text-xs text-amber-600 font-medium font-mono">
                                     PKR {Math.round(metrics.pendingCheckPkr).toLocaleString()}
@@ -990,7 +1056,10 @@ export function RetailSaleReceiptVoucherList({
 
                 {/* 3. Pending Approval */}
                 <Card
-                    onClick={() => setStatusTab("pending_approval")}
+                    onClick={() => {
+                        setStatusTab("pending_approval");
+                        updateUrlParams({ status: "pending_approval" });
+                    }}
                     className={`cursor-pointer transition-all hover:shadow-md border ${
                         statusTab === "pending_approval"
                             ? "ring-2 ring-indigo-500 bg-indigo-50/30 border-indigo-300"
@@ -1004,7 +1073,7 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-extrabold text-indigo-800 font-mono">
-                                    {metrics.pendingApprovalCount}
+                                    {statusCounts?.pending_approval ?? metrics.pendingApprovalCount}
                                 </span>
                                 <span className="text-xs text-indigo-600 font-medium font-mono">
                                     PKR {Math.round(metrics.pendingApprovalPkr).toLocaleString()}
@@ -1019,7 +1088,10 @@ export function RetailSaleReceiptVoucherList({
 
                 {/* 4. Approved & Posted */}
                 <Card
-                    onClick={() => setStatusTab("approved")}
+                    onClick={() => {
+                        setStatusTab("approved");
+                        updateUrlParams({ status: "approved" });
+                    }}
                     className={`cursor-pointer transition-all hover:shadow-md border ${
                         statusTab === "approved"
                             ? "ring-2 ring-emerald-500 bg-emerald-50/30 border-emerald-300"
@@ -1033,7 +1105,7 @@ export function RetailSaleReceiptVoucherList({
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-extrabold text-emerald-800 font-mono">
-                                    {metrics.approvedCount}
+                                    {statusCounts?.approved ?? metrics.approvedCount}
                                 </span>
                                 <span className="text-xs text-emerald-600 font-medium font-mono">
                                     PKR {Math.round(metrics.approvedPkr).toLocaleString()}
@@ -1052,22 +1124,29 @@ export function RetailSaleReceiptVoucherList({
                 <CardContent className="p-4 space-y-4">
                     {/* Status Tabs Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                        <Tabs value={statusTab} onValueChange={setStatusTab} className="w-full md:w-auto">
+                        <Tabs
+                            value={statusTab}
+                            onValueChange={(val) => {
+                                setStatusTab(val);
+                                updateUrlParams({ status: val === "all" ? undefined : val });
+                            }}
+                            className="w-full md:w-auto"
+                        >
                             <TabsList className="grid grid-cols-5 w-full md:w-auto text-xs h-9">
                                 <TabsTrigger value="all" className="text-xs px-3">
-                                    All ({metrics.totalCount})
+                                    All ({statusCounts?.total ?? pagination?.total ?? metrics.totalCount})
                                 </TabsTrigger>
                                 <TabsTrigger value="pending_check" className="text-xs px-3">
-                                    Check ({metrics.pendingCheckCount})
+                                    Check ({statusCounts?.pending_check ?? metrics.pendingCheckCount})
                                 </TabsTrigger>
                                 <TabsTrigger value="pending_approval" className="text-xs px-3">
-                                    Approval ({metrics.pendingApprovalCount})
+                                    Approval ({statusCounts?.pending_approval ?? metrics.pendingApprovalCount})
                                 </TabsTrigger>
                                 <TabsTrigger value="approved" className="text-xs px-3">
-                                    Approved ({metrics.approvedCount})
+                                    Approved ({statusCounts?.approved ?? metrics.approvedCount})
                                 </TabsTrigger>
                                 <TabsTrigger value="rejected" className="text-xs px-3">
-                                    Rejected ({metrics.rejectedCount})
+                                    Rejected ({statusCounts?.rejected ?? metrics.rejectedCount})
                                 </TabsTrigger>
                             </TabsList>
                         </Tabs>
@@ -1075,7 +1154,7 @@ export function RetailSaleReceiptVoucherList({
                         {/* Filter Summary Stats */}
                         <div className="text-xs text-gray-500 font-medium flex items-center gap-2 self-end md:self-auto">
                             <span>Showing:</span>
-                            <span className="font-bold text-gray-800">{filteredData.length} vouchers</span>
+                            <span className="font-bold text-gray-800">{pagination?.total ?? filteredData.length} vouchers</span>
                             <span className="text-gray-300">|</span>
                             <span className="font-bold text-blue-700 font-mono">
                                 PKR {Math.round(metrics.filteredPkr).toLocaleString()}
@@ -1512,12 +1591,27 @@ export function RetailSaleReceiptVoucherList({
                     <DataTable
                         columns={columns}
                         data={filteredData}
+                        isLoading={isPending || isRefreshing}
                         searchFields={[
                             { key: "rvNo", label: "RSRV No" },
                             { key: "description", label: "Description / Remarks" },
                             { key: "outlet", label: "Outlet" },
                         ]}
-                        onSearchChange={searchVal => setSearchQuery(searchVal)}
+                        searchValue={searchQuery}
+                        manualPagination={true}
+                        rowCount={pagination?.total ?? vouchers.length}
+                        pageCount={pagination?.totalPages ?? 1}
+                        onPaginationChange={(pageState) => {
+                            updateUrlParams({
+                                page: String(pageState.pageIndex + 1),
+                                limit: String(pageState.pageSize),
+                            });
+                        }}
+                        manualFiltering={true}
+                        onSearchChange={searchVal => {
+                            setSearchQuery(searchVal);
+                            updateUrlParams({ search: searchVal });
+                        }}
                     />
                 </CardContent>
             </Card>
