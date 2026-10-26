@@ -1,4 +1,4 @@
-import { getRsrvVouchers } from "@/lib/actions/receipt-voucher";
+import { getRsrvVouchers, getRsrvStatusCounts } from "@/lib/actions/receipt-voucher";
 import { getLocations } from "@/lib/actions/location";
 import { getChartOfAccountsDropdown } from "@/lib/actions/chart-of-account";
 import { RetailSaleReceiptVoucherList } from "../components/retail-sale-receipt-voucher-list";
@@ -14,9 +14,30 @@ import { hasPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function RetailSaleReceiptVoucherListPage() {
-    const [{ data: vouchers }, locationsRes, accountsRes] = await Promise.all([
-        getRsrvVouchers().catch(() => ({ status: false, data: [] })),
+export default async function RetailSaleReceiptVoucherListPage({
+    searchParams,
+}: {
+    searchParams: Promise<{
+        status?: string;
+        fromDate?: string;
+        toDate?: string;
+        search?: string;
+        page?: string;
+        limit?: string;
+    }>;
+}) {
+    const rawFilters = await searchParams;
+    const page = rawFilters.page ? parseInt(rawFilters.page, 10) : 1;
+    const limit = rawFilters.limit ? parseInt(rawFilters.limit, 10) : 25;
+    const filters = {
+        ...rawFilters,
+        page,
+        limit,
+    };
+
+    const [vouchersRes, statusCountsRes, locationsRes, accountsRes] = await Promise.all([
+        getRsrvVouchers(filters).catch(() => ({ status: false, data: [], pagination: { total: 0, page: 1, limit: 25, totalPages: 1 } })),
+        getRsrvStatusCounts().catch(() => ({ status: false, data: null })),
         getLocations().catch(() => ({ status: false, data: [] })),
         getChartOfAccountsDropdown().catch(() => ({ status: false, data: [] })),
     ]);
@@ -51,7 +72,10 @@ export default async function RetailSaleReceiptVoucherListPage() {
 
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 bg-[#F8F9FA] dark:bg-background">
                 <RetailSaleReceiptVoucherList
-                    initialData={vouchers || []}
+                    initialData={vouchersRes?.data || []}
+                    pagination={vouchersRes?.pagination}
+                    initialFilters={filters}
+                    statusCounts={statusCountsRes?.data || null}
                     locations={locationsRes?.data || []}
                     accounts={accountsRes?.data || []}
                     permissions={{ canCreate, canRead, canUpdate, canDelete, canApprove }}

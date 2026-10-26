@@ -121,6 +121,22 @@ export async function getRsrvVouchers(filters?: ReceiptVoucherFilters) {
     return getReceiptVouchers({ ...filters, type: "rs_rv" });
 }
 
+export async function getReceiptVoucherStatusCounts(type?: string) {
+    try {
+        const queryParams = new URLSearchParams();
+        if (type && type !== "all") queryParams.append("type", type);
+        const response = await authFetch(`/finance/receipt-vouchers/status-counts?${queryParams.toString()}`);
+        if (!response.ok) return { status: false, data: null };
+        return { status: true, data: response.data };
+    } catch {
+        return { status: false, data: null };
+    }
+}
+
+export async function getRsrvStatusCounts() {
+    return getReceiptVoucherStatusCounts("rs_rv");
+}
+
 export async function createReceiptVoucher(data: any) {
     try {
         const payload = {
