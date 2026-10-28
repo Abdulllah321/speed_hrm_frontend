@@ -77,6 +77,10 @@ function CreateSalesInvoiceContent() {
   const [orderDiscount, setOrderDiscount] = useState(0);
   const [notes, setNotes] = useState('');
 
+  // Additional Sales Tax state (Rate % only)
+  const [bulkAddTaxRate, setBulkAddTaxRate] = useState<string>('');
+  const [itemTaxRates, setItemTaxRates] = useState<Record<string, string>>({});
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -120,6 +124,8 @@ function CreateSalesInvoiceContent() {
         setBaseMargin(custBaseMargin);
         setCashMargin(custCashMargin);
         setOrderDiscount(Number(challan.salesOrder?.discount ?? 0));
+        setItemTaxRates({});
+        setBulkAddTaxRate('');
       }
     } catch (error) {
       console.error('Error fetching challan details:', error);
@@ -168,18 +174,50 @@ function CreateSalesInvoiceContent() {
 
   const calculatedItems = itemDetails.map(it => {
     const discountedBase = it.afterDiscount * (1 - orderDiscountPct / 100);
-    const itemTaxAmount = discountedBase * (it.itemTaxRate / 100);
-    const itemTotal = discountedBase + itemTaxAmount;
+    const itemTaxAmount = Math.round(discountedBase * (it.itemTaxRate / 100));
+
+    // Additional Tax Rate & Calculated Amount
+    const itemAddTaxRate = Number(itemTaxRates[it.id] || 0);
+    const itemAddTaxAmount = Number(
+      ((discountedBase * itemAddTaxRate) / 100).toFixed(2)
+    );
+
+    const itemTaxPayable = Number((itemTaxAmount + itemAddTaxAmount).toFixed(2));
+    const itemTotal = Number((discountedBase + itemTaxPayable).toFixed(2));
+
     return {
       ...it,
       discountedBase,
       itemTaxAmount,
+      itemAddTaxRate,
+      itemAddTaxAmount,
+      itemTaxPayable,
       itemTotal,
     };
   });
 
   const taxAmount = calculatedItems.reduce((sum, it) => sum + it.itemTaxAmount, 0);
-  const totalAmount = taxableAmount + taxAmount;
+  const totalAdditionalTaxAmount = Number(
+    calculatedItems.reduce((sum, it) => sum + it.itemAddTaxAmount, 0).toFixed(2)
+  );
+  const totalTaxPayable = Number((taxAmount + totalAdditionalTaxAmount).toFixed(2));
+  const totalAmount = Number((taxableAmount + totalTaxPayable).toFixed(2));
+
+  const handleApplyBulkRate = (rateStr: string) => {
+    const newRates: Record<string, string> = {};
+    itemDetails.forEach(it => {
+      newRates[it.id] = rateStr;
+    });
+    setItemTaxRates(newRates);
+    toast.success(`Applied ${rateStr}% Additional Sales Tax to all items`);
+  };
+
+  const handleItemRateChange = (itemId: string, rateStr: string) => {
+    setItemTaxRates(prev => ({
+      ...prev,
+      [itemId]: rateStr
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,6 +235,13 @@ function CreateSalesInvoiceContent() {
         cashMargin,
         discount: orderDiscountAmount,
         notes,
+        items: calculatedItems.map(it => ({
+          itemId: it.itemId,
+          challanItemId: it.id,
+          additionalTaxRate: it.itemAddTaxRate,
+          additionalTaxAmount: it.itemAddTaxAmount,
+        })),
+        additionalTaxAmount: totalAdditionalTaxAmount,
       });
 
       toast.success('Sales invoice created successfully');
@@ -374,25 +419,70 @@ function CreateSalesInvoiceContent() {
         {selectedChallan && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Delivered Items Breakdown ({calculatedItems.length})</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  Order Ref: {selectedChallan.salesOrder?.orderNo || 'N/A'}
-                </span>
-              </CardTitle>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Delivered Items Breakdown ({calculatedItems.length})</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Order Ref: {selectedChallan.salesOrder?.orderNo || 'N/A'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 bg-muted/40 p-1.5 px-3 rounded-lg border text-xs">
+                  <span className="font-semibold text-muted-foreground whitespace-nowrap">
+                    Bulk Add. Tax Rate:
+                  </span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="e.g. 0.4"
+                    value={bulkAddTaxRate}
+                    onChange={(e) => setBulkAddTaxRate(e.target.value)}
+                    className="h-7 w-20 text-center text-xs"
+                  />
+                  <span className="text-muted-foreground">%</span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 text-xs px-2.5"
+                    onClick={() => {
+                      handleApplyBulkRate(bulkAddTaxRate);
+                    }}
+                  >
+                    Apply to All
+                  </Button>
+                  {totalAdditionalTaxAmount > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs px-2 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setBulkAddTaxRate('');
+                        handleApplyBulkRate('0');
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50 text-xs">
-                      <TableHead className="w-[200px]">Item</TableHead>
-                      <TableHead className="text-right w-[100px]">Retail Price</TableHead>
-                      <TableHead className="text-right w-[70px]">Delivered</TableHead>
-                      <TableHead className="text-right w-[110px]">WOST (Excl. Tax)</TableHead>
-                      <TableHead className="text-right w-[110px]">Margin Cut ({marginPct}%)</TableHead>
-                      <TableHead className="text-right w-[110px]">Sales Tax</TableHead>
-                      <TableHead className="text-right w-[120px]">Total (Incl. Tax)</TableHead>
+                      <TableHead className="w-[180px]">Item</TableHead>
+                      <TableHead className="text-right w-[90px]">Retail Price</TableHead>
+                      <TableHead className="text-right w-[60px]">Delivered</TableHead>
+                      <TableHead className="text-right w-[100px]">WOST (Excl. Tax)</TableHead>
+                      <TableHead className="text-right w-[100px]">Margin Cut ({marginPct}%)</TableHead>
+                      <TableHead className="text-right w-[95px]">Sales Tax</TableHead>
+                      <TableHead className="text-center w-[110px]">Add. Tax Rate (%)</TableHead>
+                      <TableHead className="text-right w-[100px]">Add. Tax (Rs.)</TableHead>
+                      <TableHead className="text-right w-[100px]">Tax Payable</TableHead>
+                      <TableHead className="text-right w-[115px]">Total (Incl. Tax)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -421,6 +511,30 @@ function CreateSalesInvoiceContent() {
                           <span className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 inline-block font-sans">
                             {item.itemTaxRate}%
                           </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={itemTaxRates[item.id] !== undefined ? itemTaxRates[item.id] : ''}
+                              placeholder="0"
+                              onChange={(e) => handleItemRateChange(item.id, e.target.value)}
+                              className="h-7 w-16 text-center font-mono text-xs px-1"
+                            />
+                            <span className="text-[11px] text-muted-foreground">%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs text-purple-700 dark:text-purple-300 font-medium">
+                          {item.itemAddTaxAmount > 0 ? (
+                            <span>+{formatCurrency(item.itemAddTaxAmount)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-medium text-xs text-blue-700 dark:text-blue-300">
+                          {formatCurrency(item.itemTaxPayable)}
                         </TableCell>
                         <TableCell className="text-right font-mono font-bold text-sm text-primary">
                           {formatCurrency(item.itemTotal)}
@@ -475,6 +589,16 @@ function CreateSalesInvoiceContent() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Sales Tax (FBR Item-wise):</span>
                   <span className="font-mono text-blue-600 font-medium">+{formatCurrency(taxAmount)}</span>
+                </div>
+                {totalAdditionalTaxAmount > 0 && (
+                  <div className="flex justify-between text-sm text-purple-700 dark:text-purple-400 font-medium">
+                    <span>Additional Sales Tax (Rs.):</span>
+                    <span className="font-mono">+{formatCurrency(totalAdditionalTaxAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-semibold border-t pt-1.5 text-blue-800 dark:text-blue-300">
+                  <span>Total Sales Tax Payable:</span>
+                  <span className="font-mono">+{formatCurrency(totalTaxPayable)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-xl border-t pt-3 text-primary">
                   <span>Total Payable:</span>

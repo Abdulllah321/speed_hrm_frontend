@@ -1149,6 +1149,25 @@ export const inventoryApi = {
     return fetchApi<{ status: boolean; data: any[] }>(`/inventory/search?${params.toString()}`);
   },
   getDetails: (itemId: string) => fetchApi<{ status: boolean; data: any[] }>(`/inventory/details/${itemId}`),
+  getBulkStockLevels: (
+    itemIds: string[],
+    warehouseId?: string,
+    locationId?: string,
+  ) =>
+    fetchApi<{
+      status: boolean;
+      data: Record<
+        string,
+        {
+          totalQuantity: number;
+          physicalQuantity: number;
+          reservedQuantity: number;
+        }
+      >;
+    }>('/inventory/bulk-stock-levels', {
+      method: 'POST',
+      body: JSON.stringify({ itemIds, warehouseId, locationId }),
+    }),
 };
 
 export const brandApi = {

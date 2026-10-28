@@ -64,11 +64,9 @@ export default function StockRequisitionPendingPage() {
   const loadRequisitions = async () => {
     setLoading(true);
     try {
-      const res = await stockRequisitionApi.getAll();
-      if (res.status) {
-        // Only keep PENDING requisitions for this view
-        const pending = res.data.filter((req: any) => req.status === 'PENDING');
-        setRequisitions(pending);
+      const res = await stockRequisitionApi.getAll({ status: 'PENDING' });
+      if (res.status && Array.isArray(res.data)) {
+        setRequisitions(res.data);
       }
     } catch (error) {
       toast.error('Failed to load pending requisitions list');

@@ -163,7 +163,15 @@ function groupInvoiceItems(
 
     // 4. Sales Tax
     const salesTax = Math.round(taxableAmount * (itemTaxRate / 100));
-    const addTax = Number(item.addTax || 0);
+    const addTax = Number(
+      item.additionalTaxAmount !== undefined && item.additionalTaxAmount !== null
+        ? item.additionalTaxAmount
+        : item.addTax !== undefined && item.addTax !== null
+        ? item.addTax
+        : item.additionalTaxRate
+        ? Math.round((taxableAmount * Number(item.additionalTaxRate)) / 100)
+        : 0,
+    );
     const taxPayable = salesTax + addTax;
 
     // 5. Value Including Sales Tax: item.total (stored in DB) or taxableAmount + taxPayable

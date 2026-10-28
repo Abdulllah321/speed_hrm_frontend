@@ -593,10 +593,9 @@ function StockTransferContent() {
   const loadPendingRequisitions = async () => {
     setLoadingRequisitions(true);
     try {
-      const res = await stockRequisitionApi.getAll();
-      if (res.status) {
-        const pending = res.data.filter((req: any) => req.status === "PENDING");
-        setPendingRequisitions(pending);
+      const res = await stockRequisitionApi.getAll({ status: "PENDING" });
+      if (res.status && Array.isArray(res.data)) {
+        setPendingRequisitions(res.data);
       }
     } catch (error) {
       console.error("Failed to load pending requisitions", error);
@@ -651,47 +650,45 @@ function StockTransferContent() {
       "Loading stock levels for requisition items...",
     );
     try {
-      const itemPromises = requisition.items.map(async (item: any) => {
-        const sku = item.item?.sku;
-        let availableStock = 0;
-        let physicalStock = 0;
-        let reservedStock = 0;
-        if (warehouseId) {
-          try {
-            const res = await inventoryApi.search(
-              item.itemId || item.item?.barCode || sku,
-              warehouseId,
-            );
-            if (res.status && res.data && res.data.length > 0) {
-              const matched =
-                res.data.find((inv: any) => inv.id === item.itemId) ||
-                (item.item?.barCode
-                  ? res.data.find(
-                      (inv: any) => inv.barCode === item.item.barCode,
-                    )
-                  : null) ||
-                res.data[0];
-              if (matched) {
-                const unreservedStock =
-                  typeof matched.totalQuantity === "number"
-                    ? matched.totalQuantity
-                    : 0;
-                physicalStock =
-                  typeof matched.physicalQuantity === "number"
-                    ? matched.physicalQuantity
-                    : unreservedStock;
-                reservedStock =
-                  typeof matched.reservedQuantity === "number"
-                    ? matched.reservedQuantity
-                    : 0;
-                // When fulfilling an active SRN, the stock available to transfer includes its own reservation (i.e. physical stock)
-                availableStock = physicalStock;
-              }
-            }
-          } catch (e) {
-            console.error(`Failed to load stock for ${sku}`, e);
-          }
+      const itemIds = (requisition.items || [])
+        .map((item: any) => item.itemId)
+        .filter(Boolean);
+
+      let bulkStockMap: Record<
+        string,
+        {
+          totalQuantity: number;
+          physicalQuantity: number;
+          reservedQuantity: number;
         }
+      > = {};
+
+      if (warehouseId && itemIds.length > 0) {
+        try {
+          const res = await inventoryApi.getBulkStockLevels(
+            itemIds,
+            warehouseId,
+          );
+          if (res.status && res.data) {
+            bulkStockMap = res.data;
+          }
+        } catch (e) {
+          console.error("Failed to load bulk stock levels", e);
+        }
+      }
+
+      const items = (requisition.items || []).map((item: any) => {
+        const stockInfo = bulkStockMap[item.itemId] || {
+          totalQuantity: 0,
+          physicalQuantity: 0,
+          reservedQuantity: 0,
+        };
+
+        const physicalStock = stockInfo.physicalQuantity || 0;
+        const reservedStock = stockInfo.reservedQuantity || 0;
+        // When fulfilling an active SRN, the stock available to transfer includes its own reservation (i.e. physical stock)
+        const availableStock = physicalStock;
+
         return {
           id: item.itemId,
           sku: item.item?.sku || "",
@@ -708,7 +705,6 @@ function StockTransferContent() {
         };
       });
 
-      const items = await Promise.all(itemPromises);
       setSelectedItems(items);
       toast.success(
         `Loaded ${items.length} items from Requisition ${requisition.requisitionNo}`,
