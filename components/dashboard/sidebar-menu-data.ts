@@ -2058,14 +2058,14 @@ export const menuData: MenuItem[] = [
             href: "/erp/reports/pos/stock-transaction-detail",
             permissions: ["erp.report.inventory.transaction-details.view"],
           },
-          // {
-          //   title: "Stock Transfer Movement & Status",
-          //   href: "/erp/reports/stock-transfer-summary",
-          //   permissions: [
-          //     "erp.report.inventory.stock-transfers.view",
-          //     "erp.inventory.stock-transfer.read",
-          //   ],
-          // },
+          {
+            title: "Stock Transfer Movement & Status",
+            href: "/erp/reports/stock-transfer-summary",
+            permissions: [
+              "erp.report.inventory.stock-transfers.view",
+              "erp.inventory.stock-transfer.read",
+            ],
+          },
         ],
       },
       {
