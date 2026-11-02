@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useTransition, useCallback, useRef } from "react";
+import React, { useEffect, useState, useTransition, useCallback, useRef, useMemo } from "react";
 import { getLocations, Location } from "@/lib/actions/location";
 import { getWarehouses, Warehouse } from "@/lib/actions/warehouse";
 import { getCookie } from "@/lib/utils";
+import { getReportCache, setReportCache } from "@/lib/report-cache";
 import {
     queueAvailableStockSummaryPreview,
     getAvailableStockSummaryResult,
@@ -185,16 +186,12 @@ export function AvailableStockSummaryView({
                     setCacheStatus(isFromDiskCache ? "cached" : "live");
                     setLastSyncTime(new Date());
 
-                    // Save in browser session storage for 0.0s instant open on revisit
-                    try {
-                        const locKey = isPos ? (resolvedPosLocationId || "pos") : (selectedLocationIds.join("-") || "all");
-                        sessionStorage.setItem(
-                            `speedlimit_stock_${locKey}_${asOfDate}`,
-                            JSON.stringify({ items: itemsList, timestamp: Date.now() })
-                        );
-                    } catch (e) {
-                        /* ignore storage quota exceeded */
-                    }
+                    // Save in high-capacity cross-tab IndexedDB cache (instant multi-tab open)
+                    const locKey = isPos ? (resolvedPosLocationId || "pos") : (selectedLocationIds.join("-") || "all");
+                    setReportCache(`speedlimit_stock_${locKey}_${asOfDate}`, {
+                        items: itemsList,
+                        timestamp: Date.now(),
+                    });
                 } else {
                     if (rawItems.length === 0) setRawItems([]);
                     toast.error("Failed to load completed available stock data");
@@ -264,44 +261,43 @@ export function AvailableStockSummaryView({
         });
     }, [asOfDate, isPos, resolvedPosLocationId, posWarehouseId, selectedLocationIds, selectedWarehouseIds, loadCompletedResult]);
 
-    // SWR + Revalidation on mount or filter change
+    // SWR + Revalidation on mount or filter change (multi-tab cross-tab IndexedDB cache)
     useEffect(() => {
         const locKey = isPos
             ? (resolvedPosLocationId || "pos")
             : (selectedLocationIds.join("-") || "all");
+        const cacheKey = `speedlimit_stock_${locKey}_${asOfDate}`;
 
-        // 1. Instant 0.0s paint from browser session cache if available
-        let hasValidCache = false;
-        try {
-            const cachedRaw = sessionStorage.getItem(`speedlimit_stock_${locKey}_${asOfDate}`);
-            if (cachedRaw) {
-                const parsed = JSON.parse(cachedRaw);
-                if (Array.isArray(parsed?.items) && parsed.items.length > 0) {
-                    setRawItems(parsed.items);
-                    setCacheStatus("cached");
-                    if (parsed.timestamp) {
-                        setLastSyncTime(new Date(parsed.timestamp));
-                        // Consider cache fresh if synced within last 15 minutes
-                        const ageMs = Date.now() - parsed.timestamp;
-                        if (ageMs < 15 * 60 * 1000) {
-                            hasValidCache = true;
-                        }
+        let isMounted = true;
+        let timer: NodeJS.Timeout | null = null;
+
+        // 1. Instant 0.0s paint from Cross-Tab IndexedDB cache (works across all open tabs)
+        getReportCache<FlatItemRecord[]>(cacheKey).then((cached) => {
+            if (!isMounted) return;
+            if (cached && Array.isArray(cached.items) && cached.items.length > 0) {
+                setRawItems(cached.items);
+                setCacheStatus("cached");
+                if (cached.timestamp) {
+                    setLastSyncTime(new Date(cached.timestamp));
+                    // Fresh cache (< 15 mins) -> keep instant paint without background fetch
+                    const ageMs = Date.now() - cached.timestamp;
+                    if (ageMs < 15 * 60 * 1000) {
+                        setIsFetchingData(false);
+                        return;
                     }
                 }
             }
-        } catch (e) {}
 
-        // 2. If valid fresh cache is present, DO NOT block UI with automatic loading overlay!
-        if (hasValidCache) {
-            setIsFetchingData(false);
-            return;
-        }
+            // 2. If no cache or cache older than 15 mins, queue fresh fetch in background
+            timer = setTimeout(() => {
+                if (isMounted) fetchDataset(false);
+            }, 150);
+        });
 
-        // 3. Otherwise queue fresh fetch in background
-        const timer = setTimeout(() => {
-            fetchDataset(false);
-        }, 150);
-        return () => clearTimeout(timer);
+        return () => {
+            isMounted = false;
+            if (timer) clearTimeout(timer);
+        };
     }, [asOfDate, isPos, resolvedPosLocationId, selectedLocationIds]);
 
     // Handle SSE progress & completed event
