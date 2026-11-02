@@ -709,6 +709,9 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                     const retRes = await authFetch(`/pos-sales/orders/${listOrder.id}/return-details?type=${typeParam}`);
                     if (retRes.ok && retRes.data?.status) {
                         setReturnDetails(retRes.data.data);
+                        if (retRes.data.data?.isRefund !== undefined) {
+                            setIsRefundPrint(retRes.data.data.isRefund);
+                        }
                     } else {
                         toast.error(retRes.data?.message || "Failed to load return details");
                     }
@@ -759,13 +762,17 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
 
     // ── Status badge map ───────────────────────────────────────────────────────
     const STATUS_BADGE: Record<string, string> = {
-        completed:         "bg-emerald-500/10 text-emerald-700 border-emerald-300",
-        hold:              "bg-amber-500/10 text-amber-700 border-amber-300",
-        hold_expired:      "bg-muted text-muted-foreground border-border",
-        voided:            "bg-destructive/10 text-destructive border-destructive/30",
-        partially_returned:"bg-blue-500/10 text-blue-700 border-blue-300",
-        refunded:          "bg-purple-500/10 text-purple-700 border-purple-300",
-        exchanged:         "bg-cyan-500/10 text-cyan-700 border-cyan-300",
+        completed:          "bg-emerald-500/10 text-emerald-700 border-emerald-300",
+        hold:               "bg-amber-500/10 text-amber-700 border-amber-300",
+        hold_expired:       "bg-muted text-muted-foreground border-border",
+        voided:             "bg-destructive/10 text-destructive border-destructive/30",
+        returned:           "bg-indigo-500/10 text-indigo-700 border-indigo-300",
+        partially_returned: "bg-blue-500/10 text-blue-700 border-blue-300",
+        refunded:           "bg-purple-500/10 text-purple-700 border-purple-300",
+        partially_refunded: "bg-rose-500/10 text-rose-700 border-rose-300",
+        claimed:            "bg-amber-500/10 text-amber-700 border-amber-300",
+        partially_claimed:  "bg-amber-500/10 text-amber-700 border-amber-300",
+        exchanged:          "bg-cyan-500/10 text-cyan-700 border-cyan-300",
     };
 
     // ── Columns ────────────────────────────────────────────────────────────────
@@ -904,7 +911,8 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                                         </Button>
                                     </>
                                 )}
-                                {(order.isReturnRow || order.hasReturn || order.status === "returned" || order.status === "partially_returned") && (
+                                {/* Return slip button */}
+                                {(order.isReturnRow || order.hasReturn || (order.status === "returned" && !order.hasRefund) || (order.status === "partially_returned" && order.hasReturn)) && (
                                     <Button variant="ghost" size="icon"
                                         className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
                                         title="Print return slip"
@@ -912,7 +920,8 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                                         <RotateCcw className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
-                                {(order.hasRefund || order.status === "refunded" || (order.status === "partially_returned" && !order.hasReturn && !order.hasRefund)) && (
+                                {/* Refund slip button */}
+                                {(order.hasRefund || order.status === "refunded" || order.status === "partially_refunded" || (order.status === "partially_returned" && order.hasRefund)) && (
                                     <Button variant="ghost" size="icon"
                                         className="h-8 w-8 rounded-full text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30"
                                         title="Print refund slip"

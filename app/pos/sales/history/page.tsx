@@ -493,6 +493,9 @@ export default function SalesHistoryPage() {
                     const retRes = await authFetch(`/pos-sales/orders/${retId}/return-details?type=${typeParam}`);
                     if (retRes.ok && retRes.data?.status) {
                         setReturnDetails(retRes.data.data);
+                        if (retRes.data.data?.isRefund !== undefined) {
+                            setIsRefundPrint(retRes.data.data.isRefund);
+                        }
                     } else {
                         toast.error(retRes.data?.message || "Failed to load return details");
                     }
@@ -561,8 +564,12 @@ export default function SalesHistoryPage() {
         hold: "bg-amber-500/10 text-amber-700 border-amber-300",
         hold_expired: "bg-muted text-muted-foreground border-border",
         voided: "bg-destructive/10 text-destructive border-destructive/30",
+        returned: "bg-indigo-500/10 text-indigo-700 border-indigo-300",
         partially_returned: "bg-blue-500/10 text-blue-700 border-blue-300",
         refunded: "bg-purple-500/10 text-purple-700 border-purple-300",
+        partially_refunded: "bg-rose-500/10 text-rose-700 border-rose-300",
+        claimed: "bg-amber-500/10 text-amber-700 border-amber-300",
+        partially_claimed: "bg-amber-500/10 text-amber-700 border-amber-300",
         exchanged: "bg-cyan-500/10 text-cyan-700 border-cyan-300",
     };
 
@@ -718,8 +725,9 @@ export default function SalesHistoryPage() {
                                     </Button>
                                 </>
                             )}
-                            {(order.isReturnRow || order.hasReturn || order.status === 'returned' || order.status === 'partially_returned') && (
-                                order.posReturns && order.posReturns.length > 1 ? (
+                            {/* Return slip button - show if order has returns or is returned */}
+                            {(order.isReturnRow || order.hasReturn || (order.status === 'returned' && !order.hasRefund) || (order.status === 'partially_returned' && order.hasReturn)) && (
+                                order.posReturns && order.posReturns.filter((pr: any) => pr.returnType !== 'REFUND' && !pr.returnNumber?.startsWith('RF-')).length > 1 ? (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" size="icon"
@@ -729,7 +737,7 @@ export default function SalesHistoryPage() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            {order.posReturns.map((pr: any, i: number) => (
+                                            {order.posReturns.filter((pr: any) => pr.returnType !== 'REFUND' && !pr.returnNumber?.startsWith('RF-')).map((pr: any, i: number) => (
                                                 <DropdownMenuItem key={pr.id} onClick={() => openPrintDialog(order, "return", pr.id)}>
                                                     Print Return: {pr.returnNumber || `Return ${i + 1}`}
                                                 </DropdownMenuItem>
@@ -740,18 +748,38 @@ export default function SalesHistoryPage() {
                                     <Button variant="ghost" size="icon"
                                         className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
                                         title="Print return slip"
-                                        onClick={() => openPrintDialog(order, "return", order.posReturns?.[0]?.id)}>
+                                        onClick={() => openPrintDialog(order, "return", order.posReturns?.find((pr: any) => pr.returnType !== 'REFUND' && !pr.returnNumber?.startsWith('RF-'))?.id || order.posReturns?.[0]?.id)}>
                                         <RotateCcw className="h-3.5 w-3.5" />
                                     </Button>
                                 )
                             )}
-                            {(order.hasRefund || order.status === 'refunded' || (order.status === 'partially_returned' && !order.hasReturn && !order.hasRefund)) && (
-                                <Button variant="ghost" size="icon"
-                                    className="h-8 w-8 rounded-full text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-                                    title="Print refund slip"
-                                    onClick={() => openPrintDialog(order, "refund")}>
-                                    <RotateCcw className="h-3.5 w-3.5 text-purple-600" />
-                                </Button>
+                            {/* Refund slip button - show if order has cash refunds or is refunded */}
+                            {(order.hasRefund || order.status === 'refunded' || order.status === 'partially_refunded' || (order.status === 'partially_returned' && order.hasRefund)) && (
+                                order.posReturns && order.posReturns.filter((pr: any) => pr.returnType === 'REFUND' || pr.returnNumber?.startsWith('RF-')).length > 1 ? (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon"
+                                                className="h-8 w-8 rounded-full text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                                                title="Print refund slips">
+                                                <RotateCcw className="h-3.5 w-3.5 text-purple-600" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            {order.posReturns.filter((pr: any) => pr.returnType === 'REFUND' || pr.returnNumber?.startsWith('RF-')).map((pr: any, i: number) => (
+                                                <DropdownMenuItem key={pr.id} onClick={() => openPrintDialog(order, "refund", pr.id)}>
+                                                    Print Refund: {pr.returnNumber || `Refund ${i + 1}`}
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                ) : (
+                                    <Button variant="ghost" size="icon"
+                                        className="h-8 w-8 rounded-full text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                                        title="Print refund slip"
+                                        onClick={() => openPrintDialog(order, "refund", order.posReturns?.find((pr: any) => pr.returnType === 'REFUND' || pr.returnNumber?.startsWith('RF-'))?.id || order.posReturns?.[0]?.id)}>
+                                        <RotateCcw className="h-3.5 w-3.5 text-purple-600" />
+                                    </Button>
+                                )
                             )}
                             {/* Claim receipt button - show if order has claims */}
                             {order.claims && order.claims.length > 0 && (

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
@@ -199,18 +201,22 @@ function ReturnInspectorDialog({
                 Original Sale Reference
               </div>
               <div className="flex items-center gap-2 justify-end mt-0.5">
-                <span className="font-mono font-bold text-white text-sm">
-                  {returnDoc.originalOrderNumber || "Direct / No Invoice"}
-                </span>
-                {returnDoc.originalOrderNumber && (
-                  <button
-                    type="button"
-                    onClick={() => copyText(returnDoc.originalOrderNumber, false)}
-                    className="text-slate-400 hover:text-white transition-colors"
-                    title="Copy original invoice number"
-                  >
-                    {copiedInvoiceNo ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                  </button>
+                {(!returnDoc.originalOrderNumber || returnDoc.originalOrderNumber === '-' || returnDoc.originalOrderNumber.startsWith('RET-')) ? (
+                  <span className="text-slate-300 italic text-sm">Direct / No Invoice</span>
+                ) : (
+                  <>
+                    <span className="font-mono font-bold text-white text-sm">
+                      {returnDoc.originalOrderNumber}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyText(returnDoc.originalOrderNumber, false)}
+                      className="text-slate-400 hover:text-white transition-colors"
+                      title="Copy original invoice number"
+                    >
+                      {copiedInvoiceNo ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -477,8 +483,15 @@ function ReturnInspectorDialog({
                       <td className="py-2.5 px-2 text-right font-mono font-semibold text-amber-700 dark:text-amber-400" title={`Value Excl.: ${(it.valueExcl || (it.quantity * it.unitPrice) / 1.18).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}>
                         {(it.valueExcl || (it.quantity * it.unitPrice) / 1.18).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="py-2.5 px-2 text-right font-mono text-rose-600 dark:text-rose-400" title={`Discount: ${it.discountAmount > 0 ? it.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "0.00"}`}>
-                        {it.discountAmount > 0 ? `-${it.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}
+                      <td className="py-2.5 px-2 text-right font-mono text-rose-600 dark:text-rose-400" title={`Discount: ${it.discountAmount > 0 ? it.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "0.00"}${it.discountPercent > 0 ? ` (${it.discountPercent}%)` : ""}`}>
+                        {it.discountAmount > 0 || (it.discountPercent && it.discountPercent > 0) ? (
+                          <div>
+                            <div>-{Number(it.discountAmount || it.discountAmountWost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                            {it.discountPercent > 0 && (
+                              <div className="text-[10px] text-rose-500 font-bold">({it.discountPercent}%)</div>
+                            )}
+                          </div>
+                        ) : "-"}
                       </td>
                       <td className="py-2.5 px-2 text-right font-mono text-emerald-600 dark:text-emerald-400" title={`Tax (18%): ${it.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}>
                         {it.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -543,7 +556,11 @@ function InlineReturnAuditBanner({
               <SubTypeBadge subType={item.subType} />
             </div>
             <div className="flex items-center gap-2 text-[11px] text-slate-500">
-              <span>Original Invoice: <strong className="font-mono text-slate-800 dark:text-slate-200">{item.originalOrderNumber || "Direct"}</strong></span>
+              <span>Original Invoice: <strong className="font-mono text-slate-800 dark:text-slate-200">
+                {(!item.originalOrderNumber || item.originalOrderNumber === '-' || item.originalOrderNumber.startsWith('RET-'))
+                  ? "Direct / No Invoice"
+                  : item.originalOrderNumber}
+              </strong></span>
               <span>&bull;</span>
               <span>Cashier: <strong className="text-slate-800 dark:text-slate-200">{item.cashierName || "Counter"}</strong></span>
             </div>
@@ -1095,7 +1112,15 @@ export function SalesReturnListTable({
 
                         {/* 2. Original Invoice */}
                         <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 font-mono text-[11px] text-slate-700 dark:text-slate-300">
-                          {ret.originalOrderNumber || <span className="text-slate-400 italic">Direct Return</span>}
+                          {(!ret.originalOrderNumber || ret.originalOrderNumber === '-' || ret.originalOrderNumber.startsWith('RET-')) ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400 italic">
+                              Direct Return
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-slate-900 dark:text-slate-100">
+                              {ret.originalOrderNumber}
+                            </span>
+                          )}
                         </td>
 
                         {/* 3. SubType */}
@@ -1292,8 +1317,13 @@ export function SalesReturnListTable({
                       <td className="py-2 px-3 text-right font-mono font-semibold text-amber-600 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800" title={`Line Value Excl. (WOST): ${formatVal(valExcl)}`}>
                         {formatVal(valExcl)}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono text-rose-500 border-r border-slate-200 dark:border-slate-800" title={`Line Discount (WOST): ${formatVal(discWost)}`}>
-                        {formatVal(discWost)}
+                      <td className="py-2 px-3 text-right font-mono text-rose-500 border-r border-slate-200 dark:border-slate-800" title={`Line Discount (WOST): ${formatVal(discWost)}${it.discountPercent > 0 ? ` (${it.discountPercent}%)` : ""}`}>
+                        <div>
+                          <div>{formatVal(discWost)}</div>
+                          {it.discountPercent > 0 && (
+                            <div className="text-[9px] text-rose-400 font-bold">({it.discountPercent}%)</div>
+                          )}
+                        </div>
                       </td>
                       <td className="py-2 px-3 text-right font-mono text-sky-600 border-r border-slate-200 dark:border-slate-800" title={`Line Amount After Disc: ${formatVal(amtAfter)}`}>
                         {formatVal(amtAfter)}

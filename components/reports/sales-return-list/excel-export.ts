@@ -110,7 +110,7 @@ export async function generateSalesReturnListExcel(opts: {
       dataRows.push([
         item.locationName,
         item.returnNumber,
-        item.originalOrderNumber || "-",
+        item.originalOrderNumber && !item.originalOrderNumber.startsWith("RET-") && item.originalOrderNumber !== "-" ? item.originalOrderNumber : "Direct Return",
         item.returnDate ? format(new Date(item.returnDate), "yyyy-MM-dd HH:mm") : "-",
         item.subTypeLabel || item.subType,
         item.refundMode || "-",
@@ -238,7 +238,7 @@ export async function generateSalesReturnListExcel(opts: {
       // Parent Return Row
       dataRows.push([
         ret.returnNumber,
-        ret.originalOrderNumber || "-",
+        ret.originalOrderNumber && !ret.originalOrderNumber.startsWith("RET-") && ret.originalOrderNumber !== "-" ? ret.originalOrderNumber : "Direct Return",
         ret.createdAt ? format(new Date(ret.createdAt), "yyyy-MM-dd HH:mm") : "-",
         ret.subTypeLabel || ret.subType,
         ret.refundMode || "VOUCHER",

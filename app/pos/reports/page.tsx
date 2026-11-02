@@ -162,11 +162,15 @@ function fmtNum(val: number) {
 
 const STATUS_BADGE: Record<string, string> = {
   completed: "bg-emerald-500/10 text-emerald-700 border-emerald-300",
+  hold: "bg-amber-500/10 text-amber-700 border-amber-300",
   voided: "bg-destructive/10 text-destructive border-destructive/30",
+  returned: "bg-indigo-500/10 text-indigo-700 border-indigo-300",
   partially_returned: "bg-blue-500/10 text-blue-700 border-blue-300",
   refunded: "bg-purple-500/10 text-purple-700 border-purple-300",
+  partially_refunded: "bg-rose-500/10 text-rose-700 border-rose-300",
+  claimed: "bg-amber-500/10 text-amber-700 border-amber-300",
+  partially_claimed: "bg-amber-500/10 text-amber-700 border-amber-300",
   exchanged: "bg-cyan-500/10 text-cyan-700 border-cyan-300",
-  hold: "bg-amber-500/10 text-amber-700 border-amber-300",
 };
 
 const PAYMENT_ICONS: Record<string, React.ElementType> = {
