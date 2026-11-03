@@ -100,6 +100,19 @@ export async function getItems(
     }
 }
 
+export async function getArticleBySku(sku: string) {
+    try {
+        const encodedSku = encodeURIComponent(sku);
+        const response = await authFetch(`/finance/items/article/${encodedSku}`, {
+            method: "GET",
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Get article by SKU error:", error);
+        return { status: false, data: null };
+    }
+}
+
 export async function getItemById(id: string) {
     try {
         const response = await authFetch(`/finance/items/${id}`, {

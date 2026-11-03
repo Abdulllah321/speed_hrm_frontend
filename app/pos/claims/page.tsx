@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -59,7 +59,6 @@ import {
 import { cn, formatCurrency } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
-import { getLocations, Location } from "@/lib/actions/location";
 import { PrintClaimReceipt } from "@/components/pos/print-claim-receipt";
 
 // ── Status metadata ─────────────────────────────────────────────────────────
@@ -203,7 +202,7 @@ export default function PosClaimsPage() {
   const router = useRouter();
   const { user, isAdmin } = useAuth();
 
-  // Location context
+  // Location context: strictly direct to the active logged-in terminal store
   const currentStoreLocationId =
     (user as any)?.terminal?.location?.id ||
     (user as any)?.terminal?.locationId ||
@@ -212,23 +211,8 @@ export default function PosClaimsPage() {
   const currentStoreName =
     (user as any)?.terminal?.location?.name || "Terminal Store";
 
-  // Initialize location filter once to the logged-in store ("mine only") by default
-  const hasInitializedLocationRef = useRef(false);
-  const [selectedLocationId, setSelectedLocationId] = useState<string>(
-    currentStoreLocationId || "ALL"
-  );
-
-  // Set default to current store when session data resolves (runs only once on mount)
-  useEffect(() => {
-    if (currentStoreLocationId && !hasInitializedLocationRef.current) {
-      setSelectedLocationId(currentStoreLocationId);
-      hasInitializedLocationRef.current = true;
-    }
-  }, [currentStoreLocationId]);
-
   // Data states
   const [claims, setClaims] = useState<any[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -247,54 +231,6 @@ export default function PosClaimsPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [printClaim, setPrintClaim] = useState<any | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
-
-  // Load locations
-  useEffect(() => {
-    async function fetchLocations() {
-      try {
-        const res = await getLocations(false);
-        const locArray = Array.isArray(res)
-          ? res
-          : Array.isArray((res as any)?.data)
-          ? (res as any).data
-          : [];
-        if (locArray.length > 0) {
-          setLocations(locArray);
-        } else {
-          const resActive = await getLocations(true);
-          const activeLocArray = Array.isArray(resActive)
-            ? resActive
-            : Array.isArray((resActive as any)?.data)
-            ? (resActive as any).data
-            : [];
-          if (activeLocArray.length > 0) {
-            setLocations(activeLocArray);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load locations:", err);
-      }
-    }
-    fetchLocations();
-  }, []);
-
-  // Dynamically merge any locations discovered in claims into locations list so they are always selectable
-  useEffect(() => {
-    if (claims.length > 0) {
-      setLocations((prev) => {
-        const existingIds = new Set(prev.map((l) => l.id));
-        const newLocs: Location[] = [];
-        claims.forEach((c) => {
-          const loc = c.salesOrder?.location;
-          if (loc && loc.id && !existingIds.has(loc.id)) {
-            existingIds.add(loc.id);
-            newLocs.push(loc);
-          }
-        });
-        return newLocs.length > 0 ? [...prev, ...newLocs] : prev;
-      });
-    }
-  }, [claims]);
 
   // Compute date range for dateFilter
   const dateParams = useMemo(() => {
@@ -318,7 +254,7 @@ export default function PosClaimsPage() {
     return {};
   }, [dateFilter]);
 
-  // Fetch claims with filters and pagination
+  // Fetch claims strictly for this outlet
   const fetchClaims = useCallback(
     async (showRefreshIndicator = false) => {
       if (showRefreshIndicator) setIsRefreshing(true);
@@ -330,10 +266,12 @@ export default function PosClaimsPage() {
           limit: pageSize,
         };
 
-        if (statusFilter !== "ALL") params.status = statusFilter;
-        if (selectedLocationId && selectedLocationId !== "ALL") {
-          params.locationId = selectedLocationId;
+        // Strictly direct to the logged-in terminal store
+        if (currentStoreLocationId) {
+          params.locationId = currentStoreLocationId;
         }
+
+        if (statusFilter !== "ALL") params.status = statusFilter;
         if (searchQuery.trim()) params.search = searchQuery.trim();
         if (dateParams.startDate) params.startDate = dateParams.startDate;
         if (dateParams.endDate) params.endDate = dateParams.endDate;
@@ -356,7 +294,7 @@ export default function PosClaimsPage() {
       currentPage,
       pageSize,
       statusFilter,
-      selectedLocationId,
+      currentStoreLocationId,
       searchQuery,
       dateParams,
     ]
@@ -378,11 +316,6 @@ export default function PosClaimsPage() {
     setCurrentPage(1);
   };
 
-  const handleLocationChange = (locId: string) => {
-    setSelectedLocationId(locId);
-    setCurrentPage(1);
-  };
-
   const handleDateFilterChange = (range: string) => {
     setDateFilter(range);
     setCurrentPage(1);
@@ -391,7 +324,6 @@ export default function PosClaimsPage() {
   const clearAllFilters = () => {
     setSearchQuery("");
     setStatusFilter("ALL");
-    setSelectedLocationId(currentStoreLocationId || "ALL");
     setDateFilter("ALL");
     setCurrentPage(1);
   };
@@ -490,24 +422,8 @@ export default function PosClaimsPage() {
                 <span>•</span>
                 <span className="inline-flex items-center gap-1 font-medium text-foreground">
                   <Store className="h-3.5 w-3.5 text-muted-foreground" />
-                  Terminal: {currentStoreName}
+                  Store: {currentStoreName}
                 </span>
-                <span>•</span>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-[11px] font-normal px-2 py-0 border shadow-2xs",
-                    selectedLocationId === "ALL"
-                      ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-semibold"
-                      : "border-primary/30 text-primary bg-primary/5 font-semibold"
-                  )}
-                >
-                  Scope: {selectedLocationId === "ALL"
-                    ? "Overall (All Outlets)"
-                    : selectedLocationId === currentStoreLocationId
-                    ? `This Store (${currentStoreName})`
-                    : locations.find(l => l.id === selectedLocationId)?.name || currentStoreName}
-                </Badge>
               </div>
             </div>
           </div>
@@ -732,31 +648,6 @@ export default function PosClaimsPage() {
               </SelectContent>
             </Select>
 
-            {/* Location Selector (All Outlets vs Current Store vs Specific Outlets) */}
-            <Select
-              value={selectedLocationId}
-              onValueChange={handleLocationChange}
-            >
-              <SelectTrigger className="w-full md:w-[220px] h-9.5 bg-background">
-                <SelectValue placeholder="All Outlets (Overall)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Outlets (Overall)</SelectItem>
-                {currentStoreLocationId && (
-                  <SelectItem value={currentStoreLocationId}>
-                    Current Store ({currentStoreName})
-                  </SelectItem>
-                )}
-                {locations
-                  .filter((loc) => loc.id !== currentStoreLocationId)
-                  .map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.name} {loc.code ? `(${loc.code})` : ""}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-
             {/* Date Range Preset */}
             <Select
               value={dateFilter}
@@ -774,12 +665,7 @@ export default function PosClaimsPage() {
             </Select>
 
             {/* Clear All Filters */}
-            {(searchQuery ||
-              statusFilter !== "ALL" ||
-              dateFilter !== "ALL" ||
-              (currentStoreLocationId
-                ? selectedLocationId !== currentStoreLocationId
-                : selectedLocationId !== "ALL")) && (
+            {(searchQuery || statusFilter !== "ALL" || dateFilter !== "ALL") && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -804,7 +690,7 @@ export default function PosClaimsPage() {
                   Claim Reference
                 </TableHead>
                 <TableHead className="w-[150px] font-semibold text-xs uppercase tracking-wider">
-                  Order & Branch
+                  Order Number
                 </TableHead>
                 <TableHead className="w-[180px] font-semibold text-xs uppercase tracking-wider">
                   Customer
@@ -912,23 +798,16 @@ export default function PosClaimsPage() {
                         </div>
                       </TableCell>
 
-                      {/* Order & Location */}
+                      {/* Order Number */}
                       <TableCell className="align-top py-3.5">
                         <div className="space-y-1">
-                          <div className="font-medium text-xs text-foreground flex items-center gap-1">
+                          <div className="font-semibold text-xs text-foreground flex items-center gap-1">
                             <span>
                               {claim.salesOrder?.orderNumber || "No Order"}
                             </span>
                           </div>
-                          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-                            <Store className="h-3 w-3 shrink-0" />
-                            <span className="truncate max-w-[150px] font-medium text-foreground/80">
-                              {claim.salesOrder?.location?.name ||
-                                claim.salesOrder?.location?.code ||
-                                (claim.salesOrder?.locationId
-                                  ? `Branch (${claim.salesOrder.locationId.slice(0, 8)})`
-                                  : "Overall")}
-                            </span>
+                          <div className="text-[11px] text-muted-foreground">
+                            {formatDateTime(claim.createdAt)}
                           </div>
                         </div>
                       </TableCell>
@@ -1232,11 +1111,7 @@ export default function PosClaimsPage() {
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Store className="h-3 w-3" />
                         <span>
-                          {selectedClaim.salesOrder?.location?.name ||
-                            selectedClaim.salesOrder?.location?.code ||
-                            (selectedClaim.salesOrder?.locationId
-                              ? `Branch (${selectedClaim.salesOrder.locationId.slice(0, 8)})`
-                              : "—")}
+                          {currentStoreName}
                         </span>
                       </p>
                     </div>
