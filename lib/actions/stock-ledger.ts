@@ -91,6 +91,7 @@ export async function getStockActivityReport(filters: {
     showSilhouette?: boolean;
     showArticle?: boolean;
     showVariant?: boolean;
+    forceRefresh?: boolean;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -468,6 +469,7 @@ export async function queueAvailableStockSummaryPreview(filters: {
     showSilhouette?: boolean;
     showArticle?: boolean;
     showVariant?: boolean;
+    forceRefresh?: boolean;
 }) {
     try {
         const response = await authFetch("/stock-ledger/available-stock-summary/queue", {

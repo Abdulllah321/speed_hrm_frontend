@@ -58,7 +58,7 @@ export async function generateSalesReturnListPdf(opts: {
       rowChunks.push(`
         <tr>
           <td><strong>${ret.returnNumber}</strong></td>
-          <td style="font-family: monospace;">${ret.originalOrderNumber || "-"}</td>
+          <td style="font-family: monospace;">${ret.originalOrderNumber && !ret.originalOrderNumber.startsWith("RET-") && ret.originalOrderNumber !== "-" ? ret.originalOrderNumber : "Direct Return"}</td>
           <td>${ret.createdAt ? format(new Date(ret.createdAt), "yyyy-MM-dd HH:mm") : "-"}</td>
           <td><span style="display: inline-block; padding: 1px 4px; border-radius: 4px; font-size: 7px; font-weight: 700; background: ${subTypeBadgeColor}">${ret.subTypeLabel || ret.subType}</span></td>
           <td>${ret.refundMode || "VOUCHER"}</td>

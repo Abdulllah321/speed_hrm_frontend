@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Input } from "@/components/ui/input";
@@ -165,6 +166,8 @@ interface FiltersProps {
     exportProgressPercent: number;
     exportProgressMessage: string;
     isExporting: boolean;
+    lastSyncTime?: Date | null;
+    cacheStatus?: "cached" | "live" | "syncing";
 }
 
 export function AvailableStockFilters({
@@ -209,6 +212,8 @@ export function AvailableStockFilters({
     exportProgressPercent,
     exportProgressMessage,
     isExporting,
+    lastSyncTime,
+    cacheStatus = "live",
 }: FiltersProps) {
     const [showLevelPanel, setShowLevelPanel] = useState(false);
 
@@ -264,7 +269,7 @@ export function AvailableStockFilters({
             <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-border bg-card shadow-sm">
                 <div className="flex flex-wrap items-center gap-2.5">
                     {/* Outlets & Warehouses Selectors */}
-                    {isPosLevel && posLocationId ? (
+                    {isPosLevel ? (
                         <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
                             <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <span>Current Store: {posLocationName}</span>
@@ -311,11 +316,34 @@ export function AvailableStockFilters({
                         size="sm"
                         onClick={onRefresh}
                         disabled={isLoading}
-                        className="h-9 px-3 gap-1.5 font-semibold text-xs rounded-xl"
+                        className="h-9 px-3 gap-1.5 font-semibold text-xs rounded-xl hover:bg-primary/5 hover:border-primary/50"
+                        title="Force live database sync (bypasses disk cache)"
                     >
                         <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
-                        Refresh
+                        <span>Refresh</span>
                     </Button>
+
+                    {/* Cache & Live Sync Status Indicator */}
+                    {lastSyncTime && (
+                        <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border bg-muted/30 border-border/80 shadow-2xs">
+                            <span
+                                className={cn(
+                                    "h-2 w-2 rounded-full",
+                                    cacheStatus === "live"
+                                        ? "bg-emerald-500 animate-pulse"
+                                        : cacheStatus === "cached"
+                                        ? "bg-amber-500"
+                                        : "bg-sky-500 animate-pulse"
+                                )}
+                            />
+                            <span className="text-muted-foreground text-[11px]">
+                                {cacheStatus === "cached" ? "Instant Cache" : "Live Synced"}:
+                            </span>
+                            <span className="text-foreground font-mono text-[11px]">
+                                {format(lastSyncTime, "hh:mm a")}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2">

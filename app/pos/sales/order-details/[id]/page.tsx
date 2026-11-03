@@ -38,9 +38,12 @@ const STATUS_BADGE: Record<string, string> = {
     hold: "bg-amber-500/10 text-amber-700 border-amber-300",
     hold_expired: "bg-muted text-muted-foreground border-border",
     voided: "bg-destructive/10 text-destructive border-destructive/30",
+    returned: "bg-indigo-500/10 text-indigo-700 border-indigo-300",
     partially_returned: "bg-blue-500/10 text-blue-700 border-blue-300",
-    returned: "bg-purple-500/10 text-purple-700 border-purple-300",
     refunded: "bg-purple-500/10 text-purple-700 border-purple-300",
+    partially_refunded: "bg-rose-500/10 text-rose-700 border-rose-300",
+    claimed: "bg-amber-500/10 text-amber-700 border-amber-300",
+    partially_claimed: "bg-amber-500/10 text-amber-700 border-amber-300",
     exchanged: "bg-cyan-500/10 text-cyan-700 border-cyan-300",
 };
 
@@ -99,6 +102,9 @@ export default function OrderDetailsPage() {
             const res = await authFetch(`/pos-sales/orders/${orderId}/return-details?type=${type}`);
             if (res.ok && res.data?.status) {
                 setReturnDetails(res.data.data);
+                if (res.data.data?.isRefund !== undefined) {
+                    setIsRefundPrint(res.data.data.isRefund);
+                }
             } else {
                 toast.error(`Failed to load ${type} details`);
                 setShowReturnPrint(false);
@@ -184,12 +190,12 @@ export default function OrderDetailsPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    {(order.hasReturn || order.status === 'returned' || order.status === 'partially_returned') && (
+                    {(order.hasReturn || (order.status === 'returned' && !order.hasRefund) || (order.status === 'partially_returned' && order.hasReturn)) && (
                         <Button variant="outline" onClick={() => handlePrintReturn("return")} className="gap-2">
                             <RotateCcw className="h-4 w-4" /> Return Slip
                         </Button>
                     )}
-                    {(order.hasRefund || order.status === 'refunded' || (order.status === 'partially_returned' && !order.hasReturn && !order.hasRefund)) && (
+                    {(order.hasRefund || order.status === 'refunded' || order.status === 'partially_refunded' || (order.status === 'partially_returned' && order.hasRefund)) && (
                         <Button variant="outline" onClick={() => handlePrintReturn("refund")} className="gap-2 border-purple-300 text-purple-600 hover:bg-purple-50 hover:text-purple-700">
                             <RotateCcw className="h-4 w-4" /> Refund Slip
                         </Button>

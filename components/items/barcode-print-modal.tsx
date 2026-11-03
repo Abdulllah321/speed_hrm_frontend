@@ -29,6 +29,9 @@ export interface BarcodeItem {
     unitPrice: number;
     brand?: { name: string } | null;
     category?: { name: string } | null;
+    size?: { name: string } | null;
+    color?: { name: string } | null;
+    uniqueNo?: string | null;
 }
 
 type LabelSize = "small" | "medium" | "large";

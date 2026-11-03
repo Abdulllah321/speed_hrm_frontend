@@ -108,7 +108,7 @@ export function AvailableStockTable({
         overscan: 25,
     });
 
-    if (isLoading) {
+    if (isLoading && (!treeData || treeData.length === 0)) {
         return (
             <div className="p-12 text-center border border-border rounded-2xl bg-card shadow-sm">
                 <div className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground animate-pulse">

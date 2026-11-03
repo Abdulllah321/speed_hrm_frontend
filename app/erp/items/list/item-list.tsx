@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Upload, Loader2, Eye, Edit, Trash2, Sparkles, Filter, X, ChevronRight, Search, Download } from "lucide-react";
+import { Plus, Upload, Loader2, Eye, Edit, Trash2, Sparkles, Filter, X, ChevronRight, Search, Download, ChevronDown, Check } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -14,7 +14,6 @@ import { BulkUploadModal } from "@/components/items/bulk-upload-modal";
 import { ItemUpdateBulkUploadModal } from "@/components/items/item-update-bulk-upload-modal";
 import { useUploadProgress } from "@/hooks/use-upload-progress";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import DataTable from "@/components/common/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -50,6 +49,26 @@ interface Item {
     uniqueNo?: string | null;
     size?: { name: string } | null;
     color?: { name: string } | null;
+    sizeId?: string | null;
+    colorId?: string | null;
+}
+
+/**
+ * One row in the list = one "unique SKU" (the user's mental model).
+ * Its `variants` array holds every `Item` row that shares the SKU
+ * (size × color × uniqueNo combinations).
+ */
+interface ItemGroup {
+    sku: string;
+    description: string | null;
+    brand?: { name: string } | null;
+    category?: { name: string } | null;
+    division?: { name: string } | null;
+    variantCount: number;
+    activeCount: number;
+    priceMin: number;
+    priceMax: number;
+    variants: Item[];
 }
 
 // ─── Filter Sheet ─────────────────────────────────────────────────────────────
@@ -374,6 +393,377 @@ function useItemColumns(onDelete: (id: string) => void, canUpdate: boolean, canD
     ];
 }
 
+// ─── SKU grouping helpers ─────────────────────────────────────────────────────
+
+/**
+ * Collapse a flat list of `Item` rows into one "unique SKU" group per SKU.
+ * The user's mental model is "10 items in the system" — each item is a SKU,
+ * and the size/color/uniqueNo combinations are its variants.
+ */
+function groupItemsBySku(items: Item[]): ItemGroup[] {
+    const map = new Map<string, ItemGroup>();
+    for (const it of items) {
+        const key = it.sku || it.id;
+        let g = map.get(key);
+        if (!g) {
+            g = {
+                sku: it.sku,
+                description: it.description,
+                brand: it.brand,
+                category: it.category,
+                division: it.division,
+                variantCount: 0,
+                activeCount: 0,
+                priceMin: Infinity,
+                priceMax: -Infinity,
+                variants: [],
+            };
+            map.set(key, g);
+        }
+        g.variants.push(it);
+        g.variantCount += 1;
+        if (it.isActive) g.activeCount += 1;
+        if (it.unitPrice < g.priceMin) g.priceMin = it.unitPrice;
+        if (it.unitPrice > g.priceMax) g.priceMax = it.unitPrice;
+    }
+    return Array.from(map.values());
+}
+
+function priceRange(g: ItemGroup): string {
+    if (!isFinite(g.priceMin)) return "—";
+    const fmt = (n: number) =>
+        Number(n).toLocaleString("en-US", {
+            style: "currency",
+            currency: "PKR",
+            minimumFractionDigits: 2,
+        });
+    return g.priceMin === g.priceMax ? fmt(g.priceMin) : `${fmt(g.priceMin)} – ${fmt(g.priceMax)}`;
+}
+
+/** A stable id for a group row so TanStack keeps row identity across pages. */
+function groupRowId(g: ItemGroup): string {
+    return `sku:${g.sku}`;
+}
+
+/** A stable id for a variant row inside a group. */
+function variantRowId(v: Item): string {
+    return `var:${v.id}`;
+}
+
+// ─── GroupedItemTable Component ────────────────────────────────────────────────
+// Renders one row per unique SKU (ItemGroup) with an expandable variants sub-table.
+// Props mirror DataTable's relevant props plus grouping-specific ones.
+
+interface GroupedItemTableProps {
+    groups: ItemGroup[];
+    expandedSkus: Set<string>;
+    onToggleSku: (sku: string) => void;
+    columns: ColumnDef<Item>[]; // the variant columns (from useItemColumns)
+    searchFields: { key: string; label: string }[];
+    filterSlot: React.ReactNode;
+    search: string;
+    onSearchChange: (v: string) => void;
+    activeFilters: AppliedFilters;
+    manualPagination: boolean;
+    manualSorting: boolean;
+    manualFiltering: boolean;
+    rowCount: number;
+    pageCount: number;
+    onPaginationChange: (v: PaginationState) => void;
+    onSortingChange: (v: SortingState) => void;
+    isLoading: boolean;
+}
+
+function GroupedItemTable({
+    groups,
+    expandedSkus,
+    onToggleSku,
+    columns,
+    searchFields,
+    filterSlot,
+    search,
+    onSearchChange,
+    activeFilters,
+    manualPagination,
+    manualSorting,
+    manualFiltering,
+    rowCount,
+    pageCount,
+    onPaginationChange,
+    onSortingChange,
+    isLoading,
+}: GroupedItemTableProps) {
+    // Flatten all variant rows from expanded groups for internal table rendering
+    const [sorting, setSorting] = useState<SortingState>([]);
+    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
+
+    // Build flat data for the internal table: each row is either a group header or a variant
+    interface DisplayRow {
+        type: "group" | "variant";
+        group?: ItemGroup;
+        variant?: Item;
+    }
+
+    const displayRows = useMemo((): DisplayRow[] => {
+        const rows: DisplayRow[] = [];
+        for (const g of groups) {
+            rows.push({ type: "group", group: g });
+            if (expandedSkus.has(g.sku)) {
+                for (const v of g.variants) {
+                    rows.push({ type: "variant", variant: v, group: g });
+                }
+            }
+        }
+        return rows;
+    }, [groups, expandedSkus]);
+
+    // We only need the variant columns for display — group rows render custom cells
+    const variantColumns = columns;
+
+    // Custom header with search + filter slot (matching DataTable toolbar)
+    const activeFilterCount =
+        (activeFilters?.brandIds?.length || 0) +
+        (activeFilters?.categoryIds?.length || 0) +
+        (activeFilters?.silhouetteIds?.length || 0) +
+        (activeFilters?.genderIds?.length || 0);
+
+    const handleSortChange = (updater: (prev: SortingState) => SortingState) => {
+        const next = typeof updater === "function" ? updater(sorting) : updater;
+        setSorting(next);
+        if (manualSorting) onSortingChange(next);
+    };
+
+    const handlePageChange = (updater: (prev: PaginationState) => PaginationState) => {
+        const next = typeof updater === "function" ? updater(pagination) : updater;
+        setPagination(next);
+        if (manualPagination) onPaginationChange(next);
+    };
+
+    if (isLoading && groups.length === 0) {
+        return (
+            <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-14 animate-pulse bg-muted rounded" />
+                ))}
+            </div>
+        );
+    }
+
+    if (groups.length === 0 && !isLoading) {
+        return (
+            <div className="py-12 text-center text-muted-foreground">
+                No items found. Try adjusting your search or filters.
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            {/* Toolbar: Search + Filter Slot */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                <div className="relative max-w-xs w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                        type="search"
+                        placeholder="Search items…"
+                        value={search}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 text-sm border border-input bg-background rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    {filterSlot}
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="rounded-md border overflow-hidden">
+                <table className="w-full caption-bottom text-sm">
+                    <thead className="[&_tr]:border-b">
+                        <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground w-10">#</th>
+                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground">SKU / Description</th>
+                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground hidden md:table-cell">Brand</th>
+                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">Category</th>
+                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">Division</th>
+                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground">Variants</th>
+                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground">Active</th>
+                            <th className="h-10 px-3 text-right align-middle font-medium text-muted-foreground">Price Range</th>
+                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground w-10"></th>
+                        </tr>
+                    </thead>
+                    <tbody className="[&_tr:last-child]:border-0">
+                        {displayRows.map((row, index) => {
+                            if (row.type === "group" && row.group) {
+                                const g = row.group;
+                                const isExpanded = expandedSkus.has(g.sku);
+                                return (
+                                    <tr
+                                        key={groupRowId(g)}
+                                        className="bg-muted/30 border-t border-border font-medium hover:bg-muted/50 transition-colors"
+                                    >
+                                        <td className="px-3 py-3 text-muted-foreground">
+                                            {pagination.pageIndex * pagination.pageSize + index + 1}
+                                        </td>
+                                        <td className="px-3 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onToggleSku(g.sku)}
+                                                    className="flex h-7 w-7 items-center justify-center rounded border border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                                    aria-expanded={isExpanded}
+                                                    aria-controls={`variants-${g.sku}`}
+                                                >
+                                                    <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")} />
+                                                </button>
+                                                <div className="min-w-0">
+                                                    <span className="font-mono text-sm font-medium truncate block">{g.sku}</span>
+                                                    {g.description && (
+                                                        <span className="text-xs text-muted-foreground truncate block max-w-[280px]">{g.description}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-3 hidden md:table-cell">
+                                            {g.brand?.name ?? <span className="text-muted-foreground">—</span>}
+                                        </td>
+                                        <td className="px-3 py-3 hidden lg:table-cell">
+                                            {g.category?.name ?? <span className="text-muted-foreground">—</span>}
+                                        </td>
+                                        <td className="px-3 py-3 hidden lg:table-cell">
+                                            {g.division?.name ?? <span className="text-muted-foreground">—</span>}
+                                        </td>
+                                        <td className="px-3 py-3 font-mono text-sm">{g.variantCount.toLocaleString()}</td>
+                                        <td className="px-3 py-3">
+                                            <Badge variant={g.activeCount > 0 ? "default" : "secondary"} className="text-xs">
+                                                {g.activeCount} / {g.variantCount}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-3 py-3 text-right font-mono text-sm">{priceRange(g)}</td>
+                                        <td className="px-3 py-3"></td>
+                                    </tr>
+                                );
+                            }
+                            if (row.type === "variant" && row.variant && row.group) {
+                                const v = row.variant;
+                                return (
+                                    <tr
+                                        key={variantRowId(v)}
+                                        className="border-t border-border/50 hover:bg-muted/30 transition-colors"
+                                        id={`variants-${row.group.sku}`}
+                                    >
+                                        <td className="px-3 py-2 text-muted-foreground pl-10"></td>
+                                        <td className="px-3 py-2 pl-10">
+                                            <div className="flex flex-col gap-0.5 min-w-0">
+                                                <span className="font-mono text-xs text-muted-foreground">{v.sku}</span>
+                                                {v.description && (
+                                                    <span className="text-xs text-muted-foreground truncate max-w-[220px]">{v.description}</span>
+                                                )}
+                                                {v.uniqueNo && (
+                                                    <span className="text-xs text-blue-600 dark:text-blue-400 font-mono">Unique No: {v.uniqueNo}</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2 hidden md:table-cell">
+                                            {v.brand?.name ?? <span className="text-muted-foreground">—</span>}
+                                        </td>
+                                        <td className="px-3 py-2 hidden lg:table-cell">
+                                            {v.category?.name ?? <span className="text-muted-foreground">—</span>}
+                                        </td>
+                                        <td className="px-3 py-2 hidden lg:table-cell">
+                                            {v.division?.name ?? <span className="text-muted-foreground">—</span>}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <div className="flex items-center gap-1.5">
+                                                {v.size ? (
+                                                    <Badge variant="outline" className="text-xs font-medium">{v.size.name}</Badge>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs">—</span>
+                                                )}
+                                                {v.color && (
+                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{v.color.name}</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <Badge variant={v.isActive ? "default" : "secondary"} className="text-xs">
+                                                {v.isActive ? "Active" : "Inactive"}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-mono text-sm">
+                                            {Number(v.unitPrice).toLocaleString("en-US", {
+                                                style: "currency",
+                                                currency: "PKR",
+                                                minimumFractionDigits: 2,
+                                            })}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <div className="flex items-center justify-end">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                        <DropdownMenuItem asChild>
+                                                            <Link href={`/erp/items/view/${v.id}`} transitionTypes={["nav-forward"]}>
+                                                                <Eye className="mr-2 h-4 w-4" /> View Details
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem asChild>
+                                                            <Link href={`/erp/items/edit/${v.id}`} transitionTypes={["nav-forward"]}>
+                                                                <Edit className="mr-2 h-4 w-4" /> Edit
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            }
+                            return null;
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-2 py-3">
+                <div className="text-sm text-muted-foreground">
+                    Showing{" "}
+                    <span className="font-medium">{pagination.pageIndex * pagination.pageSize + 1}</span>{" "}
+                    to{" "}
+                    <span className="font-medium">
+                        {Math.min((pagination.pageIndex + 1) * pagination.pageSize, rowCount)}
+                    </span>{" "}
+                    of <span className="font-medium">{rowCount}</span> items
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange((p) => ({ ...p, pageIndex: p.pageIndex - 1 }))}
+                        disabled={pagination.pageIndex === 0}
+                    >
+                        <ChevronRight className="h-4 w-4 rotate-180" />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange((p) => ({ ...p, pageIndex: p.pageIndex + 1 }))}
+                        disabled={pagination.pageIndex >= pageCount - 1}
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Query Key Factory ────────────────────────────────────────────────────────
 
 const itemsQueryKey = (
@@ -416,6 +806,9 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
     const [activeUpdateUploadId, setActiveUpdateUploadId] = useState<string | null>(null);
     const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+    // SKU grouping: which SKU's variants are currently expanded in the table.
+    // The user thinks in "unique SKUs" — one row per SKU, click to see its variants.
+    const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
     const [exportState, setExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
     const [exportJobId, setExportJobId] = useState<string | null>(null);
     const [exportProgress, setExportProgress] = useState<number>(0);
@@ -724,6 +1117,20 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         [handleDelete, canUpdate, canDelete]
     );
 
+    // ── SKU grouping ──────────────────────────────────────────────────────
+    // The user thinks in "unique SKUs". The API returns one row per Item
+    // (size × color × uniqueNo), so we collapse them into one row per SKU
+    // with an expandable variants sub-table.
+    const groups = useMemo(() => groupItemsBySku(items), [items]);
+    const toggleSku = useCallback((sku: string) => {
+        setExpandedSkus((prev) => {
+            const next = new Set(prev);
+            if (next.has(sku)) next.delete(sku);
+            else next.add(sku);
+            return next;
+        });
+    }, []);
+
     return (
         <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
@@ -731,7 +1138,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     <CardTitle className="text-2xl font-bold">Items Catalog</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
                         {meta.total > 0
-                            ? `${meta.total.toLocaleString()} items total`
+                            ? `${meta.total.toLocaleString()} items · ${groups.length.toLocaleString()} unique SKUs`
                             : "No items yet"}
                         {isFetching && !isLoading && (
                             <span className="ml-2 inline-flex items-center gap-1 text-primary">
@@ -863,10 +1270,11 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
             </CardHeader>
 
             <CardContent>
-                <DataTable
+                <GroupedItemTable
+                    groups={groups}
+                    expandedSkus={expandedSkus}
+                    onToggleSku={toggleSku}
                     columns={columns}
-                    data={items}
-                    tableId="items-catalog"
                     searchFields={[
                         { key: "sku", label: "SKU" },
                         { key: "description", label: "Description" },
@@ -875,7 +1283,9 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                         { key: "division", label: "Division" },
                     ]}
                     filterSlot={filterSlot}
-                    /* ── Server-side controls ── */
+                    search={search}
+                    onSearchChange={setSearch}
+                    activeFilters={appliedFilters}
                     manualPagination
                     manualSorting
                     manualFiltering
@@ -883,13 +1293,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     pageCount={meta.totalPages}
                     onPaginationChange={setPagination}
                     onSortingChange={setSorting}
-                    onSearchChange={setSearch}
                     isLoading={isLoading}
-                    /* ── Disable built-in row actions (handled via dropdown) ── */
-                    canBulkEdit={false}
-                    canBulkDelete={false}
-                    canRowEdit={false}
-                    canRowDelete={false}
                 />
             </CardContent>
 

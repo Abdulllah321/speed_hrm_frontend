@@ -65,9 +65,14 @@ export default function GiftVoucherSaleRegisterPage() {
     [locations],
   );
 
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const startYear = now.getMonth() >= 6 ? curYear : curYear - 1;
+    return {
+      from: new Date(startYear, 6, 1),
+      to: endOfMonth(now),
+    };
   });
 
   const [reportData, setReportData] = useState<GiftVoucherSaleRegisterReportData | null>(null);
