@@ -32,6 +32,7 @@ interface ArticleMasterViewProps {
 
 export function ArticleMasterView({ article }: ArticleMasterViewProps) {
     const [variantSearch, setVariantSearch] = useState("");
+    const [stockViewMode, setStockViewMode] = useState<"cards" | "matrix">("cards");
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
     const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
@@ -64,6 +65,78 @@ export function ArticleMasterView({ article }: ArticleMasterViewProps) {
             v.itemId?.toLowerCase().includes(q)
         );
     }, [article?.variants, variantSearch]);
+
+    // Process & Aggregate Store Stock Distribution
+    const processedLocations = useMemo(() => {
+        if (!article?.locationStock?.length) return [];
+
+        const map = new Map<string, {
+            locationId: string;
+            locationName: string;
+            locationCode?: string;
+            quantity: number;
+            percentage: number;
+            sizeBreakdown: Array<{ size: string; color?: string; barcode?: string; quantity: number }>;
+        }>();
+
+        for (const loc of article.locationStock) {
+            const key = loc.locationId || loc.locationName;
+            const existing = map.get(key);
+            const qty = Number(loc.quantity || 0);
+
+            if (existing) {
+                existing.quantity += qty;
+                if (loc.sizeBreakdown) {
+                    for (const sb of loc.sizeBreakdown) {
+                        const existingSize = existing.sizeBreakdown.find((s) => s.size === sb.size);
+                        if (existingSize) {
+                            existingSize.quantity += Number(sb.quantity || 0);
+                        } else {
+                            existing.sizeBreakdown.push({ ...sb, quantity: Number(sb.quantity || 0) });
+                        }
+                    }
+                }
+            } else {
+                map.set(key, {
+                    locationId: key,
+                    locationName: loc.locationName || "Unknown Outlet",
+                    locationCode: loc.locationCode || (loc.locationName ? loc.locationName.split("-")[0] : "LOC"),
+                    quantity: qty,
+                    percentage: loc.percentage || 0,
+                    sizeBreakdown: loc.sizeBreakdown ? [...loc.sizeBreakdown] : [],
+                });
+            }
+        }
+
+        const list = Array.from(map.values()).filter((l) => l.quantity > 0);
+        const total = list.reduce((sum, l) => sum + l.quantity, 0);
+
+        return list
+            .map((l) => ({
+                ...l,
+                percentage: total > 0 ? Math.round((l.quantity / total) * 100) : 0,
+                sizeBreakdown: (l.sizeBreakdown || []).sort((a, b) =>
+                    a.size.localeCompare(b.size, undefined, { numeric: true })
+                ),
+            }))
+            .sort((a, b) => b.quantity - a.quantity);
+    }, [article?.locationStock]);
+
+    // Distinct sizes for the Matrix View
+    const matrixSizes = useMemo(() => {
+        if (article?.sizes?.length) {
+            return [...article.sizes].sort((a: string, b: string) =>
+                a.localeCompare(b, undefined, { numeric: true })
+            );
+        }
+        const sizeSet = new Set<string>();
+        processedLocations.forEach((loc) => {
+            loc.sizeBreakdown.forEach((s) => sizeSet.add(s.size));
+        });
+        return Array.from(sizeSet).sort((a, b) =>
+            a.localeCompare(b, undefined, { numeric: true })
+        );
+    }, [article?.sizes, processedLocations]);
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12 px-4 sm:px-6">
@@ -237,31 +310,211 @@ export function ArticleMasterView({ article }: ArticleMasterViewProps) {
             </Card>
 
             {/* Store Stock Distribution */}
-            {article.locationStock && article.locationStock.length > 0 && (
-                <Card>
-                    <CardHeader className="pb-3">
-                        <div className="flex items-center gap-2">
-                            <Store className="h-4 w-4 text-primary" />
-                            <CardTitle className="text-base font-semibold">Store Stock Distribution</CardTitle>
-                        </div>
-                        <CardDescription>Real-time inventory levels by store outlet and central warehouse</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                            {article.locationStock.map((loc: any, idx: number) => (
-                                <div
-                                    key={`${loc.locationId}-${idx}`}
-                                    className="p-3 rounded-lg border bg-muted/20 space-y-1"
-                                >
-                                    <div className="text-xs font-semibold text-muted-foreground truncate">
-                                        {loc.locationName}
+            {processedLocations.length > 0 && (
+                <Card className="border-border/60 shadow-xs overflow-hidden">
+                    <CardHeader className="border-b bg-muted/20 pb-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                                        <Store className="h-4 w-4" />
                                     </div>
-                                    <div className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                                        {loc.quantity.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">units</span>
-                                    </div>
+                                    <CardTitle className="text-base font-semibold">
+                                        Store Stock Distribution
+                                    </CardTitle>
+                                    <Badge variant="outline" className="text-xs font-mono font-medium ml-1">
+                                        {processedLocations.length} {processedLocations.length === 1 ? "Outlet" : "Outlets"}
+                                    </Badge>
                                 </div>
-                            ))}
+                                <CardDescription>
+                                    Real-time inventory levels, share distribution & size breakdown by store outlet
+                                </CardDescription>
+                            </div>
+
+                            {/* View Switcher: Outlet Cards vs Size Matrix */}
+                            <div className="flex items-center gap-1.5 bg-muted p-1 rounded-lg border self-start sm:self-auto">
+                                <button
+                                    type="button"
+                                    onClick={() => setStockViewMode("cards")}
+                                    className={cn(
+                                        "px-2.5 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5",
+                                        stockViewMode === "cards"
+                                            ? "bg-background text-foreground shadow-xs font-semibold"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <Boxes className="h-3.5 w-3.5" />
+                                    Outlet Cards
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStockViewMode("matrix")}
+                                    className={cn(
+                                        "px-2.5 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5",
+                                        stockViewMode === "matrix"
+                                            ? "bg-background text-foreground shadow-xs font-semibold"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <Tag className="h-3.5 w-3.5" />
+                                    Store × Size Matrix
+                                </button>
+                            </div>
                         </div>
+                    </CardHeader>
+
+                    <CardContent className="p-6">
+                        {stockViewMode === "cards" ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {processedLocations.map((loc) => (
+                                    <div
+                                        key={loc.locationId}
+                                        className="p-4 rounded-xl border bg-card hover:border-primary/40 hover:shadow-xs transition-all flex flex-col justify-between space-y-3"
+                                    >
+                                        {/* Store Header */}
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold text-sm text-foreground line-clamp-1">
+                                                        {loc.locationName}
+                                                    </span>
+                                                </div>
+                                                {loc.locationCode && loc.locationCode !== loc.locationName && (
+                                                    <Badge variant="outline" className="text-[10px] font-mono py-0 px-1 text-muted-foreground">
+                                                        {loc.locationCode}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <Badge
+                                                variant="secondary"
+                                                className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs shrink-0 font-medium"
+                                            >
+                                                In Stock
+                                            </Badge>
+                                        </div>
+
+                                        {/* Units and Share */}
+                                        <div className="space-y-1.5 pt-1">
+                                            <div className="flex items-baseline justify-between">
+                                                <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                                                    {loc.quantity.toLocaleString()}
+                                                    <span className="text-xs font-normal text-muted-foreground ml-1.5">units</span>
+                                                </div>
+                                                <span className="text-xs font-mono font-semibold text-muted-foreground">
+                                                    {loc.percentage}% of stock
+                                                </span>
+                                            </div>
+                                            {/* Visual Progress Bar */}
+                                            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                                                <div
+                                                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                                    style={{ width: `${Math.min(100, Math.max(5, loc.percentage))}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Mini Size Breakdown Pills */}
+                                        {loc.sizeBreakdown.length > 0 && (
+                                            <div className="pt-2 border-t border-border/50">
+                                                <span className="text-[11px] font-medium text-muted-foreground block mb-1.5">
+                                                    Sizes available at this outlet:
+                                                </span>
+                                                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                                                    {loc.sizeBreakdown.map((sb) => (
+                                                        <div
+                                                            key={`${loc.locationId}-${sb.size}`}
+                                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/60 border text-[11px] font-mono"
+                                                        >
+                                                            <span className="font-semibold text-foreground">{sb.size}:</span>
+                                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{sb.quantity}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            /* Store x Size Matrix Table */
+                            <div className="rounded-lg border overflow-x-auto">
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="border-b bg-muted/50 text-muted-foreground font-semibold text-left">
+                                            <th className="py-3 px-4 font-bold text-foreground">Outlet / Store</th>
+                                            {matrixSizes.map((sz) => (
+                                                <th key={sz} className="py-3 px-3 text-center min-w-[50px]">
+                                                    <Badge variant="outline" className="font-mono text-xs py-0">
+                                                        {sz}
+                                                    </Badge>
+                                                </th>
+                                            ))}
+                                            <th className="py-3 px-4 text-right font-bold text-foreground">Total Units</th>
+                                            <th className="py-3 px-4 text-right">Share</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/60">
+                                        {processedLocations.map((loc) => {
+                                            const sizeQtyMap = new Map(loc.sizeBreakdown.map((s) => [s.size, s.quantity]));
+                                            return (
+                                                <tr key={loc.locationId} className="hover:bg-muted/40 transition-colors">
+                                                    <td className="py-3 px-4 font-semibold text-foreground">
+                                                        <div className="flex items-center gap-2">
+                                                            <Store className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                            <span>{loc.locationName}</span>
+                                                        </div>
+                                                    </td>
+                                                    {matrixSizes.map((sz) => {
+                                                        const qty = sizeQtyMap.get(sz) ?? 0;
+                                                        return (
+                                                            <td key={sz} className="py-3 px-3 text-center font-mono">
+                                                                {qty > 0 ? (
+                                                                    <span className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20 text-xs">
+                                                                        {qty}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-muted-foreground/40">—</span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                    <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                                        {loc.quantity.toLocaleString()}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right font-mono text-muted-foreground">
+                                                        {loc.percentage}%
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr className="border-t-2 bg-muted/30 font-bold">
+                                            <td className="py-3 px-4 text-foreground font-bold">
+                                                Total Across All Stores
+                                            </td>
+                                            {matrixSizes.map((sz) => {
+                                                const totalForSize = processedLocations.reduce((sum, loc) => {
+                                                    const sb = loc.sizeBreakdown.find((s) => s.size === sz);
+                                                    return sum + (sb?.quantity || 0);
+                                                }, 0);
+                                                return (
+                                                    <td key={sz} className="py-3 px-3 text-center font-mono font-bold text-foreground">
+                                                        {totalForSize > 0 ? totalForSize : "—"}
+                                                    </td>
+                                                );
+                                            })}
+                                            <td className="py-3 px-4 text-right font-mono font-extrabold text-foreground text-sm">
+                                                {processedLocations.reduce((s, l) => s + l.quantity, 0).toLocaleString()}
+                                            </td>
+                                            <td className="py-3 px-4 text-right font-mono text-foreground">
+                                                100%
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             )}

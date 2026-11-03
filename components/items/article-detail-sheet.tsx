@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Package,
     ScanBarcode,
@@ -118,7 +117,7 @@ export function ArticleDetailSheet({
                 ) : (
                     <>
                         {/* Header Banner */}
-                        <div className="p-6 border-b bg-gradient-to-r from-muted/40 via-muted/20 to-background">
+                        <div className="p-6 border-b bg-gradient-to-r from-muted/40 via-muted/20 to-background shrink-0">
                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
@@ -203,8 +202,11 @@ export function ArticleDetailSheet({
                             </div>
                         </div>
 
+                        {/* Scrollable Content Area */}
+                        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
+
                         {/* Executive KPI Cards */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-6 border-b bg-card">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-6 border-b bg-card shrink-0">
                             <div className="p-3.5 rounded-xl border bg-muted/20 flex flex-col justify-between">
                                 <div className="flex items-center justify-between text-muted-foreground">
                                     <span className="text-xs font-medium">Variants</span>
@@ -266,30 +268,119 @@ export function ArticleDetailSheet({
                             </div>
                         </div>
 
-                        {/* Location Stock Breakdown (if stock exists) */}
-                        {article.locationStock && article.locationStock.length > 0 && (
-                            <div className="px-6 py-3 border-b bg-muted/10">
-                                <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    <Store className="h-3.5 w-3.5" /> Store Stock Breakdown
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {article.locationStock.map((loc: any, idx: number) => (
-                                        <div
-                                            key={`${loc.locationId}-${idx}`}
-                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border bg-background text-xs"
-                                        >
-                                            <span className="text-muted-foreground font-medium">{loc.locationName}:</span>
-                                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                                {loc.quantity.toLocaleString()} units
+                        {/* Location Stock Breakdown (aggregated by store) */}
+                        {article.locationStock && article.locationStock.length > 0 && (() => {
+                            // Aggregate stock by locationId
+                            const map = new Map<string, {
+                                id: string;
+                                locationName: string;
+                                locationCode?: string;
+                                quantity: number;
+                                sizeBreakdown: Array<{ size: string; quantity: number }>;
+                            }>();
+
+                            for (const loc of article.locationStock) {
+                                const key = loc.locationId || loc.locationName;
+                                const existing = map.get(key);
+                                const qty = Number(loc.quantity || 0);
+                                if (existing) {
+                                    existing.quantity += qty;
+                                    if (loc.sizeBreakdown) {
+                                        for (const sb of loc.sizeBreakdown) {
+                                            const es = existing.sizeBreakdown.find((s) => s.size === sb.size);
+                                            if (es) es.quantity += Number(sb.quantity || 0);
+                                            else existing.sizeBreakdown.push({ ...sb, quantity: Number(sb.quantity || 0) });
+                                        }
+                                    }
+                                } else {
+                                    map.set(key, {
+                                        id: key,
+                                        locationName: loc.locationName || "Unknown Location",
+                                        locationCode: loc.locationCode,
+                                        quantity: qty,
+                                        sizeBreakdown: loc.sizeBreakdown ? [...loc.sizeBreakdown] : [],
+                                    });
+                                }
+                            }
+
+                            const stores = Array.from(map.values())
+                                .filter((l) => l.quantity > 0)
+                                .sort((a, b) => b.quantity - a.quantity);
+                            const totalStock = stores.reduce((sum, s) => sum + s.quantity, 0);
+
+                            if (stores.length === 0) return null;
+
+                            return (
+                                <div className="px-6 py-4 border-b bg-muted/10 shrink-0">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <Store className="h-4 w-4 text-primary" />
+                                            <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+                                                Store Stock Distribution
                                             </span>
+                                            <Badge variant="outline" className="text-[10px] font-mono py-0">
+                                                {stores.length} {stores.length === 1 ? "outlet" : "outlets"}
+                                            </Badge>
                                         </div>
-                                    ))}
+                                        <span className="text-xs text-muted-foreground font-mono">
+                                            Total: <strong className="text-emerald-600 dark:text-emerald-400">{totalStock.toLocaleString()}</strong> units
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                        {stores.map((loc) => {
+                                            const pct = totalStock > 0 ? Math.round((loc.quantity / totalStock) * 100) : 0;
+                                            return (
+                                                <div
+                                                    key={loc.id}
+                                                    className="p-3 rounded-lg border bg-background flex flex-col justify-between space-y-2 hover:border-primary/30 transition-colors"
+                                                >
+                                                    <div className="flex items-start justify-between gap-1.5">
+                                                        <span className="text-xs font-semibold text-foreground line-clamp-1">
+                                                            {loc.locationName}
+                                                        </span>
+                                                        <span className="text-[10px] font-mono font-semibold text-muted-foreground shrink-0">
+                                                            {pct}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-baseline justify-between">
+                                                        <span className="text-base font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                                                            {loc.quantity.toLocaleString()} <span className="text-[10px] font-normal text-muted-foreground">units</span>
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
+                                                        <div
+                                                            className="bg-emerald-500 h-full rounded-full"
+                                                            style={{ width: `${Math.min(100, Math.max(5, pct))}%` }}
+                                                        />
+                                                    </div>
+                                                    {loc.sizeBreakdown.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1 pt-1 border-t border-border/40">
+                                                            {loc.sizeBreakdown.slice(0, 6).map((sb) => (
+                                                                <span
+                                                                    key={`${loc.id}-${sb.size}`}
+                                                                    className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded bg-muted font-mono"
+                                                                >
+                                                                    <span className="text-muted-foreground">{sb.size}:</span>
+                                                                    <strong className="text-emerald-600 dark:text-emerald-400">{sb.quantity}</strong>
+                                                                </span>
+                                                            ))}
+                                                            {loc.sizeBreakdown.length > 6 && (
+                                                                <span className="text-[10px] text-muted-foreground self-center">
+                                                                    +{loc.sizeBreakdown.length - 6} more
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {/* Variants Matrix Table Toolbar */}
-                        <div className="px-6 py-3.5 border-b bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="px-6 py-3.5 border-b bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
                             <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-bold text-foreground">
                                     All Variants ({filteredVariants.length})
@@ -314,8 +405,7 @@ export function ArticleDetailSheet({
                         </div>
 
                         {/* Variants Table Body */}
-                        <ScrollArea className="flex-1">
-                            <div className="p-6">
+                        <div className="p-6">
                                 <div className="rounded-lg border overflow-hidden">
                                     <table className="w-full text-xs">
                                         <thead>
@@ -427,7 +517,7 @@ export function ArticleDetailSheet({
                                     </table>
                                 </div>
                             </div>
-                        </ScrollArea>
+                        </div>
                     </>
                 )}
             </SheetContent>
