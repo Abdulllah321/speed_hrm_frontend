@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -212,6 +212,20 @@ export default function PosClaimsPage() {
   const currentStoreName =
     (user as any)?.terminal?.location?.name || "Terminal Store";
 
+  // Initialize location filter once to the logged-in store ("mine only") by default
+  const hasInitializedLocationRef = useRef(false);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>(
+    currentStoreLocationId || "ALL"
+  );
+
+  // Set default to current store when session data resolves (runs only once on mount)
+  useEffect(() => {
+    if (currentStoreLocationId && !hasInitializedLocationRef.current) {
+      setSelectedLocationId(currentStoreLocationId);
+      hasInitializedLocationRef.current = true;
+    }
+  }, [currentStoreLocationId]);
+
   // Data states
   const [claims, setClaims] = useState<any[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -221,7 +235,6 @@ export default function PosClaimsPage() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [selectedLocationId, setSelectedLocationId] = useState<string>("ALL");
   const [dateFilter, setDateFilter] = useState<string>("ALL");
 
   // Pagination states
@@ -378,7 +391,7 @@ export default function PosClaimsPage() {
   const clearAllFilters = () => {
     setSearchQuery("");
     setStatusFilter("ALL");
-    setSelectedLocationId("ALL");
+    setSelectedLocationId(currentStoreLocationId || "ALL");
     setDateFilter("ALL");
     setCurrentPage(1);
   };
@@ -485,11 +498,15 @@ export default function PosClaimsPage() {
                   className={cn(
                     "text-[11px] font-normal px-2 py-0 border shadow-2xs",
                     selectedLocationId === "ALL"
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold"
-                      : "border-primary/30 text-primary bg-primary/5"
+                      ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-semibold"
+                      : "border-primary/30 text-primary bg-primary/5 font-semibold"
                   )}
                 >
-                  Scope: {selectedLocationId === "ALL" ? "Overall (All Outlets)" : locations.find(l => l.id === selectedLocationId)?.name || currentStoreName}
+                  Scope: {selectedLocationId === "ALL"
+                    ? "Overall (All Outlets)"
+                    : selectedLocationId === currentStoreLocationId
+                    ? `This Store (${currentStoreName})`
+                    : locations.find(l => l.id === selectedLocationId)?.name || currentStoreName}
                 </Badge>
               </div>
             </div>
@@ -760,7 +777,9 @@ export default function PosClaimsPage() {
             {(searchQuery ||
               statusFilter !== "ALL" ||
               dateFilter !== "ALL" ||
-              selectedLocationId !== "ALL") && (
+              (currentStoreLocationId
+                ? selectedLocationId !== currentStoreLocationId
+                : selectedLocationId !== "ALL")) && (
               <Button
                 variant="ghost"
                 size="sm"
