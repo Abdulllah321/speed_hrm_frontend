@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,8 @@ export function ArticleMasterView({ article }: ArticleMasterViewProps) {
         }>();
 
         for (const loc of article.locationStock) {
-            const key = loc.locationId || loc.locationName;
+            // Aggregate by name so multiple locationIds for the same store merge correctly
+            const key = (loc.locationName || loc.locationId || "Unknown").trim();
             const existing = map.get(key);
             const qty = Number(loc.quantity || 0);
 
