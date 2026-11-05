@@ -2049,6 +2049,11 @@ export const menuData: MenuItem[] = [
             permissions: ["erp.report.inventory.pos-available-stock.view"],
           },
           {
+            title: "C&K & Pedro Stock Report",
+            href: "/erp/reports/pos/ck-pedro-stock",
+            permissions: ["erp.report.inventory.pos-available-stock.view"],
+          },
+          {
             title: "POS Inventory Aging",
             href: "/erp/reports/pos/inventory-aging",
             permissions: ["erp.report.inventory.pos-aging.view"],
@@ -2098,6 +2103,11 @@ export const menuData: MenuItem[] = [
           {
             title: "Net Sales Summary",
             href: "/erp/reports/pos/net-sales-summary",
+            permissions: ["erp.report.sales.net-summary.view"],
+          },
+          {
+            title: "C&K & Pedro Sales Report",
+            href: "/erp/reports/pos/ck-pedro-sale",
             permissions: ["erp.report.sales.net-summary.view"],
           },
           {

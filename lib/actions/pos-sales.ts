@@ -1021,3 +1021,60 @@ export async function registerClientNetSalesListExport(opts: {
 }
 
 
+
+export async function getCkPedroSalesReport(filters: {
+    locationId?: string;
+    locationIds?: string[];
+    asOfDate?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        if (filters.locationIds && filters.locationIds.length > 0) {
+            queryParams.append("locationId", filters.locationIds.join(","));
+        } else if (filters.locationId && filters.locationId !== "all") {
+            queryParams.append("locationId", filters.locationId);
+        }
+        if (filters.asOfDate) {
+            queryParams.append("asOfDate", filters.asOfDate);
+            queryParams.append("startDate", filters.asOfDate);
+            queryParams.append("endDate", filters.asOfDate);
+        } else {
+            if (filters.startDate) queryParams.append("startDate", filters.startDate);
+            if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        }
+        if (filters.search) queryParams.append("search", filters.search);
+
+        const res = await authFetch(`/pos-sales/reports/ck-pedro-sale?${queryParams.toString()}`, { method: "GET" });
+        return res.data;
+    } catch (error) {
+        console.error("getCkPedroSalesReport error:", error);
+        return { status: false, data: { records: [], totals: {} }, message: "Failed to fetch CK & Pedro Sales report" };
+    }
+}
+
+export async function getCkPedroStockReport(filters: {
+    locationId?: string;
+    locationIds?: string[];
+    asOfDate?: string;
+    search?: string;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        if (filters.locationIds && filters.locationIds.length > 0) {
+            queryParams.append("locationId", filters.locationIds.join(","));
+        } else if (filters.locationId && filters.locationId !== "all") {
+            queryParams.append("locationId", filters.locationId);
+        }
+        if (filters.asOfDate) queryParams.append("asOfDate", filters.asOfDate);
+        if (filters.search) queryParams.append("search", filters.search);
+
+        const res = await authFetch(`/pos-sales/reports/ck-pedro-stock?${queryParams.toString()}`, { method: "GET" });
+        return res.data;
+    } catch (error) {
+        console.error("getCkPedroStockReport error:", error);
+        return { status: false, data: { records: [], totals: {} }, message: "Failed to fetch CK & Pedro Stock report" };
+    }
+}
