@@ -1175,8 +1175,8 @@ export default function ReturnsPage() {
             );
             router.push("/pos/sales/history");
           } else {
-            toast.success(res.data.message || "Claim submitted");
-            router.push("/pos/sales/history");
+            toast.success(res.data.message || "Claim submitted successfully");
+            router.push("/pos/claims");
           }
         } else {
           toast.error(res?.data?.message || "Operation failed");

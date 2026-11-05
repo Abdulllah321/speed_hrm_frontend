@@ -32,6 +32,7 @@ import {
     BookOpen,
     FileText,
     Clock,
+    ShieldAlert,
 } from "lucide-react";
 import { cn, COMPANY_NAME } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -45,6 +46,7 @@ const posMenuGroups = [
             { title: "Current Orders", icon: Receipt, href: "/pos/orders" },
             // { title: "Hold Orders", icon: PauseCircle, href: "/pos/holds" },
             { title: "Returns & Exchanges", icon: RefreshCw, href: "/pos/sales/returns" },
+            { title: "Claims", icon: ShieldAlert, href: "/pos/claims" },
             { title: "Customer Ladger", icon: BookOpen, href: "/pos/customer-ledger" },
             { title: "Cash Drawer", icon: Wallet, href: "/pos/terminal/drawer" },
             { title: "Reconciliation Report", icon: FileText, href: "/pos/reports/reconciliation" },

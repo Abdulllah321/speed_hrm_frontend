@@ -4,7 +4,32 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Upload, Loader2, Eye, Edit, Trash2, Sparkles, Filter, X, ChevronRight, Search, Download, ChevronDown, Check } from "lucide-react";
+import {
+    Plus,
+    Upload,
+    Loader2,
+    Eye,
+    Edit,
+    Trash2,
+    Sparkles,
+    Filter,
+    X,
+    ChevronRight,
+    Search,
+    Download,
+    ChevronDown,
+    Check,
+    ChevronsDown,
+    ChevronsUp,
+    List,
+    Layers,
+    Copy,
+    ExternalLink,
+    ScanBarcode,
+    MoreHorizontal,
+    Boxes,
+    Tag,
+} from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -22,7 +47,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,7 +55,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn, getApiBaseUrl } from "@/lib/utils";
 import { brandApi, categoryApi, silhouetteApi, genderApi } from "@/lib/api";
 import { BarcodePrintModal } from "@/components/items/barcode-print-modal";
-import { ScanBarcode } from "lucide-react";
+import { ArticleDetailSheet } from "@/components/items/article-detail-sheet";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -119,109 +143,76 @@ function FilterSheet({
         { key: "category", label: "Category", items: Array.isArray(categories) ? categories : [], ids: safeCategoryIds, setIds: setPendingCategoryIds },
         { key: "silhouette", label: "Silhouette", items: Array.isArray(silhouettes) ? silhouettes : [], ids: safeSilhouetteIds, setIds: setPendingSilhouetteIds },
         { key: "gender", label: "Gender", items: Array.isArray(genders) ? genders : [], ids: safeGenderIds, setIds: setPendingGenderIds },
-    ] as const;
+    ];
 
-    const totalPending =
-        safeBrandIds.length + safeCategoryIds.length +
-        safeSilhouetteIds.length + safeGenderIds.length;
+    const toggleId = (setIds: (fn: (prev: string[]) => string[]) => void, id: string) => {
+        setIds((prev = []) => {
+            const arr = Array.isArray(prev) ? prev : [];
+            return arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
+        });
+    };
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-90 sm:w-100 flex flex-col p-0">
-                <SheetHeader className="px-5 pt-5 pb-3 border-b">
-                    <SheetTitle className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-primary" />
-                        Filter Items
-                        {totalPending > 0 && (
-                            <Badge className="h-5 text-[10px] px-1.5 bg-primary text-primary-foreground">
-                                {totalPending}
-                            </Badge>
-                        )}
-                    </SheetTitle>
-                    <div className="relative mt-2">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                            placeholder="Search across all filters..."
-                            value={filterSearch}
-                            onChange={(e) => setFilterSearch(e.target.value)}
-                            className="pl-9 h-9 text-sm"
-                        />
-                        {filterSearch && (
-                            <button
-                                type="button"
-                                onClick={() => setFilterSearch("")}
-                                className="absolute right-3 top-1/2 -translate-y-1/2"
-                            >
-                                <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                            </button>
-                        )}
-                    </div>
+            <SheetContent side="right" className="w-[360px] sm:w-[420px] p-0 flex flex-col">
+                <SheetHeader className="px-5 py-4 border-b">
+                    <SheetTitle className="text-base font-semibold">Filter Items</SheetTitle>
                 </SheetHeader>
-                <ScrollArea className="flex-1 px-5 py-3">
-                    <div className="space-y-3">
+                <div className="p-4 border-b">
+                    <Input
+                        placeholder="Search filters…"
+                        value={filterSearch}
+                        onChange={(e) => setFilterSearch(e.target.value)}
+                        className="h-8 text-xs"
+                    />
+                </div>
+                <ScrollArea className="flex-1 px-5 py-2">
+                    <div className="space-y-4">
                         {sections.map(({ key, label, items, ids, setIds }) => {
-                            const filtered = filterSearch
-                                ? items.filter((i: any) =>
-                                    i && i.name && typeof i.name === "string" && i.name.toLowerCase().includes(filterSearch.toLowerCase())
-                                )
-                                : items;
-                            if (!filtered || filtered.length === 0) return null;
+                            const filtered = items.filter((it: any) =>
+                                (it?.name || "").toLowerCase().includes(filterSearch.toLowerCase())
+                            );
                             const isCollapsed = collapsed[key];
-                            const safeIds = Array.isArray(ids) ? ids : [];
                             return (
-                                <div key={key} className="rounded-md border border-border overflow-hidden">
+                                <div key={key} className="border-b pb-3">
                                     <button
                                         type="button"
                                         onClick={() => toggle(key)}
-                                        className="w-full flex items-center justify-between px-3 py-2.5 bg-muted/40 hover:bg-muted/70 transition-colors text-sm font-semibold"
+                                        className="w-full flex items-center justify-between text-xs font-semibold py-1 hover:text-primary transition-colors"
                                     >
-                                        <div className="flex items-center gap-2">
-                                            <span>{label}</span>
-                                            {safeIds.length > 0 && (
-                                                <Badge variant="secondary" className="h-4 text-[10px] px-1">
-                                                    {safeIds.length}
-                                                </Badge>
+                                        <span>
+                                            {label}
+                                            {ids.length > 0 && (
+                                                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-primary text-primary-foreground font-mono">
+                                                    {ids.length}
+                                                </span>
                                             )}
-                                        </div>
-                                        <ChevronRight
-                                            className={cn(
-                                                "h-4 w-4 text-muted-foreground transition-transform",
-                                                !isCollapsed && "rotate-90",
-                                            )}
-                                        />
+                                        </span>
+                                        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isCollapsed && "-rotate-90")} />
                                     </button>
                                     {!isCollapsed && (
-                                        <div className="p-3">
-                                            <ScrollArea className="h-40">
-                                                <div className="flex flex-wrap gap-1.5 pr-3">
-                                                    {filtered.map((item: any) => {
-                                                        if (!item || !item.id) return null;
-                                                        const isSelected = safeIds.includes(item.id);
-                                                        return (
-                                                            <button
-                                                                key={item.id}
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    (setIds as any)((prev: string[]) => {
-                                                                        const safePrev = Array.isArray(prev) ? prev : [];
-                                                                        return safePrev.includes(item.id)
-                                                                            ? safePrev.filter((x: string) => x !== item.id)
-                                                                            : [...safePrev, item.id];
-                                                                    })
-                                                                }
-                                                                className={cn(
-                                                                    "px-2.5 py-1 rounded-full text-xs border transition-all",
-                                                                    isSelected
-                                                                        ? "bg-primary text-primary-foreground border-primary font-semibold"
-                                                                        : "bg-background border-border hover:border-primary/60 hover:bg-primary/5",
-                                                                )}
-                                                            >
-                                                                {item.name || item.id}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </ScrollArea>
+                                        <div className="mt-2 space-y-1 max-h-48 overflow-y-auto pr-1">
+                                            {filtered.length === 0 ? (
+                                                <p className="text-[11px] text-muted-foreground py-1">No options match</p>
+                                            ) : (
+                                                filtered.map((item: any) => {
+                                                    const checked = ids.includes(item.id);
+                                                    return (
+                                                        <label
+                                                            key={item.id}
+                                                            className="flex items-center gap-2 text-xs py-1 px-1.5 rounded hover:bg-muted/60 cursor-pointer"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={checked}
+                                                                onChange={() => toggleId(setIds as any, item.id)}
+                                                                className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
+                                                            />
+                                                            <span className="truncate">{item.name}</span>
+                                                        </label>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -229,7 +220,7 @@ function FilterSheet({
                         })}
                     </div>
                 </ScrollArea>
-                <SheetFooter className="px-5 py-4 border-t flex-row gap-2">
+                <SheetFooter className="p-4 border-t flex gap-2">
                     <Button
                         className="flex-1"
                         onClick={() =>
@@ -252,154 +243,8 @@ function FilterSheet({
     );
 }
 
-// ─── Column Definitions ───────────────────────────────────────────────────────
-
-function useItemColumns(onDelete: (id: string) => void, canUpdate: boolean, canDelete: boolean): ColumnDef<Item>[] {
-    return [
-        {
-            accessorKey: "sku",
-            header: "SKU / Description",
-            cell: ({ row }) => (
-                <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="font-mono text-sm font-medium">{row.original.sku}</span>
-                    {row.original.description && (
-                        <span className="text-xs text-muted-foreground truncate max-w-[220px]">
-                            {row.original.description}
-                        </span>
-                    )}
-                    {row.original.uniqueNo && (
-                        <span className="text-xs text-blue-600 dark:text-blue-400 font-mono">
-                            Unique No: {row.original.uniqueNo}
-                        </span>
-                    )}
-                </div>
-            ),
-        },
-        {
-            accessorKey: "barCode",
-            header: "Barcode",
-            cell: ({ row }) =>
-                row.original.barCode ? (
-                    <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
-                        {row.original.barCode}
-                    </span>
-                ) : (
-                    <span className="text-muted-foreground">—</span>
-                ),
-        },
-        {
-            accessorKey: "size",
-            header: "Size",
-            cell: ({ row }) =>
-                row.original.size ? (
-                    <Badge variant="outline" className="text-xs font-medium">
-                        {row.original.size.name}
-                    </Badge>
-                ) : (
-                    <span className="text-muted-foreground">—</span>
-                ),
-        },
-        {
-            accessorKey: "color",
-            header: "Color",
-            cell: ({ row }) =>
-                row.original.color ? (
-                    <span className="text-xs">{row.original.color.name}</span>
-                ) : (
-                    <span className="text-muted-foreground">—</span>
-                ),
-        },
-        {
-            accessorKey: "brand",
-            header: "Brand",
-            cell: ({ row }) => row.original.brand?.name ?? <span className="text-muted-foreground">—</span>,
-        },
-        {
-            accessorKey: "category",
-            header: "Category",
-            cell: ({ row }) => row.original.category?.name ?? <span className="text-muted-foreground">—</span>,
-        },
-        {
-            accessorKey: "division",
-            header: "Division",
-            cell: ({ row }) => row.original.division?.name ?? <span className="text-muted-foreground">—</span>,
-        },
-        {
-            accessorKey: "unitPrice",
-            header: "Price",
-            cell: ({ row }) => (
-                <span className="font-mono text-right block">
-                    {Number(row.original.unitPrice).toLocaleString("en-US", {
-                        style: "currency",
-                        currency: "PKR",
-                        minimumFractionDigits: 2,
-                    })}
-                </span>
-            ),
-        },
-        {
-            accessorKey: "isActive",
-            header: "Status",
-            cell: ({ row }) => (
-                <Badge variant={row.original.isActive ? "default" : "secondary"}>
-                    {row.original.isActive ? "Active" : "Inactive"}
-                </Badge>
-            ),
-        },
-        {
-            id: "actions",
-            header: "Actions",
-            enableSorting: false,
-            cell: ({ row }) => {
-                const item = row.original;
-                return (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/erp/items/view/${item.id}`} transitionTypes={["nav-forward"]}>
-                                    <Eye className="mr-2 h-4 w-4" /> View Details
-                                </Link>
-                            </DropdownMenuItem>
-                            {canUpdate && (
-                                <DropdownMenuItem asChild>
-                                    <Link href={`/erp/items/edit/${item.id}`} transitionTypes={["nav-forward"]}>
-                                        <Edit className="mr-2 h-4 w-4" /> Edit
-                                    </Link>
-                                </DropdownMenuItem>
-                            )}
-                            {/* DISABLED: Items cannot be deleted to maintain data integrity */}
-                            {/* {canDelete && (
-                                <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive"
-                                        onClick={() => onDelete(item.id)}
-                                    >
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                    </DropdownMenuItem>
-                                </>
-                            )} */}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                );
-            },
-        },
-    ];
-}
-
 // ─── SKU grouping helpers ─────────────────────────────────────────────────────
 
-/**
- * Collapse a flat list of `Item` rows into one "unique SKU" group per SKU.
- * The user's mental model is "10 items in the system" — each item is a SKU,
- * and the size/color/uniqueNo combinations are its variants.
- */
 function groupItemsBySku(items: Item[]): ItemGroup[] {
     const map = new Map<string, ItemGroup>();
     for (const it of items) {
@@ -435,69 +280,83 @@ function priceRange(g: ItemGroup): string {
         Number(n).toLocaleString("en-US", {
             style: "currency",
             currency: "PKR",
-            minimumFractionDigits: 2,
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
         });
     return g.priceMin === g.priceMax ? fmt(g.priceMin) : `${fmt(g.priceMin)} – ${fmt(g.priceMax)}`;
 }
 
-/** A stable id for a group row so TanStack keeps row identity across pages. */
 function groupRowId(g: ItemGroup): string {
     return `sku:${g.sku}`;
 }
 
-/** A stable id for a variant row inside a group. */
 function variantRowId(v: Item): string {
     return `var:${v.id}`;
 }
 
-// ─── GroupedItemTable Component ────────────────────────────────────────────────
-// Renders one row per unique SKU (ItemGroup) with an expandable variants sub-table.
-// Props mirror DataTable's relevant props plus grouping-specific ones.
+// ─── ProCatalogTable Component ────────────────────────────────────────────────
+// Renders the modern ERP catalog with:
+// 1. Grouped Article View (with expandable variants, barcode highlight, and 1-click Article Sheet)
+// 2. Flat Variant View (for power users who want classic flat sorting)
+// 3. Quick controls: Expand All / Collapse All, View Switcher, Copy Barcode, Search Highlights
 
-interface GroupedItemTableProps {
+interface ProCatalogTableProps {
     groups: ItemGroup[];
+    items: Item[];
     expandedSkus: Set<string>;
     onToggleSku: (sku: string) => void;
-    columns: ColumnDef<Item>[]; // the variant columns (from useItemColumns)
-    searchFields: { key: string; label: string }[];
-    filterSlot: React.ReactNode;
+    onToggleExpandAll: () => void;
+    allExpanded: boolean;
+    viewMode: "grouped" | "flat";
+    onViewModeChange: (mode: "grouped" | "flat") => void;
+    onViewArticle: (sku: string) => void;
+    onPrintArticleVariants: (variants: Item[]) => void;
     search: string;
     onSearchChange: (v: string) => void;
-    activeFilters: AppliedFilters;
-    manualPagination: boolean;
-    manualSorting: boolean;
-    manualFiltering: boolean;
+    filterSlot: React.ReactNode;
     rowCount: number;
     pageCount: number;
+    pagination: PaginationState;
     onPaginationChange: (v: PaginationState) => void;
+    sorting: SortingState;
     onSortingChange: (v: SortingState) => void;
     isLoading: boolean;
+    canUpdate: boolean;
 }
 
-function GroupedItemTable({
+function ProCatalogTable({
     groups,
+    items,
     expandedSkus,
     onToggleSku,
-    columns,
-    searchFields,
-    filterSlot,
+    onToggleExpandAll,
+    allExpanded,
+    viewMode,
+    onViewModeChange,
+    onViewArticle,
+    onPrintArticleVariants,
     search,
     onSearchChange,
-    activeFilters,
-    manualPagination,
-    manualSorting,
-    manualFiltering,
+    filterSlot,
     rowCount,
     pageCount,
+    pagination,
     onPaginationChange,
+    sorting,
     onSortingChange,
     isLoading,
-}: GroupedItemTableProps) {
-    // Flatten all variant rows from expanded groups for internal table rendering
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
+    canUpdate,
+}: ProCatalogTableProps) {
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-    // Build flat data for the internal table: each row is either a group header or a variant
+    const copyToClipboard = (text: string, key: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedKey(key);
+        toast.success(`Copied "${text}" to clipboard`);
+        setTimeout(() => setCopiedKey(null), 2000);
+    };
+
+    // Flatten all display rows for grouped view
     interface DisplayRow {
         type: "group" | "variant";
         group?: ItemGroup;
@@ -517,246 +376,660 @@ function GroupedItemTable({
         return rows;
     }, [groups, expandedSkus]);
 
-    // We only need the variant columns for display — group rows render custom cells
-    const variantColumns = columns;
-
-    // Custom header with search + filter slot (matching DataTable toolbar)
-    const activeFilterCount =
-        (activeFilters?.brandIds?.length || 0) +
-        (activeFilters?.categoryIds?.length || 0) +
-        (activeFilters?.silhouetteIds?.length || 0) +
-        (activeFilters?.genderIds?.length || 0);
-
-    const handleSortChange = (updater: (prev: SortingState) => SortingState) => {
-        const next = typeof updater === "function" ? updater(sorting) : updater;
-        setSorting(next);
-        if (manualSorting) onSortingChange(next);
-    };
-
-    const handlePageChange = (updater: (prev: PaginationState) => PaginationState) => {
-        const next = typeof updater === "function" ? updater(pagination) : updater;
-        setPagination(next);
-        if (manualPagination) onPaginationChange(next);
-    };
-
-    if (isLoading && groups.length === 0) {
-        return (
-            <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                    <div key={i} className="h-14 animate-pulse bg-muted rounded" />
-                ))}
-            </div>
+    // Check if a variant specifically matched the search term
+    const isVariantMatched = useCallback((v: Item): boolean => {
+        if (!search || !search.trim()) return false;
+        const term = search.trim().toLowerCase();
+        return Boolean(
+            (v.barCode && v.barCode.toLowerCase().includes(term)) ||
+            (v.uniqueNo && v.uniqueNo.toLowerCase().includes(term)) ||
+            (v.itemId && v.itemId.toLowerCase().includes(term))
         );
-    }
+    }, [search]);
 
-    if (groups.length === 0 && !isLoading) {
+    const formatPrice = (val: number) => {
+        return Number(val).toLocaleString("en-US", {
+            style: "currency",
+            currency: "PKR",
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        });
+    };
+
+    if (isLoading && groups.length === 0 && items.length === 0) {
         return (
-            <div className="py-12 text-center text-muted-foreground">
-                No items found. Try adjusting your search or filters.
+            <div className="space-y-3 p-4">
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className="h-14 animate-pulse bg-muted rounded-lg" />
+                ))}
             </div>
         );
     }
 
     return (
         <div className="space-y-4">
-            {/* Toolbar: Search + Filter Slot */}
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                <div className="relative max-w-xs w-full sm:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input
-                        type="search"
-                        placeholder="Search items…"
-                        value={search}
-                        onChange={(e) => onSearchChange(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 text-sm border border-input bg-background rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    />
+            {/* Pro Toolbar */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pb-1">
+                <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                    {/* Search box with clear icon */}
+                    <div className="relative max-w-xs w-full sm:w-72">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Search by Barcode, SKU, Item ID, Name…"
+                            value={search}
+                            onChange={(e) => onSearchChange(e.target.value)}
+                            className="w-full pl-9 pr-8 h-9 text-xs bg-background"
+                        />
+                        {search && (
+                            <button
+                                type="button"
+                                onClick={() => onSearchChange("")}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Expand All / Collapse All (Grouped Mode) */}
+                    {viewMode === "grouped" && groups.length > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onToggleExpandAll}
+                            className="h-9 gap-1.5 text-xs border-dashed"
+                            title={allExpanded ? "Collapse all SKU groups" : "Expand all SKU groups"}
+                        >
+                            {allExpanded ? (
+                                <>
+                                    <ChevronsUp className="h-3.5 w-3.5 text-primary" />
+                                    <span>Collapse All</span>
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronsDown className="h-3.5 w-3.5 text-primary" />
+                                    <span>Expand All</span>
+                                </>
+                            )}
+                        </Button>
+                    )}
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* Right toolbar controls: View Mode Switcher + Filters */}
+                <div className="flex items-center gap-2 self-end sm:self-center">
+                    {/* View Switcher Toggle */}
+                    <div className="inline-flex items-center rounded-lg border bg-muted/40 p-1">
+                        <button
+                            type="button"
+                            onClick={() => onViewModeChange("grouped")}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all",
+                                viewMode === "grouped"
+                                    ? "bg-background text-foreground shadow-xs font-semibold"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <Layers className="h-3.5 w-3.5" />
+                            <span>Article View</span>
+                            <span className="text-[10px] text-muted-foreground font-mono">({groups.length})</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onViewModeChange("flat")}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all",
+                                viewMode === "flat"
+                                    ? "bg-background text-foreground shadow-xs font-semibold"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <List className="h-3.5 w-3.5" />
+                            <span>Flat Items</span>
+                            <span className="text-[10px] text-muted-foreground font-mono">({items.length})</span>
+                        </button>
+                    </div>
+
+                    {/* Filter Slot */}
                     {filterSlot}
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="rounded-md border overflow-hidden">
-                <table className="w-full caption-bottom text-sm">
-                    <thead className="[&_tr]:border-b">
-                        <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground w-10">#</th>
-                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground">SKU / Description</th>
-                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground hidden md:table-cell">Brand</th>
-                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">Category</th>
-                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">Division</th>
-                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground">Variants</th>
-                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground">Active</th>
-                            <th className="h-10 px-3 text-right align-middle font-medium text-muted-foreground">Price Range</th>
-                            <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground w-10"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="[&_tr:last-child]:border-0">
-                        {displayRows.map((row, index) => {
-                            if (row.type === "group" && row.group) {
-                                const g = row.group;
-                                const isExpanded = expandedSkus.has(g.sku);
-                                return (
-                                    <tr
-                                        key={groupRowId(g)}
-                                        className="bg-muted/30 border-t border-border font-medium hover:bg-muted/50 transition-colors"
-                                    >
-                                        <td className="px-3 py-3 text-muted-foreground">
-                                            {pagination.pageIndex * pagination.pageSize + index + 1}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onToggleSku(g.sku)}
-                                                    className="flex h-7 w-7 items-center justify-center rounded border border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                                                    aria-expanded={isExpanded}
-                                                    aria-controls={`variants-${g.sku}`}
-                                                >
-                                                    <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")} />
-                                                </button>
-                                                <div className="min-w-0">
-                                                    <span className="font-mono text-sm font-medium truncate block">{g.sku}</span>
-                                                    {g.description && (
-                                                        <span className="text-xs text-muted-foreground truncate block max-w-[280px]">{g.description}</span>
+            {/* Active search guidance indicator */}
+            {search.trim() && (
+                <div className="flex items-center justify-between px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
+                    <div className="flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                        <span>
+                            Showing results for <strong>&quot;{search}&quot;</strong>. Matched SKU groups have been auto-expanded with matching barcodes highlighted.
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => onSearchChange("")}
+                        className="text-amber-800 dark:text-amber-300 hover:underline font-semibold text-[11px]"
+                    >
+                        Clear Search
+                    </button>
+                </div>
+            )}
+
+            {/* Empty State */}
+            {groups.length === 0 && !isLoading && (
+                <div className="py-16 text-center border rounded-xl bg-card">
+                    <Boxes className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+                    <h3 className="font-semibold text-base">No Items Found</h3>
+                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
+                        No articles or items matched your current search and filters. Try clearing your query or adjusting the filters.
+                    </p>
+                </div>
+            )}
+
+            {/* View Mode 1: Grouped Article View */}
+            {viewMode === "grouped" && groups.length > 0 && (
+                <div className="rounded-xl border overflow-hidden shadow-xs bg-card">
+                    <div className="overflow-x-auto">
+                        <table className="w-full caption-bottom text-sm">
+                            <thead>
+                                <tr className="border-b bg-muted/40 font-semibold text-xs text-muted-foreground text-left">
+                                    <th className="h-10 px-3 w-10">#</th>
+                                    <th className="h-10 px-3 min-w-[240px]">Article / Style SKU</th>
+                                    <th className="h-10 px-3">Brand</th>
+                                    <th className="h-10 px-3">Category & Division</th>
+                                    <th className="h-10 px-3">Variants Matrix</th>
+                                    <th className="h-10 px-3">Status</th>
+                                    <th className="h-10 px-3 text-right">Price Range</th>
+                                    <th className="h-10 px-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                                {displayRows.map((row, index) => {
+                                    if (row.type === "group" && row.group) {
+                                        const g = row.group;
+                                        const isExpanded = expandedSkus.has(g.sku);
+                                        const hasMatchedVariant = g.variants.some((v) => isVariantMatched(v));
+
+                                        return (
+                                            <tr
+                                                key={groupRowId(g)}
+                                                className={cn(
+                                                    "border-t border-border/80 transition-colors",
+                                                    isExpanded ? "bg-muted/30" : "hover:bg-muted/20",
+                                                    hasMatchedVariant && "bg-amber-500/5"
+                                                )}
+                                            >
+                                                <td className="px-3 py-3 text-muted-foreground font-mono text-xs">
+                                                    {pagination.pageIndex * pagination.pageSize + index + 1}
+                                                </td>
+
+                                                {/* SKU & Description with View Article Link */}
+                                                <td className="px-3 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onToggleSku(g.sku)}
+                                                            className={cn(
+                                                                "flex h-7 w-7 items-center justify-center rounded border transition-colors shrink-0",
+                                                                isExpanded
+                                                                    ? "border-primary/40 bg-primary/10 text-primary"
+                                                                    : "border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                            )}
+                                                            aria-expanded={isExpanded}
+                                                            title={isExpanded ? "Collapse variants" : "Expand variants"}
+                                                        >
+                                                            <ChevronDown
+                                                                className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")}
+                                                            />
+                                                        </button>
+
+                                                        <div className="min-w-0 space-y-0.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => onViewArticle(g.sku)}
+                                                                    className="font-mono text-sm font-bold text-foreground hover:text-primary transition-colors text-left flex items-center gap-1 group"
+                                                                    title="Open Article Details Drawer"
+                                                                >
+                                                                    <span>{g.sku}</span>
+                                                                    <Eye className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                </button>
+                                                                {hasMatchedVariant && (
+                                                                    <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] py-0 px-1 font-mono font-bold">
+                                                                        Matched
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            {g.description && (
+                                                                <span className="text-xs text-muted-foreground truncate block max-w-[280px]">
+                                                                    {g.description}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                <td className="px-3 py-3">
+                                                    {g.brand?.name ? (
+                                                        <Badge variant="secondary" className="text-xs font-medium">
+                                                            {g.brand.name}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-xs">—</span>
+                                                    )}
+                                                </td>
+
+                                                <td className="px-3 py-3">
+                                                    <div className="flex flex-col gap-0.5 text-xs">
+                                                        <span className="font-medium text-foreground">{g.category?.name || "—"}</span>
+                                                        {g.division?.name && (
+                                                            <span className="text-muted-foreground text-[11px]">{g.division.name}</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                <td className="px-3 py-3">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Badge variant="outline" className="font-mono text-xs font-semibold">
+                                                            {g.variantCount} {g.variantCount === 1 ? "variant" : "variants"}
+                                                        </Badge>
+                                                    </div>
+                                                </td>
+
+                                                <td className="px-3 py-3">
+                                                    <Badge
+                                                        variant={g.activeCount > 0 ? "default" : "secondary"}
+                                                        className="text-xs py-0.5"
+                                                    >
+                                                        {g.activeCount} / {g.variantCount} Active
+                                                    </Badge>
+                                                </td>
+
+                                                <td className="px-3 py-3 text-right font-mono font-bold text-sm text-foreground">
+                                                    {priceRange(g)}
+                                                </td>
+
+                                                <td className="px-3 py-3 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => onViewArticle(g.sku)}
+                                                            className="h-8 px-2.5 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/5 font-medium"
+                                                        >
+                                                            <Layers className="h-3.5 w-3.5" />
+                                                            <span>Article Details</span>
+                                                        </Button>
+
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuLabel>Article Actions</DropdownMenuLabel>
+                                                                <DropdownMenuItem onClick={() => onViewArticle(g.sku)}>
+                                                                    <Layers className="mr-2 h-4 w-4" /> Quick Overview
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem asChild>
+                                                                    <Link
+                                                                        href={`/erp/items/article/${encodeURIComponent(g.sku)}`}
+                                                                        transitionTypes={["nav-forward"]}
+                                                                    >
+                                                                        <ExternalLink className="mr-2 h-4 w-4" /> Full Article Page
+                                                                    </Link>
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => onPrintArticleVariants(g.variants)}>
+                                                                    <ScanBarcode className="mr-2 h-4 w-4" /> Print Barcodes ({g.variants.length})
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onClick={() => onToggleSku(g.sku)}>
+                                                                    {isExpanded ? (
+                                                                        <>
+                                                                            <ChevronsUp className="mr-2 h-4 w-4" /> Collapse Variants
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <ChevronsDown className="mr-2 h-4 w-4" /> Expand Variants
+                                                                        </>
+                                                                    )}
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+
+                                    // Variant Sub-Row (Expanded)
+                                    if (row.type === "variant" && row.variant && row.group) {
+                                        const v = row.variant;
+                                        const isMatched = isVariantMatched(v);
+                                        const isCopied = copiedKey === `bc-${v.id}`;
+
+                                        return (
+                                            <tr
+                                                key={variantRowId(v)}
+                                                className={cn(
+                                                    "border-t border-border/40 transition-colors text-xs",
+                                                    isMatched
+                                                        ? "bg-amber-500/15 dark:bg-amber-500/20 border-l-4 border-l-amber-500"
+                                                        : "bg-muted/15 hover:bg-muted/30"
+                                                )}
+                                                id={`variants-${row.group.sku}`}
+                                            >
+                                                <td className="px-3 py-2 text-muted-foreground pl-6 font-mono text-[11px]">
+                                                    ↳
+                                                </td>
+
+                                                {/* Barcode & Unique No Column */}
+                                                <td className="px-3 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => copyToClipboard(v.barCode || v.itemId, `bc-${v.id}`)}
+                                                            className={cn(
+                                                                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono font-medium transition-colors border",
+                                                                isMatched
+                                                                    ? "bg-amber-500/20 border-amber-500/40 text-amber-900 dark:text-amber-100 font-bold"
+                                                                    : "bg-background border-border/70 hover:bg-muted text-foreground"
+                                                            )}
+                                                            title="Click to copy barcode"
+                                                        >
+                                                            <ScanBarcode className="h-3 w-3 text-muted-foreground" />
+                                                            <span>{v.barCode || v.itemId}</span>
+                                                            {isCopied ? (
+                                                                <Check className="h-3 w-3 text-emerald-600" />
+                                                            ) : (
+                                                                <Copy className="h-3 w-3 text-muted-foreground opacity-60" />
+                                                            )}
+                                                        </button>
+
+                                                        {isMatched && (
+                                                            <Badge className="bg-amber-500/25 text-amber-800 dark:text-amber-200 border-amber-500/40 text-[10px] py-0 px-1.5 gap-1 font-mono font-bold">
+                                                                <Sparkles className="h-3 w-3" />
+                                                                Barcode Match
+                                                            </Badge>
+                                                        )}
+
+                                                        {v.uniqueNo && (
+                                                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">
+                                                                UN: {v.uniqueNo}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                <td className="px-3 py-2 text-muted-foreground">
+                                                    {v.brand?.name || "—"}
+                                                </td>
+
+                                                <td className="px-3 py-2 text-muted-foreground">
+                                                    {v.category?.name || "—"}
+                                                </td>
+
+                                                {/* Size & Color */}
+                                                <td className="px-3 py-2">
+                                                    <div className="flex items-center gap-1.5">
+                                                        {v.size?.name ? (
+                                                            <Badge variant="outline" className="text-xs font-semibold py-0">
+                                                                Size: {v.size.name}
+                                                            </Badge>
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs">—</span>
+                                                        )}
+                                                        {v.color?.name && (
+                                                            <span className="text-xs px-2 py-0.5 rounded-full bg-muted font-medium text-foreground">
+                                                                {v.color.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                <td className="px-3 py-2">
+                                                    <Badge
+                                                        variant={v.isActive ? "default" : "secondary"}
+                                                        className="text-[10px] py-0 px-1.5"
+                                                    >
+                                                        {v.isActive ? "Active" : "Inactive"}
+                                                    </Badge>
+                                                </td>
+
+                                                <td className="px-3 py-2 text-right font-mono font-semibold text-xs text-foreground">
+                                                    {formatPrice(v.unitPrice)}
+                                                </td>
+
+                                                <td className="px-3 py-2 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Link
+                                                            href={`/erp/items/view/${v.id}`}
+                                                            transitionTypes={["nav-forward"]}
+                                                        >
+                                                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                                                                <Eye className="h-3 w-3" /> View
+                                                            </Button>
+                                                        </Link>
+                                                        {canUpdate && (
+                                                            <Link
+                                                                href={`/erp/items/edit/${v.id}`}
+                                                                transitionTypes={["nav-forward"]}
+                                                            >
+                                                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                                                                    <Edit className="h-3 w-3" /> Edit
+                                                                </Button>
+                                                            </Link>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+
+                                    return null;
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* View Mode 2: Flat All Items View */}
+            {viewMode === "flat" && items.length > 0 && (
+                <div className="rounded-xl border overflow-hidden shadow-xs bg-card">
+                    <div className="overflow-x-auto">
+                        <table className="w-full caption-bottom text-sm">
+                            <thead>
+                                <tr className="border-b bg-muted/40 font-semibold text-xs text-muted-foreground text-left">
+                                    <th className="h-10 px-3 w-10">#</th>
+                                    <th className="h-10 px-3">Barcode</th>
+                                    <th className="h-10 px-3">SKU / Article Style</th>
+                                    <th className="h-10 px-3">Size & Color</th>
+                                    <th className="h-10 px-3">Brand & Category</th>
+                                    <th className="h-10 px-3">Division</th>
+                                    <th className="h-10 px-3 text-right">Price</th>
+                                    <th className="h-10 px-3">Status</th>
+                                    <th className="h-10 px-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                                {items.map((it, idx) => {
+                                    const isMatched = isVariantMatched(it);
+                                    const isCopied = copiedKey === `flat-bc-${it.id}`;
+
+                                    return (
+                                        <tr
+                                            key={it.id}
+                                            className={cn(
+                                                "border-t border-border/60 transition-colors text-xs hover:bg-muted/30",
+                                                isMatched && "bg-amber-500/15 dark:bg-amber-500/20 border-l-4 border-l-amber-500 font-medium"
+                                            )}
+                                        >
+                                            <td className="px-3 py-3 text-muted-foreground font-mono">
+                                                {pagination.pageIndex * pagination.pageSize + idx + 1}
+                                            </td>
+
+                                            {/* Barcode */}
+                                            <td className="px-3 py-3">
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => copyToClipboard(it.barCode || it.itemId, `flat-bc-${it.id}`)}
+                                                        className={cn(
+                                                            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono font-medium border transition-colors",
+                                                            isMatched
+                                                                ? "bg-amber-500/20 border-amber-500/40 text-amber-900 dark:text-amber-100 font-bold"
+                                                                : "bg-background border-border/70 hover:bg-muted text-foreground"
+                                                        )}
+                                                        title="Click to copy barcode"
+                                                    >
+                                                        <ScanBarcode className="h-3 w-3 text-muted-foreground" />
+                                                        <span>{it.barCode || it.itemId}</span>
+                                                        {isCopied ? (
+                                                            <Check className="h-3 w-3 text-emerald-600" />
+                                                        ) : (
+                                                            <Copy className="h-3 w-3 text-muted-foreground opacity-60" />
+                                                        )}
+                                                    </button>
+                                                    {isMatched && (
+                                                        <Badge className="bg-amber-500/25 text-amber-800 dark:text-amber-200 border-amber-500/40 text-[10px] py-0 px-1.5 gap-1 font-mono font-bold">
+                                                            <Sparkles className="h-3 w-3" /> Matched
+                                                        </Badge>
                                                     )}
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-3 hidden md:table-cell">
-                                            {g.brand?.name ?? <span className="text-muted-foreground">—</span>}
-                                        </td>
-                                        <td className="px-3 py-3 hidden lg:table-cell">
-                                            {g.category?.name ?? <span className="text-muted-foreground">—</span>}
-                                        </td>
-                                        <td className="px-3 py-3 hidden lg:table-cell">
-                                            {g.division?.name ?? <span className="text-muted-foreground">—</span>}
-                                        </td>
-                                        <td className="px-3 py-3 font-mono text-sm">{g.variantCount.toLocaleString()}</td>
-                                        <td className="px-3 py-3">
-                                            <Badge variant={g.activeCount > 0 ? "default" : "secondary"} className="text-xs">
-                                                {g.activeCount} / {g.variantCount}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-3 py-3 text-right font-mono text-sm">{priceRange(g)}</td>
-                                        <td className="px-3 py-3"></td>
-                                    </tr>
-                                );
-                            }
-                            if (row.type === "variant" && row.variant && row.group) {
-                                const v = row.variant;
-                                return (
-                                    <tr
-                                        key={variantRowId(v)}
-                                        className="border-t border-border/50 hover:bg-muted/30 transition-colors"
-                                        id={`variants-${row.group.sku}`}
-                                    >
-                                        <td className="px-3 py-2 text-muted-foreground pl-10"></td>
-                                        <td className="px-3 py-2 pl-10">
-                                            <div className="flex flex-col gap-0.5 min-w-0">
-                                                <span className="font-mono text-xs text-muted-foreground">{v.sku}</span>
-                                                {v.description && (
-                                                    <span className="text-xs text-muted-foreground truncate max-w-[220px]">{v.description}</span>
+                                                {it.uniqueNo && (
+                                                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-mono block mt-0.5">
+                                                        UN: {it.uniqueNo}
+                                                    </span>
                                                 )}
-                                                {v.uniqueNo && (
-                                                    <span className="text-xs text-blue-600 dark:text-blue-400 font-mono">Unique No: {v.uniqueNo}</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2 hidden md:table-cell">
-                                            {v.brand?.name ?? <span className="text-muted-foreground">—</span>}
-                                        </td>
-                                        <td className="px-3 py-2 hidden lg:table-cell">
-                                            {v.category?.name ?? <span className="text-muted-foreground">—</span>}
-                                        </td>
-                                        <td className="px-3 py-2 hidden lg:table-cell">
-                                            {v.division?.name ?? <span className="text-muted-foreground">—</span>}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <div className="flex items-center gap-1.5">
-                                                {v.size ? (
-                                                    <Badge variant="outline" className="text-xs font-medium">{v.size.name}</Badge>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-xs">—</span>
-                                                )}
-                                                {v.color && (
-                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{v.color.name}</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <Badge variant={v.isActive ? "default" : "secondary"} className="text-xs">
-                                                {v.isActive ? "Active" : "Inactive"}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-3 py-2 text-right font-mono text-sm">
-                                            {Number(v.unitPrice).toLocaleString("en-US", {
-                                                style: "currency",
-                                                currency: "PKR",
-                                                minimumFractionDigits: 2,
-                                            })}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <div className="flex items-center justify-end">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                                            <MoreHorizontal className="h-4 w-4" />
+                                            </td>
+
+                                            {/* SKU & Description */}
+                                            <td className="px-3 py-3">
+                                                <div className="flex flex-col gap-0.5 min-w-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onViewArticle(it.sku)}
+                                                        className="font-mono text-xs font-bold text-foreground hover:text-primary transition-colors text-left"
+                                                        title="View Article Master"
+                                                    >
+                                                        {it.sku}
+                                                    </button>
+                                                    {it.description && (
+                                                        <span className="text-muted-foreground text-[11px] truncate max-w-[200px]">
+                                                            {it.description}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Size & Color */}
+                                            <td className="px-3 py-3">
+                                                <div className="flex items-center gap-1.5">
+                                                    {it.size?.name ? (
+                                                        <Badge variant="outline" className="text-xs font-semibold py-0">
+                                                            {it.size.name}
+                                                        </Badge>
+                                                    ) : "—"}
+                                                    {it.color?.name && (
+                                                        <span className="text-xs px-2 py-0.5 rounded bg-muted text-foreground">
+                                                            {it.color.name}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Brand & Category */}
+                                            <td className="px-3 py-3">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="font-medium text-foreground">{it.brand?.name || "—"}</span>
+                                                    <span className="text-muted-foreground text-[11px]">{it.category?.name || "—"}</span>
+                                                </div>
+                                            </td>
+
+                                            <td className="px-3 py-3 text-muted-foreground">
+                                                {it.division?.name || "—"}
+                                            </td>
+
+                                            {/* Price */}
+                                            <td className="px-3 py-3 text-right font-mono font-semibold text-xs text-foreground">
+                                                {formatPrice(it.unitPrice)}
+                                            </td>
+
+                                            {/* Status */}
+                                            <td className="px-3 py-3">
+                                                <Badge
+                                                    variant={it.isActive ? "default" : "secondary"}
+                                                    className="text-[10px] py-0 px-1.5"
+                                                >
+                                                    {it.isActive ? "Active" : "Inactive"}
+                                                </Badge>
+                                            </td>
+
+                                            {/* Actions */}
+                                            <td className="px-3 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Link
+                                                        href={`/erp/items/view/${it.id}`}
+                                                        transitionTypes={["nav-forward"]}
+                                                    >
+                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                                                            <Eye className="h-3 w-3" /> View
                                                         </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        <DropdownMenuItem asChild>
-                                                            <Link href={`/erp/items/view/${v.id}`} transitionTypes={["nav-forward"]}>
-                                                                <Eye className="mr-2 h-4 w-4" /> View Details
-                                                            </Link>
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem asChild>
-                                                            <Link href={`/erp/items/edit/${v.id}`} transitionTypes={["nav-forward"]}>
-                                                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                                            </Link>
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            }
-                            return null;
-                        })}
-                    </tbody>
-                </table>
-            </div>
+                                                    </Link>
+                                                    {canUpdate && (
+                                                        <Link
+                                                            href={`/erp/items/edit/${it.id}`}
+                                                            transitionTypes={["nav-forward"]}
+                                                        >
+                                                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                                                                <Edit className="h-3 w-3" /> Edit
+                                                            </Button>
+                                                        </Link>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             {/* Pagination */}
-            <div className="flex items-center justify-between px-2 py-3">
-                <div className="text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-3 border-t">
+                <div className="text-xs text-muted-foreground">
                     Showing{" "}
-                    <span className="font-medium">{pagination.pageIndex * pagination.pageSize + 1}</span>{" "}
+                    <span className="font-semibold text-foreground">{pagination.pageIndex * pagination.pageSize + 1}</span>{" "}
                     to{" "}
-                    <span className="font-medium">
+                    <span className="font-semibold text-foreground">
                         {Math.min((pagination.pageIndex + 1) * pagination.pageSize, rowCount)}
                     </span>{" "}
-                    of <span className="font-medium">{rowCount}</span> items
+                    of <span className="font-semibold text-foreground">{rowCount.toLocaleString()}</span> items
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handlePageChange((p) => ({ ...p, pageIndex: p.pageIndex - 1 }))}
+                        onClick={() => onPaginationChange({ ...pagination, pageIndex: pagination.pageIndex - 1 })}
                         disabled={pagination.pageIndex === 0}
+                        className="h-8 gap-1 text-xs"
                     >
-                        <ChevronRight className="h-4 w-4 rotate-180" />
+                        <ChevronRight className="h-3.5 w-3.5 rotate-180" /> Previous
                     </Button>
+                    <span className="text-xs font-mono px-2">
+                        Page {pagination.pageIndex + 1} of {Math.max(1, pageCount)}
+                    </span>
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handlePageChange((p) => ({ ...p, pageIndex: p.pageIndex + 1 }))}
+                        onClick={() => onPaginationChange({ ...pagination, pageIndex: pagination.pageIndex + 1 })}
                         disabled={pagination.pageIndex >= pageCount - 1}
+                        className="h-8 gap-1 text-xs"
                     >
-                        <ChevronRight className="h-4 w-4" />
+                        Next <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
                 </div>
             </div>
@@ -775,7 +1048,7 @@ const itemsQueryKey = (
     filters: AppliedFilters,
 ) => ["items", { page, pageSize, search, sortBy, sortOrder, filters }] as const;
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main ItemList Component ──────────────────────────────────────────────────
 
 interface ItemListProps {
     initialItems: Item[];
@@ -788,8 +1061,6 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
 
     const canCreate = hasPermission("erp.item.create");
     const canUpdate = hasPermission("erp.item.update");
-    // DISABLED: Items cannot be deleted to maintain data integrity
-    const canDelete = false; // hasPermission("erp.item.delete");
     const canBulkUpload = hasPermission("erp.item.bulk-upload");
 
     // ── State ──────────────────────────────────────────────────────────────
@@ -801,14 +1072,22 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         { id: "createdAt", desc: true },
     ]);
     const [search, setSearch] = useState("");
+    const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
+    const [selectedArticleSku, setSelectedArticleSku] = useState<string | null>(null);
+
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
     const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
     const [activeUpdateUploadId, setActiveUpdateUploadId] = useState<string | null>(null);
+
+    // Barcode printing state
     const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
-    // SKU grouping: which SKU's variants are currently expanded in the table.
-    // The user thinks in "unique SKUs" — one row per SKU, click to see its variants.
+    const [printModalItems, setPrintModalItems] = useState<Item[]>([]);
+
+    // SKU grouping state
     const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
+
+    // Export state
     const [exportState, setExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
     const [exportJobId, setExportJobId] = useState<string | null>(null);
     const [exportProgress, setExportProgress] = useState<number>(0);
@@ -820,7 +1099,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     const [silhouettes, setSilhouettes] = useState<any[]>([]);
     const [genders, setGenders] = useState<any[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    // Pending = staged in sheet; applied = sent to API
+
     const [pendingBrandIds, setPendingBrandIds] = useState<string[]>([]);
     const [pendingCategoryIds, setPendingCategoryIds] = useState<string[]>([]);
     const [pendingSilhouetteIds, setPendingSilhouetteIds] = useState<string[]>([]);
@@ -843,7 +1122,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         if (storedUpdate) setActiveUpdateUploadId(storedUpdate);
     }, []);
 
-    // ── Load master data for filters ───────────────────────────────────────
+    // Load master data for filters
     useEffect(() => {
         Promise.allSettled([
             brandApi.getAll(),
@@ -927,16 +1206,13 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         }
     };
 
-    // Note: don't auto-clear on error — a transient network failure shouldn't
-    // wipe the active upload ID. The user can manually dismiss via the modal.
-
-    // ── Derived query params ───────────────────────────────────────────────
-    const currentPage = pagination.pageIndex + 1; // API is 1-indexed
+    // Derived query params
+    const currentPage = pagination.pageIndex + 1;
     const pageSize = pagination.pageSize;
     const sortColumn = sorting[0]?.id ?? "createdAt";
     const sortDir: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
 
-    // ── Server-side fetch ──────────────────────────────────────────────────
+    // Server-side fetch
     const { data, isLoading, isFetching } = useQuery({
         queryKey: itemsQueryKey(currentPage, pageSize, search, sortColumn, sortDir, appliedFilters),
         queryFn: () => getItems(currentPage, pageSize, search || undefined, sortColumn, sortDir, {
@@ -946,7 +1222,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
             genderIds: appliedFilters.genderIds.length ? appliedFilters.genderIds : undefined,
         }),
         placeholderData: keepPreviousData,
-        staleTime: 30_000, // 30 s — treat cached pages as fresh for 30 s
+        staleTime: 30_000,
         initialData:
             currentPage === 1 &&
                 pageSize === 50 &&
@@ -966,7 +1242,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         totalPages: 0,
     };
 
-    // ── Prefetch next page ─────────────────────────────────────────────────
+    // Prefetch next page
     useEffect(() => {
         if (currentPage < meta.totalPages) {
             queryClient.prefetchQuery({
@@ -983,7 +1259,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         }
     }, [currentPage, pageSize, search, sortColumn, sortDir, appliedFilters, meta.totalPages, queryClient]);
 
-    // ── Reset to page 1 on search/sort/filter change ──────────────────────
+    // Reset to page 1 on search/sort/filter change
     useEffect(() => {
         setPagination((prev) => {
             if (prev.pageIndex === 0) return prev;
@@ -991,30 +1267,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         });
     }, [search, sortColumn, sortDir, appliedFilters]);
 
-    // ── Delete handler ─────────────────────────────────────────────────────
-    // DISABLED: Items cannot be deleted to maintain data integrity
-    // const handleDelete = useCallback(
-    //     async (id: string) => {
-    //         if (!confirm("Are you sure you want to delete this item?")) return;
-    //         try {
-    //             const result = await deleteItem(id);
-    //             if (result.status) {
-    //                 toast.success("Item deleted successfully");
-    //                 queryClient.invalidateQueries({ queryKey: ["items"] });
-    //             } else {
-    //                 toast.error(result.message || "Failed to delete item");
-    //             }
-    //         } catch {
-    //             toast.error("An unexpected error occurred");
-    //         }
-    //     },
-    //     [queryClient],
-    // );
-    const handleDelete = useCallback(() => {
-        // Delete functionality disabled
-    }, []);
-
-    // ── Filter handlers ────────────────────────────────────────────────────
+    // Filter handlers
     const handleApplyFilters = (filters: AppliedFilters) => {
         setAppliedFilters(filters);
         setIsFilterOpen(false);
@@ -1028,7 +1281,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         setAppliedFilters({ brandIds: [], categoryIds: [], silhouetteIds: [], genderIds: [] });
     };
 
-    // ── Export handler ─────────────────────────────────────────────────────
+    // Export handler
     const handleExport = useCallback(async () => {
         if (exportState === "completed" && exportJobId) {
             const base = getApiBaseUrl();
@@ -1070,9 +1323,9 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         }
     }, [exportState, exportJobId, search, sortColumn, sortDir, appliedFilters]);
 
-    // ── Filter slot (injected into DataTable toolbar) ──────────────────────
+    // Filter slot
     const filterSlot = (
-        <>
+        <div className="flex items-center gap-1.5">
             <Tooltip>
                 <TooltipTrigger asChild>
                     <div className="relative inline-flex">
@@ -1104,24 +1357,17 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                 <button
                     type="button"
                     onClick={handleClearFilters}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors ml-1"
                 >
-                    <X className="h-3 w-3" /> Clear filters
+                    <X className="h-3 w-3" /> Clear
                 </button>
             )}
-        </>
+        </div>
     );
 
-    const columns = useMemo(
-        () => useItemColumns(handleDelete, canUpdate, canDelete),
-        [handleDelete, canUpdate, canDelete]
-    );
-
-    // ── SKU grouping ──────────────────────────────────────────────────────
-    // The user thinks in "unique SKUs". The API returns one row per Item
-    // (size × color × uniqueNo), so we collapse them into one row per SKU
-    // with an expandable variants sub-table.
+    // SKU grouping
     const groups = useMemo(() => groupItemsBySku(items), [items]);
+
     const toggleSku = useCallback((sku: string) => {
         setExpandedSkus((prev) => {
             const next = new Set(prev);
@@ -1131,14 +1377,57 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         });
     }, []);
 
+    // ── Auto-Expand matching SKUs when searching by barcode / SKU / uniqueNo ────────
+    useEffect(() => {
+        if (!search || !search.trim()) return;
+        const term = search.trim().toLowerCase();
+        const matchingSkus = new Set<string>();
+
+        for (const it of items) {
+            const isMatch =
+                (it.barCode && it.barCode.toLowerCase().includes(term)) ||
+                (it.uniqueNo && it.uniqueNo.toLowerCase().includes(term)) ||
+                (it.itemId && it.itemId.toLowerCase().includes(term)) ||
+                (it.sku && it.sku.toLowerCase().includes(term)) ||
+                (it.description && it.description.toLowerCase().includes(term));
+
+            if (isMatch && it.sku) {
+                matchingSkus.add(it.sku);
+            }
+        }
+
+        if (matchingSkus.size > 0) {
+            setExpandedSkus((prev) => {
+                const next = new Set(prev);
+                matchingSkus.forEach((sku) => next.add(sku));
+                return next;
+            });
+        }
+    }, [search, items]);
+
+    // Expand All / Collapse All toggle
+    const allExpanded = groups.length > 0 && groups.every((g) => expandedSkus.has(g.sku));
+    const toggleExpandAll = useCallback(() => {
+        if (allExpanded) {
+            setExpandedSkus(new Set());
+        } else {
+            setExpandedSkus(new Set(groups.map((g) => g.sku)));
+        }
+    }, [allExpanded, groups]);
+
+    const handlePrintArticleVariants = (variants: Item[]) => {
+        setPrintModalItems(variants);
+        setIsBarcodeModalOpen(true);
+    };
+
     return (
         <Card className="w-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
+            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-0 pb-7 gap-4">
                 <div>
                     <CardTitle className="text-2xl font-bold">Items Catalog</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
                         {meta.total > 0
-                            ? `${meta.total.toLocaleString()} items · ${groups.length.toLocaleString()} unique SKUs`
+                            ? `${meta.total.toLocaleString()} variant items · ${groups.length.toLocaleString()} unique styles on this page`
                             : "No items yet"}
                         {isFetching && !isLoading && (
                             <span className="ml-2 inline-flex items-center gap-1 text-primary">
@@ -1148,7 +1437,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                         )}
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap items-center">
                     {/* Background update upload progress button */}
                     {activeUpdateUploadId && !isBulkUpdateOpen && (
                         <Button
@@ -1157,7 +1446,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                             onClick={() => setIsBulkUpdateOpen(true)}
                         >
                             <div
-                                className={`absolute inset-0 bg-primary/10 transition-all duration-500`}
+                                className="absolute inset-0 bg-primary/10 transition-all duration-500"
                                 style={{ width: `${updateProgress?.progress ?? 0}%` }}
                             />
                             <div className="relative flex items-center gap-2">
@@ -1181,6 +1470,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                             </div>
                         </Button>
                     )}
+
                     {/* Background upload progress button */}
                     {activeUploadId && !isBulkUploadOpen && (
                         <Button
@@ -1189,7 +1479,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                             onClick={() => setIsBulkUploadOpen(true)}
                         >
                             <div
-                                className={`absolute inset-0 bg-primary/10 transition-all duration-500`}
+                                className="absolute inset-0 bg-primary/10 transition-all duration-500"
                                 style={{ width: `${uploadProgress?.progress ?? 0}%` }}
                             />
                             <div className="relative flex items-center gap-2">
@@ -1213,6 +1503,8 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                             </div>
                         </Button>
                     )}
+
+                    {/* Export Button */}
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
@@ -1236,9 +1528,10 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                         </TooltipTrigger>
                         <TooltipContent>
                             Export {activeFilterCount > 0 || search ? "filtered" : "all"} items to Excel
-                            {meta.total > 0 && ` (${meta.total.toLocaleString()} rows)`} — runs in background, notifies when ready
+                            {meta.total > 0 && ` (${meta.total.toLocaleString()} rows)`} — runs in background
                         </TooltipContent>
                     </Tooltip>
+
                     {canBulkUpload && (
                         <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
                             <Upload className="mr-2 h-4 w-4" /> Bulk Upload
@@ -1249,7 +1542,14 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                             <Upload className="mr-2 h-4 w-4" /> Bulk Update Prices
                         </Button>
                     )}
-                    <Button variant="outline" onClick={() => setIsBarcodeModalOpen(true)} disabled={items.length === 0}>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setPrintModalItems([]);
+                            setIsBarcodeModalOpen(true);
+                        }}
+                        disabled={items.length === 0}
+                    >
                         <ScanBarcode className="mr-2 h-4 w-4" /> Print Barcodes
                     </Button>
                     {canUpdate && (
@@ -1270,32 +1570,39 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
             </CardHeader>
 
             <CardContent>
-                <GroupedItemTable
+                <ProCatalogTable
                     groups={groups}
+                    items={items}
                     expandedSkus={expandedSkus}
                     onToggleSku={toggleSku}
-                    columns={columns}
-                    searchFields={[
-                        { key: "sku", label: "SKU" },
-                        { key: "description", label: "Description" },
-                        { key: "brand", label: "Brand" },
-                        { key: "category", label: "Category" },
-                        { key: "division", label: "Division" },
-                    ]}
-                    filterSlot={filterSlot}
+                    onToggleExpandAll={toggleExpandAll}
+                    allExpanded={allExpanded}
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                    onViewArticle={(sku) => setSelectedArticleSku(sku)}
+                    onPrintArticleVariants={handlePrintArticleVariants}
                     search={search}
                     onSearchChange={setSearch}
-                    activeFilters={appliedFilters}
-                    manualPagination
-                    manualSorting
-                    manualFiltering
+                    filterSlot={filterSlot}
                     rowCount={meta.total}
                     pageCount={meta.totalPages}
+                    pagination={pagination}
                     onPaginationChange={setPagination}
+                    sorting={sorting}
                     onSortingChange={setSorting}
                     isLoading={isLoading}
+                    canUpdate={canUpdate}
                 />
             </CardContent>
+
+            <ArticleDetailSheet
+                sku={selectedArticleSku}
+                open={!!selectedArticleSku}
+                onOpenChange={(open) => !open && setSelectedArticleSku(null)}
+                onPrintBarcodes={(variants) => {
+                    handlePrintArticleVariants(variants);
+                }}
+            />
 
             <BulkUploadModal
                 open={isBulkUploadOpen}
@@ -1343,7 +1650,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
             <BarcodePrintModal
                 open={isBarcodeModalOpen}
                 onOpenChange={setIsBarcodeModalOpen}
-                items={items}
+                items={printModalItems.length > 0 ? printModalItems : items}
             />
 
             {/* Downloader Fixed Overlay Screen */}
